@@ -4,6 +4,7 @@ import { ensureDueNotifications } from "@/lib/notifications";
 import type { Notification } from "@/lib/types";
 import { AppShell } from "@/components/app-shell";
 import { NotificationBell } from "@/components/notification-bell";
+import { AIChat } from "@/components/ai-chat";
 
 export default async function AppLayout({
   children,
@@ -39,6 +40,7 @@ export default async function AppLayout({
   return (
     <AppShell user={user} bell={bell}>
       {children}
+      <AIChat />
     </AppShell>
   );
 }

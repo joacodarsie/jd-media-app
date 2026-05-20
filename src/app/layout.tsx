@@ -10,6 +10,17 @@ export const metadata: Metadata = {
   title: "JD Media",
   description:
     "Operación interna de JD Media: tareas, clientes, contenidos, equipo y procesos.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "JD Media",
+  },
+  themeColor: "#FFD400",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

@@ -21,6 +21,8 @@ export async function createTask(input: {
   area: string;
   prioridad: string;
   fecha_limite: string | null;
+  aprobador_id?: string | null;
+  requiere_aprobacion?: boolean;
 }) {
   const { supabase, userId } = await uid();
   const { error } = await supabase.from("tasks").insert({
@@ -32,6 +34,8 @@ export async function createTask(input: {
     area: input.area,
     prioridad: input.prioridad,
     fecha_limite: input.fecha_limite || null,
+    aprobador_id: input.aprobador_id || null,
+    requiere_aprobacion: input.requiere_aprobacion ?? !!input.aprobador_id,
   });
   if (error) return { error: error.message };
   revalidatePath("/tareas");
@@ -63,6 +67,8 @@ export async function updateTask(
     prioridad: string;
     estado: string;
     fecha_limite: string | null;
+    aprobador_id?: string | null;
+    requiere_aprobacion?: boolean;
   }
 ) {
   const { supabase } = await uid();
@@ -77,6 +83,8 @@ export async function updateTask(
       prioridad: input.prioridad,
       estado: input.estado,
       fecha_limite: input.fecha_limite || null,
+      aprobador_id: input.aprobador_id || null,
+      requiere_aprobacion: input.requiere_aprobacion ?? !!input.aprobador_id,
     })
     .eq("id", id);
   if (error) return { error: error.message };

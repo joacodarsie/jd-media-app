@@ -61,6 +61,7 @@ export function TaskFormDialog({
   const [fecha, setFecha] = useState<string>(
     task?.fecha_limite?.slice(0, 10) ?? ""
   );
+  const [aprobador, setAprobador] = useState<string>(task?.aprobador_id ?? NONE);
 
   function submit() {
     if (!titulo.trim()) {
@@ -76,6 +77,8 @@ export function TaskFormDialog({
         area,
         prioridad,
         fecha_limite: fecha || null,
+        aprobador_id: aprobador === NONE ? null : aprobador,
+        requiere_aprobacion: aprobador !== NONE,
       };
       const res =
         mode === "create"
@@ -215,6 +218,26 @@ export function TaskFormDialog({
                 value={fecha}
                 onChange={(e) => setFecha(e.target.value)}
               />
+            </div>
+            <div className="space-y-2 col-span-2">
+              <Label>Requiere aprobación de</Label>
+              <Select value={aprobador} onValueChange={setAprobador}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>No requiere aprobación</SelectItem>
+                  {users.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">
+                Si elegís un aprobador, le llega notificación cuando se crea la tarea
+                y cuando pasa a &quot;en revisión&quot; o &quot;completada&quot;.
+              </p>
             </div>
           </div>
         </div>

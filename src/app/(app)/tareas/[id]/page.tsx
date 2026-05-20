@@ -37,7 +37,7 @@ export default async function TaskDetail({
       supabase
         .from("tasks")
         .select(
-          "*, cliente:clients(id,nombre), asignado:users!tasks_asignado_a_id_fkey(id,nombre,avatar_url), creador:users!tasks_creado_por_id_fkey(id,nombre)"
+          "*, cliente:clients(id,nombre), asignado:users!tasks_asignado_a_id_fkey(id,nombre,avatar_url), creador:users!tasks_creado_por_id_fkey(id,nombre), aprobador:users!tasks_aprobador_id_fkey(id,nombre)"
         )
         .eq("id", params.id)
         .maybeSingle(),
@@ -119,6 +119,9 @@ export default async function TaskDetail({
       <div className="grid gap-4 sm:grid-cols-3">
         <Info label="Asignada a" value={t.asignado?.nombre ?? "Sin asignar"} />
         <Info label="Creada por" value={t.creador?.nombre ?? "—"} />
+        {t.aprobador && (
+          <Info label="Aprobador" value={t.aprobador.nombre} />
+        )}
         <Info
           label="Fecha límite"
           value={t.fecha_limite ? fmtDate(t.fecha_limite) : "Sin fecha"}

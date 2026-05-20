@@ -159,6 +159,8 @@ export interface Task {
   fecha_limite: string | null;
   fecha_completada: string | null;
   links: TaskLink[];
+  aprobador_id: string | null;
+  requiere_aprobacion: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -166,6 +168,7 @@ export interface Task {
 export interface TaskWithRels extends Task {
   asignado: Pick<AppUser, "id" | "nombre" | "avatar_url"> | null;
   creador: Pick<AppUser, "id" | "nombre"> | null;
+  aprobador?: Pick<AppUser, "id" | "nombre"> | null;
   cliente: Pick<Client, "id" | "nombre"> | null;
 }
 

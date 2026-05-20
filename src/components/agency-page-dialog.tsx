@@ -38,6 +38,7 @@ const KIND_LABEL: Record<string, string> = {
   buyer_persona: "Buyer persona",
   proceso: "Proceso / SOP",
   plantilla: "Plantilla",
+  accesos: "Accesos internos",
   otro: "Otro",
 };
 

@@ -62,6 +62,13 @@ export interface AppUser {
   avatar_url: string | null;
   activo: boolean;
   position_id: string | null;
+  fecha_ingreso: string | null;
+  telefono: string | null;
+  dni_cuit: string | null;
+  cbu: string | null;
+  alias_cbu: string | null;
+  titular_cuenta: string | null;
+  notas_personales: string | null;
   created_at: string;
 }
 

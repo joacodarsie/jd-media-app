@@ -69,35 +69,26 @@ export default async function EquipoPersonasPage() {
               };
               return (
                 <div key={u.id} className="flex items-center justify-between gap-3 py-3">
-                  <div className="flex items-center gap-3">
+                  <Link
+                    href={`/equipo/persona/${u.id}`}
+                    className="flex flex-1 items-center gap-3 hover:bg-muted/30 -mx-2 px-2 -my-1 py-1 rounded-md"
+                  >
                     <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-xs font-semibold">
                       {u.nombre.charAt(0)}
                     </div>
                     <div className="min-w-0">
                       <div className="font-medium">{u.nombre}</div>
                       <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-                        {pos ? (
-                          <Link
-                            href={`/equipo/${pos.id}`}
-                            className="hover:text-foreground hover:underline"
-                          >
-                            {pos.nombre}
-                          </Link>
-                        ) : (
-                          <span>Sin puesto</span>
-                        )}
+                        <span>{pos ? pos.nombre : "Sin puesto"}</span>
                         <span>· {u.area}</span>
                         {u.email && (
-                          <a
-                            href={`mailto:${u.email}`}
-                            className="inline-flex items-center gap-1 hover:text-foreground"
-                          >
+                          <span className="inline-flex items-center gap-1">
                             <Mail className="h-3 w-3" /> {u.email}
-                          </a>
+                          </span>
                         )}
                       </div>
                     </div>
-                  </div>
+                  </Link>
 
                   <div className="flex items-center gap-2">
                     {isAdmin && (

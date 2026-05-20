@@ -20,10 +20,9 @@ interface ClientRow extends Client {
   creativa?: { id: string; nombre: string } | null;
 }
 
-type Quick = "activos" | "at_risk" | "perdido" | "todos";
+type Quick = "activos" | "perdido" | "todos";
 const QUICK_LABEL: Record<Quick, string> = {
   activos: "Activos",
-  at_risk: "En riesgo",
   perdido: "Perdidos",
   todos: "Todos",
 };
@@ -76,7 +75,6 @@ export function ClientsDashboard({
   const filtered = useMemo(() => {
     return clients.filter((c) => {
       if (quick === "activos" && c.estado !== "activo") return false;
-      if (quick === "at_risk" && c.estado !== "at_risk") return false;
       if (quick === "perdido" && c.estado !== "perdido") return false;
       if (pack !== "__all__" && c.pack !== pack) return false;
       if (resp !== "__all__" && c.creativa_asignada_id !== resp) return false;
@@ -88,7 +86,6 @@ export function ClientsDashboard({
   const counts = useMemo(
     () => ({
       activos: clients.filter((c) => c.estado === "activo").length,
-      at_risk: clients.filter((c) => c.estado === "at_risk").length,
       perdido: clients.filter((c) => c.estado === "perdido").length,
       todos: clients.length,
     }),

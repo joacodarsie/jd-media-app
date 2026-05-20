@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { requireUser, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { CLIENT_PACK_LABEL, CLIENT_STATUS_LABEL } from "@/lib/constants";
+import { CLIENT_STATUS_LABEL } from "@/lib/constants";
 import { fmtDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { Client, TaskWithRels } from "@/lib/types";
@@ -24,6 +24,8 @@ import { Markdown } from "@/components/markdown";
 import { TaskList } from "@/components/task-list";
 import { ClientFormDialog } from "@/components/client-form-dialog";
 import { DeleteClientButton } from "@/components/delete-client-button";
+import { ClientServicesEditor } from "@/components/client-services-editor";
+import type { ClientService } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +51,7 @@ export default async function ClientDetail({
   const me = await requireUser();
   const supabase = createClient();
 
-  const [{ data: client }, { data: tasks }, { data: users }] = await Promise.all([
+  const [{ data: client }, { data: tasks }, { data: users }, { data: services }] = await Promise.all([
     supabase
       .from("clients")
       .select("*, creativa:users!clients_creativa_asignada_id_fkey(id,nombre), cm:users!clients_cm_id_fkey(id,nombre), disenador:users!clients_disenador_id_fkey(id,nombre), audiovisual:users!clients_audiovisual_id_fkey(id,nombre)")
@@ -63,6 +65,7 @@ export default async function ClientDetail({
       .eq("cliente_id", params.id)
       .order("fecha_limite", { ascending: true, nullsFirst: false }),
     supabase.from("users").select("id, nombre").eq("activo", true).order("nombre"),
+    supabase.from("client_services").select("*").eq("cliente_id", params.id).order("activo", { ascending: false }).order("tipo"),
   ]);
 
   if (!client) notFound();
@@ -123,25 +126,25 @@ export default async function ClientDetail({
               </span>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              {CLIENT_PACK_LABEL[c.pack]}
-              {c.rubro ? ` · ${c.rubro}` : ""}
+              {c.rubro ?? "Sin rubro"}
               {c.creativa ? ` · Responsable: ${c.creativa.nombre}` : ""}
             </p>
           </div>
-          <div className="text-right text-sm">
-            {c.monto_mensual != null && (
-              <div className="font-medium">
-                ${Number(c.monto_mensual).toLocaleString("es-AR")} / mes
-              </div>
-            )}
-            {c.fecha_inicio && (
-              <div className="text-xs text-muted-foreground">
-                Desde {fmtDate(c.fecha_inicio)}
-              </div>
-            )}
-          </div>
+          {c.fecha_inicio && (
+            <div className="text-right text-xs text-muted-foreground">
+              Cliente desde {fmtDate(c.fecha_inicio)}
+            </div>
+          )}
         </div>
+
       </div>
+
+      {/* Servicios contratados */}
+      <Card>
+        <CardContent className="pt-6">
+          <ClientServicesEditor clienteId={c.id} services={(services ?? []) as ClientService[]} />
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="md:col-span-2">

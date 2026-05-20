@@ -89,15 +89,42 @@ export const PRIORITY_BADGE: Record<TaskPriority, string> = {
 
 export const CLIENT_STATUS_LABEL: Record<ClientStatus, string> = {
   activo: "Activo",
-  at_risk: "En riesgo",
+  at_risk: "En riesgo (legacy)",
   perdido: "Perdido",
 };
+
+/** Estados visibles en formularios y filtros (omite legacy `at_risk`). */
+export const VISIBLE_CLIENT_STATUSES: { value: ClientStatus; label: string }[] = [
+  { value: "activo", label: "Activo" },
+  { value: "perdido", label: "Perdido" },
+];
 
 export const CLIENT_PACK_LABEL: Record<string, string> = {
   Presencia: "Pack Presencia",
   Crecimiento: "Pack Crecimiento",
   Personalizado: "Pack Personalizado",
   Escala: "Pack Escala (legacy)",
+};
+
+export const SERVICE_TYPE_LABEL: Record<string, string> = {
+  gestion_redes: "Gestión de redes",
+  paid_media: "Paid Media (Ads)",
+  diseno_grafico: "Diseño gráfico",
+  edicion_audiovisual: "Edición audiovisual",
+  desarrollo_web: "Desarrollo web",
+  botly: "Botly (bots WhatsApp)",
+  consultoria: "Consultoría",
+  otro: "Otro",
+};
+
+/** Cuántas piezas mensuales rinde cada pack de gestión de redes (default editable por cliente). */
+export const PACK_DEFAULTS: Record<
+  string,
+  { posts: number; historias_dias: number; reels: number }
+> = {
+  Presencia: { posts: 8, historias_dias: 12, reels: 0 },
+  Crecimiento: { posts: 12, historias_dias: 20, reels: 4 },
+  Personalizado: { posts: 0, historias_dias: 0, reels: 0 },
 };
 
 /** Roles que ven todo (admin/coordinación). */

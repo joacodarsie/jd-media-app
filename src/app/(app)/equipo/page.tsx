@@ -41,14 +41,14 @@ export default async function EquipoPage() {
             Puestos, alcance, procesos y personas de la agencia.
           </p>
         </div>
-        {isAdmin && (
-          <div className="flex items-center gap-2">
-            <Link
-              href="/equipo/personas"
-              className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
-            >
-              <UsersIcon className="mr-2 h-4 w-4" /> Personas
-            </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/equipo/personas"
+            className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
+          >
+            <UsersIcon className="mr-2 h-4 w-4" /> Personas
+          </Link>
+          {isAdmin && (
             <PositionFormDialog
               mode="create"
               trigger={
@@ -57,8 +57,8 @@ export default async function EquipoPage() {
                 </Button>
               }
             />
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="space-y-6">

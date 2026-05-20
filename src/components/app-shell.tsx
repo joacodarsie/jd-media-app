@@ -14,6 +14,7 @@ import {
   BarChart3,
   FileText,
   Sparkles,
+  Wallet,
   Menu,
   LogOut,
   type LucideIcon,
@@ -50,6 +51,7 @@ const ICONS: Record<string, LucideIcon> = {
   BarChart3,
   FileText,
   Sparkles,
+  Wallet,
 };
 
 function initials(nombre: string) {

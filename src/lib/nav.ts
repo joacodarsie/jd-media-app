@@ -34,6 +34,12 @@ export const NAV: NavItem[] = [
     icon: "BarChart3",
     roles: ["admin"],
   },
+  {
+    href: "/finanzas",
+    label: "Finanzas",
+    icon: "Wallet",
+    roles: ["admin"],
+  },
 ];
 
 export function visibleNav(rol: UserRole) {

@@ -20,6 +20,32 @@ export type TaskStatus =
 export type TaskPriority = "baja" | "media" | "alta" | "urgente";
 export type ClientPack = "Presencia" | "Crecimiento" | "Escala" | "Personalizado";
 export type ClientStatus = "activo" | "at_risk" | "perdido";
+
+export type ServiceType =
+  | "gestion_redes"
+  | "paid_media"
+  | "diseno_grafico"
+  | "edicion_audiovisual"
+  | "desarrollo_web"
+  | "botly"
+  | "consultoria"
+  | "otro";
+
+export interface ClientService {
+  id: string;
+  cliente_id: string;
+  tipo: ServiceType;
+  pack: string | null;
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
+  monto_mensual: number | null;
+  moneda: string;
+  pack_detalle: Record<string, number | string>;
+  notas: string | null;
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+}
 export type NotificationType =
   | "asignacion"
   | "mencion"

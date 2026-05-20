@@ -6,7 +6,7 @@ import { TaskViews } from "@/components/task-views";
 export const dynamic = "force-dynamic";
 
 export default async function TareasPage() {
-  await requireUser();
+  const me = await requireUser();
   const supabase = createClient();
 
   const [{ data: tasks }, { data: users }, { data: clients }] =
@@ -14,7 +14,7 @@ export default async function TareasPage() {
       supabase
         .from("tasks")
         .select(
-          "*, cliente:clients(id,nombre), asignado:users!tasks_asignado_a_id_fkey(id,nombre,avatar_url)"
+          "id,titulo,estado,prioridad,area,fecha_limite,asignado_a_id,cliente_id,created_at,descripcion,creado_por_id,fecha_completada,links,updated_at,cliente:clients(id,nombre),asignado:users!tasks_asignado_a_id_fkey(id,nombre,avatar_url)"
         )
         .order("created_at", { ascending: false }),
       supabase
@@ -27,9 +27,10 @@ export default async function TareasPage() {
 
   return (
     <TaskViews
-      tasks={(tasks ?? []) as TaskWithRels[]}
+      tasks={(tasks ?? []) as unknown as TaskWithRels[]}
       users={users ?? []}
       clients={clients ?? []}
+      currentUserId={me.id}
     />
   );
 }

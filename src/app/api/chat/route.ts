@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 const client = new Anthropic();
 
-const MODEL = "claude-opus-4-7";
+const MODEL = "claude-sonnet-4-6";
 
 function systemPrompt(userName: string, userArea: string, userRol: string) {
   const today = new Date().toLocaleDateString("es-AR", {

@@ -47,7 +47,14 @@ export interface Client {
   estado: ClientStatus;
   fecha_inicio: string | null;
   monto_mensual: number | null;
+  calendario_url: string | null;
+  drive_url: string | null;
+  contacto_nombre: string | null;
+  contacto_email: string | null;
+  contacto_telefono: string | null;
+  notas: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface TaskLink {

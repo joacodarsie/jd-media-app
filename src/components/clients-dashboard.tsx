@@ -1,7 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo } from "react";
-import { ChevronDown } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarDays,
+  ChevronDown,
+  FolderOpen,
+} from "lucide-react";
 import { CLIENT_STATUS_LABEL } from "@/lib/constants";
 import { dueState } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -9,13 +15,14 @@ import type { Client, TaskWithRels } from "@/lib/types";
 import { TaskList } from "@/components/task-list";
 
 interface ClientRow extends Client {
-  creativa?: { nombre: string } | null;
+  creativa?: { id: string; nombre: string } | null;
 }
 
 const ESTADO_BADGE: Record<string, string> = {
-  activo: "bg-emerald-100 text-emerald-700",
-  at_risk: "bg-amber-100 text-amber-800",
-  perdido: "bg-red-100 text-red-700",
+  activo:
+    "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+  at_risk: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+  perdido: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
 };
 
 export function ClientsDashboard({
@@ -38,26 +45,13 @@ export function ClientsDashboard({
   const internas = tasks.filter((t) => !t.cliente_id);
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold">Por cliente</h1>
-        <p className="text-muted-foreground">
-          Qué se está haciendo en cada cuenta.
-        </p>
-      </div>
-
-      <div className="space-y-3">
-        {clients.map((c) => (
-          <ClientCard
-            key={c.id}
-            client={c}
-            tasks={byClient.get(c.id) ?? []}
-          />
-        ))}
-        {internas.length > 0 && (
-          <Group title="Tareas internas (sin cliente)" tasks={internas} />
-        )}
-      </div>
+    <div className="space-y-3">
+      {clients.map((c) => (
+        <ClientCard key={c.id} client={c} tasks={byClient.get(c.id) ?? []} />
+      ))}
+      {internas.length > 0 && (
+        <Group title="Tareas internas (sin cliente)" tasks={internas} />
+      )}
     </div>
   );
 }
@@ -75,11 +69,17 @@ function ClientCard({
   ).length;
 
   return (
-    <details className="group rounded-lg border bg-card">
+    <details className="group rounded-lg border bg-card transition-colors hover:border-primary/40">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold">{client.nombre}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/clientes/${client.id}`}
+              className="font-semibold hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {client.nombre}
+            </Link>
             <span
               className={cn(
                 "rounded-full px-2 py-0.5 text-[11px] font-medium",
@@ -94,12 +94,44 @@ function ClientCard({
           </div>
         </div>
         <div className="flex items-center gap-3 text-sm">
+          {client.calendario_url && (
+            <a
+              href={client.calendario_url}
+              target="_blank"
+              rel="noreferrer"
+              title="Calendario de contenidos"
+              onClick={(e) => e.stopPropagation()}
+              className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <CalendarDays className="h-4 w-4" />
+            </a>
+          )}
+          {client.drive_url && (
+            <a
+              href={client.drive_url}
+              target="_blank"
+              rel="noreferrer"
+              title="Drive del cliente"
+              onClick={(e) => e.stopPropagation()}
+              className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <FolderOpen className="h-4 w-4" />
+            </a>
+          )}
           <span title="Activas">{activas.length} activas</span>
           {vencidas > 0 && (
             <span className="font-semibold text-red-600">
               {vencidas} vencidas
             </span>
           )}
+          <Link
+            href={`/clientes/${client.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="hidden text-muted-foreground hover:text-foreground sm:inline-flex"
+            title="Abrir cliente"
+          >
+            <ArrowRight className="h-4 w-4" />
+          </Link>
           <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
         </div>
       </summary>
@@ -114,13 +146,7 @@ function ClientCard({
   );
 }
 
-function Group({
-  title,
-  tasks,
-}: {
-  title: string;
-  tasks: TaskWithRels[];
-}) {
+function Group({ title, tasks }: { title: string; tasks: TaskWithRels[] }) {
   return (
     <details className="group rounded-lg border bg-card">
       <summary className="flex cursor-pointer list-none items-center justify-between p-4">

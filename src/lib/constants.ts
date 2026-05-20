@@ -90,5 +90,11 @@ export const CLIENT_STATUS_LABEL: Record<ClientStatus, string> = {
   perdido: "Perdido",
 };
 
+export const CLIENT_PACK_LABEL: Record<string, string> = {
+  Presencia: "Presencia",
+  Crecimiento: "Crecimiento",
+  Escala: "Escala",
+};
+
 /** Roles que ven todo (admin/coordinación). */
 export const STAFF_ROLES: UserRole[] = ["admin", "coordinador"];

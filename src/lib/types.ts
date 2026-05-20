@@ -94,6 +94,61 @@ export interface Comment {
   autor?: Pick<AppUser, "id" | "nombre" | "avatar_url"> | null;
 }
 
+export type PublicationStatus =
+  | "idea"
+  | "en_diseno"
+  | "guion"
+  | "edicion"
+  | "revision_creativa"
+  | "revision_cliente"
+  | "aprobado"
+  | "publicado"
+  | "rechazado";
+
+export type PublicationNetwork =
+  | "instagram"
+  | "tiktok"
+  | "facebook"
+  | "linkedin"
+  | "youtube"
+  | "twitter"
+  | "otra";
+
+export type PublicationType =
+  | "post"
+  | "reel"
+  | "carrusel"
+  | "historia"
+  | "video"
+  | "otro";
+
+export interface Publication {
+  id: string;
+  cliente_id: string;
+  titulo: string;
+  copy: string | null;
+  guion: string | null;
+  red: PublicationNetwork;
+  tipo: PublicationType;
+  fecha_publicacion: string | null;
+  hashtags: string | null;
+  asset_url: string | null;
+  referencia_url: string | null;
+  creado_por_id: string | null;
+  audiovisual_id: string | null;
+  estado: PublicationStatus;
+  task_id: string | null;
+  notas_revision: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PublicationWithRels extends Publication {
+  cliente?: Pick<Client, "id" | "nombre"> | null;
+  creador?: Pick<AppUser, "id" | "nombre" | "avatar_url"> | null;
+  audiovisual?: Pick<AppUser, "id" | "nombre" | "avatar_url"> | null;
+}
+
 export interface Notification {
   id: string;
   user_id: string;

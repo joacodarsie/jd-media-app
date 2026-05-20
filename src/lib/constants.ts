@@ -3,6 +3,9 @@ import type {
   TaskStatus,
   TaskPriority,
   ClientStatus,
+  PublicationStatus,
+  PublicationNetwork,
+  PublicationType,
 } from "./types";
 
 export const TIMEZONE = "America/Argentina/Cordoba";
@@ -98,3 +101,81 @@ export const CLIENT_PACK_LABEL: Record<string, string> = {
 
 /** Roles que ven todo (admin/coordinación). */
 export const STAFF_ROLES: UserRole[] = ["admin", "coordinador"];
+
+export const PUBLICATION_STATUS_LABEL: Record<PublicationStatus, string> = {
+  idea: "Idea",
+  en_diseno: "En diseño",
+  guion: "Guion",
+  edicion: "Edición",
+  revision_creativa: "Revisión creativa",
+  revision_cliente: "Revisión cliente",
+  aprobado: "Aprobado",
+  publicado: "Publicado",
+  rechazado: "Cambios pedidos",
+};
+
+export const PUBLICATION_STATUS_BADGE: Record<PublicationStatus, string> = {
+  idea: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+  en_diseno: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
+  guion: "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300",
+  edicion: "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300",
+  revision_creativa:
+    "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+  revision_cliente:
+    "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300",
+  aprobado:
+    "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+  publicado: "bg-green-600 text-white",
+  rechazado: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
+};
+
+export const PUBLICATION_NETWORK_LABEL: Record<PublicationNetwork, string> = {
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  facebook: "Facebook",
+  linkedin: "LinkedIn",
+  youtube: "YouTube",
+  twitter: "X / Twitter",
+  otra: "Otra",
+};
+
+export const PUBLICATION_TYPE_LABEL: Record<PublicationType, string> = {
+  post: "Post",
+  reel: "Reel",
+  carrusel: "Carrusel",
+  historia: "Historia",
+  video: "Video",
+  otro: "Otro",
+};
+
+/** Flujo sugerido por tipo. */
+export function nextPublicationStatuses(
+  current: PublicationStatus,
+  tipo: PublicationType
+): PublicationStatus[] {
+  const reelLike = tipo === "reel" || tipo === "video";
+  switch (current) {
+    case "idea":
+      return reelLike
+        ? ["guion", "en_diseno", "rechazado"]
+        : ["en_diseno", "rechazado"];
+    case "en_diseno":
+      return ["revision_creativa", "rechazado"];
+    case "guion":
+      return ["edicion", "rechazado"];
+    case "edicion":
+      return ["revision_creativa", "rechazado"];
+    case "revision_creativa":
+      return ["revision_cliente", "rechazado", "aprobado"];
+    case "revision_cliente":
+      return ["aprobado", "rechazado"];
+    case "aprobado":
+      return ["publicado", "rechazado"];
+    case "publicado":
+      return [];
+    case "rechazado":
+      return reelLike ? ["guion", "en_diseno"] : ["en_diseno"];
+    default:
+      return [];
+  }
+}

@@ -75,8 +75,15 @@ export default async function ClientDetail({
         >
           <ArrowLeft className="mr-1 h-4 w-4" /> Volver a clientes
         </Link>
-        {canEdit && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/clientes/${c.id}/calendario`}
+            className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
+          >
+            <CalendarDays className="mr-2 h-4 w-4" /> Calendario de contenidos
+          </Link>
+          {canEdit && (
+          <>
             <ClientFormDialog
               mode="edit"
               client={c}
@@ -90,8 +97,9 @@ export default async function ClientDetail({
             {isStaff(me.rol) && (
               <DeleteClientButton id={c.id} nombre={c.nombre} />
             )}
-          </div>
-        )}
+          </>
+          )}
+        </div>
       </div>
 
       <div className="rounded-xl border bg-card p-5">

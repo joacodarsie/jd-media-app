@@ -12,7 +12,7 @@ export interface NavItem {
 export const NAV: NavItem[] = [
   { href: "/dashboard", label: "Mi día", icon: "Sun" },
   { href: "/tareas", label: "Tareas", icon: "ListChecks" },
-  { href: "/calendario", label: "Calendario", icon: "Calendar" },
+  { href: "/contenidos", label: "Contenidos", icon: "Calendar" },
   {
     href: "/area",
     label: "Por área",

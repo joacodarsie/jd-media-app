@@ -1,0 +1,292 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import {
+  createPublication,
+  updatePublication,
+  type PublicationInput,
+} from "@/app/(app)/contenidos/actions";
+import {
+  PUBLICATION_NETWORK_LABEL,
+  PUBLICATION_STATUS_LABEL,
+  PUBLICATION_TYPE_LABEL,
+} from "@/lib/constants";
+import type { AppUser, Client, PublicationWithRels } from "@/lib/types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const NONE = "__none__";
+
+export function PublicationFormDialog({
+  mode,
+  publication,
+  clients,
+  users,
+  defaultClientId,
+  defaultDate,
+  trigger,
+}: {
+  mode: "create" | "edit";
+  publication?: PublicationWithRels;
+  clients: Pick<Client, "id" | "nombre">[];
+  users: Pick<AppUser, "id" | "nombre">[];
+  defaultClientId?: string;
+  defaultDate?: string;
+  trigger: React.ReactNode;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [pending, start] = useTransition();
+
+  const [cliente, setCliente] = useState<string>(
+    publication?.cliente_id ?? defaultClientId ?? ""
+  );
+  const [titulo, setTitulo] = useState(publication?.titulo ?? "");
+  const [copy, setCopy] = useState(publication?.copy ?? "");
+  const [guion, setGuion] = useState(publication?.guion ?? "");
+  const [red, setRed] = useState<string>(publication?.red ?? "instagram");
+  const [tipo, setTipo] = useState<string>(publication?.tipo ?? "post");
+  const [fecha, setFecha] = useState(
+    publication?.fecha_publicacion?.slice(0, 16) ??
+      (defaultDate ? `${defaultDate}T10:00` : "")
+  );
+  const [hashtags, setHashtags] = useState(publication?.hashtags ?? "");
+  const [assetUrl, setAssetUrl] = useState(publication?.asset_url ?? "");
+  const [refUrl, setRefUrl] = useState(publication?.referencia_url ?? "");
+  const [audiovisual, setAudiovisual] = useState<string>(
+    publication?.audiovisual_id ?? NONE
+  );
+  const [estado, setEstado] = useState<string>(publication?.estado ?? "idea");
+
+  function submit() {
+    if (!cliente) {
+      toast.error("Elegí cliente.");
+      return;
+    }
+    if (!titulo.trim()) {
+      toast.error("Poné un título.");
+      return;
+    }
+    const payload: PublicationInput = {
+      cliente_id: cliente,
+      titulo,
+      copy,
+      guion,
+      red,
+      tipo,
+      fecha_publicacion: fecha ? new Date(fecha).toISOString() : null,
+      hashtags,
+      asset_url: assetUrl,
+      referencia_url: refUrl,
+      audiovisual_id: audiovisual === NONE ? null : audiovisual,
+      task_id: publication?.task_id ?? null,
+      estado: mode === "edit" ? estado : undefined,
+    };
+    start(async () => {
+      const res =
+        mode === "create"
+          ? await createPublication(payload)
+          : await updatePublication(publication!.id, payload);
+      if (res?.error) {
+        toast.error("No se pudo guardar: " + res.error);
+        return;
+      }
+      toast.success(mode === "create" ? "Publicación creada" : "Actualizada");
+      setOpen(false);
+      router.refresh();
+    });
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>
+            {mode === "create" ? "Nueva publicación" : "Editar publicación"}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Cliente</Label>
+              <Select value={cliente} onValueChange={setCliente} disabled={!!defaultClientId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Elegir cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Fecha y hora</Label>
+              <Input
+                type="datetime-local"
+                value={fecha}
+                onChange={(e) => setFecha(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Título interno</Label>
+            <Input
+              value={titulo}
+              onChange={(e) => setTitulo(e.target.value)}
+              placeholder="Ej: Reel lanzamiento promo junio"
+            />
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-2">
+              <Label>Red</Label>
+              <Select value={red} onValueChange={setRed}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(PUBLICATION_NETWORK_LABEL).map(([v, l]) => (
+                    <SelectItem key={v} value={v}>
+                      {l}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo</Label>
+              <Select value={tipo} onValueChange={setTipo}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(PUBLICATION_TYPE_LABEL).map(([v, l]) => (
+                    <SelectItem key={v} value={v}>
+                      {l}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Editor audiovisual</Label>
+              <Select value={audiovisual} onValueChange={setAudiovisual}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Sin asignar</SelectItem>
+                  {users.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Copy del post</Label>
+            <Textarea
+              rows={4}
+              value={copy}
+              onChange={(e) => setCopy(e.target.value)}
+              placeholder="Texto del posteo."
+            />
+          </div>
+
+          {(tipo === "reel" || tipo === "video") && (
+            <div className="space-y-2">
+              <Label>Guion</Label>
+              <Textarea
+                rows={4}
+                value={guion}
+                onChange={(e) => setGuion(e.target.value)}
+                placeholder="Escena 1: …"
+              />
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label>Hashtags</Label>
+            <Input
+              value={hashtags}
+              onChange={(e) => setHashtags(e.target.value)}
+              placeholder="#marca #campaña"
+            />
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Link al asset (Drive)</Label>
+              <Input
+                value={assetUrl}
+                onChange={(e) => setAssetUrl(e.target.value)}
+                placeholder="https://drive.google.com/…"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Referencia / inspiración</Label>
+              <Input
+                value={refUrl}
+                onChange={(e) => setRefUrl(e.target.value)}
+                placeholder="Link a otra publicación"
+              />
+            </div>
+          </div>
+
+          {mode === "edit" && (
+            <div className="space-y-2">
+              <Label>Estado</Label>
+              <Select value={estado} onValueChange={setEstado}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(PUBLICATION_STATUS_LABEL).map(([v, l]) => (
+                    <SelectItem key={v} value={v}>
+                      {l}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={pending}>
+            Cancelar
+          </Button>
+          <Button onClick={submit} disabled={pending}>
+            {pending ? "Guardando…" : "Guardar"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -1,10 +1,15 @@
+import dynamic from "next/dynamic";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ensureDueNotifications } from "@/lib/notifications";
 import type { Notification } from "@/lib/types";
 import { AppShell } from "@/components/app-shell";
 import { NotificationBell } from "@/components/notification-bell";
-import { AIChat } from "@/components/ai-chat";
+
+const AIChat = dynamic(
+  () => import("@/components/ai-chat").then((m) => m.AIChat),
+  { ssr: false }
+);
 
 export default async function AppLayout({
   children,

@@ -7,8 +7,9 @@ import { Toaster } from "@/components/ui/sonner";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "JD Media · Gestión de tareas",
-  description: "Gestión de tareas y seguimiento operativo de JD Media.",
+  title: "JD Media",
+  description:
+    "Operación interna de JD Media: tareas, clientes, contenidos, equipo y procesos.",
 };
 
 export default function RootLayout({

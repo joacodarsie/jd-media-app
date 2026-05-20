@@ -35,7 +35,50 @@ export interface AppUser {
   area: string;
   avatar_url: string | null;
   activo: boolean;
+  position_id: string | null;
   created_at: string;
+}
+
+export type PayFrequency =
+  | "mensual"
+  | "quincenal"
+  | "semanal"
+  | "proyecto"
+  | "comision"
+  | "por_tarea";
+
+export interface PositionTool {
+  nombre: string;
+  url?: string;
+}
+
+export interface Position {
+  id: string;
+  nombre: string;
+  area: string;
+  descripcion: string | null;
+  alcance_incluye: string | null;
+  alcance_excluye: string | null;
+  herramientas: PositionTool[];
+  kpis: string | null;
+  procesos: string | null;
+  pago_default_monto: number | null;
+  pago_default_moneda: string | null;
+  pago_default_frecuencia: PayFrequency | null;
+  pago_default_forma: string | null;
+  pago_default_notas: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Compensation {
+  user_id: string;
+  monto: number | null;
+  moneda: string | null;
+  frecuencia: PayFrequency | null;
+  forma_pago: string | null;
+  notas: string | null;
+  updated_at: string;
 }
 
 export interface Client {

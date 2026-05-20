@@ -102,6 +102,15 @@ export const CLIENT_PACK_LABEL: Record<string, string> = {
 /** Roles que ven todo (admin/coordinación). */
 export const STAFF_ROLES: UserRole[] = ["admin", "coordinador"];
 
+export const PAY_FREQUENCY_LABEL: Record<string, string> = {
+  mensual: "Mensual",
+  quincenal: "Quincenal",
+  semanal: "Semanal",
+  proyecto: "Por proyecto",
+  comision: "Comisión",
+  por_tarea: "Por tarea",
+};
+
 export const PUBLICATION_STATUS_LABEL: Record<PublicationStatus, string> = {
   idea: "Idea",
   en_diseno: "En diseño",

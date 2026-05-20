@@ -8,6 +8,8 @@ import {
   ListChecks,
   Calendar,
   Users,
+  Users2,
+  UserCircle,
   Briefcase,
   BarChart3,
   Menu,
@@ -40,6 +42,8 @@ const ICONS: Record<string, LucideIcon> = {
   ListChecks,
   Calendar,
   Users,
+  Users2,
+  UserCircle,
   Briefcase,
   BarChart3,
 };

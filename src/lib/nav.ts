@@ -20,7 +20,7 @@ export const NAV: NavItem[] = [
   },
   {
     href: "/clientes",
-    label: "Por cliente",
+    label: "Clientes",
     icon: "Briefcase",
     roles: ["admin", "coordinador"],
   },

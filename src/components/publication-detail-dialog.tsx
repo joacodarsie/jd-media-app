@@ -14,7 +14,7 @@ import {
   PUBLICATION_TYPE_LABEL,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import type { AppUser, Client, PublicationWithRels } from "@/lib/types";
+import type { AppUser, PublicationWithRels } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,7 +25,10 @@ import {
 } from "@/components/ui/dialog";
 import { Markdown } from "@/components/markdown";
 import { PublicationStatusActions } from "@/components/publication-status-actions";
-import { PublicationFormDialog } from "@/components/publication-form-dialog";
+import {
+  PublicationFormDialog,
+  type ClientForPub,
+} from "@/components/publication-form-dialog";
 
 export function PublicationDetailDialog({
   publication,
@@ -34,7 +37,7 @@ export function PublicationDetailDialog({
   trigger,
 }: {
   publication: PublicationWithRels;
-  clients: Pick<Client, "id" | "nombre">[];
+  clients: ClientForPub[];
   users: Pick<AppUser, "id" | "nombre">[];
   trigger: React.ReactNode;
 }) {
@@ -91,20 +94,27 @@ export function PublicationDetailDialog({
             <span>{PUBLICATION_TYPE_LABEL[p.tipo]}</span>
             {p.cliente && <span>· {p.cliente.nombre}</span>}
             {p.creador && <span>· creó {p.creador.nombre}</span>}
-            {p.audiovisual && <span>· edita {p.audiovisual.nombre}</span>}
+            {p.audiovisual && <span>· asignado {p.audiovisual.nombre}</span>}
           </div>
 
-          {p.copy && (
-            <div>
-              <h4 className="mb-1 font-semibold">Copy</h4>
-              <Markdown>{p.copy}</Markdown>
+          {p.guion && (
+            <div className="rounded-md border border-indigo-200 bg-indigo-50/50 p-3 dark:border-indigo-900 dark:bg-indigo-950/30">
+              <h4 className="mb-1 font-semibold text-indigo-900 dark:text-indigo-200">Guion</h4>
+              <Markdown>{p.guion}</Markdown>
             </div>
           )}
 
-          {p.guion && (
+          {p.descripcion && (
+            <div className="rounded-md border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-900 dark:bg-blue-950/30">
+              <h4 className="mb-1 font-semibold text-blue-900 dark:text-blue-200">Descripción de la idea</h4>
+              <Markdown>{p.descripcion}</Markdown>
+            </div>
+          )}
+
+          {p.copy && (
             <div>
-              <h4 className="mb-1 font-semibold">Guion</h4>
-              <Markdown>{p.guion}</Markdown>
+              <h4 className="mb-1 font-semibold">Copy del post</h4>
+              <Markdown>{p.copy}</Markdown>
             </div>
           )}
 

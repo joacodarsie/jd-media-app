@@ -31,6 +31,9 @@ export interface ClientInput {
   contacto_email: string | null;
   contacto_telefono: string | null;
   notas: string | null;
+  cm_id: string | null;
+  disenador_id: string | null;
+  audiovisual_id: string | null;
 }
 
 function clean(input: ClientInput) {
@@ -56,6 +59,9 @@ function clean(input: ClientInput) {
     contacto_email: input.contacto_email?.trim() || null,
     contacto_telefono: input.contacto_telefono?.trim() || null,
     notas: input.notas?.trim() || null,
+    cm_id: input.cm_id || null,
+    disenador_id: input.disenador_id || null,
+    audiovisual_id: input.audiovisual_id || null,
   };
 }
 

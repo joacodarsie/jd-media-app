@@ -15,6 +15,7 @@ async function ctx() {
 export interface PublicationInput {
   cliente_id: string;
   titulo: string;
+  descripcion: string | null;
   copy: string | null;
   guion: string | null;
   red: string;
@@ -33,6 +34,7 @@ function clean(input: PublicationInput) {
   return {
     cliente_id: input.cliente_id,
     titulo: input.titulo.trim(),
+    descripcion: input.descripcion?.trim() || null,
     copy: input.copy?.trim() || null,
     guion: input.guion?.trim() || null,
     red: input.red,

@@ -36,6 +36,9 @@ const ESTADO_BADGE: Record<string, string> = {
 
 interface ClientWithCreativa extends Client {
   creativa: { id: string; nombre: string } | null;
+  cm?: { id: string; nombre: string } | null;
+  disenador?: { id: string; nombre: string } | null;
+  audiovisual?: { id: string; nombre: string } | null;
 }
 
 export default async function ClientDetail({
@@ -49,7 +52,7 @@ export default async function ClientDetail({
   const [{ data: client }, { data: tasks }, { data: users }] = await Promise.all([
     supabase
       .from("clients")
-      .select("*, creativa:users!clients_creativa_asignada_id_fkey(id,nombre)")
+      .select("*, creativa:users!clients_creativa_asignada_id_fkey(id,nombre), cm:users!clients_cm_id_fkey(id,nombre), disenador:users!clients_disenador_id_fkey(id,nombre), audiovisual:users!clients_audiovisual_id_fkey(id,nombre)")
       .eq("id", params.id)
       .maybeSingle(),
     supabase
@@ -254,6 +257,34 @@ export default async function ClientDetail({
               </CardHeader>
               <CardContent className="text-sm">
                 <p className="whitespace-pre-line">{c.datos_facturacion}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {(c.cm || c.disenador || c.audiovisual) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Equipo asignado</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {c.cm && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Community Manager</span>
+                    <span className="font-medium">{c.cm.nombre}</span>
+                  </div>
+                )}
+                {c.disenador && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Diseñador/a</span>
+                    <span className="font-medium">{c.disenador.nombre}</span>
+                  </div>
+                )}
+                {c.audiovisual && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Editor/a audiovisual</span>
+                    <span className="font-medium">{c.audiovisual.nombre}</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

@@ -17,12 +17,14 @@ import {
 import { cn } from "@/lib/utils";
 import type {
   AppUser,
-  Client,
   PublicationStatus,
   PublicationWithRels,
 } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { PublicationFormDialog } from "@/components/publication-form-dialog";
+import {
+  PublicationFormDialog,
+  type ClientForPub,
+} from "@/components/publication-form-dialog";
 import { PublicationDetailDialog } from "@/components/publication-detail-dialog";
 
 const DAY_NAMES = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -51,7 +53,7 @@ export function PublicationsMonth({
   defaultClientId,
 }: {
   publications: PublicationWithRels[];
-  clients: Pick<Client, "id" | "nombre">[];
+  clients: ClientForPub[];
   users: Pick<AppUser, "id" | "nombre">[];
   defaultClientId?: string;
 }) {
@@ -60,6 +62,9 @@ export function PublicationsMonth({
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
+  const [fCliente, setFCliente] = useState<string>(defaultClientId ?? "__all__");
+  const [fRed, setFRed] = useState<string>("__all__");
+  const [fEstado, setFEstado] = useState<string>("__all__");
 
   useEffect(() => {
     const v = localStorage.getItem("jd:contenidos:mode") as Mode | null;
@@ -69,24 +74,32 @@ export function PublicationsMonth({
     localStorage.setItem("jd:contenidos:mode", mode);
   }, [mode]);
 
+  const filtered = useMemo(() => {
+    return publications.filter((p) => {
+      if (fCliente !== "__all__" && p.cliente_id !== fCliente) return false;
+      if (fRed !== "__all__" && p.red !== fRed) return false;
+      if (fEstado !== "__all__" && p.estado !== fEstado) return false;
+      return true;
+    });
+  }, [publications, fCliente, fRed, fEstado]);
+
   const byDay = useMemo(() => {
     const m = new Map<string, PublicationWithRels[]>();
-    for (const p of publications) {
+    for (const p of filtered) {
       if (!p.fecha_publicacion) continue;
       const k = p.fecha_publicacion.slice(0, 10);
       if (!m.has(k)) m.set(k, []);
       m.get(k)!.push(p);
     }
     return m;
-  }, [publications]);
+  }, [filtered]);
 
   const byStatus = useMemo(() => {
     const m = new Map<PublicationStatus, PublicationWithRels[]>();
-    for (const p of publications) {
+    for (const p of filtered) {
       if (!m.has(p.estado)) m.set(p.estado, []);
       m.get(p.estado)!.push(p);
     }
-    // Ordenar cada grupo por fecha
     for (const [, arr] of m) {
       arr.sort((a, b) => {
         if (!a.fecha_publicacion) return 1;
@@ -95,9 +108,10 @@ export function PublicationsMonth({
       });
     }
     return m;
-  }, [publications]);
+  }, [filtered]);
 
-  const unscheduled = publications.filter((p) => !p.fecha_publicacion);
+  const unscheduled = filtered.filter((p) => !p.fecha_publicacion);
+  const activeFilters = (fCliente !== "__all__" ? 1 : 0) + (fRed !== "__all__" ? 1 : 0) + (fEstado !== "__all__" ? 1 : 0);
 
   const cells = useMemo(() => {
     const first = new Date(cursor);
@@ -179,6 +193,63 @@ export function PublicationsMonth({
             }
           />
         </div>
+      </div>
+
+      {/* Filtros */}
+      <div className="flex flex-wrap items-center gap-2">
+        {!defaultClientId && (
+          <select
+            value={fCliente}
+            onChange={(e) => setFCliente(e.target.value)}
+            className="h-8 rounded-md border bg-background px-2 text-xs"
+          >
+            <option value="__all__">Todos los clientes</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>{c.nombre}</option>
+            ))}
+          </select>
+        )}
+        <select
+          value={fRed}
+          onChange={(e) => setFRed(e.target.value)}
+          className="h-8 rounded-md border bg-background px-2 text-xs"
+        >
+          <option value="__all__">Todas las redes</option>
+          <option value="instagram">Instagram</option>
+          <option value="tiktok">TikTok</option>
+          <option value="facebook">Facebook</option>
+          <option value="linkedin">LinkedIn</option>
+          <option value="youtube">YouTube</option>
+          <option value="twitter">X / Twitter</option>
+          <option value="otra">Otra</option>
+        </select>
+        <select
+          value={fEstado}
+          onChange={(e) => setFEstado(e.target.value)}
+          className="h-8 rounded-md border bg-background px-2 text-xs"
+        >
+          <option value="__all__">Todos los estados</option>
+          <option value="idea">Idea</option>
+          <option value="en_diseno">En diseño</option>
+          <option value="guion">Guion</option>
+          <option value="edicion">Edición</option>
+          <option value="revision_creativa">Revisión creativa</option>
+          <option value="revision_cliente">Revisión cliente</option>
+          <option value="aprobado">Aprobado</option>
+          <option value="publicado">Publicado</option>
+          <option value="rechazado">Cambios pedidos</option>
+        </select>
+        {activeFilters > 0 && (
+          <button
+            onClick={() => { setFCliente(defaultClientId ?? "__all__"); setFRed("__all__"); setFEstado("__all__"); }}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            Limpiar
+          </button>
+        )}
+        <span className="ml-auto text-xs text-muted-foreground">
+          {filtered.length} publicación{filtered.length === 1 ? "" : "es"}
+        </span>
       </div>
 
       {mode === "mes" ? (
@@ -321,7 +392,7 @@ function PubChip({
   users,
 }: {
   pub: PublicationWithRels;
-  clients: Pick<Client, "id" | "nombre">[];
+  clients: ClientForPub[];
   users: Pick<AppUser, "id" | "nombre">[];
 }) {
   return (
@@ -350,7 +421,7 @@ function PubRow({
   users,
 }: {
   pub: PublicationWithRels;
-  clients: Pick<Client, "id" | "nombre">[];
+  clients: ClientForPub[];
   users: Pick<AppUser, "id" | "nombre">[];
 }) {
   const fecha = pub.fecha_publicacion

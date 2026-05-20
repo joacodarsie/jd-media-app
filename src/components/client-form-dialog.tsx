@@ -63,6 +63,11 @@ export function ClientFormDialog({
   const [webUrl, setWebUrl] = useState(client?.web_url ?? "");
   const [datosFact, setDatosFact] = useState(client?.datos_facturacion ?? "");
   const [notionUrl, setNotionUrl] = useState(client?.notion_url ?? "");
+  const [cmId, setCmId] = useState<string>(client?.cm_id ?? NONE);
+  const [disenadorId, setDisenadorId] = useState<string>(client?.disenador_id ?? NONE);
+  const [audiovisualId, setAudiovisualId] = useState<string>(
+    client?.audiovisual_id ?? NONE
+  );
   const [contactoNombre, setContactoNombre] = useState(
     client?.contacto_nombre ?? ""
   );
@@ -94,6 +99,9 @@ export function ClientFormDialog({
       contacto_email: contactoEmail,
       contacto_telefono: contactoTel,
       notas,
+      cm_id: cmId === NONE ? null : cmId,
+      disenador_id: disenadorId === NONE ? null : disenadorId,
+      audiovisual_id: audiovisualId === NONE ? null : audiovisualId,
     };
     start(async () => {
       const res =
@@ -258,6 +266,57 @@ export function ClientFormDialog({
                 onChange={(e) => setDatosFact(e.target.value)}
                 placeholder="Razón social, CUIT, condición IVA, etc."
               />
+            </div>
+          </div>
+
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <h4 className="mb-2 text-sm font-semibold">Equipo asignado a esta cuenta</h4>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Estas personas se sugieren automáticamente al crear publicaciones según el tipo de contenido.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label>Community Manager</Label>
+                <Select value={cmId} onValueChange={setCmId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Sin asignar</SelectItem>
+                    {users.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>{u.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Diseñador/a gráfico</Label>
+                <Select value={disenadorId} onValueChange={setDisenadorId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Sin asignar</SelectItem>
+                    {users.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>{u.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Editor/a audiovisual</Label>
+                <Select value={audiovisualId} onValueChange={setAudiovisualId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Sin asignar</SelectItem>
+                    {users.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>{u.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 

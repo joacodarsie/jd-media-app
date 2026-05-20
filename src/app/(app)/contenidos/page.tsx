@@ -17,7 +17,7 @@ export default async function ContenidosPage() {
       )
       .order("fecha_publicacion", { ascending: true, nullsFirst: false }),
     supabase.from("users").select("id, nombre").eq("activo", true).order("nombre"),
-    supabase.from("clients").select("id, nombre").order("nombre"),
+    supabase.from("clients").select("id, nombre, estado, cm_id, disenador_id, audiovisual_id").order("nombre"),
   ]);
 
   return (

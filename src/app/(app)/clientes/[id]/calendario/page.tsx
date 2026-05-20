@@ -35,7 +35,7 @@ export default async function ClientCalendarPage({
         .select("id, nombre")
         .eq("activo", true)
         .order("nombre"),
-      supabase.from("clients").select("id, nombre").order("nombre"),
+      supabase.from("clients").select("id, nombre, estado, cm_id, disenador_id, audiovisual_id").order("nombre"),
     ]);
 
   if (!client) notFound();

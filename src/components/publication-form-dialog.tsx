@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -13,7 +13,12 @@ import {
   PUBLICATION_STATUS_LABEL,
   PUBLICATION_TYPE_LABEL,
 } from "@/lib/constants";
-import type { AppUser, Client, PublicationWithRels } from "@/lib/types";
+import type {
+  AppUser,
+  Client,
+  PublicationType,
+  PublicationWithRels,
+} from "@/lib/types";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +41,24 @@ import {
 
 const NONE = "__none__";
 
+// Subset de Client con la info necesaria para auto-asignar
+export type ClientForPub = Pick<
+  Client,
+  "id" | "nombre" | "estado" | "cm_id" | "disenador_id" | "audiovisual_id"
+>;
+
+/** Devuelve el user_id que debería producir el contenido según tipo + equipo del cliente. */
+function autoResponsableId(
+  tipo: PublicationType,
+  cliente: ClientForPub | undefined
+): string | null {
+  if (!cliente) return null;
+  if (tipo === "reel" || tipo === "video") return cliente.audiovisual_id ?? null;
+  if (tipo === "post" || tipo === "carrusel") return cliente.disenador_id ?? null;
+  if (tipo === "historia") return cliente.cm_id ?? null;
+  return null;
+}
+
 export function PublicationFormDialog({
   mode,
   publication,
@@ -47,7 +70,7 @@ export function PublicationFormDialog({
 }: {
   mode: "create" | "edit";
   publication?: PublicationWithRels;
-  clients: Pick<Client, "id" | "nombre">[];
+  clients: ClientForPub[];
   users: Pick<AppUser, "id" | "nombre">[];
   defaultClientId?: string;
   defaultDate?: string;
@@ -57,10 +80,27 @@ export function PublicationFormDialog({
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
 
+  // Solo activos para crear; al editar permite mantener el actual aunque esté pausado
+  const activeClients = useMemo(
+    () => clients.filter((c) => c.estado === "activo"),
+    [clients]
+  );
+  const selectableClients = useMemo(() => {
+    if (mode === "edit" && publication?.cliente_id) {
+      const has = activeClients.some((c) => c.id === publication.cliente_id);
+      if (!has) {
+        const current = clients.find((c) => c.id === publication.cliente_id);
+        return current ? [...activeClients, current] : activeClients;
+      }
+    }
+    return activeClients;
+  }, [activeClients, clients, mode, publication]);
+
   const [cliente, setCliente] = useState<string>(
     publication?.cliente_id ?? defaultClientId ?? ""
   );
   const [titulo, setTitulo] = useState(publication?.titulo ?? "");
+  const [descripcion, setDescripcion] = useState(publication?.descripcion ?? "");
   const [copy, setCopy] = useState(publication?.copy ?? "");
   const [guion, setGuion] = useState(publication?.guion ?? "");
   const [red, setRed] = useState<string>(publication?.red ?? "instagram");
@@ -75,7 +115,21 @@ export function PublicationFormDialog({
   const [audiovisual, setAudiovisual] = useState<string>(
     publication?.audiovisual_id ?? NONE
   );
+  const [audiovisualTouched, setAudiovisualTouched] = useState(false);
   const [estado, setEstado] = useState<string>(publication?.estado ?? "idea");
+
+  const selectedClient = useMemo(
+    () => selectableClients.find((c) => c.id === cliente),
+    [selectableClients, cliente]
+  );
+
+  // Auto-asignar responsable según tipo + cliente (sólo si el user no lo tocó)
+  useEffect(() => {
+    if (audiovisualTouched) return;
+    if (mode === "edit" && publication) return; // no pisar en edición
+    const auto = autoResponsableId(tipo as PublicationType, selectedClient);
+    setAudiovisual(auto ?? NONE);
+  }, [tipo, selectedClient, audiovisualTouched, mode, publication]);
 
   function submit() {
     if (!cliente) {
@@ -89,6 +143,7 @@ export function PublicationFormDialog({
     const payload: PublicationInput = {
       cliente_id: cliente,
       titulo,
+      descripcion,
       copy,
       guion,
       red,
@@ -116,6 +171,15 @@ export function PublicationFormDialog({
     });
   }
 
+  const isReel = tipo === "reel" || tipo === "video";
+  const needsDescription = tipo === "post" || tipo === "carrusel" || tipo === "historia" || tipo === "otro";
+  const responsableLabel = (() => {
+    if (isReel) return "Editor/a audiovisual";
+    if (tipo === "post" || tipo === "carrusel") return "Diseñador/a";
+    if (tipo === "historia") return "Community Manager";
+    return "Responsable de producir";
+  })();
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -131,12 +195,13 @@ export function PublicationFormDialog({
               <Label>Cliente</Label>
               <Select value={cliente} onValueChange={setCliente} disabled={!!defaultClientId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Elegir cliente" />
+                  <SelectValue placeholder="Elegir cliente activo" />
                 </SelectTrigger>
                 <SelectContent>
-                  {clients.map((c) => (
+                  {selectableClients.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.nombre}
+                      {c.estado !== "activo" && " (pausado)"}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -170,9 +235,7 @@ export function PublicationFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(PUBLICATION_NETWORK_LABEL).map(([v, l]) => (
-                    <SelectItem key={v} value={v}>
-                      {l}
-                    </SelectItem>
+                    <SelectItem key={v} value={v}>{l}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -185,30 +248,68 @@ export function PublicationFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(PUBLICATION_TYPE_LABEL).map(([v, l]) => (
-                    <SelectItem key={v} value={v}>
-                      {l}
-                    </SelectItem>
+                    <SelectItem key={v} value={v}>{l}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Editor audiovisual</Label>
-              <Select value={audiovisual} onValueChange={setAudiovisual}>
+              <Label>{responsableLabel}</Label>
+              <Select
+                value={audiovisual}
+                onValueChange={(v) => {
+                  setAudiovisual(v);
+                  setAudiovisualTouched(true);
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE}>Sin asignar</SelectItem>
                   {users.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.nombre}
-                    </SelectItem>
+                    <SelectItem key={u.id} value={u.id}>{u.nombre}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {!audiovisualTouched && audiovisual !== NONE && selectedClient && (
+                <p className="text-[10px] text-muted-foreground">
+                  Sugerido según equipo del cliente
+                </p>
+              )}
             </div>
           </div>
+
+          {/* Bloque de creación: orden cronológico (qué se va a hacer ANTES del copy) */}
+          {isReel && (
+            <div className="space-y-2">
+              <Label>Guion (para reel / video)</Label>
+              <Textarea
+                rows={4}
+                value={guion}
+                onChange={(e) => setGuion(e.target.value)}
+                placeholder="Escena 1: …&#10;Escena 2: …"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Lo escribe la CM (o en conjunto con audiovisual). El audiovisual edita en base a esto.
+              </p>
+            </div>
+          )}
+
+          {needsDescription && (
+            <div className="space-y-2">
+              <Label>Descripción de la idea</Label>
+              <Textarea
+                rows={4}
+                value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
+                placeholder="Qué tiene que mostrar la pieza, referencias visuales, ángulo, mensaje clave…"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                La CM describe la idea. {tipo === "post" || tipo === "carrusel" ? "El/la diseñador/a" : tipo === "historia" ? "La CM misma" : "Quien produzca"} usa esto para crear la pieza.
+              </p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Copy del post</Label>
@@ -216,21 +317,9 @@ export function PublicationFormDialog({
               rows={4}
               value={copy}
               onChange={(e) => setCopy(e.target.value)}
-              placeholder="Texto del posteo."
+              placeholder="Texto que va con la publicación al subirla."
             />
           </div>
-
-          {(tipo === "reel" || tipo === "video") && (
-            <div className="space-y-2">
-              <Label>Guion</Label>
-              <Textarea
-                rows={4}
-                value={guion}
-                onChange={(e) => setGuion(e.target.value)}
-                placeholder="Escena 1: …"
-              />
-            </div>
-          )}
 
           <div className="space-y-2">
             <Label>Hashtags</Label>
@@ -269,9 +358,7 @@ export function PublicationFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(PUBLICATION_STATUS_LABEL).map(([v, l]) => (
-                    <SelectItem key={v} value={v}>
-                      {l}
-                    </SelectItem>
+                    <SelectItem key={v} value={v}>{l}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

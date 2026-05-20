@@ -101,6 +101,9 @@ export interface Client {
   contacto_email: string | null;
   contacto_telefono: string | null;
   notas: string | null;
+  cm_id: string | null;
+  disenador_id: string | null;
+  audiovisual_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -174,6 +177,7 @@ export interface Publication {
   id: string;
   cliente_id: string;
   titulo: string;
+  descripcion: string | null;
   copy: string | null;
   guion: string | null;
   red: PublicationNetwork;

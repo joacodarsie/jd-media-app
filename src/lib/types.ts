@@ -18,7 +18,7 @@ export type TaskStatus =
   | "bloqueada";
 
 export type TaskPriority = "baja" | "media" | "alta" | "urgente";
-export type ClientPack = "Presencia" | "Crecimiento" | "Escala";
+export type ClientPack = "Presencia" | "Crecimiento" | "Escala" | "Personalizado";
 export type ClientStatus = "activo" | "at_risk" | "perdido";
 export type NotificationType =
   | "asignacion"
@@ -92,6 +92,11 @@ export interface Client {
   monto_mensual: number | null;
   calendario_url: string | null;
   drive_url: string | null;
+  instagram_url: string | null;
+  facebook_url: string | null;
+  web_url: string | null;
+  datos_facturacion: string | null;
+  notion_url: string | null;
   contacto_nombre: string | null;
   contacto_email: string | null;
   contacto_telefono: string | null;

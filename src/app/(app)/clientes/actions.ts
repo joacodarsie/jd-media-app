@@ -22,6 +22,11 @@ export interface ClientInput {
   monto_mensual: number | null;
   calendario_url: string | null;
   drive_url: string | null;
+  instagram_url: string | null;
+  facebook_url: string | null;
+  web_url: string | null;
+  datos_facturacion: string | null;
+  notion_url: string | null;
   contacto_nombre: string | null;
   contacto_email: string | null;
   contacto_telefono: string | null;
@@ -42,6 +47,11 @@ function clean(input: ClientInput) {
         : input.monto_mensual,
     calendario_url: input.calendario_url?.trim() || null,
     drive_url: input.drive_url?.trim() || null,
+    instagram_url: input.instagram_url?.trim() || null,
+    facebook_url: input.facebook_url?.trim() || null,
+    web_url: input.web_url?.trim() || null,
+    datos_facturacion: input.datos_facturacion?.trim() || null,
+    notion_url: input.notion_url?.trim() || null,
     contacto_nombre: input.contacto_nombre?.trim() || null,
     contacto_email: input.contacto_email?.trim() || null,
     contacto_telefono: input.contacto_telefono?.trim() || null,

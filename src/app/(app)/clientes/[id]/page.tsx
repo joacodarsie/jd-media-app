@@ -3,7 +3,10 @@ import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   CalendarDays,
+  ExternalLink,
+  FileText,
   FolderOpen,
+  Globe,
   Mail,
   Phone,
   Pencil,
@@ -197,8 +200,63 @@ export default async function ClientDetail({
                   <span className="truncate">Drive del cliente</span>
                 </a>
               )}
+              {c.instagram_url && (
+                <a
+                  href={c.instagram_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 rounded-md border bg-muted/30 p-2 hover:bg-muted"
+                >
+                  <ExternalLink className="h-4 w-4 text-primary" />
+                  <span className="truncate">Instagram</span>
+                </a>
+              )}
+              {c.web_url && (
+                <a
+                  href={c.web_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 rounded-md border bg-muted/30 p-2 hover:bg-muted"
+                >
+                  <Globe className="h-4 w-4 text-primary" />
+                  <span className="truncate">Web</span>
+                </a>
+              )}
+              {c.facebook_url && (
+                <a
+                  href={c.facebook_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 rounded-md border bg-muted/30 p-2 hover:bg-muted"
+                >
+                  <ExternalLink className="h-4 w-4 text-primary" />
+                  <span className="truncate">Facebook</span>
+                </a>
+              )}
+              {c.notion_url && (
+                <a
+                  href={c.notion_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground hover:bg-muted"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  <span className="truncate">Página vieja en Notion</span>
+                </a>
+              )}
             </CardContent>
           </Card>
+
+          {c.datos_facturacion && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Datos para facturar</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm">
+                <p className="whitespace-pre-line">{c.datos_facturacion}</p>
+              </CardContent>
+            </Card>
+          )}
 
           {(c.contacto_nombre || c.contacto_email || c.contacto_telefono) && (
             <Card>

@@ -94,9 +94,10 @@ export const CLIENT_STATUS_LABEL: Record<ClientStatus, string> = {
 };
 
 export const CLIENT_PACK_LABEL: Record<string, string> = {
-  Presencia: "Presencia",
-  Crecimiento: "Crecimiento",
-  Escala: "Escala",
+  Presencia: "Pack Presencia",
+  Crecimiento: "Pack Crecimiento",
+  Personalizado: "Pack Personalizado",
+  Escala: "Pack Escala (legacy)",
 };
 
 /** Roles que ven todo (admin/coordinación). */

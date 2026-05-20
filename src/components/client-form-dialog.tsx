@@ -58,6 +58,11 @@ export function ClientFormDialog({
   );
   const [calUrl, setCalUrl] = useState(client?.calendario_url ?? "");
   const [driveUrl, setDriveUrl] = useState(client?.drive_url ?? "");
+  const [igUrl, setIgUrl] = useState(client?.instagram_url ?? "");
+  const [fbUrl, setFbUrl] = useState(client?.facebook_url ?? "");
+  const [webUrl, setWebUrl] = useState(client?.web_url ?? "");
+  const [datosFact, setDatosFact] = useState(client?.datos_facturacion ?? "");
+  const [notionUrl, setNotionUrl] = useState(client?.notion_url ?? "");
   const [contactoNombre, setContactoNombre] = useState(
     client?.contacto_nombre ?? ""
   );
@@ -80,6 +85,11 @@ export function ClientFormDialog({
       monto_mensual: monto ? Number(monto) : null,
       calendario_url: calUrl,
       drive_url: driveUrl,
+      instagram_url: igUrl,
+      facebook_url: fbUrl,
+      web_url: webUrl,
+      datos_facturacion: datosFact,
+      notion_url: notionUrl,
       contacto_nombre: contactoNombre,
       contacto_email: contactoEmail,
       contacto_telefono: contactoTel,
@@ -206,6 +216,47 @@ export function ClientFormDialog({
                 placeholder="https://drive.google.com/…"
                 value={driveUrl}
                 onChange={(e) => setDriveUrl(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Instagram</Label>
+              <Input
+                placeholder="https://www.instagram.com/usuario/"
+                value={igUrl}
+                onChange={(e) => setIgUrl(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Facebook</Label>
+              <Input
+                placeholder="https://www.facebook.com/pagina"
+                value={fbUrl}
+                onChange={(e) => setFbUrl(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Web</Label>
+              <Input
+                placeholder="https://…"
+                value={webUrl}
+                onChange={(e) => setWebUrl(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Notion (legacy)</Label>
+              <Input
+                placeholder="https://www.notion.so/…"
+                value={notionUrl}
+                onChange={(e) => setNotionUrl(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Datos para facturar</Label>
+              <Textarea
+                rows={2}
+                value={datosFact}
+                onChange={(e) => setDatosFact(e.target.value)}
+                placeholder="Razón social, CUIT, condición IVA, etc."
               />
             </div>
           </div>

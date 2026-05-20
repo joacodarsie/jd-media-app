@@ -12,6 +12,8 @@ import {
   UserCircle,
   Briefcase,
   BarChart3,
+  FileText,
+  Sparkles,
   Menu,
   LogOut,
   type LucideIcon,
@@ -46,6 +48,8 @@ const ICONS: Record<string, LucideIcon> = {
   UserCircle,
   Briefcase,
   BarChart3,
+  FileText,
+  Sparkles,
 };
 
 function initials(nombre: string) {

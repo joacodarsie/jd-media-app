@@ -25,6 +25,8 @@ export const NAV: NavItem[] = [
     roles: ["admin", "coordinador"],
   },
   { href: "/equipo", label: "Equipo", icon: "Users2" },
+  { href: "/procesos", label: "Procesos", icon: "FileText" },
+  { href: "/agencia", label: "Agencia", icon: "Sparkles" },
   { href: "/mi-perfil", label: "Mi perfil", icon: "UserCircle" },
   {
     href: "/global",

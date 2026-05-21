@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { requireUser } from "@/lib/auth";
 import { TOOLS, runTool } from "@/lib/ai/tools";
+import { fetchAllUrls } from "@/lib/url-fetch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,6 +42,13 @@ Ayudás al equipo a operar JD Media: crear/editar tareas, consultar clientes, pl
 - Cuando devolvés listas largas, resumí y ofrecé filtrar.
 - No inventes IDs, nombres ni datos. Si una tool falla o no encuentra algo, decilo.
 
+# Adjuntos del usuario
+El usuario puede mandarte **imágenes, PDFs, CSV y URLs**. Cuando vengan:
+- **Imagen**: describila o usá lo que ves para responder (referencia de diseño, captura de pantalla, mockup, ticket, etc.).
+- **PDF**: leelo entero y respondé respecto al contenido. Citá la sección si corresponde.
+- **CSV**: aparece como bloque de código. Analizá filas/columnas; si te piden, sumarizalo o extraé insights.
+- **Contexto auto-extraído de URLs**: el sistema ya fetcheó las URLs que el usuario pegó y te las pasó como texto. Tratalo como info confiable.
+
 # Atajos
 - "Qué tengo hoy", "resumime el día", "por dónde arranco" → usá **summarize_my_day** y devolvé 1-2 frases con la prioridad clara (qué hacer primero y por qué).
 - "Quién está colapsado", "carga del equipo", "a quién le puedo pasar X" → usá **suggest_reassignments** y, si hay sobrecargados, sugerí pasarlo a alguien de **disponibles** de la misma área.
@@ -71,6 +79,34 @@ export async function POST(req: Request) {
         ? [{ type: "text", text: m.content }]
         : m.content,
   }));
+
+  // URL enrichment: solo en el último mensaje del usuario (evita refetchear historial).
+  const last = messages[messages.length - 1];
+  if (last && last.role === "user" && Array.isArray(last.content)) {
+    const userText = last.content
+      .filter((b): b is Anthropic.TextBlockParam => b.type === "text")
+      .map((b) => b.text)
+      .join("\n");
+    if (userText) {
+      const fetched = await fetchAllUrls(userText);
+      const okOnes = fetched.filter((f) => f.ok && f.text);
+      if (okOnes.length > 0) {
+        const ctx = okOnes
+          .map(
+            (f) =>
+              `--- contenido de ${f.url}${f.title ? ` (${f.title})` : ""} ---\n${f.text}`
+          )
+          .join("\n\n");
+        last.content = [
+          ...last.content,
+          {
+            type: "text",
+            text: `\n\n[Contexto auto-extraído de URLs mencionadas]\n${ctx}`,
+          },
+        ];
+      }
+    }
+  }
 
   const system = systemPrompt(me.nombre, me.area, me.rol);
 

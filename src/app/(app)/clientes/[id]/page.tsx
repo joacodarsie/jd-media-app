@@ -253,6 +253,26 @@ export default async function ClientDetail({
             </CardContent>
           </Card>
 
+          {(c as unknown as { approval_token?: string }).approval_token && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  Portal de aprobación
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <p className="text-xs text-muted-foreground">
+                  Link público para que el cliente vea y apruebe sus piezas
+                  pendientes. No requiere login.
+                </p>
+                <code className="block break-all rounded bg-muted px-2 py-1.5 text-xs">
+                  /aprobacion/
+                  {(c as unknown as { approval_token: string }).approval_token}
+                </code>
+              </CardContent>
+            </Card>
+          )}
+
           {c.datos_facturacion && (
             <Card>
               <CardHeader>

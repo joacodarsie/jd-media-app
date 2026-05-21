@@ -49,7 +49,6 @@ export default async function CobrosPage({
     .order("created_at", { ascending: false });
 
   const all = (data ?? []) as unknown as InvoiceRow[];
-  const today = new Date().toISOString().slice(0, 10);
 
   const rows = all.filter((i) => {
     if (filter === "pendientes") return !i.fecha_cobro;

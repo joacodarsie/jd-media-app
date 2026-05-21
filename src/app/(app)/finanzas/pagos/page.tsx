@@ -3,26 +3,13 @@ import { ArrowLeft } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getExchangeRates } from "@/lib/exchange";
-import { toARS, fmtARS, fmtCurrency } from "@/lib/finanzas";
+import { toARS, fmtARS } from "@/lib/finanzas";
 import { Card, CardContent } from "@/components/ui/card";
 import { GenerateMonthButton } from "@/components/generate-month-button";
-import { MarkPaidButton } from "@/components/mark-paid-button";
+import { PaymentsTable, type PaymentTableRow } from "@/components/payments-table";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-interface PaymentRow {
-  id: string;
-  monto: number;
-  moneda: string;
-  periodo: string;
-  concepto: string;
-  fecha_programada: string;
-  fecha_pago: string | null;
-  metodo_pago: string | null;
-  notas: string | null;
-  usuario: { id: string; nombre: string } | null;
-}
 
 type Filter = "todos" | "pendientes" | "atrasados" | "pagados";
 
@@ -40,14 +27,22 @@ export default async function PagosPage({
     ? filterParam
     : "pendientes";
 
-  const { data } = await supabase
-    .from("team_payments")
-    .select(
-      "id, monto, moneda, periodo, concepto, fecha_programada, fecha_pago, metodo_pago, notas, usuario:users!team_payments_user_id_fkey(id,nombre)"
-    )
-    .order("fecha_programada", { ascending: true });
+  const [{ data: paymentsData }, { data: usersData }] = await Promise.all([
+    supabase
+      .from("team_payments")
+      .select(
+        "id, user_id, monto, moneda, periodo, concepto, fecha_programada, fecha_pago, metodo_pago, notas, usuario:users!team_payments_user_id_fkey(id,nombre)"
+      )
+      .order("fecha_programada", { ascending: true }),
+    supabase
+      .from("users")
+      .select("id, nombre")
+      .eq("activo", true)
+      .order("nombre"),
+  ]);
 
-  const all = (data ?? []) as unknown as PaymentRow[];
+  const all = (paymentsData ?? []) as unknown as PaymentTableRow[];
+  const users = (usersData ?? []) as { id: string; nombre: string }[];
   const today = new Date().toISOString().slice(0, 10);
 
   const rows = all.filter((p) => {
@@ -57,8 +52,6 @@ export default async function PagosPage({
     return true;
   });
 
-  const total = rows.reduce((acc, p) => acc + toARS(Number(p.monto), p.moneda, rates), 0);
-
   const counts = {
     todos: all.length,
     pendientes: all.filter((p) => !p.fecha_pago).length,
@@ -66,14 +59,12 @@ export default async function PagosPage({
     pagados: all.filter((p) => !!p.fecha_pago).length,
   };
 
-  // agrupar por persona para vista resumen
+  // Pendiente por persona
   const byUser = new Map<string, { nombre: string; pendientes: number; totalARS: number }>();
   for (const p of all.filter((x) => !x.fecha_pago)) {
     if (!p.usuario) continue;
     const k = p.usuario.id;
-    if (!byUser.has(k)) {
-      byUser.set(k, { nombre: p.usuario.nombre, pendientes: 0, totalARS: 0 });
-    }
+    if (!byUser.has(k)) byUser.set(k, { nombre: p.usuario.nombre, pendientes: 0, totalARS: 0 });
     const e = byUser.get(k)!;
     e.pendientes += 1;
     e.totalARS += toARS(Number(p.monto), p.moneda, rates);
@@ -99,7 +90,6 @@ export default async function PagosPage({
         <GenerateMonthButton kind="payments" />
       </div>
 
-      {/* Resumen por persona */}
       {porPersona.length > 0 && (
         <Card>
           <CardContent className="p-4">
@@ -126,7 +116,6 @@ export default async function PagosPage({
         </Card>
       )}
 
-      {/* Tabs filtro */}
       <div className="flex flex-wrap gap-2">
         {(["pendientes", "atrasados", "pagados", "todos"] as const).map((k) => (
           <Link
@@ -140,76 +129,17 @@ export default async function PagosPage({
               k === "atrasados" && filter !== k && counts.atrasados > 0 && "border-red-300 text-red-700"
             )}
           >
-            {label(k)} ({counts[k]})
+            {labelFor(k)} ({counts[k]})
           </Link>
         ))}
-        <div className="ml-auto text-sm text-muted-foreground">
-          Total: <b className="text-foreground">{fmtARS(total)}</b>
-        </div>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          {rows.length === 0 ? (
-            <p className="p-6 text-center text-sm text-muted-foreground">
-              No hay pagos en esta vista.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2">Persona</th>
-                    <th className="px-3 py-2">Concepto</th>
-                    <th className="px-3 py-2">Período</th>
-                    <th className="px-3 py-2">Programado</th>
-                    <th className="px-3 py-2 text-right">Monto</th>
-                    <th className="px-3 py-2">Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((p) => {
-                    const atrasado = !p.fecha_pago && p.fecha_programada < today;
-                    return (
-                      <tr
-                        key={p.id}
-                        className={cn("border-b last:border-0", atrasado && "bg-red-50/40 dark:bg-red-950/10")}
-                      >
-                        <td className="px-3 py-2 font-medium">{p.usuario?.nombre ?? "—"}</td>
-                        <td className="px-3 py-2 text-xs text-muted-foreground">{p.concepto}</td>
-                        <td className="px-3 py-2 text-xs">{p.periodo}</td>
-                        <td className={cn("px-3 py-2 text-xs", atrasado && "font-semibold text-red-700")}>
-                          {new Date(p.fecha_programada).toLocaleDateString("es-AR", {
-                            day: "2-digit",
-                            month: "short",
-                          })}
-                          {atrasado && " · atrasado"}
-                        </td>
-                        <td className="px-3 py-2 text-right tabular-nums">
-                          <div className="font-semibold">{fmtCurrency(Number(p.monto), p.moneda)}</div>
-                          {p.moneda !== "ARS" && (
-                            <div className="text-[10px] text-muted-foreground">
-                              {fmtARS(toARS(Number(p.monto), p.moneda, rates))}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-3 py-2">
-                          <MarkPaidButton id={p.id} kind="payment" paidAt={p.fecha_pago} />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <PaymentsTable rows={rows} rates={rates} users={users} />
     </div>
   );
 }
 
-function label(k: "pendientes" | "atrasados" | "pagados" | "todos") {
+function labelFor(k: "pendientes" | "atrasados" | "pagados" | "todos") {
   const m: Record<string, string> = {
     pendientes: "Pendientes",
     atrasados: "Atrasados",

@@ -3,26 +3,12 @@ import { ArrowLeft } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getExchangeRates } from "@/lib/exchange";
-import { toARS, fmtARS, fmtCurrency, isOverdue } from "@/lib/finanzas";
-import { Card, CardContent } from "@/components/ui/card";
+import { isOverdue } from "@/lib/finanzas";
 import { GenerateMonthButton } from "@/components/generate-month-button";
-import { MarkPaidButton } from "@/components/mark-paid-button";
+import { InvoicesTable, type InvoiceTableRow } from "@/components/invoices-table";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-interface InvoiceRow {
-  id: string;
-  monto: number;
-  moneda: string;
-  periodo: string;
-  concepto: string;
-  fecha_emision: string;
-  fecha_vencimiento: string | null;
-  fecha_cobro: string | null;
-  metodo_pago: string | null;
-  cliente: { id: string; nombre: string } | null;
-}
 
 type Filter = "todas" | "pendientes" | "vencidas" | "cobradas";
 
@@ -40,15 +26,23 @@ export default async function CobrosPage({
     ? filterParam
     : "pendientes";
 
-  const { data } = await supabase
-    .from("client_invoices")
-    .select(
-      "id, monto, moneda, periodo, concepto, fecha_emision, fecha_vencimiento, fecha_cobro, metodo_pago, cliente:clients(id,nombre)"
-    )
-    .order("fecha_vencimiento", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false });
+  const [{ data: invoicesData }, { data: clientsData }] = await Promise.all([
+    supabase
+      .from("client_invoices")
+      .select(
+        "id, cliente_id, monto, moneda, periodo, concepto, fecha_emision, fecha_vencimiento, fecha_cobro, metodo_pago, notas, cliente:clients(id,nombre)"
+      )
+      .order("fecha_vencimiento", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("clients")
+      .select("id, nombre")
+      .eq("estado", "activo")
+      .order("nombre"),
+  ]);
 
-  const all = (data ?? []) as unknown as InvoiceRow[];
+  const all = (invoicesData ?? []) as unknown as InvoiceTableRow[];
+  const clients = (clientsData ?? []) as { id: string; nombre: string }[];
 
   const rows = all.filter((i) => {
     if (filter === "pendientes") return !i.fecha_cobro;
@@ -56,8 +50,6 @@ export default async function CobrosPage({
     if (filter === "vencidas") return isOverdue(i.fecha_vencimiento, i.fecha_cobro);
     return true;
   });
-
-  const total = rows.reduce((acc, i) => acc + toARS(Number(i.monto), i.moneda, rates), 0);
 
   const counts = {
     todas: all.length,
@@ -85,7 +77,6 @@ export default async function CobrosPage({
         <GenerateMonthButton kind="invoices" />
       </div>
 
-      {/* Tabs filtro */}
       <div className="flex flex-wrap gap-2">
         {(["pendientes", "vencidas", "cobradas", "todas"] as const).map((k) => (
           <Link
@@ -99,82 +90,17 @@ export default async function CobrosPage({
               k === "vencidas" && filter !== k && counts.vencidas > 0 && "border-red-300 text-red-700"
             )}
           >
-            {label(k)} ({counts[k]})
+            {labelFor(k)} ({counts[k]})
           </Link>
         ))}
-        <div className="ml-auto text-sm text-muted-foreground">
-          Total: <b className="text-foreground">{fmtARS(total)}</b>
-        </div>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          {rows.length === 0 ? (
-            <p className="p-6 text-center text-sm text-muted-foreground">
-              No hay facturas en esta vista.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2">Cliente</th>
-                    <th className="px-3 py-2">Concepto</th>
-                    <th className="px-3 py-2">Período</th>
-                    <th className="px-3 py-2">Vence</th>
-                    <th className="px-3 py-2 text-right">Monto</th>
-                    <th className="px-3 py-2">Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((i) => {
-                    const overdue = isOverdue(i.fecha_vencimiento, i.fecha_cobro);
-                    return (
-                      <tr
-                        key={i.id}
-                        className={cn("border-b last:border-0", overdue && "bg-red-50/40 dark:bg-red-950/10")}
-                      >
-                        <td className="px-3 py-2 font-medium">
-                          {i.cliente?.nombre ?? "—"}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-muted-foreground">
-                          {i.concepto}
-                        </td>
-                        <td className="px-3 py-2 text-xs">{i.periodo}</td>
-                        <td className={cn("px-3 py-2 text-xs", overdue && "font-semibold text-red-700")}>
-                          {i.fecha_vencimiento
-                            ? new Date(i.fecha_vencimiento).toLocaleDateString("es-AR", {
-                                day: "2-digit",
-                                month: "short",
-                              })
-                            : "—"}
-                          {overdue && " · vencida"}
-                        </td>
-                        <td className="px-3 py-2 text-right tabular-nums">
-                          <div className="font-semibold">{fmtCurrency(Number(i.monto), i.moneda)}</div>
-                          {i.moneda !== "ARS" && (
-                            <div className="text-[10px] text-muted-foreground">
-                              {fmtARS(toARS(Number(i.monto), i.moneda, rates))}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-3 py-2">
-                          <MarkPaidButton id={i.id} kind="invoice" paidAt={i.fecha_cobro} />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <InvoicesTable rows={rows} rates={rates} clients={clients} />
     </div>
   );
 }
 
-function label(k: "pendientes" | "vencidas" | "cobradas" | "todas") {
+function labelFor(k: "pendientes" | "vencidas" | "cobradas" | "todas") {
   const m: Record<string, string> = {
     pendientes: "Pendientes",
     vencidas: "Vencidas",

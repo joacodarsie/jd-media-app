@@ -2,6 +2,7 @@ import { Wallet, TrendingUp, TrendingDown, AlertCircle } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { SERVICE_TYPE_LABEL, PAY_FREQUENCY_LABEL } from "@/lib/constants";
+import { getExchangeRates, type ExchangeRates } from "@/lib/exchange";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
@@ -37,10 +38,13 @@ interface UserRow {
   position_id: string | null;
 }
 
-function toMonthlyARS(monto: number, moneda: string, frecuencia: string | null): number {
-  // Conversión simple — placeholder. USD/EUR a tasa "blue" aprox $1300 ARS.
-  // En producción reemplazar por fetch a una API real o ingreso manual.
-  const tasa = moneda === "USD" ? 1300 : moneda === "EUR" ? 1400 : 1;
+function toMonthlyARS(
+  monto: number,
+  moneda: string,
+  frecuencia: string | null,
+  rates: ExchangeRates
+): number {
+  const tasa = moneda === "USD" ? rates.USD : moneda === "EUR" ? rates.EUR : 1;
   const enARS = monto * tasa;
   switch (frecuencia) {
     case "semanal":
@@ -61,6 +65,7 @@ function toMonthlyARS(monto: number, moneda: string, frecuencia: string | null):
 export default async function FinanzasPage() {
   await requireRole(["admin"]);
   const supabase = createClient();
+  const rates = await getExchangeRates();
 
   const [{ data: services }, { data: comps }, { data: positions }, { data: users }] =
     await Promise.all([
@@ -94,7 +99,7 @@ export default async function FinanzasPage() {
     .filter((s) => s.cliente?.estado === "activo" && s.monto_mensual != null)
     .reduce(
       (acc, s) =>
-        acc + toMonthlyARS(Number(s.monto_mensual), s.moneda, "mensual"),
+        acc + toMonthlyARS(Number(s.monto_mensual), s.moneda, "mensual", rates),
       0
     );
 
@@ -118,7 +123,7 @@ export default async function FinanzasPage() {
         };
     const enARS =
       eff.monto != null
-        ? toMonthlyARS(Number(eff.monto), eff.moneda, eff.frecuencia)
+        ? toMonthlyARS(Number(eff.monto), eff.moneda, eff.frecuencia, rates)
         : 0;
     egresoMensual += enARS;
     return { user: u, eff, mensualARS: enARS, posicion: pos };
@@ -138,7 +143,7 @@ export default async function FinanzasPage() {
     const entry = byCliente.get(key)!;
     entry.servicios.push(s);
     if (s.monto_mensual != null) {
-      entry.total += toMonthlyARS(Number(s.monto_mensual), s.moneda, "mensual");
+      entry.total += toMonthlyARS(Number(s.monto_mensual), s.moneda, "mensual", rates);
     }
   }
   const clientesOrdenados = Array.from(byCliente.entries()).sort(
@@ -283,9 +288,12 @@ export default async function FinanzasPage() {
             </div>
             <p className="mt-1 text-amber-900/80 dark:text-amber-300/80">
               Las compensaciones por proyecto / comisión / por tarea no son recurrentes
-              y figuran como ARS 0 mensual (no se proyectan automáticamente). Las conversiones
-              de USD/EUR a ARS usan una tasa fija provisional (1300 / 1400). Para una vista
-              real, cargar la cotización vigente o el monto directo en ARS.
+              y figuran como ARS 0 mensual (no se proyectan automáticamente).
+              Cotización usada: USD ${rates.USD.toLocaleString("es-AR")} ·
+              EUR ${rates.EUR.toLocaleString("es-AR")}
+              {" "}({rates.source === "live"
+                ? `live · dolarapi.com`
+                : `fallback (API no respondió)`}).
             </p>
           </div>
         </CardContent>

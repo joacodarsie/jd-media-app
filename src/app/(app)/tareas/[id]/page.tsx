@@ -32,7 +32,7 @@ export default async function TaskDetail({
   const me = await requireUser();
   const supabase = createClient();
 
-  const [{ data: task }, { data: comments }, { data: users }, { data: clients }] =
+  const [{ data: task }, { data: comments }, { data: users }, { data: clients }, { data: history }] =
     await Promise.all([
       supabase
         .from("tasks")
@@ -52,6 +52,12 @@ export default async function TaskDetail({
         .eq("activo", true)
         .order("nombre"),
       supabase.from("clients").select("id,nombre").order("nombre"),
+      supabase
+        .from("task_history")
+        .select("id, campo, valor_anterior, valor_nuevo, created_at, user_id")
+        .eq("task_id", params.id)
+        .order("created_at", { ascending: false })
+        .limit(50),
     ]);
 
   if (!task) notFound();
@@ -176,7 +182,86 @@ export default async function TaskDetail({
           />
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Historial</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TaskHistory
+            entries={(history ?? []) as unknown as HistoryEntry[]}
+            users={users ?? []}
+          />
+        </CardContent>
+      </Card>
     </div>
+  );
+}
+
+interface HistoryEntry {
+  id: string;
+  campo: string;
+  valor_anterior: string | null;
+  valor_nuevo: string | null;
+  created_at: string;
+  user_id: string | null;
+}
+
+const CAMPO_LABEL: Record<string, string> = {
+  creada: "Tarea creada",
+  estado: "Cambió estado",
+  asignado_a_id: "Reasignó",
+  fecha_limite: "Cambió fecha límite",
+  prioridad: "Cambió prioridad",
+};
+
+function TaskHistory({
+  entries,
+  users,
+}: {
+  entries: HistoryEntry[];
+  users: { id: string; nombre: string }[];
+}) {
+  if (entries.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">Sin eventos registrados.</p>
+    );
+  }
+  const userById = new Map(users.map((u) => [u.id, u.nombre]));
+  return (
+    <ol className="space-y-2 text-sm">
+      {entries.map((h) => {
+        let valor = "";
+        if (h.campo === "asignado_a_id") {
+          const ant = h.valor_anterior ? userById.get(h.valor_anterior) ?? "alguien" : "nadie";
+          const nue = h.valor_nuevo ? userById.get(h.valor_nuevo) ?? "alguien" : "nadie";
+          valor = `${ant} → ${nue}`;
+        } else if (h.campo === "creada") {
+          valor = h.valor_nuevo ?? "";
+        } else {
+          valor = `${h.valor_anterior ?? "—"} → ${h.valor_nuevo ?? "—"}`;
+        }
+        return (
+          <li key={h.id} className="flex items-start gap-2">
+            <span className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
+            <div className="flex-1">
+              <div>
+                <span className="font-medium">
+                  {CAMPO_LABEL[h.campo] ?? h.campo}
+                </span>{" "}
+                <span className="text-muted-foreground">— {valor}</span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {(h.user_id && userById.get(h.user_id)) ?? "Sistema"} ·{" "}
+                {new Date(h.created_at).toLocaleString("es-AR", {
+                  timeZone: "America/Argentina/Cordoba",
+                })}
+              </div>
+            </div>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

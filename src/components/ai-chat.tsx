@@ -113,6 +113,23 @@ export function AIChat() {
     if (open) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, open, attachments.length]);
 
+  async function onPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const files: File[] = [];
+    for (const it of Array.from(items)) {
+      if (it.kind === "file") {
+        const f = it.getAsFile();
+        if (f) files.push(f);
+      }
+    }
+    if (files.length === 0) return; // dejar que pegue texto normal
+    e.preventDefault();
+    const dt = new DataTransfer();
+    files.forEach((f) => dt.items.add(f));
+    await pickFiles(dt.files);
+  }
+
   async function pickFiles(list: FileList | null) {
     if (!list) return;
     const next: Attachment[] = [];
@@ -478,6 +495,7 @@ export function AIChat() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKey}
+                  onPaste={onPaste}
                   disabled={sending}
                   placeholder={
                     recording
@@ -495,8 +513,8 @@ export function AIChat() {
                 </Button>
               </div>
               <p className="mt-1 text-[10px] text-muted-foreground">
-                Enter envía · Shift+Enter salto · 🎤 dicta · 📎 imagen / PDF /
-                CSV · pegá links y los leo
+                Enter envía · Shift+Enter salto · 🎤 dicta · 📎 o Ctrl+V para
+                imagen / PDF / CSV · pegá links y los leo
               </p>
             </div>
           </div>

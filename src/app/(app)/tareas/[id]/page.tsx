@@ -189,7 +189,7 @@ export default async function TaskDetail({
         </CardHeader>
         <CardContent>
           <TaskHistory
-            entries={(history ?? []) as HistoryEntry[]}
+            entries={(history ?? []) as unknown as HistoryEntry[]}
             users={users ?? []}
           />
         </CardContent>

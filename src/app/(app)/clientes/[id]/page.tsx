@@ -25,6 +25,7 @@ import { TaskList } from "@/components/task-list";
 import { ClientFormDialog } from "@/components/client-form-dialog";
 import { DeleteClientButton } from "@/components/delete-client-button";
 import { ClientServicesEditor } from "@/components/client-services-editor";
+import { ApprovalLink } from "@/components/approval-link";
 import type { ClientService } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -260,15 +261,10 @@ export default async function ClientDetail({
                   Portal de aprobación
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <p className="text-xs text-muted-foreground">
-                  Link público para que el cliente vea y apruebe sus piezas
-                  pendientes. No requiere login.
-                </p>
-                <code className="block break-all rounded bg-muted px-2 py-1.5 text-xs">
-                  /aprobacion/
-                  {(c as unknown as { approval_token: string }).approval_token}
-                </code>
+              <CardContent>
+                <ApprovalLink
+                  token={(c as unknown as { approval_token: string }).approval_token}
+                />
               </CardContent>
             </Card>
           )}

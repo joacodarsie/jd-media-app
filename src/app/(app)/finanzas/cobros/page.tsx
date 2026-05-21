@@ -6,6 +6,7 @@ import { getExchangeRates } from "@/lib/exchange";
 import { isOverdue } from "@/lib/finanzas";
 import { GenerateMonthButton } from "@/components/generate-month-button";
 import { InvoicesTable, type InvoiceTableRow } from "@/components/invoices-table";
+import { MonthPicker } from "@/components/month-picker";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ type Filter = "todas" | "pendientes" | "vencidas" | "cobradas";
 export default async function CobrosPage({
   searchParams,
 }: {
-  searchParams: { f?: string };
+  searchParams: { f?: string; m?: string };
 }) {
   await requireRole(["admin"]);
   const supabase = createClient();
@@ -25,6 +26,8 @@ export default async function CobrosPage({
   const filter: Filter = ["todas", "pendientes", "vencidas", "cobradas"].includes(filterParam)
     ? filterParam
     : "pendientes";
+  const monthFilter =
+    searchParams.m && /^\d{4}-\d{2}$/.test(searchParams.m) ? searchParams.m : null;
 
   const [{ data: invoicesData }, { data: clientsData }] = await Promise.all([
     supabase
@@ -44,12 +47,13 @@ export default async function CobrosPage({
   const all = (invoicesData ?? []) as unknown as InvoiceTableRow[];
   const clients = (clientsData ?? []) as { id: string; nombre: string }[];
 
-  const rows = all.filter((i) => {
+  let rows = all.filter((i) => {
     if (filter === "pendientes") return !i.fecha_cobro;
     if (filter === "cobradas") return !!i.fecha_cobro;
     if (filter === "vencidas") return isOverdue(i.fecha_vencimiento, i.fecha_cobro);
     return true;
   });
+  if (monthFilter) rows = rows.filter((i) => i.periodo === monthFilter);
 
   const counts = {
     todas: all.length,
@@ -77,11 +81,11 @@ export default async function CobrosPage({
         <GenerateMonthButton kind="invoices" />
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {(["pendientes", "vencidas", "cobradas", "todas"] as const).map((k) => (
           <Link
             key={k}
-            href={`/finanzas/cobros?f=${k}`}
+            href={`/finanzas/cobros?f=${k}${monthFilter ? `&m=${monthFilter}` : ""}`}
             className={cn(
               "rounded-full border px-3 py-1 text-xs font-medium",
               filter === k
@@ -93,6 +97,10 @@ export default async function CobrosPage({
             {labelFor(k)} ({counts[k]})
           </Link>
         ))}
+        <MonthPicker
+          value={monthFilter}
+          buildHref={(m) => `/finanzas/cobros?f=${filter}${m ? `&m=${m}` : ""}`}
+        />
       </div>
 
       <InvoicesTable rows={rows} rates={rates} clients={clients} />

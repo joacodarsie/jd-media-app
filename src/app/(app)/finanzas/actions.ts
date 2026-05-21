@@ -200,6 +200,107 @@ export async function deletePayment(id: string) {
   return { ok: true };
 }
 
+// ===========================
+// Expenses (gastos operativos)
+// ===========================
+
+export type ExpenseCategory =
+  | "plataformas"
+  | "ads"
+  | "servicios"
+  | "impuestos"
+  | "bancos"
+  | "oficina"
+  | "equipamiento"
+  | "otros";
+
+export interface ExpenseInput {
+  categoria: ExpenseCategory;
+  proveedor?: string | null;
+  concepto: string;
+  monto: number;
+  moneda: string;
+  periodo: string;
+  fecha_programada?: string | null;
+  fecha_pago?: string | null;
+  metodo_pago?: string | null;
+  recurrente?: boolean;
+  notas?: string | null;
+}
+
+export async function createExpense(input: ExpenseInput) {
+  const { supabase, userId } = await ctx();
+  const { error } = await supabase.from("expenses").insert({
+    categoria: input.categoria,
+    proveedor: input.proveedor?.trim() || null,
+    concepto: input.concepto.trim(),
+    monto: input.monto,
+    moneda: input.moneda || "ARS",
+    periodo: input.periodo,
+    fecha_programada: input.fecha_programada ?? null,
+    fecha_pago: input.fecha_pago ?? null,
+    metodo_pago: input.metodo_pago?.trim() || null,
+    recurrente: input.recurrente ?? false,
+    notas: input.notas?.trim() || null,
+    creado_por_id: userId,
+  });
+  if (error) return { error: error.message };
+  invalidate();
+  revalidatePath("/finanzas/gastos");
+  return { ok: true };
+}
+
+export async function updateExpense(id: string, input: Partial<ExpenseInput>) {
+  const { supabase } = await ctx();
+  const patch: Record<string, unknown> = {};
+  if (input.categoria !== undefined) patch.categoria = input.categoria;
+  if (input.proveedor !== undefined) patch.proveedor = input.proveedor?.trim() || null;
+  if (input.concepto !== undefined) patch.concepto = input.concepto.trim();
+  if (input.monto !== undefined) patch.monto = input.monto;
+  if (input.moneda !== undefined) patch.moneda = input.moneda;
+  if (input.fecha_programada !== undefined) patch.fecha_programada = input.fecha_programada;
+  if (input.recurrente !== undefined) patch.recurrente = input.recurrente;
+  if (input.notas !== undefined) patch.notas = input.notas?.trim() || null;
+  const { error } = await supabase.from("expenses").update(patch).eq("id", id);
+  if (error) return { error: error.message };
+  invalidate();
+  revalidatePath("/finanzas/gastos");
+  return { ok: true };
+}
+
+export async function markExpensePaid(id: string, fecha_pago: string, metodo_pago?: string | null) {
+  const { supabase } = await ctx();
+  const { error } = await supabase
+    .from("expenses")
+    .update({ fecha_pago, metodo_pago: metodo_pago?.trim() || null })
+    .eq("id", id);
+  if (error) return { error: error.message };
+  invalidate();
+  revalidatePath("/finanzas/gastos");
+  return { ok: true };
+}
+
+export async function markExpenseUnpaid(id: string) {
+  const { supabase } = await ctx();
+  const { error } = await supabase
+    .from("expenses")
+    .update({ fecha_pago: null, metodo_pago: null })
+    .eq("id", id);
+  if (error) return { error: error.message };
+  invalidate();
+  revalidatePath("/finanzas/gastos");
+  return { ok: true };
+}
+
+export async function deleteExpense(id: string) {
+  const { supabase } = await ctx();
+  const { error } = await supabase.from("expenses").delete().eq("id", id);
+  if (error) return { error: error.message };
+  invalidate();
+  revalidatePath("/finanzas/gastos");
+  return { ok: true };
+}
+
 export async function generateMonthlyPayments(periodo: string) {
   const { supabase } = await ctx();
   const { data, error } = await supabase.rpc("jd_generate_payments_for_period", {

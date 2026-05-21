@@ -25,7 +25,7 @@ export default async function MovimientosPage() {
   const supabase = createClient();
   const rates = await getExchangeRates();
 
-  const [{ data: invs }, { data: pays }] = await Promise.all([
+  const [{ data: invs }, { data: pays }, { data: exps }] = await Promise.all([
     supabase
       .from("client_invoices")
       .select(
@@ -33,7 +33,7 @@ export default async function MovimientosPage() {
       )
       .not("fecha_cobro", "is", null)
       .order("fecha_cobro", { ascending: false })
-      .limit(200),
+      .limit(300),
     supabase
       .from("team_payments")
       .select(
@@ -41,7 +41,13 @@ export default async function MovimientosPage() {
       )
       .not("fecha_pago", "is", null)
       .order("fecha_pago", { ascending: false })
-      .limit(200),
+      .limit(300),
+    supabase
+      .from("expenses")
+      .select("id, monto, moneda, fecha_pago, concepto, metodo_pago, proveedor, categoria")
+      .not("fecha_pago", "is", null)
+      .order("fecha_pago", { ascending: false })
+      .limit(300),
   ]);
 
   const ingresos: Movement[] = ((invs ?? []) as unknown as {
@@ -63,7 +69,7 @@ export default async function MovimientosPage() {
     metodo: i.metodo_pago,
   }));
 
-  const egresos: Movement[] = ((pays ?? []) as unknown as {
+  const egresosEquipo: Movement[] = ((pays ?? []) as unknown as {
     id: string;
     monto: number;
     moneda: string;
@@ -77,12 +83,34 @@ export default async function MovimientosPage() {
     fecha: p.fecha_pago,
     monto: Number(p.monto),
     moneda: p.moneda,
-    concepto: p.concepto,
+    concepto: "Equipo · " + p.concepto,
     contraparte: p.usuario?.nombre ?? "—",
     metodo: p.metodo_pago,
   }));
 
-  const all = [...ingresos, ...egresos].sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const egresosGastos: Movement[] = ((exps ?? []) as unknown as {
+    id: string;
+    monto: number;
+    moneda: string;
+    fecha_pago: string;
+    concepto: string;
+    metodo_pago: string | null;
+    proveedor: string | null;
+    categoria: string;
+  }[]).map((e) => ({
+    id: "exp_" + e.id,
+    kind: "out",
+    fecha: e.fecha_pago,
+    monto: Number(e.monto),
+    moneda: e.moneda,
+    concepto: `${e.categoria} · ${e.concepto}`,
+    contraparte: e.proveedor ?? "—",
+    metodo: e.metodo_pago,
+  }));
+
+  const all = [...ingresos, ...egresosEquipo, ...egresosGastos].sort(
+    (a, b) => b.fecha.localeCompare(a.fecha)
+  );
 
   // Agrupar por mes
   const byMonth = new Map<string, Movement[]>();

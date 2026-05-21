@@ -7,6 +7,7 @@ import { toARS, fmtARS } from "@/lib/finanzas";
 import { Card, CardContent } from "@/components/ui/card";
 import { GenerateMonthButton } from "@/components/generate-month-button";
 import { PaymentsTable, type PaymentTableRow } from "@/components/payments-table";
+import { MonthPicker } from "@/components/month-picker";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +17,7 @@ type Filter = "todos" | "pendientes" | "atrasados" | "pagados";
 export default async function PagosPage({
   searchParams,
 }: {
-  searchParams: { f?: string };
+  searchParams: { f?: string; m?: string };
 }) {
   await requireRole(["admin"]);
   const supabase = createClient();
@@ -26,6 +27,8 @@ export default async function PagosPage({
   const filter: Filter = ["todos", "pendientes", "atrasados", "pagados"].includes(filterParam)
     ? filterParam
     : "pendientes";
+  const monthFilter =
+    searchParams.m && /^\d{4}-\d{2}$/.test(searchParams.m) ? searchParams.m : null;
 
   const [{ data: paymentsData }, { data: usersData }] = await Promise.all([
     supabase
@@ -45,12 +48,13 @@ export default async function PagosPage({
   const users = (usersData ?? []) as { id: string; nombre: string }[];
   const today = new Date().toISOString().slice(0, 10);
 
-  const rows = all.filter((p) => {
+  let rows = all.filter((p) => {
     if (filter === "pendientes") return !p.fecha_pago;
     if (filter === "pagados") return !!p.fecha_pago;
     if (filter === "atrasados") return !p.fecha_pago && p.fecha_programada < today;
     return true;
   });
+  if (monthFilter) rows = rows.filter((p) => p.periodo === monthFilter);
 
   const counts = {
     todos: all.length,
@@ -116,11 +120,11 @@ export default async function PagosPage({
         </Card>
       )}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {(["pendientes", "atrasados", "pagados", "todos"] as const).map((k) => (
           <Link
             key={k}
-            href={`/finanzas/pagos?f=${k}`}
+            href={`/finanzas/pagos?f=${k}${monthFilter ? `&m=${monthFilter}` : ""}`}
             className={cn(
               "rounded-full border px-3 py-1 text-xs font-medium",
               filter === k
@@ -132,6 +136,10 @@ export default async function PagosPage({
             {labelFor(k)} ({counts[k]})
           </Link>
         ))}
+        <MonthPicker
+          value={monthFilter}
+          buildHref={(m) => `/finanzas/pagos?f=${filter}${m ? `&m=${m}` : ""}`}
+        />
       </div>
 
       <PaymentsTable rows={rows} rates={rates} users={users} />

@@ -17,11 +17,13 @@ import {
   markInvoiceUnpaid,
   markPaymentPaid,
   markPaymentUnpaid,
+  markExpensePaid,
+  markExpenseUnpaid,
 } from "@/app/(app)/finanzas/actions";
 
 interface Props {
   id: string;
-  kind: "invoice" | "payment";
+  kind: "invoice" | "payment" | "expense";
   paidAt: string | null;
 }
 
@@ -37,7 +39,9 @@ export function MarkPaidButton({ id, kind, paidAt }: Props) {
       const res =
         kind === "invoice"
           ? await markInvoicePaid(id, fecha, metodo || null)
-          : await markPaymentPaid(id, fecha, metodo || null);
+          : kind === "payment"
+            ? await markPaymentPaid(id, fecha, metodo || null)
+            : await markExpensePaid(id, fecha, metodo || null);
       if (res?.error) {
         toast.error(res.error);
         return;
@@ -51,7 +55,12 @@ export function MarkPaidButton({ id, kind, paidAt }: Props) {
   function undo() {
     if (!confirm("¿Marcar como pendiente de nuevo?")) return;
     start(async () => {
-      const res = kind === "invoice" ? await markInvoiceUnpaid(id) : await markPaymentUnpaid(id);
+      const res =
+        kind === "invoice"
+          ? await markInvoiceUnpaid(id)
+          : kind === "payment"
+            ? await markPaymentUnpaid(id)
+            : await markExpenseUnpaid(id);
       if (res?.error) {
         toast.error(res.error);
         return;

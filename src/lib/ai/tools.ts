@@ -153,6 +153,30 @@ export const TOOLS: Anthropic.Tool[] = [
       required: ["query"],
     },
   },
+  {
+    name: "summarize_my_day",
+    description:
+      "Devuelve un snapshot del día del usuario actual: tareas pendientes, vencidas, próximas a vencer (≤3 días), tareas en revisión, publicaciones de la semana. Usalo cuando el usuario pregunta 'qué tengo hoy', 'resumime el día', 'qué hago primero'.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "suggest_reassignments",
+    description:
+      "Analiza la carga de cada persona del equipo (tareas activas, vencidas) e identifica sobrecargados (>8 activas o ≥2 vencidas). Sugerí redistribuir si corresponde. Sólo para coordinación/admin.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "client_brand_context",
+    description:
+      "Devuelve contexto de marca para redactar copy de un cliente: notas del cliente, rubro, pack, buyer persona y tono extraídos de las páginas de agencia. Usalo ANTES de escribir copy/guion para una publicación, así el resultado respeta la voz del cliente.",
+    input_schema: {
+      type: "object",
+      properties: {
+        cliente_nombre: { type: "string" },
+      },
+      required: ["cliente_nombre"],
+    },
+  },
 ];
 
 type Result = { ok: true; data: unknown } | { ok: false; error: string };
@@ -317,6 +341,112 @@ export async function runTool(
           excerpt: p.content.slice(0, 1500),
         }));
         return { ok: true, data: snippets };
+      }
+
+      case "summarize_my_day": {
+        const today = new Date();
+        const in3 = new Date(today.getTime() + 3 * 86400000).toISOString().slice(0, 10);
+        const in7 = new Date(today.getTime() + 7 * 86400000);
+        const todayStr = today.toISOString().slice(0, 10);
+
+        const [{ data: mias }, { data: pubs }] = await Promise.all([
+          sb.from("tasks")
+            .select("id, titulo, estado, prioridad, fecha_limite, cliente:clients(nombre)")
+            .eq("asignado_a_id", currentUserId)
+            .neq("estado", "completada")
+            .order("fecha_limite", { ascending: true, nullsFirst: false })
+            .limit(50),
+          sb.from("publications")
+            .select("id, titulo, estado, fecha_publicacion, cliente:clients(nombre)")
+            .or(`creado_por_id.eq.${currentUserId},audiovisual_id.eq.${currentUserId}`)
+            .gte("fecha_publicacion", today.toISOString())
+            .lte("fecha_publicacion", in7.toISOString())
+            .order("fecha_publicacion", { ascending: true })
+            .limit(15),
+        ]);
+
+        const tasks = mias ?? [];
+        const vencidas = tasks.filter((t) => t.fecha_limite && t.fecha_limite < todayStr);
+        const hoy = tasks.filter((t) => t.fecha_limite === todayStr);
+        const proximas = tasks.filter(
+          (t) => t.fecha_limite && t.fecha_limite > todayStr && t.fecha_limite <= in3
+        );
+        const enRevision = tasks.filter((t) => t.estado === "en_revision");
+
+        return {
+          ok: true,
+          data: {
+            fecha: todayStr,
+            total_activas: tasks.length,
+            vencidas,
+            hoy,
+            proximas_3_dias: proximas,
+            en_revision: enRevision,
+            publicaciones_semana: pubs ?? [],
+          },
+        };
+      }
+
+      case "suggest_reassignments": {
+        const [{ data: tasks }, { data: users }] = await Promise.all([
+          sb.from("tasks")
+            .select("id, asignado_a_id, estado, fecha_limite, area")
+            .neq("estado", "completada"),
+          sb.from("users")
+            .select("id, nombre, area")
+            .eq("activo", true),
+        ]);
+        const today = new Date().toISOString().slice(0, 10);
+        const porUser = new Map<string, { nombre: string; area: string; activas: number; vencidas: number }>();
+        for (const u of users ?? []) {
+          porUser.set(u.id, { nombre: u.nombre, area: u.area, activas: 0, vencidas: 0 });
+        }
+        for (const t of tasks ?? []) {
+          if (!t.asignado_a_id) continue;
+          const e = porUser.get(t.asignado_a_id);
+          if (!e) continue;
+          e.activas += 1;
+          if (t.fecha_limite && t.fecha_limite < today) e.vencidas += 1;
+        }
+        const ranking = Array.from(porUser.entries()).map(([id, v]) => ({ id, ...v }));
+        ranking.sort((a, b) => b.activas - a.activas);
+        const sobrecargados = ranking.filter((r) => r.activas > 8 || r.vencidas >= 2);
+        const disponibles = ranking.filter((r) => r.activas <= 4 && r.vencidas === 0);
+        return {
+          ok: true,
+          data: {
+            sobrecargados,
+            disponibles,
+            ranking_top5: ranking.slice(0, 5),
+            criterio: "sobrecargado: >8 activas o ≥2 vencidas. disponible: ≤4 activas y 0 vencidas.",
+          },
+        };
+      }
+
+      case "client_brand_context": {
+        const { data: client } = await sb.from("clients")
+          .select("id, nombre, rubro, pack, notas")
+          .ilike("nombre", `%${input.cliente_nombre}%`)
+          .limit(1).maybeSingle();
+        if (!client) return { ok: false, error: "Cliente no encontrado" };
+
+        // Páginas de agencia relevantes para tono/buyer persona
+        const { data: pages } = await sb.from("agency_pages")
+          .select("slug, title, content")
+          .or("slug.ilike.%buyer%,slug.ilike.%tono%,slug.ilike.%persona%,title.ilike.%buyer%,title.ilike.%tono%,title.ilike.%persona%")
+          .limit(5);
+
+        return {
+          ok: true,
+          data: {
+            cliente: client,
+            referencias: (pages ?? []).map((p) => ({
+              slug: p.slug,
+              title: p.title,
+              excerpt: (p.content ?? "").slice(0, 1200),
+            })),
+          },
+        };
       }
 
       default:

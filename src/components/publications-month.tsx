@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   CalendarDays,
   ChevronLeft,
@@ -26,6 +28,7 @@ import {
   type ClientForPub,
 } from "@/components/publication-form-dialog";
 import { PublicationDetailDialog } from "@/components/publication-detail-dialog";
+import { updatePublicationDate } from "@/app/(app)/contenidos/actions";
 
 const DAY_NAMES = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 type Mode = "mes" | "lista";
@@ -57,6 +60,26 @@ export function PublicationsMonth({
   users: Pick<AppUser, "id" | "nombre">[];
   defaultClientId?: string;
 }) {
+  const router = useRouter();
+  const [, startMove] = useTransition();
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [hoverKey, setHoverKey] = useState<string | null>(null);
+
+  function moveTo(id: string, date: string | null) {
+    // Optimistic UX: limpiar overlay y disparar
+    setHoverKey(null);
+    setDraggingId(null);
+    startMove(async () => {
+      const res = await updatePublicationDate(id, date);
+      if (res?.error) {
+        toast.error("No se pudo mover: " + res.error);
+        return;
+      }
+      toast.success(date ? "Movida al " + date : "Sin fecha");
+      router.refresh();
+    });
+  }
+
   const [mode, setMode] = useState<Mode>("mes");
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
@@ -268,13 +291,29 @@ export function PublicationsMonth({
                 const key = ymd(d);
                 const items = byDay.get(key) ?? [];
                 const isToday = ymd(new Date()) === key;
+                const isHover = hoverKey === key && draggingId !== null;
                 return (
                   <div
                     key={i}
+                    onDragOver={(e) => {
+                      if (!draggingId) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (hoverKey !== key) setHoverKey(key);
+                    }}
+                    onDragLeave={() => {
+                      if (hoverKey === key) setHoverKey(null);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const id = e.dataTransfer.getData("text/plain") || draggingId;
+                      if (id) moveTo(id, key);
+                    }}
                     className={cn(
-                      "min-h-[88px] border-b border-r p-1.5 text-xs last:border-r-0",
+                      "min-h-[88px] border-b border-r p-1.5 text-xs last:border-r-0 transition-colors",
                       !inMonth && "bg-muted/30 text-muted-foreground",
-                      isToday && "bg-primary/5"
+                      isToday && "bg-primary/5",
+                      isHover && "bg-primary/15 ring-2 ring-inset ring-primary"
                     )}
                   >
                     <div className="mb-1 flex items-center justify-between">
@@ -303,7 +342,18 @@ export function PublicationsMonth({
                     </div>
                     <div className="space-y-1">
                       {items.slice(0, 3).map((p) => (
-                        <PubChip key={p.id} pub={p} clients={clients} users={users} />
+                        <PubChip
+                          key={p.id}
+                          pub={p}
+                          clients={clients}
+                          users={users}
+                          onDragStart={(id) => setDraggingId(id)}
+                          onDragEnd={() => {
+                            setDraggingId(null);
+                            setHoverKey(null);
+                          }}
+                          dragging={draggingId === p.id}
+                        />
                       ))}
                       {items.length > 3 && (
                         <div className="text-[10px] text-muted-foreground">
@@ -317,18 +367,50 @@ export function PublicationsMonth({
             </div>
           </div>
 
-          {unscheduled.length > 0 && (
-            <div className="rounded-xl border bg-card p-4">
-              <h3 className="mb-2 text-sm font-semibold text-muted-foreground">
-                Sin fecha asignada ({unscheduled.length})
-              </h3>
-              <div className="space-y-1.5">
-                {unscheduled.map((p) => (
-                  <PubRow key={p.id} pub={p} clients={clients} users={users} />
-                ))}
-              </div>
+          <div
+            onDragOver={(e) => {
+              if (!draggingId) return;
+              e.preventDefault();
+              if (hoverKey !== "__none__") setHoverKey("__none__");
+            }}
+            onDragLeave={() => {
+              if (hoverKey === "__none__") setHoverKey(null);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              const id = e.dataTransfer.getData("text/plain") || draggingId;
+              if (id) moveTo(id, null);
+            }}
+            className={cn(
+              "rounded-xl border bg-card p-4 transition-colors",
+              hoverKey === "__none__" && "bg-primary/15 ring-2 ring-inset ring-primary",
+              unscheduled.length === 0 && !draggingId && "hidden"
+            )}
+          >
+            <h3 className="mb-2 text-sm font-semibold text-muted-foreground">
+              Sin fecha asignada
+              {unscheduled.length > 0 && ` (${unscheduled.length})`}
+              {draggingId && unscheduled.length === 0 && (
+                <span className="ml-1 text-primary">— soltá acá para quitar fecha</span>
+              )}
+            </h3>
+            <div className="space-y-1.5">
+              {unscheduled.map((p) => (
+                <PubRow
+                  key={p.id}
+                  pub={p}
+                  clients={clients}
+                  users={users}
+                  onDragStart={(id) => setDraggingId(id)}
+                  onDragEnd={() => {
+                    setDraggingId(null);
+                    setHoverKey(null);
+                  }}
+                  dragging={draggingId === p.id}
+                />
+              ))}
             </div>
-          )}
+          </div>
         </>
       ) : (
         // Modo lista — agrupado por estado del flujo
@@ -390,10 +472,16 @@ function PubChip({
   pub,
   clients,
   users,
+  onDragStart,
+  onDragEnd,
+  dragging,
 }: {
   pub: PublicationWithRels;
   clients: ClientForPub[];
   users: Pick<AppUser, "id" | "nombre">[];
+  onDragStart?: (id: string) => void;
+  onDragEnd?: () => void;
+  dragging?: boolean;
 }) {
   return (
     <PublicationDetailDialog
@@ -402,9 +490,17 @@ function PubChip({
       users={users}
       trigger={
         <button
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData("text/plain", pub.id);
+            e.dataTransfer.effectAllowed = "move";
+            onDragStart?.(pub.id);
+          }}
+          onDragEnd={() => onDragEnd?.()}
           className={cn(
-            "w-full truncate rounded px-1.5 py-1 text-left text-[11px] font-medium",
-            PUBLICATION_STATUS_BADGE[pub.estado]
+            "w-full cursor-grab truncate rounded px-1.5 py-1 text-left text-[11px] font-medium active:cursor-grabbing",
+            PUBLICATION_STATUS_BADGE[pub.estado],
+            dragging && "opacity-40"
           )}
           title={`${pub.titulo} · ${PUBLICATION_STATUS_LABEL[pub.estado]}`}
         >
@@ -419,10 +515,16 @@ function PubRow({
   pub,
   clients,
   users,
+  onDragStart,
+  onDragEnd,
+  dragging,
 }: {
   pub: PublicationWithRels;
   clients: ClientForPub[];
   users: Pick<AppUser, "id" | "nombre">[];
+  onDragStart?: (id: string) => void;
+  onDragEnd?: () => void;
+  dragging?: boolean;
 }) {
   const fecha = pub.fecha_publicacion
     ? new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", {
@@ -436,7 +538,20 @@ function PubRow({
       clients={clients}
       users={users}
       trigger={
-        <button className="flex w-full items-center justify-between gap-3 rounded-md border bg-card px-3 py-2 text-left text-sm transition-colors hover:border-primary/40">
+        <button
+          draggable={!!onDragStart}
+          onDragStart={(e) => {
+            if (!onDragStart) return;
+            e.dataTransfer.setData("text/plain", pub.id);
+            e.dataTransfer.effectAllowed = "move";
+            onDragStart(pub.id);
+          }}
+          onDragEnd={() => onDragEnd?.()}
+          className={cn(
+            "flex w-full items-center justify-between gap-3 rounded-md border bg-card px-3 py-2 text-left text-sm transition-colors hover:border-primary/40",
+            onDragStart && "cursor-grab active:cursor-grabbing",
+            dragging && "opacity-40"
+          )}>
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <span
               className={cn(

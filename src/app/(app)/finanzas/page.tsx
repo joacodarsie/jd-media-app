@@ -152,11 +152,26 @@ export default async function FinanzasPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold">Finanzas</h1>
-        <p className="text-muted-foreground">
-          Vista privada para admin. Cálculo de ingresos vs egresos mensual, convertido a ARS.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Finanzas</h1>
+          <p className="text-muted-foreground">
+            Vista privada para admin. Cálculo de ingresos vs egresos mensual, convertido a ARS.
+          </p>
+        </div>
+        <div className="rounded-lg border bg-card px-3 py-2 text-right">
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            Dólar blue {rates.source === "live" ? "(hoy)" : "(fallback)"}
+          </div>
+          <div className="text-lg font-bold tabular-nums">
+            ARS {rates.USD.toLocaleString("es-AR")}
+          </div>
+          <div className="text-[10px] text-muted-foreground">
+            {rates.source === "live"
+              ? `dolarapi.com · ${new Date(rates.fetchedAt).toLocaleString("es-AR", { timeZone: "America/Argentina/Cordoba", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}`
+              : "API caída — usando valor de respaldo"}
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">

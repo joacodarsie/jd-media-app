@@ -25,8 +25,16 @@ export default async function ContenidosPage() {
       <div>
         <h1 className="text-2xl font-bold">Calendario de contenidos</h1>
         <p className="text-muted-foreground">
-          Todo el contenido planificado de la agencia, en un mes.
+          Todo el contenido planificado de la agencia, en un mes. Arrastrá una
+          publicación a otro día para reprogramarla.
         </p>
+        <div className="mt-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-foreground/80">
+          <span className="font-semibold">Cómo funciona:</span> al crear una
+          publicación se genera <b>automáticamente</b> una tarea de diseño
+          (post/carrusel/historia) o de edición (reel/video) asignada al
+          miembro del cliente. Aparece en <b>Tareas</b> y en el dashboard de
+          esa persona.
+        </div>
       </div>
       <PublicationsMonth
         publications={(pubs ?? []) as PublicationWithRels[]}

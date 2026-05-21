@@ -165,7 +165,23 @@ export function PublicationFormDialog({
         toast.error("No se pudo guardar: " + res.error);
         return;
       }
-      toast.success(mode === "create" ? "Publicación creada" : "Actualizada");
+      if (mode === "create") {
+        const r = res as {
+          ok: boolean;
+          assignedName?: string | null;
+          taskArea?: string | null;
+        };
+        if (r.assignedName) {
+          toast.success(
+            `Publicación creada. Tarea de ${r.taskArea ?? "trabajo"} asignada a ${r.assignedName}.`,
+            { duration: 5000 }
+          );
+        } else {
+          toast.success("Publicación creada.");
+        }
+      } else {
+        toast.success("Actualizada");
+      }
       setOpen(false);
       router.refresh();
     });

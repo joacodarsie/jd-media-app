@@ -24,7 +24,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Markdown } from "@/components/markdown";
-import { PublicationStatusActions } from "@/components/publication-status-actions";
+import { PublicationStatusSelect } from "@/components/publication-status-select";
 import {
   PublicationFormDialog,
   type ClientForPub,
@@ -157,8 +157,8 @@ export function PublicationDetailDialog({
           )}
 
           <div className="border-t pt-3">
-            <h4 className="mb-2 text-sm font-semibold">Cambiar estado</h4>
-            <PublicationStatusActions publication={p} />
+            <h4 className="mb-2 text-sm font-semibold">Estado</h4>
+            <PublicationStatusSelect publication={p} size="md" />
           </div>
 
           <div className="flex items-center gap-2 border-t pt-3">

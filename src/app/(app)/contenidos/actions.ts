@@ -59,11 +59,33 @@ export async function createPublication(input: PublicationInput) {
   const { data, error } = await supabase
     .from("publications")
     .insert({ ...clean(input), creado_por_id: userId })
-    .select("id, cliente_id")
+    .select("id, cliente_id, task_id")
     .single();
   if (error) return { error: error.message };
+
+  // El trigger jd_publication_autogen_task creó una tarea y la linkeó.
+  // Traemos el nombre del asignado para mostrar feedback.
+  let assignedName: string | null = null;
+  let taskArea: string | null = null;
+  if (data.task_id) {
+    const { data: t } = await supabase
+      .from("tasks")
+      .select("area, asignado:users!tasks_asignado_a_id_fkey(nombre)")
+      .eq("id", data.task_id)
+      .maybeSingle();
+    const asignado = (t as unknown as { asignado: { nombre: string } | null } | null)?.asignado;
+    assignedName = asignado?.nombre ?? null;
+    taskArea = (t as { area: string } | null)?.area ?? null;
+  }
+
   invalidate(data.cliente_id);
-  return { ok: true, id: data.id };
+  return {
+    ok: true,
+    id: data.id,
+    task_id: data.task_id,
+    assignedName,
+    taskArea,
+  };
 }
 
 export async function updatePublication(id: string, input: PublicationInput) {
@@ -88,6 +110,41 @@ export async function changePublicationStatus(id: string, estado: string, notas?
   const { data, error } = await supabase
     .from("publications")
     .update(patch)
+    .eq("id", id)
+    .select("cliente_id")
+    .single();
+  if (error) return { error: error.message };
+  invalidate(data?.cliente_id);
+  return { ok: true };
+}
+
+/**
+ * Cambia solo la fecha de publicación. Usado por el drag&drop del calendario.
+ * date debe venir en YYYY-MM-DD (o null para "sin fecha").
+ */
+export async function updatePublicationDate(id: string, date: string | null) {
+  const { supabase } = await ctx();
+  let fechaIso: string | null = null;
+  if (date) {
+    // mantener la hora original si existía; sino mediodía Cordoba
+    const { data: existing } = await supabase
+      .from("publications")
+      .select("fecha_publicacion")
+      .eq("id", id)
+      .maybeSingle();
+    if (existing?.fecha_publicacion) {
+      const prev = new Date(existing.fecha_publicacion);
+      const hh = prev.getUTCHours();
+      const mm = prev.getUTCMinutes();
+      fechaIso = `${date}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:00.000Z`;
+    } else {
+      // 12:00 hora Cordoba = 15:00 UTC
+      fechaIso = `${date}T15:00:00.000Z`;
+    }
+  }
+  const { data, error } = await supabase
+    .from("publications")
+    .update({ fecha_publicacion: fechaIso })
     .eq("id", id)
     .select("cliente_id")
     .single();

@@ -1,162 +1,131 @@
-import { Wallet, TrendingUp, TrendingDown, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import {
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  AlertTriangle,
+  ArrowRight,
+  Clock,
+  Sparkles,
+} from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { SERVICE_TYPE_LABEL, PAY_FREQUENCY_LABEL } from "@/lib/constants";
-import { getExchangeRates, type ExchangeRates } from "@/lib/exchange";
+import { getExchangeRates } from "@/lib/exchange";
+import {
+  currentPeriod,
+  nextPeriod,
+  periodLabel,
+  toARS,
+  fmtARS,
+  fmtCurrency,
+} from "@/lib/finanzas";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GenerateMonthButton } from "@/components/generate-month-button";
 
 export const dynamic = "force-dynamic";
 
-interface ServiceRow {
+interface InvoiceRow {
   id: string;
-  tipo: string;
-  pack: string | null;
-  monto_mensual: number | null;
+  monto: number;
   moneda: string;
-  activo: boolean;
-  cliente: { id: string; nombre: string; estado: string } | null;
+  fecha_vencimiento: string | null;
+  fecha_cobro: string | null;
+  periodo: string;
+  concepto: string;
+  cliente: { id: string; nombre: string } | null;
 }
 
-interface CompensationRow {
-  monto: number | null;
-  moneda: string | null;
-  frecuencia: string | null;
-  usuario: { id: string; nombre: string; position_id: string | null } | null;
-}
-
-interface PositionRow {
+interface PaymentRow {
   id: string;
-  nombre: string;
-  pago_default_monto: number | null;
-  pago_default_moneda: string | null;
-  pago_default_frecuencia: string | null;
-}
-
-interface UserRow {
-  id: string;
-  nombre: string;
-  position_id: string | null;
-}
-
-function toMonthlyARS(
-  monto: number,
-  moneda: string,
-  frecuencia: string | null,
-  rates: ExchangeRates
-): number {
-  const tasa = moneda === "USD" ? rates.USD : moneda === "EUR" ? rates.EUR : 1;
-  const enARS = monto * tasa;
-  switch (frecuencia) {
-    case "semanal":
-      return enARS * 4.33;
-    case "quincenal":
-      return enARS * 2.17;
-    case "proyecto":
-    case "por_tarea":
-    case "comision":
-      // No es recurrente. Lo dejamos en 0 mensual.
-      return 0;
-    case "mensual":
-    default:
-      return enARS;
-  }
+  monto: number;
+  moneda: string;
+  fecha_programada: string;
+  fecha_pago: string | null;
+  periodo: string;
+  concepto: string;
+  usuario: { id: string; nombre: string } | null;
 }
 
 export default async function FinanzasPage() {
   await requireRole(["admin"]);
   const supabase = createClient();
   const rates = await getExchangeRates();
+  const period = currentPeriod();
+  const today = new Date().toISOString().slice(0, 10);
+  const in7 = new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10);
 
-  const [{ data: services }, { data: comps }, { data: positions }, { data: users }] =
-    await Promise.all([
-      supabase
-        .from("client_services")
-        .select(
-          "id,tipo,pack,monto_mensual,moneda,activo, cliente:clients(id,nombre,estado)"
-        )
-        .eq("activo", true),
-      supabase
-        .from("compensation")
-        .select(
-          "monto,moneda,frecuencia, usuario:users!compensation_user_id_fkey(id,nombre,position_id)"
-        ),
-      supabase.from("positions").select("*"),
-      supabase.from("users").select("id,nombre,position_id").eq("activo", true),
-    ]);
+  const [{ data: invoicesRaw }, { data: paymentsRaw }] = await Promise.all([
+    supabase
+      .from("client_invoices")
+      .select(
+        "id, monto, moneda, fecha_vencimiento, fecha_cobro, periodo, concepto, cliente:clients(id,nombre)"
+      )
+      .order("fecha_vencimiento", { ascending: true, nullsFirst: false }),
+    supabase
+      .from("team_payments")
+      .select(
+        "id, monto, moneda, fecha_programada, fecha_pago, periodo, concepto, usuario:users!team_payments_user_id_fkey(id,nombre)"
+      )
+      .order("fecha_programada", { ascending: true }),
+  ]);
 
-  const svcRows = (services ?? []) as unknown as ServiceRow[];
-  const compRows = (comps ?? []) as unknown as CompensationRow[];
-  const posRows = (positions ?? []) as PositionRow[];
-  const userRows = (users ?? []) as UserRow[];
+  const invoices = (invoicesRaw ?? []) as unknown as InvoiceRow[];
+  const payments = (paymentsRaw ?? []) as unknown as PaymentRow[];
 
-  const posMap = new Map(posRows.map((p) => [p.id, p]));
-  const compByUser = new Map(
-    compRows.filter((c) => c.usuario).map((c) => [c.usuario!.id, c])
+  // ===== Por cobrar =====
+  const porCobrarPendientes = invoices.filter((i) => !i.fecha_cobro);
+  const porCobrarVencidas = porCobrarPendientes.filter(
+    (i) => i.fecha_vencimiento && i.fecha_vencimiento < today
+  );
+  const porCobrar7Dias = porCobrarPendientes.filter(
+    (i) => i.fecha_vencimiento && i.fecha_vencimiento >= today && i.fecha_vencimiento <= in7
+  );
+  const porCobrarMes = porCobrarPendientes.filter((i) => i.periodo === period);
+  const totalPorCobrar = porCobrarPendientes.reduce(
+    (acc, i) => acc + toARS(Number(i.monto), i.moneda, rates),
+    0
   );
 
-  // Ingresos: suma de servicios activos en clientes activos, convertido a ARS/mes
-  const ingresoMensual = svcRows
-    .filter((s) => s.cliente?.estado === "activo" && s.monto_mensual != null)
-    .reduce(
-      (acc, s) =>
-        acc + toMonthlyARS(Number(s.monto_mensual), s.moneda, "mensual", rates),
-      0
-    );
+  const cobradoMes = invoices
+    .filter((i) => i.fecha_cobro && i.fecha_cobro.startsWith(period))
+    .reduce((acc, i) => acc + toARS(Number(i.monto), i.moneda, rates), 0);
 
-  // Egresos: compensación efectiva por usuario (override si existe, sino default del puesto)
-  let egresoMensual = 0;
-  const personas = userRows.map((u) => {
-    const ov = compByUser.get(u.id);
-    const pos = u.position_id ? posMap.get(u.position_id) : null;
-    const eff = ov
-      ? {
-          monto: ov.monto,
-          moneda: ov.moneda ?? "ARS",
-          frecuencia: ov.frecuencia ?? "mensual",
-          source: "override" as const,
-        }
-      : {
-          monto: pos?.pago_default_monto ?? null,
-          moneda: pos?.pago_default_moneda ?? "ARS",
-          frecuencia: pos?.pago_default_frecuencia ?? "mensual",
-          source: "puesto" as const,
-        };
-    const enARS =
-      eff.monto != null
-        ? toMonthlyARS(Number(eff.monto), eff.moneda, eff.frecuencia, rates)
-        : 0;
-    egresoMensual += enARS;
-    return { user: u, eff, mensualARS: enARS, posicion: pos };
-  });
-
-  const margen = ingresoMensual - egresoMensual;
-  const margenPct = ingresoMensual > 0 ? (margen / ingresoMensual) * 100 : 0;
-
-  // Servicios agrupados por cliente
-  const byCliente = new Map<string, { nombre: string; total: number; servicios: ServiceRow[] }>();
-  for (const s of svcRows) {
-    if (!s.cliente || s.cliente.estado !== "activo") continue;
-    const key = s.cliente.id;
-    if (!byCliente.has(key)) {
-      byCliente.set(key, { nombre: s.cliente.nombre, total: 0, servicios: [] });
-    }
-    const entry = byCliente.get(key)!;
-    entry.servicios.push(s);
-    if (s.monto_mensual != null) {
-      entry.total += toMonthlyARS(Number(s.monto_mensual), s.moneda, "mensual", rates);
-    }
-  }
-  const clientesOrdenados = Array.from(byCliente.entries()).sort(
-    (a, b) => b[1].total - a[1].total
+  // ===== Por pagar =====
+  const porPagarPendientes = payments.filter((p) => !p.fecha_pago);
+  const porPagarAtrasados = porPagarPendientes.filter(
+    (p) => p.fecha_programada < today
   );
+  const porPagar7Dias = porPagarPendientes.filter(
+    (p) => p.fecha_programada >= today && p.fecha_programada <= in7
+  );
+  const porPagarMes = porPagarPendientes.filter((p) => p.periodo === period);
+  const totalPorPagar = porPagarPendientes.reduce(
+    (acc, p) => acc + toARS(Number(p.monto), p.moneda, rates),
+    0
+  );
+
+  const pagadoMes = payments
+    .filter((p) => p.fecha_pago && p.fecha_pago.startsWith(period))
+    .reduce((acc, p) => acc + toARS(Number(p.monto), p.moneda, rates), 0);
+
+  const margenMesReal = cobradoMes - pagadoMes;
+  const margenMesProyectado =
+    cobradoMes +
+    porCobrarMes.reduce((a, i) => a + toARS(Number(i.monto), i.moneda, rates), 0) -
+    pagadoMes -
+    porPagarMes.reduce((a, p) => a + toARS(Number(p.monto), p.moneda, rates), 0);
+
+  const periodoNext = nextPeriod(period);
+  const haInvoicesNext = invoices.some((i) => i.periodo === periodoNext);
+  const hayPaymentsNext = payments.some((p) => p.periodo === periodoNext);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Finanzas</h1>
           <p className="text-muted-foreground">
-            Vista privada para admin. Cálculo de ingresos vs egresos mensual, convertido a ARS.
+            Resumen de {periodLabel(period)} · panel privado de admin.
           </p>
         </div>
         <div className="rounded-lg border bg-card px-3 py-2 text-right">
@@ -167,149 +136,218 @@ export default async function FinanzasPage() {
             ARS {rates.USD.toLocaleString("es-AR")}
           </div>
           <div className="text-[10px] text-muted-foreground">
-            {rates.source === "live"
-              ? `dolarapi.com · ${new Date(rates.fetchedAt).toLocaleString("es-AR", { timeZone: "America/Argentina/Cordoba", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}`
-              : "API caída — usando valor de respaldo"}
+            {rates.source === "live" ? "dolarapi.com" : "API caída"}
           </div>
         </div>
       </div>
 
+      {/* Subsecciones */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <KpiCard
-          label="Ingreso mensual"
-          value={ingresoMensual}
-          icon={TrendingUp}
-          accent="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+        <SubsectionCard
+          href="/finanzas/cobros"
+          title="Cuentas por cobrar"
+          subtitle={`${porCobrarPendientes.length} pendientes · ${fmtARS(totalPorCobrar)}`}
+          alert={porCobrarVencidas.length}
         />
-        <KpiCard
-          label="Egreso mensual"
-          value={egresoMensual}
-          icon={TrendingDown}
-          accent="bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+        <SubsectionCard
+          href="/finanzas/pagos"
+          title="Pagos al equipo"
+          subtitle={`${porPagarPendientes.length} pendientes · ${fmtARS(totalPorPagar)}`}
+          alert={porPagarAtrasados.length}
         />
-        <KpiCard
-          label="Margen mensual"
-          value={margen}
-          icon={Wallet}
-          accent={
-            margen >= 0
-              ? "bg-primary/15 text-foreground"
-              : "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300"
-          }
-          subtitle={`${margenPct.toFixed(1)}% sobre ingreso`}
+        <SubsectionCard
+          href="/finanzas/movimientos"
+          title="Movimientos"
+          subtitle="Historial unificado"
         />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Ingreso por cliente</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {clientesOrdenados.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No hay servicios activos cargados.
-            </p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="text-left text-xs text-muted-foreground">
-                <tr>
-                  <th className="py-2">Cliente</th>
-                  <th>Servicios</th>
-                  <th className="text-right">Total /mes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clientesOrdenados.map(([id, c]) => (
-                  <tr key={id} className="border-t">
-                    <td className="py-2 font-medium">{c.nombre}</td>
-                    <td className="text-xs text-muted-foreground">
-                      {c.servicios
-                        .map(
-                          (s) =>
-                            `${SERVICE_TYPE_LABEL[s.tipo]}${s.pack ? ` (${s.pack})` : ""}`
-                        )
-                        .join(" · ")}
-                    </td>
-                    <td className="text-right tabular-nums">
-                      ARS {Math.round(c.total).toLocaleString("es-AR")}
-                    </td>
-                  </tr>
+      {/* KPIs del mes */}
+      <div>
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Este mes ({periodLabel(period)})
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Kpi label="Cobrado" value={cobradoMes} icon={TrendingUp} color="emerald" />
+          <Kpi label="Por cobrar" value={porCobrarMes.reduce((a, i) => a + toARS(Number(i.monto), i.moneda, rates), 0)} icon={Clock} color="sky" />
+          <Kpi label="Pagado" value={pagadoMes} icon={TrendingDown} color="amber" />
+          <Kpi label="Por pagar" value={porPagarMes.reduce((a, p) => a + toARS(Number(p.monto), p.moneda, rates), 0)} icon={Clock} color="orange" />
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <Kpi
+            label="Margen real (cobrado − pagado)"
+            value={margenMesReal}
+            icon={Wallet}
+            color={margenMesReal >= 0 ? "primary" : "red"}
+            size="lg"
+          />
+          <Kpi
+            label="Margen proyectado del mes"
+            value={margenMesProyectado}
+            icon={Wallet}
+            color={margenMesProyectado >= 0 ? "primary" : "red"}
+            size="lg"
+            subtitle="(si cobrás todo y pagás todo)"
+          />
+        </div>
+      </div>
+
+      {/* Alertas */}
+      {(porCobrarVencidas.length > 0 || porPagarAtrasados.length > 0) && (
+        <Card className="border-red-300 bg-red-50/40 dark:border-red-900 dark:bg-red-950/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              Atención
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {porCobrarVencidas.length > 0 && (
+              <div className="flex items-center justify-between gap-3">
+                <span>
+                  <b className="text-red-700 dark:text-red-300">
+                    {porCobrarVencidas.length}
+                  </b>{" "}
+                  factura(s) vencida(s) sin cobrar (
+                  {fmtARS(
+                    porCobrarVencidas.reduce(
+                      (a, i) => a + toARS(Number(i.monto), i.moneda, rates),
+                      0
+                    )
+                  )}
+                  )
+                </span>
+                <Link
+                  href="/finanzas/cobros?f=vencidas"
+                  className="text-xs underline hover:no-underline"
+                >
+                  Ver
+                </Link>
+              </div>
+            )}
+            {porPagarAtrasados.length > 0 && (
+              <div className="flex items-center justify-between gap-3">
+                <span>
+                  <b className="text-red-700 dark:text-red-300">
+                    {porPagarAtrasados.length}
+                  </b>{" "}
+                  pago(s) atrasado(s) al equipo (
+                  {fmtARS(
+                    porPagarAtrasados.reduce(
+                      (a, p) => a + toARS(Number(p.monto), p.moneda, rates),
+                      0
+                    )
+                  )}
+                  )
+                </span>
+                <Link
+                  href="/finanzas/pagos?f=atrasados"
+                  className="text-xs underline hover:no-underline"
+                >
+                  Ver
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Próximos 7 días */}
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Por cobrar (próx 7 días)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {porCobrar7Dias.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nada vence en esta semana.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {porCobrar7Dias.slice(0, 6).map((i) => (
+                  <li key={i.id} className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{i.cliente?.nombre}</div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {i.concepto}
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <div className="text-sm font-semibold">
+                        {fmtCurrency(Number(i.monto), i.moneda)}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        vence{" "}
+                        {i.fecha_vencimiento &&
+                          new Date(i.fecha_vencimiento).toLocaleDateString("es-AR", {
+                            day: "2-digit",
+                            month: "short",
+                          })}
+                      </div>
+                    </div>
+                  </li>
                 ))}
-              </tbody>
-            </table>
-          )}
-        </CardContent>
-      </Card>
+              </ul>
+            )}
+          </CardContent>
+        </Card>
 
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Por pagar (próx 7 días)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {porPagar7Dias.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nada se paga en esta semana.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {porPagar7Dias.slice(0, 6).map((p) => (
+                  <li key={p.id} className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{p.usuario?.nombre}</div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {p.concepto}
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <div className="text-sm font-semibold">
+                        {fmtCurrency(Number(p.monto), p.moneda)}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {new Date(p.fecha_programada).toLocaleDateString("es-AR", {
+                          day: "2-digit",
+                          month: "short",
+                        })}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Generar mes siguiente */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Egresos por persona</CardTitle>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Sparkles className="h-4 w-4 text-primary" />
+            Generar período {periodLabel(periodoNext)}
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          <table className="w-full text-sm">
-            <thead className="text-left text-xs text-muted-foreground">
-              <tr>
-                <th className="py-2">Persona</th>
-                <th>Puesto</th>
-                <th>Compensación</th>
-                <th className="text-right">ARS /mes equivalente</th>
-              </tr>
-            </thead>
-            <tbody>
-              {personas.map((p) => (
-                <tr key={p.user.id} className="border-t">
-                  <td className="py-2 font-medium">{p.user.nombre}</td>
-                  <td className="text-xs text-muted-foreground">
-                    {p.posicion?.nombre ?? "—"}
-                  </td>
-                  <td className="text-xs">
-                    {p.eff.monto == null ? (
-                      <span className="text-muted-foreground">Sin cargar</span>
-                    ) : (
-                      <>
-                        {p.eff.moneda}{" "}
-                        {Number(p.eff.monto).toLocaleString("es-AR")}{" "}
-                        <span className="text-muted-foreground">
-                          ·{" "}
-                          {PAY_FREQUENCY_LABEL[p.eff.frecuencia ?? "mensual"] ??
-                            p.eff.frecuencia}
-                        </span>
-                        {p.eff.source === "puesto" && (
-                          <span className="ml-1 rounded bg-muted px-1 text-[10px] text-muted-foreground">
-                            del puesto
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </td>
-                  <td className="text-right tabular-nums">
-                    {p.mensualARS > 0
-                      ? `ARS ${Math.round(p.mensualARS).toLocaleString("es-AR")}`
-                      : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
-
-      <Card className="border-amber-300 bg-amber-50/40 dark:border-amber-900 dark:bg-amber-950/20">
-        <CardContent className="flex items-start gap-3 p-4 text-xs">
-          <AlertCircle className="mt-0.5 h-4 w-4 text-amber-700 dark:text-amber-300" />
-          <div>
-            <div className="font-semibold text-amber-900 dark:text-amber-200">
-              Sobre los cálculos
+        <CardContent className="space-y-3 text-sm">
+          <p className="text-muted-foreground">
+            Crea automáticamente las facturas (por cliente con servicio activo) y los
+            pagos (por miembro con compensación recurrente) del mes siguiente. No
+            duplica si ya generaste.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <GenerateMonthButton kind="invoices" />
+            <GenerateMonthButton kind="payments" />
+            <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
+              {haInvoicesNext && <span>✓ facturas generadas</span>}
+              {hayPaymentsNext && <span>✓ pagos generados</span>}
             </div>
-            <p className="mt-1 text-amber-900/80 dark:text-amber-300/80">
-              Las compensaciones por proyecto / comisión / por tarea no son recurrentes
-              y figuran como ARS 0 mensual (no se proyectan automáticamente).
-              Cotización usada: USD ${rates.USD.toLocaleString("es-AR")} ·
-              EUR ${rates.EUR.toLocaleString("es-AR")}
-              {" "}({rates.source === "live"
-                ? `live · dolarapi.com`
-                : `fallback (API no respondió)`}).
-            </p>
           </div>
         </CardContent>
       </Card>
@@ -317,31 +355,72 @@ export default async function FinanzasPage() {
   );
 }
 
-function KpiCard({
+function SubsectionCard({
+  href,
+  title,
+  subtitle,
+  alert,
+}: {
+  href: string;
+  title: string;
+  subtitle: string;
+  alert?: number;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="font-semibold">{title}</div>
+          <div className="mt-0.5 truncate text-xs text-muted-foreground">{subtitle}</div>
+        </div>
+        <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+      </div>
+      {alert !== undefined && alert > 0 && (
+        <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700 dark:bg-red-950 dark:text-red-300">
+          <AlertTriangle className="h-3 w-3" />
+          {alert} con alerta
+        </div>
+      )}
+    </Link>
+  );
+}
+
+function Kpi({
   label,
   value,
   icon: Icon,
-  accent,
+  color,
   subtitle,
+  size = "md",
 }: {
   label: string;
   value: number;
   icon: typeof Wallet;
-  accent: string;
+  color: "emerald" | "amber" | "sky" | "orange" | "primary" | "red";
   subtitle?: string;
+  size?: "md" | "lg";
 }) {
+  const accent: Record<typeof color, string> = {
+    emerald: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+    amber: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+    sky: "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300",
+    orange: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
+    primary: "bg-primary/15 text-foreground",
+    red: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
+  };
   return (
     <Card>
       <CardContent className="flex items-center gap-3 p-4">
-        <div
-          className={`flex h-10 w-10 items-center justify-center rounded-lg ${accent}`}
-        >
+        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${accent[color]}`}>
           <Icon className="h-5 w-5" />
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <div className="text-xs text-muted-foreground">{label}</div>
-          <div className="text-xl font-bold tabular-nums">
-            ARS {Math.round(value).toLocaleString("es-AR")}
+          <div className={`tabular-nums font-bold ${size === "lg" ? "text-2xl" : "text-xl"}`}>
+            {fmtARS(value)}
           </div>
           {subtitle && (
             <div className="text-[10px] text-muted-foreground">{subtitle}</div>

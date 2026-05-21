@@ -7,6 +7,7 @@ import { isOverdue } from "@/lib/finanzas";
 import { GenerateMonthButton } from "@/components/generate-month-button";
 import { InvoicesTable, type InvoiceTableRow } from "@/components/invoices-table";
 import { MonthPicker } from "@/components/month-picker";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -71,14 +72,12 @@ export default async function CobrosPage({
         <ArrowLeft className="h-4 w-4" /> Finanzas
       </Link>
 
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Cuentas por cobrar</h1>
-          <p className="text-muted-foreground">
-            Lo que te deben los clientes — y cuándo te tienen que pagar.
-          </p>
-        </div>
-        <GenerateMonthButton kind="invoices" />
+      <div>
+        <h1 className="text-2xl font-bold">Cuentas por cobrar</h1>
+        <p className="text-muted-foreground">
+          Lo que te deben los clientes — y cuándo te tienen que pagar. Cargá
+          cada factura con el botón <b>Nueva factura</b> en la tabla.
+        </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -104,6 +103,20 @@ export default async function CobrosPage({
       </div>
 
       <InvoicesTable rows={rows} rates={rates} clients={clients} />
+
+      <Card>
+        <CardContent className="space-y-2 p-4">
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Atajo: generar facturas del mes en bloque
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Si todos tus clientes activos tienen servicios mensuales con monto
+            cargado, podés crear todas las facturas del mes de una. No duplica si
+            ya existían.
+          </p>
+          <GenerateMonthButton kind="invoices" />
+        </CardContent>
+      </Card>
     </div>
   );
 }

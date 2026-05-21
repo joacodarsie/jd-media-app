@@ -38,7 +38,17 @@ export function GenerateMonthButton({ kind }: Props) {
       }
       const created = (res as { created?: number }).created ?? 0;
       if (created === 0) {
-        toast.info("No se generó nada nuevo (ya existían).");
+        if (kind === "payments") {
+          toast.error(
+            "No se generó nada. Asegurate de tener cargada la compensación mensual de cada persona (Equipo → Personas).",
+            { duration: 7000 }
+          );
+        } else {
+          toast.error(
+            "No se generó nada. Asegurate de tener servicios mensuales cargados con monto en clientes activos.",
+            { duration: 7000 }
+          );
+        }
       } else {
         toast.success(
           `${created} ${kind === "invoices" ? "factura(s)" : "pago(s)"} generado(s) para ${periodLabel(periodo)}.`

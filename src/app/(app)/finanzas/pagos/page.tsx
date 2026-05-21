@@ -30,7 +30,7 @@ export default async function PagosPage({
   const monthFilter =
     searchParams.m && /^\d{4}-\d{2}$/.test(searchParams.m) ? searchParams.m : null;
 
-  const [{ data: paymentsData }, { data: usersData }] = await Promise.all([
+  const [{ data: paymentsData }, { data: usersData }, { data: compsData }] = await Promise.all([
     supabase
       .from("team_payments")
       .select(
@@ -39,14 +39,24 @@ export default async function PagosPage({
       .order("fecha_programada", { ascending: true }),
     supabase
       .from("users")
-      .select("id, nombre")
+      .select("id, nombre, position_id")
       .eq("activo", true)
       .order("nombre"),
+    supabase
+      .from("compensation")
+      .select("user_id, monto"),
   ]);
 
   const all = (paymentsData ?? []) as unknown as PaymentTableRow[];
-  const users = (usersData ?? []) as { id: string; nombre: string }[];
+  const usersWithPos = (usersData ?? []) as { id: string; nombre: string; position_id: string | null }[];
+  const users = usersWithPos.map((u) => ({ id: u.id, nombre: u.nombre }));
+  const comps = (compsData ?? []) as { user_id: string; monto: number | null }[];
   const today = new Date().toISOString().slice(0, 10);
+
+  // Cuántos no tienen compensación cargada (monto != null)
+  const compByUser = new Map(comps.filter((c) => c.monto != null).map((c) => [c.user_id, c]));
+  const sinComp = usersWithPos.filter((u) => !compByUser.has(u.id));
+  const totalActivos = usersWithPos.length;
 
   let rows = all.filter((p) => {
     if (filter === "pendientes") return !p.fecha_pago;
@@ -84,15 +94,44 @@ export default async function PagosPage({
         <ArrowLeft className="h-4 w-4" /> Finanzas
       </Link>
 
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Pagos al equipo</h1>
-          <p className="text-muted-foreground">
-            Lo que tenés que pagar a cada miembro y cuándo.
-          </p>
-        </div>
-        <GenerateMonthButton kind="payments" />
+      <div>
+        <h1 className="text-2xl font-bold">Pagos al equipo</h1>
+        <p className="text-muted-foreground">
+          Lo que tenés que pagar a cada miembro y cuándo. Cargá cada pago con
+          el botón <b>Nuevo pago</b> en la tabla.
+        </p>
       </div>
+
+      {sinComp.length > 0 && (
+        <Card className="border-amber-300 bg-amber-50/40 dark:border-amber-900 dark:bg-amber-950/20">
+          <CardContent className="space-y-2 p-3 text-sm">
+            <div className="flex items-center gap-2 font-semibold">
+              ⚠️ Compensaciones sin cargar
+            </div>
+            <p className="text-xs">
+              <b>{sinComp.length}</b> de {totalActivos} personas no tienen
+              compensación mensual cargada. Sin eso no podés usar el botón
+              &quot;Generar pagos del mes&quot; abajo (igual podés cargar cada pago a
+              mano con <b>Nuevo pago</b>).
+            </p>
+            <details className="text-xs">
+              <summary className="cursor-pointer text-muted-foreground">
+                Ver quiénes faltan
+              </summary>
+              <ul className="mt-1 space-y-0.5 pl-4">
+                {sinComp.map((u) => (
+                  <li key={u.id} className="text-muted-foreground">
+                    • {u.nombre} —{" "}
+                    <Link href={`/equipo/persona/${u.id}`} className="underline">
+                      cargar
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          </CardContent>
+        </Card>
+      )}
 
       {porPersona.length > 0 && (
         <Card>
@@ -143,6 +182,22 @@ export default async function PagosPage({
       </div>
 
       <PaymentsTable rows={rows} rates={rates} users={users} />
+
+      {sinComp.length < totalActivos && (
+        <Card>
+          <CardContent className="space-y-2 p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Atajo: generar pagos del mes en bloque
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Si querés crear de una vez todos los pagos recurrentes de un mes (a
+              partir de las compensaciones cargadas), usá esto. No duplica si ya
+              existían.
+            </p>
+            <GenerateMonthButton kind="payments" />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

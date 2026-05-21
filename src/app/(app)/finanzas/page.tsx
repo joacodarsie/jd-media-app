@@ -5,7 +5,6 @@ import {
   Wallet,
   AlertTriangle,
   ArrowRight,
-  Sparkles,
   Receipt,
   Plus,
 } from "lucide-react";
@@ -14,7 +13,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getExchangeRates } from "@/lib/exchange";
 import {
   currentPeriod,
-  nextPeriod,
   periodLabel,
   toARS,
   fmtARS,
@@ -22,7 +20,6 @@ import {
 } from "@/lib/finanzas";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { GenerateMonthButton } from "@/components/generate-month-button";
 import { InvoiceFormDialog } from "@/components/invoice-form-dialog";
 import { PaymentFormDialog } from "@/components/payment-form-dialog";
 import { ExpenseFormDialog } from "@/components/expense-form-dialog";
@@ -147,10 +144,6 @@ export default async function FinanzasPage() {
     (a, e) => a + toARS(Number(e.monto), e.moneda, rates),
     0
   );
-
-  const periodoNext = nextPeriod(period);
-  const haInvoicesNext = invoices.some((i) => i.periodo === periodoNext);
-  const hayPaymentsNext = payments.some((p) => p.periodo === periodoNext);
 
   return (
     <div className="space-y-6">
@@ -364,31 +357,6 @@ export default async function FinanzasPage() {
           }
         />
       </div>
-
-      {/* Generar mes siguiente */}
-      <Card>
-        <CardContent className="space-y-3 p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <Sparkles className="h-4 w-4 text-primary" />
-            Generar período {periodLabel(periodoNext)}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Crea automáticamente las <b>facturas</b> (por cada servicio mensual
-            activo de clientes activos) y los <b>pagos al equipo</b> (por cada
-            miembro con compensación recurrente). <b>No duplica</b> si ya
-            generaste. Para ventas únicas o gastos puntuales, usá los botones{" "}
-            <b>Nueva factura / Nuevo pago / Nuevo gasto</b>.
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <GenerateMonthButton kind="invoices" />
-            <GenerateMonthButton kind="payments" />
-            <div className="ml-auto flex gap-3 text-xs text-muted-foreground">
-              {haInvoicesNext && <span className="text-emerald-700">✓ facturas listas</span>}
-              {hayPaymentsNext && <span className="text-emerald-700">✓ pagos listos</span>}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       <Link
         href="/finanzas/movimientos"

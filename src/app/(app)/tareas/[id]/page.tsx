@@ -54,7 +54,7 @@ export default async function TaskDetail({
       supabase.from("clients").select("id,nombre").order("nombre"),
       supabase
         .from("task_history")
-        .select("id, campo, valor_anterior, valor_nuevo, created_at, autor:users(id,nombre)")
+        .select("id, campo, valor_anterior, valor_nuevo, created_at, user_id")
         .eq("task_id", params.id)
         .order("created_at", { ascending: false })
         .limit(50),
@@ -204,7 +204,7 @@ interface HistoryEntry {
   valor_anterior: string | null;
   valor_nuevo: string | null;
   created_at: string;
-  autor: { id: string; nombre: string } | null;
+  user_id: string | null;
 }
 
 const CAMPO_LABEL: Record<string, string> = {
@@ -252,7 +252,7 @@ function TaskHistory({
                 <span className="text-muted-foreground">— {valor}</span>
               </div>
               <div className="text-xs text-muted-foreground">
-                {h.autor?.nombre ?? "Sistema"} ·{" "}
+                {(h.user_id && userById.get(h.user_id)) ?? "Sistema"} ·{" "}
                 {new Date(h.created_at).toLocaleString("es-AR", {
                   timeZone: "America/Argentina/Cordoba",
                 })}

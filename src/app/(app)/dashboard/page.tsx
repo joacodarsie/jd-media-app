@@ -26,8 +26,17 @@ export default async function DashboardPage() {
 
   const today = new Date();
   const inAWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
+  const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
 
-  const [{ data: taskData }, { data: pubData }] = await Promise.all([
+  // Clientes donde el user está asignado como CM, diseñador o audiovisual
+  const { data: myClients } = await supabase
+    .from("clients")
+    .select("id")
+    .or(`cm_id.eq.${user.id},disenador_id.eq.${user.id},audiovisual_id.eq.${user.id}`);
+  const myClientIds = (myClients ?? []).map((c) => c.id);
+
+  const [{ data: taskData }, { data: pubData }, { data: clientPubsToday }] = await Promise.all([
     supabase
       .from("tasks")
       .select(
@@ -47,11 +56,25 @@ export default async function DashboardPage() {
       .lte("fecha_publicacion", inAWeek.toISOString())
       .order("fecha_publicacion", { ascending: true })
       .limit(5),
+    // Pubs de HOY de los clientes donde el user es responsable (CM/diseñador/AV)
+    myClientIds.length > 0
+      ? supabase
+          .from("publications")
+          .select(
+            "id, titulo, fecha_publicacion, estado, red, tipo, cliente:clients(id,nombre)"
+          )
+          .in("cliente_id", myClientIds)
+          .gte("fecha_publicacion", startOfDay.toISOString())
+          .lte("fecha_publicacion", endOfDay.toISOString())
+          .order("fecha_publicacion", { ascending: true })
+          .limit(10)
+      : Promise.resolve({ data: [] }),
   ]);
 
   const tasks = (taskData ?? []) as TaskWithRels[];
   tasks.sort((a, b) => PRIORITY_ORDER[a.prioridad] - PRIORITY_ORDER[b.prioridad]);
   const pubs = (pubData ?? []) as unknown as PublicationWithRels[];
+  const pubsHoy = (clientPubsToday ?? []) as unknown as PublicationWithRels[];
 
   const activas = tasks.filter((t) => t.estado !== "completada");
   const pendientes = activas.filter((t) => t.estado === "pendiente").length;
@@ -151,6 +174,22 @@ export default async function DashboardPage() {
         </div>
 
         <div className="space-y-3">
+          {/* Pubs de hoy de los clientes que coordinás */}
+          {pubsHoy.length > 0 && (
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="text-sm font-semibold">
+                  Se publica hoy en tus cuentas ({pubsHoy.length})
+                </h2>
+              </div>
+              <div className="space-y-1.5">
+                {pubsHoy.map((p) => (
+                  <PubItem key={p.id} pub={p} />
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Próximas publicaciones</h2>
             <Link

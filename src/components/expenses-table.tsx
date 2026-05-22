@@ -153,7 +153,97 @@ export function ExpensesTable({
         </div>
       </div>
 
-      <div className="rounded-md border bg-card">
+      {/* Mobile: cards */}
+      <div className="space-y-2 md:hidden">
+        {filtered.length === 0 ? (
+          <p className="rounded-md border bg-card p-6 text-center text-sm text-muted-foreground">
+            Sin gastos en esta vista.
+          </p>
+        ) : (
+          filtered.map((e) => {
+            const atrasado =
+              !e.fecha_pago && e.fecha_programada && e.fecha_programada < today;
+            const fechaShown = e.fecha_pago ?? e.fecha_programada;
+            return (
+              <div
+                key={e.id}
+                className={cn(
+                  "rounded-md border bg-card p-3 text-sm",
+                  atrasado && "border-red-300 bg-red-50/40 dark:border-red-900 dark:bg-red-950/10"
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px]">
+                        {CAT_LABEL[e.categoria] ?? e.categoria}
+                      </span>
+                      {e.recurrente && (
+                        <span className="text-[10px] text-muted-foreground">↺ recurrente</span>
+                      )}
+                    </div>
+                    <div className="font-medium">{e.proveedor ?? "—"}</div>
+                    <p className="truncate text-xs text-muted-foreground" title={e.concepto}>
+                      {e.concepto}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="font-semibold tabular-nums">
+                      {fmtCurrency(Number(e.monto), e.moneda)}
+                    </div>
+                    {e.moneda !== "ARS" && (
+                      <div className="text-[10px] text-muted-foreground">
+                        {fmtARS(toARS(Number(e.monto), e.moneda, rates))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex gap-2 text-muted-foreground">
+                    <span>{e.periodo}</span>
+                    <span>·</span>
+                    <span className={cn(atrasado && "font-semibold text-red-700")}>
+                      {fechaShown
+                        ? new Date(fechaShown).toLocaleDateString("es-AR", {
+                            day: "2-digit",
+                            month: "short",
+                          })
+                        : "—"}
+                      {atrasado && " · atras."}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <MarkPaidButton id={e.id} kind="expense" paidAt={e.fecha_pago} />
+                    <ExpenseFormDialog
+                      mode="edit"
+                      expense={{
+                        id: e.id,
+                        categoria: e.categoria,
+                        proveedor: e.proveedor,
+                        concepto: e.concepto,
+                        monto: Number(e.monto),
+                        moneda: e.moneda,
+                        periodo: e.periodo,
+                        fecha_programada: e.fecha_programada,
+                        notas: e.notas,
+                        recurrente: e.recurrente,
+                      }}
+                      trigger={
+                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop: tabla */}
+      <div className="hidden rounded-md border bg-card md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs text-muted-foreground">

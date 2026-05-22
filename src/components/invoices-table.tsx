@@ -117,7 +117,87 @@ export function InvoicesTable({
         </div>
       </div>
 
-      <div className="rounded-md border bg-card">
+      {/* Mobile: cards */}
+      <div className="space-y-2 md:hidden">
+        {filtered.length === 0 ? (
+          <p className="rounded-md border bg-card p-6 text-center text-sm text-muted-foreground">
+            Sin resultados.
+          </p>
+        ) : (
+          filtered.map((i) => {
+            const overdue = isOverdue(i.fecha_vencimiento, i.fecha_cobro);
+            return (
+              <div
+                key={i.id}
+                className={cn(
+                  "rounded-md border bg-card p-3 text-sm",
+                  overdue && "border-red-300 bg-red-50/40 dark:border-red-900 dark:bg-red-950/10"
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium">{i.cliente?.nombre ?? "—"}</div>
+                    <p className="truncate text-xs text-muted-foreground" title={i.concepto}>
+                      {i.concepto}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="font-semibold tabular-nums">
+                      {fmtCurrency(Number(i.monto), i.moneda)}
+                    </div>
+                    {i.moneda !== "ARS" && (
+                      <div className="text-[10px] text-muted-foreground">
+                        {fmtARS(toARS(Number(i.monto), i.moneda, rates))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex gap-2 text-muted-foreground">
+                    <span>{i.periodo}</span>
+                    <span>·</span>
+                    <span className={cn(overdue && "font-semibold text-red-700")}>
+                      Vence{" "}
+                      {i.fecha_vencimiento
+                        ? new Date(i.fecha_vencimiento).toLocaleDateString("es-AR", {
+                            day: "2-digit",
+                            month: "short",
+                          })
+                        : "—"}
+                      {overdue && " · venc."}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <MarkPaidButton id={i.id} kind="invoice" paidAt={i.fecha_cobro} />
+                    <InvoiceFormDialog
+                      mode="edit"
+                      clients={clients}
+                      invoice={{
+                        id: i.id,
+                        cliente_id: i.cliente_id,
+                        concepto: i.concepto,
+                        monto: Number(i.monto),
+                        moneda: i.moneda,
+                        periodo: i.periodo,
+                        fecha_vencimiento: i.fecha_vencimiento,
+                        notas: i.notas,
+                      }}
+                      trigger={
+                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop: tabla */}
+      <div className="hidden rounded-md border bg-card md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs text-muted-foreground">

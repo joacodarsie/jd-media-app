@@ -28,6 +28,7 @@ import type { AppUser } from "@/lib/types";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { GlobalSearch } from "@/components/global-search";
 import {
   Avatar,
   AvatarFallback,
@@ -151,6 +152,7 @@ export function AppShell({
           >
             <Menu className="h-5 w-5" />
           </Button>
+          <GlobalSearch />
           <div className="flex-1" />
           {bell}
           <ThemeToggle />

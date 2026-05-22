@@ -112,7 +112,84 @@ export function PaymentsTable({
         </div>
       </div>
 
-      <div className="rounded-md border bg-card">
+      {/* Mobile: cards */}
+      <div className="space-y-2 md:hidden">
+        {filtered.length === 0 ? (
+          <p className="rounded-md border bg-card p-6 text-center text-sm text-muted-foreground">
+            Sin resultados.
+          </p>
+        ) : (
+          filtered.map((p) => {
+            const atrasado = !p.fecha_pago && p.fecha_programada < today;
+            return (
+              <div
+                key={p.id}
+                className={cn(
+                  "rounded-md border bg-card p-3 text-sm",
+                  atrasado && "border-red-300 bg-red-50/40 dark:border-red-900 dark:bg-red-950/10"
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium">{p.usuario?.nombre ?? "—"}</div>
+                    <p className="truncate text-xs text-muted-foreground" title={p.concepto}>
+                      {p.concepto}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="font-semibold tabular-nums">
+                      {fmtCurrency(Number(p.monto), p.moneda)}
+                    </div>
+                    {p.moneda !== "ARS" && (
+                      <div className="text-[10px] text-muted-foreground">
+                        {fmtARS(toARS(Number(p.monto), p.moneda, rates))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex gap-2 text-muted-foreground">
+                    <span>{p.periodo}</span>
+                    <span>·</span>
+                    <span className={cn(atrasado && "font-semibold text-red-700")}>
+                      {new Date(p.fecha_programada).toLocaleDateString("es-AR", {
+                        day: "2-digit",
+                        month: "short",
+                      })}
+                      {atrasado && " · atras."}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <MarkPaidButton id={p.id} kind="payment" paidAt={p.fecha_pago} />
+                    <PaymentFormDialog
+                      mode="edit"
+                      users={users}
+                      payment={{
+                        id: p.id,
+                        user_id: p.user_id,
+                        concepto: p.concepto,
+                        monto: Number(p.monto),
+                        moneda: p.moneda,
+                        periodo: p.periodo,
+                        fecha_programada: p.fecha_programada,
+                        notas: p.notas,
+                      }}
+                      trigger={
+                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop: tabla */}
+      <div className="hidden rounded-md border bg-card md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs text-muted-foreground">

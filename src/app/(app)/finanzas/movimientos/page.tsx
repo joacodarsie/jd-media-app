@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, ArrowDownLeft, ArrowUpRight } from "lucide-react";
-import { requireRole } from "@/lib/auth";
+import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getExchangeRates } from "@/lib/exchange";
 import { toARS, fmtARS, fmtCurrency } from "@/lib/finanzas";
@@ -21,7 +21,7 @@ interface Movement {
 }
 
 export default async function MovimientosPage() {
-  await requireRole(["admin"]);
+  await requireFeature("finanzas");
   const supabase = createClient();
   const rates = await getExchangeRates();
 

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
+import { FEATURES, type Feature } from "@/lib/permissions";
 
 function invalidate() {
   revalidatePath("/accesos");
@@ -60,6 +61,28 @@ export async function sendPasswordReset(userId: string) {
     redirectTo: `${siteUrl}/auth/callback?next=/auth/reset-password`,
   });
   if (error) return { error: error.message };
+  return { ok: true };
+}
+
+/** Actualiza los permisos granulares de un usuario. */
+export async function updateUserPermissions(
+  userId: string,
+  permisos: Partial<Record<Feature, boolean>>
+) {
+  await requireRole(["admin"]);
+  // Filtrar a features válidas
+  const sanitized: Record<string, boolean> = {};
+  for (const f of FEATURES) {
+    if (permisos[f] === true) sanitized[f] = true;
+    // si es false o undefined, lo omitimos (default = no tiene)
+  }
+  const sb = createClient();
+  const { error } = await sb
+    .from("users")
+    .update({ permisos: sanitized })
+    .eq("id", userId);
+  if (error) return { error: error.message };
+  invalidate();
   return { ok: true };
 }
 

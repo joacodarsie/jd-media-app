@@ -8,7 +8,7 @@ import {
   Receipt,
   Plus,
 } from "lucide-react";
-import { requireRole } from "@/lib/auth";
+import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getExchangeRates } from "@/lib/exchange";
 import {
@@ -62,7 +62,7 @@ interface ExpenseRow {
 }
 
 export default async function FinanzasPage() {
-  await requireRole(["admin"]);
+  await requireFeature("finanzas");
   const supabase = createClient();
   const rates = await getExchangeRates();
   const period = currentPeriod();

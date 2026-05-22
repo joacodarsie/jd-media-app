@@ -2,10 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireRole } from "@/lib/auth";
+import { requireFeature } from "@/lib/auth";
 
 async function ctx() {
-  await requireRole(["admin"]);
+  await requireFeature("finanzas");
   const supabase = createClient();
   const {
     data: { user },

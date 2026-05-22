@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, TrendingUp, TrendingDown, Wallet, AlertCircle } from "lucide-react";
-import { requireRole } from "@/lib/auth";
+import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getExchangeRates } from "@/lib/exchange";
 import { toARS, fmtARS, currentPeriod, periodLabel } from "@/lib/finanzas";
@@ -55,7 +55,7 @@ export default async function RentabilidadPage({
 }: {
   searchParams: { mode?: string };
 }) {
-  await requireRole(["admin"]);
+  await requireFeature("finanzas");
   const supabase = createClient();
   const rates = await getExchangeRates();
 

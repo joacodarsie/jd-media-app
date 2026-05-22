@@ -1,4 +1,5 @@
-import type { UserRole } from "./types";
+import type { AppUser, UserRole } from "./types";
+import type { Feature } from "./permissions";
 
 export interface NavItem {
   href: string;
@@ -7,6 +8,8 @@ export interface NavItem {
   icon: string;
   /** Si se define, sólo estos roles ven el item. */
   roles?: UserRole[];
+  /** Si se define, además requiere esta feature (admin la tiene siempre). */
+  feature?: Feature;
 }
 
 export const NAV: NavItem[] = [
@@ -34,13 +37,13 @@ export const NAV: NavItem[] = [
     href: "/global",
     label: "Global",
     icon: "BarChart3",
-    roles: ["admin"],
+    feature: "global",
   },
   {
     href: "/finanzas",
     label: "Finanzas",
     icon: "Wallet",
-    roles: ["admin"],
+    feature: "finanzas",
   },
   {
     href: "/accesos",
@@ -50,6 +53,16 @@ export const NAV: NavItem[] = [
   },
 ];
 
-export function visibleNav(rol: UserRole) {
-  return NAV.filter((i) => !i.roles || i.roles.includes(rol));
+function userHasFeature(user: AppUser, feature: Feature): boolean {
+  if (user.rol === "admin") return true;
+  const p = (user as unknown as { permisos?: Record<string, boolean> }).permisos;
+  return p?.[feature] === true;
+}
+
+export function visibleNav(user: AppUser) {
+  return NAV.filter((i) => {
+    if (i.roles && !i.roles.includes(user.rol)) return false;
+    if (i.feature && !userHasFeature(user, i.feature)) return false;
+    return true;
+  });
 }

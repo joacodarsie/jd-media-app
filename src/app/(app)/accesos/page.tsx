@@ -25,7 +25,7 @@ export default async function AccesosPage() {
       .order("title"),
     supabase
       .from("users")
-      .select("id, nombre, email, rol, area, activo")
+      .select("id, nombre, email, rol, area, activo, permisos")
       .order("activo", { ascending: false })
       .order("nombre"),
   ]);

@@ -1,4 +1,4 @@
-import { requireRole } from "@/lib/auth";
+import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { TIMEZONE } from "@/lib/constants";
 import { dueState } from "@/lib/dates";
@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export const dynamic = "force-dynamic";
 
 export default async function GlobalPage() {
-  await requireRole(["admin"]);
+  await requireFeature("global");
   const supabase = createClient();
 
   const [{ data: tasksRaw }, { data: usersRaw }] = await Promise.all([

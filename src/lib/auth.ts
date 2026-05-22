@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "./supabase/server";
 import type { AppUser } from "./types";
+import type { Feature } from "./permissions";
 
 /** Devuelve el perfil del usuario logueado o redirige a /login. */
 export async function requireUser(): Promise<AppUser> {
@@ -28,5 +29,19 @@ export function isStaff(rol: string) {
 export async function requireRole(roles: string[]): Promise<AppUser> {
   const user = await requireUser();
   if (!roles.includes(user.rol)) redirect("/dashboard");
+  return user;
+}
+
+/** Chequea si el usuario tiene una feature otorgada. Admin siempre la tiene. */
+export function userHas(user: AppUser, feature: Feature): boolean {
+  if (user.rol === "admin") return true;
+  const p = (user as unknown as { permisos?: Record<string, boolean> }).permisos;
+  return p?.[feature] === true;
+}
+
+/** Redirige si el usuario no tiene la feature. */
+export async function requireFeature(feature: Feature): Promise<AppUser> {
+  const user = await requireUser();
+  if (!userHas(user, feature)) redirect("/dashboard");
   return user;
 }

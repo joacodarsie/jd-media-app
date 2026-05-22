@@ -40,9 +40,17 @@ import {
   setUserPassword,
   toggleUserActive,
   updateUserEmail,
+  updateUserPermissions,
 } from "@/app/(app)/accesos/team-actions";
 import { ROLE_LABEL } from "@/lib/constants";
 import type { UserRole } from "@/lib/types";
+import {
+  FEATURES,
+  FEATURE_LABEL,
+  FEATURE_DESCRIPTION,
+  type Feature,
+} from "@/lib/permissions";
+import { Shield } from "lucide-react";
 
 export interface TeamRow {
   id: string;
@@ -51,6 +59,7 @@ export interface TeamRow {
   rol: UserRole;
   area: string;
   activo: boolean;
+  permisos?: Record<string, boolean> | null;
 }
 
 const ROLES: UserRole[] = [
@@ -167,6 +176,7 @@ function UserRow({ user }: { user: TeamRow }) {
       </td>
       <td className="px-3 py-2">
         <div className="flex items-center justify-end gap-1">
+          <PermissionsDialog user={user} />
           <SetPasswordPopover user={user} />
           <Button
             size="sm"
@@ -305,6 +315,100 @@ function SetPasswordPopover({ user }: { user: TeamRow }) {
         </div>
       </PopoverContent>
     </Popover>
+  );
+}
+
+function PermissionsDialog({ user }: { user: TeamRow }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [pending, start] = useTransition();
+  const isAdmin = user.rol === "admin";
+
+  // Estado local con los flags
+  const initial = (user.permisos ?? {}) as Record<string, boolean>;
+  const [flags, setFlags] = useState<Record<Feature, boolean>>(
+    () =>
+      Object.fromEntries(
+        FEATURES.map((f) => [f, initial[f] === true])
+      ) as Record<Feature, boolean>
+  );
+
+  function toggleFlag(f: Feature) {
+    setFlags((cur) => ({ ...cur, [f]: !cur[f] }));
+  }
+
+  function save() {
+    start(async () => {
+      const res = await updateUserPermissions(user.id, flags);
+      if (res?.error) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success("Permisos actualizados");
+      setOpen(false);
+      router.refresh();
+    });
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 gap-1 px-2"
+          title="Permisos de acceso"
+        >
+          <Shield className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Permisos</span>
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Permisos de {user.nombre}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          {isAdmin && (
+            <p className="rounded-md bg-amber-100 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+              Este usuario es <b>admin</b>. Tiene acceso total a todas las
+              secciones, sin importar los checkboxes de abajo.
+            </p>
+          )}
+          <p className="rounded-md bg-muted px-2 py-1.5 text-[11px] text-muted-foreground">
+            Por defecto un miembro del equipo no ve estas secciones. Marcá las
+            que quieras darle acceso individual.
+          </p>
+          <div className="space-y-2">
+            {FEATURES.map((f) => (
+              <label
+                key={f}
+                className="flex cursor-pointer items-start gap-2 rounded-md border bg-card p-2 hover:bg-muted/30"
+              >
+                <input
+                  type="checkbox"
+                  checked={flags[f]}
+                  onChange={() => toggleFlag(f)}
+                  disabled={isAdmin}
+                  className="mt-0.5 h-4 w-4 cursor-pointer rounded"
+                />
+                <div>
+                  <div className="text-sm font-medium">{FEATURE_LABEL[f]}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {FEATURE_DESCRIPTION[f]}
+                  </div>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={save} disabled={pending || isAdmin}>
+            {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Guardar permisos
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

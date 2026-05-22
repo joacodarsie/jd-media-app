@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { requireRole } from "@/lib/auth";
+import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getExchangeRates } from "@/lib/exchange";
 import { toARS, fmtARS } from "@/lib/finanzas";
@@ -19,7 +19,7 @@ export default async function PagosPage({
 }: {
   searchParams: { f?: string; m?: string };
 }) {
-  await requireRole(["admin"]);
+  await requireFeature("finanzas");
   const supabase = createClient();
   const rates = await getExchangeRates();
 

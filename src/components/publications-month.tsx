@@ -88,6 +88,11 @@ export function PublicationsMonth({
   const [fCliente, setFCliente] = useState<string>(defaultClientId ?? "__all__");
   const [fRed, setFRed] = useState<string>("__all__");
   const [fEstado, setFEstado] = useState<string>("__all__");
+  const [fEstadoCliente, setFEstadoCliente] = useState<"activos" | "inactivos" | "todos">(
+    "activos"
+  );
+  const [clienteSearch, setClienteSearch] = useState("");
+  const [clienteSearchOpen, setClienteSearchOpen] = useState(false);
 
   useEffect(() => {
     const v = localStorage.getItem("jd:contenidos:mode") as Mode | null;
@@ -97,14 +102,49 @@ export function PublicationsMonth({
     localStorage.setItem("jd:contenidos:mode", mode);
   }, [mode]);
 
+  // Set de cliente_ids que tienen al menos una publicación
+  const clientesConPubs = useMemo(() => {
+    return new Set(publications.map((p) => p.cliente_id).filter(Boolean));
+  }, [publications]);
+
+  // Clientes visibles según el filtro Activos / Inactivos / Todos
+  const visibleClients = useMemo(() => {
+    if (defaultClientId) return clients.filter((c) => c.id === defaultClientId);
+    if (fEstadoCliente === "activos") {
+      return clients.filter((c) => c.estado === "activo");
+    }
+    if (fEstadoCliente === "inactivos") {
+      return clients.filter(
+        (c) => c.estado !== "activo" && clientesConPubs.has(c.id)
+      );
+    }
+    return clients;
+  }, [clients, fEstadoCliente, defaultClientId, clientesConPubs]);
+
+  const visibleClientIds = useMemo(
+    () => new Set(visibleClients.map((c) => c.id)),
+    [visibleClients]
+  );
+
+  const filteredClientesByText = useMemo(() => {
+    const term = clienteSearch.trim().toLowerCase();
+    if (!term) return visibleClients;
+    return visibleClients.filter((c) => c.nombre.toLowerCase().includes(term));
+  }, [visibleClients, clienteSearch]);
+
   const filtered = useMemo(() => {
     return publications.filter((p) => {
-      if (fCliente !== "__all__" && p.cliente_id !== fCliente) return false;
+      if (fCliente !== "__all__") {
+        if (p.cliente_id !== fCliente) return false;
+      } else if (!defaultClientId) {
+        // Si no hay cliente seleccionado, restringir a clientes visibles según el filtro de estado
+        if (p.cliente_id && !visibleClientIds.has(p.cliente_id)) return false;
+      }
       if (fRed !== "__all__" && p.red !== fRed) return false;
       if (fEstado !== "__all__" && p.estado !== fEstado) return false;
       return true;
     });
-  }, [publications, fCliente, fRed, fEstado]);
+  }, [publications, fCliente, fRed, fEstado, visibleClientIds, defaultClientId]);
 
   const byDay = useMemo(() => {
     const m = new Map<string, PublicationWithRels[]>();
@@ -221,16 +261,97 @@ export function PublicationsMonth({
       {/* Filtros */}
       <div className="flex flex-wrap items-center gap-2">
         {!defaultClientId && (
-          <select
-            value={fCliente}
-            onChange={(e) => setFCliente(e.target.value)}
-            className="h-8 rounded-md border bg-background px-2 text-xs"
-          >
-            <option value="__all__">Todos los clientes</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
-            ))}
-          </select>
+          <>
+            {/* Tabs por estado del cliente */}
+            <div className="flex items-center rounded-md border bg-card p-0.5">
+              {(["activos", "inactivos", "todos"] as const).map((k) => (
+                <button
+                  key={k}
+                  onClick={() => {
+                    setFEstadoCliente(k);
+                    setFCliente("__all__");
+                  }}
+                  className={cn(
+                    "rounded-sm px-2 py-1 text-xs font-medium transition-colors",
+                    fEstadoCliente === k
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {k === "activos" ? "Activos" : k === "inactivos" ? "Inactivos" : "Todos"}{" "}
+                  ({k === "activos"
+                    ? clients.filter((c) => c.estado === "activo").length
+                    : k === "inactivos"
+                    ? clients.filter((c) => c.estado !== "activo" && clientesConPubs.has(c.id)).length
+                    : clients.length})
+                </button>
+              ))}
+            </div>
+
+            {/* Combobox con buscador para elegir cliente puntual */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setClienteSearchOpen((v) => !v)}
+                className="h-8 rounded-md border bg-background px-2 text-xs hover:bg-muted"
+              >
+                {fCliente === "__all__"
+                  ? `Todos (${visibleClients.length})`
+                  : visibleClients.find((c) => c.id === fCliente)?.nombre ?? "Cliente"}
+                {" ▾"}
+              </button>
+              {clienteSearchOpen && (
+                <div className="absolute left-0 top-full z-50 mt-1 w-64 rounded-md border bg-popover p-2 shadow-md">
+                  <input
+                    autoFocus
+                    value={clienteSearch}
+                    onChange={(e) => setClienteSearch(e.target.value)}
+                    placeholder="Buscar cliente…"
+                    className="mb-2 h-7 w-full rounded-md border bg-background px-2 text-xs"
+                  />
+                  <div className="max-h-64 overflow-y-auto">
+                    <button
+                      onClick={() => {
+                        setFCliente("__all__");
+                        setClienteSearchOpen(false);
+                        setClienteSearch("");
+                      }}
+                      className={cn(
+                        "w-full rounded-sm px-2 py-1 text-left text-xs hover:bg-muted",
+                        fCliente === "__all__" && "bg-muted"
+                      )}
+                    >
+                      Todos ({visibleClients.length})
+                    </button>
+                    {filteredClientesByText.map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => {
+                          setFCliente(c.id);
+                          setClienteSearchOpen(false);
+                          setClienteSearch("");
+                        }}
+                        className={cn(
+                          "flex w-full items-center justify-between rounded-sm px-2 py-1 text-left text-xs hover:bg-muted",
+                          fCliente === c.id && "bg-muted"
+                        )}
+                      >
+                        <span>{c.nombre}</span>
+                        {c.estado !== "activo" && (
+                          <span className="text-[9px] text-muted-foreground">inactivo</span>
+                        )}
+                      </button>
+                    ))}
+                    {filteredClientesByText.length === 0 && (
+                      <p className="px-2 py-2 text-xs text-muted-foreground">
+                        Sin resultados.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
         )}
         <select
           value={fRed}

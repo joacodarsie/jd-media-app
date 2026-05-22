@@ -93,3 +93,39 @@ export async function deleteClientRow(id: string) {
   revalidatePath("/clientes");
   return { ok: true };
 }
+
+/**
+ * Update genérico para los arrays jsonb del cliente
+ * (links_custom, redes_sociales, credenciales).
+ * Solo admite estos campos para evitar inyección.
+ */
+const ALLOWED_JSON_FIELDS = ["links_custom", "redes_sociales", "credenciales"] as const;
+
+export async function updateClientJsonbArray(
+  id: string,
+  field: (typeof ALLOWED_JSON_FIELDS)[number],
+  array: Record<string, string>[]
+) {
+  if (!ALLOWED_JSON_FIELDS.includes(field)) {
+    return { error: "campo no permitido" };
+  }
+  const { supabase } = await ctx();
+  const { error } = await supabase
+    .from("clients")
+    .update({ [field]: array })
+    .eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath(`/clientes/${id}`);
+  return { ok: true };
+}
+
+/** Toggle entre activo/inactivo (las fechas las pone el trigger). */
+export async function toggleClientStatus(id: string, currentStatus: string) {
+  const { supabase } = await ctx();
+  const next = currentStatus === "activo" ? "perdido" : "activo";
+  const { error } = await supabase.from("clients").update({ estado: next }).eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/clientes");
+  revalidatePath(`/clientes/${id}`);
+  return { ok: true, nuevo: next };
+}

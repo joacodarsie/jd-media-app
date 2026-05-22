@@ -28,6 +28,8 @@ export interface PublicationInput {
   task_id: string | null;
   notas_revision?: string | null;
   estado?: string;
+  publicacion_url?: string | null;
+  resubido_tiktok?: boolean;
 }
 
 function clean(input: PublicationInput) {
@@ -46,6 +48,8 @@ function clean(input: PublicationInput) {
     audiovisual_id: input.audiovisual_id || null,
     task_id: input.task_id || null,
     notas_revision: input.notas_revision?.trim() || null,
+    publicacion_url: input.publicacion_url?.trim() || null,
+    resubido_tiktok: input.resubido_tiktok ?? false,
   };
 }
 

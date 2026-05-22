@@ -90,13 +90,13 @@ export const PRIORITY_BADGE: Record<TaskPriority, string> = {
 export const CLIENT_STATUS_LABEL: Record<ClientStatus, string> = {
   activo: "Activo",
   at_risk: "En riesgo (legacy)",
-  perdido: "Perdido",
+  perdido: "Inactivo",
 };
 
 /** Estados visibles en formularios y filtros (omite legacy `at_risk`). */
 export const VISIBLE_CLIENT_STATUSES: { value: ClientStatus; label: string }[] = [
   { value: "activo", label: "Activo" },
-  { value: "perdido", label: "Perdido" },
+  { value: "perdido", label: "Inactivo" },
 ];
 
 export const CLIENT_PACK_LABEL: Record<string, string> = {
@@ -151,19 +151,21 @@ export const PUBLICATION_STATUS_LABEL: Record<PublicationStatus, string> = {
   rechazado: "Cambios pedidos",
 };
 
+// Paleta unificada: grises al inicio, fríos durante producción,
+// cálidos en revisión, verde para aprobado/publicado, rojo solo para cambios.
 export const PUBLICATION_STATUS_BADGE: Record<PublicationStatus, string> = {
-  idea: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  en_diseno: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-  guion: "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300",
-  edicion: "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300",
+  idea: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
+  en_diseno: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200",
+  guion: "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200",
+  edicion: "bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-950 dark:text-fuchsia-200",
   revision_creativa:
-    "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+    "bg-yellow-100 text-yellow-900 dark:bg-yellow-950 dark:text-yellow-200",
   revision_cliente:
-    "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300",
+    "bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200",
   aprobado:
-    "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-  publicado: "bg-green-600 text-white",
-  rechazado: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
+    "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
+  publicado: "bg-emerald-600 text-white dark:bg-emerald-700",
+  rechazado: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200",
 };
 
 export const PUBLICATION_NETWORK_LABEL: Record<PublicationNetwork, string> = {

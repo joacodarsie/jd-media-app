@@ -26,6 +26,8 @@ import { ClientFormDialog } from "@/components/client-form-dialog";
 import { DeleteClientButton } from "@/components/delete-client-button";
 import { ClientServicesEditor } from "@/components/client-services-editor";
 import { ApprovalLink } from "@/components/approval-link";
+import { ClientStatusToggle } from "@/components/client-status-toggle";
+import { ClientListEditor } from "@/components/client-list-editor";
 import type { ClientService } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +44,8 @@ interface ClientWithCreativa extends Client {
   cm?: { id: string; nombre: string } | null;
   disenador?: { id: string; nombre: string } | null;
   audiovisual?: { id: string; nombre: string } | null;
+  fecha_activado?: string | null;
+  fecha_inactivado?: string | null;
 }
 
 export default async function ClientDetail({
@@ -139,6 +143,14 @@ export default async function ClientDetail({
         </div>
 
       </div>
+
+      {/* Estado del cliente */}
+      <ClientStatusToggle
+        id={c.id}
+        currentStatus={c.estado}
+        fechaActivado={c.fecha_activado ?? null}
+        fechaInactivado={c.fecha_inactivado ?? null}
+      />
 
       {/* Servicios contratados */}
       <Card>
@@ -342,6 +354,72 @@ export default async function ClientDetail({
             </Card>
           )}
         </div>
+      </div>
+
+      {/* Links libres + Redes + Credenciales */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardContent className="pt-4">
+            <ClientListEditor
+              clientId={c.id}
+              field="links_custom"
+              title="Links del cliente"
+              description="Lo que necesites: brief, brand book, calendario, lo que sea."
+              addLabel="Agregar link"
+              initial={
+                ((c as unknown as { links_custom?: Record<string, string>[] })
+                  .links_custom ?? []) as Record<string, string>[]
+              }
+              itemFields={[
+                { name: "titulo", label: "Título", placeholder: "Ej: Brief inicial" },
+                { name: "url", label: "URL", type: "url", placeholder: "https://…" },
+              ]}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-4">
+            <ClientListEditor
+              clientId={c.id}
+              field="redes_sociales"
+              title="Redes sociales"
+              description="Agregá las que use el cliente."
+              addLabel="Agregar red"
+              initial={
+                ((c as unknown as { redes_sociales?: Record<string, string>[] })
+                  .redes_sociales ?? []) as Record<string, string>[]
+              }
+              itemFields={[
+                { name: "red", label: "Red", placeholder: "instagram / tiktok / web / linkedin…" },
+                { name: "url", label: "URL", type: "url", placeholder: "https://…" },
+              ]}
+            />
+          </CardContent>
+        </Card>
+
+        <Card className="md:col-span-2">
+          <CardContent className="pt-4">
+            <ClientListEditor
+              clientId={c.id}
+              field="credenciales"
+              title="Credenciales del cliente"
+              description="Accesos que el cliente nos comparte (Meta, Google, plataformas). Solo admin/coordinación ven esto."
+              addLabel="Agregar credencial"
+              initial={
+                ((c as unknown as { credenciales?: Record<string, string>[] })
+                  .credenciales ?? []) as Record<string, string>[]
+              }
+              itemFields={[
+                { name: "servicio", label: "Servicio", placeholder: "Ej: Meta Business" },
+                { name: "url", label: "URL (opcional)", type: "url", placeholder: "https://business.facebook.com" },
+                { name: "usuario", label: "Usuario / Email" },
+                { name: "password", label: "Contraseña", type: "password" },
+                { name: "notas", label: "Notas (opcional)" },
+              ]}
+            />
+          </CardContent>
+        </Card>
       </div>
 
       {c.notas && (

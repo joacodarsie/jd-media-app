@@ -143,6 +143,21 @@ export function PublicationDetailDialog({
                 <ExternalLink className="h-3 w-3" /> Referencia
               </a>
             )}
+            {(p as unknown as { publicacion_url?: string | null }).publicacion_url && (
+              <a
+                href={(p as unknown as { publicacion_url: string }).publicacion_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs text-emerald-800 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"
+              >
+                <ExternalLink className="h-3 w-3" /> Publicación final
+              </a>
+            )}
+            {(p as unknown as { resubido_tiktok?: boolean }).resubido_tiktok && (
+              <span className="inline-flex items-center gap-1 rounded border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-900">
+                ✓ Resubido a TikTok
+              </span>
+            )}
           </div>
 
           {p.notas_revision && (

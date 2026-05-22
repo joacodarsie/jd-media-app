@@ -39,7 +39,6 @@ import {
   getDocumentSignedUrl,
   type DocumentCategory,
 } from "@/app/(app)/documentos/actions";
-import { cn } from "@/lib/utils";
 
 export const DOC_CATEGORIES: { value: DocumentCategory; label: string }[] = [
   { value: "onboarding", label: "Onboarding" },

@@ -26,6 +26,7 @@ import {
 import { Markdown } from "@/components/markdown";
 import { PublicationStatusSelect } from "@/components/publication-status-select";
 import { PublicationFinalFields } from "@/components/publication-final-fields";
+import { ClientPubComments } from "@/components/client-pub-comments";
 import {
   PublicationFormDialog,
   type ClientForPub,
@@ -166,6 +167,9 @@ export function PublicationDetailDialog({
               </p>
             </div>
           )}
+
+          {/* Comentarios del cliente desde el portal público */}
+          <ClientPubComments publicationId={p.id} />
 
           <div className="border-t pt-3">
             <h4 className="mb-2 text-sm font-semibold">Estado</h4>

@@ -20,6 +20,15 @@ interface PublicPub {
   estado: string;
   notas_revision: string | null;
   cliente_revision_iniciada_at: string | null;
+  publicacion_url: string | null;
+  resubido_tiktok: boolean;
+}
+
+interface PublicComment {
+  id: string;
+  publication_id: string;
+  contenido: string;
+  created_at: string;
 }
 
 export default async function AprobacionPage({
@@ -27,7 +36,6 @@ export default async function AprobacionPage({
 }: {
   params: { token: string };
 }) {
-  // Cliente anónimo: solo puede llamar a las RPCs públicas
   const sb = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -45,29 +53,31 @@ export default async function AprobacionPage({
     ok: boolean;
     cliente: { id: string; nombre: string };
     publicaciones: PublicPub[];
+    comentarios: PublicComment[];
   };
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <header className="border-b bg-white dark:bg-zinc-900">
-        <div className="mx-auto max-w-3xl px-4 py-5">
+        <div className="mx-auto max-w-5xl px-4 py-5">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-black text-[#FFD400] font-black">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-black font-black text-[#FFD400]">
               JD
             </div>
             <div>
               <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                Aprobación de contenidos
+                Portal de contenidos
               </div>
               <h1 className="text-xl font-bold">{payload.cliente.nombre}</h1>
             </div>
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-3xl px-4 py-6">
+      <main className="mx-auto max-w-5xl px-4 py-6">
         <ApprovalPortal
           token={params.token}
           publicaciones={payload.publicaciones}
+          comentarios={payload.comentarios ?? []}
         />
       </main>
       <footer className="border-t py-6 text-center text-xs text-muted-foreground">

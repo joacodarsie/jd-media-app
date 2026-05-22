@@ -3,7 +3,7 @@ import { ArrowLeft, TrendingUp, TrendingDown, Wallet, AlertCircle } from "lucide
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getExchangeRates } from "@/lib/exchange";
-import { toARS, fmtARS } from "@/lib/finanzas";
+import { toARS, fmtARS, currentPeriod, periodLabel } from "@/lib/finanzas";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +28,8 @@ interface ExpRow {
   monto: number;
   moneda: string;
   fecha_pago: string | null;
+  fecha_programada: string | null;
+  periodo: string;
 }
 
 interface PayRow {
@@ -35,6 +37,17 @@ interface PayRow {
   monto: number;
   moneda: string;
   fecha_pago: string | null;
+  fecha_programada: string;
+  periodo: string;
+}
+
+interface ServiceRow {
+  cliente_id: string;
+  monto_mensual: number | null;
+  moneda: string;
+  activo: boolean;
+  tipo: string;
+  pack: string | null;
 }
 
 export default async function RentabilidadPage({
@@ -50,7 +63,7 @@ export default async function RentabilidadPage({
   // mode: "devengado" = todo lo facturado / programado, sin importar si cobró/pagó
   const mode = searchParams.mode === "devengado" ? "devengado" : "cashflow";
 
-  const [clientsRes, invRes, expRes, payRes] = await Promise.all([
+  const [clientsRes, invRes, expRes, payRes, svcRes] = await Promise.all([
     supabase
       .from("clients")
       .select("id, nombre, estado")
@@ -60,16 +73,21 @@ export default async function RentabilidadPage({
       .select("cliente_id, monto, moneda, fecha_cobro, periodo"),
     supabase
       .from("expenses")
-      .select("cliente_id, monto, moneda, fecha_pago"),
+      .select("cliente_id, monto, moneda, fecha_pago, fecha_programada, periodo"),
     supabase
       .from("team_payments")
-      .select("cliente_id, monto, moneda, fecha_pago"),
+      .select("cliente_id, monto, moneda, fecha_pago, fecha_programada, periodo"),
+    supabase
+      .from("client_services")
+      .select("cliente_id, monto_mensual, moneda, activo, tipo, pack")
+      .eq("activo", true),
   ]);
 
   const clients = (clientsRes.data ?? []) as ClientRow[];
   const invs = (invRes.data ?? []) as InvRow[];
   const exps = (expRes.data ?? []) as ExpRow[];
   const pays = (payRes.data ?? []) as PayRow[];
+  const svcs = (svcRes.data ?? []) as ServiceRow[];
 
   // Agrego por cliente
   const byClient = new Map<
@@ -81,19 +99,34 @@ export default async function RentabilidadPage({
   }
 
   // Ingresos
-  for (const i of invs) {
-    const incluir =
-      mode === "cashflow" ? !!i.fecha_cobro : true; // devengado: todo, cashflow: solo cobrado
-    if (!incluir) continue;
-    const e = byClient.get(i.cliente_id);
-    if (!e) continue;
-    e.ingresos += toARS(Number(i.monto), i.moneda, rates);
+  if (mode === "cashflow") {
+    // Plata efectivamente cobrada (fecha_cobro presente).
+    for (const i of invs) {
+      if (!i.fecha_cobro) continue;
+      const e = byClient.get(i.cliente_id);
+      if (!e) continue;
+      e.ingresos += toARS(Number(i.monto), i.moneda, rates);
+    }
+  } else {
+    // Devengado / modelo: ingreso MENSUAL contratado según client_services activos.
+    // Es el ingreso ideal que debería entrar cada mes si el cliente paga lo pactado.
+    for (const s of svcs) {
+      if (s.monto_mensual == null) continue;
+      const e = byClient.get(s.cliente_id);
+      if (!e) continue;
+      e.ingresos += toARS(Number(s.monto_mensual), s.moneda, rates);
+    }
   }
 
   // Egresos imputados a cliente
+  // En cashflow: solo lo efectivamente pagado (fecha_pago).
+  // En devengado: solo lo del mes corriente (programado/pagado de este período),
+  // para que sea comparable al ingreso mensual contratado.
+  const period = currentPeriod();
   let totalEgresosSinImputar = 0;
   for (const x of exps) {
-    const incluir = mode === "cashflow" ? !!x.fecha_pago : true;
+    const incluir =
+      mode === "cashflow" ? !!x.fecha_pago : x.periodo === period;
     if (!incluir) continue;
     const ars = toARS(Number(x.monto), x.moneda, rates);
     if (x.cliente_id && byClient.has(x.cliente_id)) {
@@ -103,7 +136,8 @@ export default async function RentabilidadPage({
     }
   }
   for (const p of pays) {
-    const incluir = mode === "cashflow" ? !!p.fecha_pago : true;
+    const incluir =
+      mode === "cashflow" ? !!p.fecha_pago : p.periodo === period;
     if (!incluir) continue;
     const ars = toARS(Number(p.monto), p.moneda, rates);
     if (p.cliente_id && byClient.has(p.cliente_id)) {
@@ -151,7 +185,10 @@ export default async function RentabilidadPage({
       <div>
         <h1 className="text-2xl font-bold">Rentabilidad por cliente</h1>
         <p className="text-muted-foreground">
-          Cuánto te deja cada cliente: lo facturado/cobrado menos lo atribuido a esa cuenta.
+          Cuánto te deja cada cliente. En{" "}
+          <b>devengado</b> usa el monto mensual contratado en los servicios
+          activos del cliente, comparado contra egresos del mes en curso
+          ({periodLabel(currentPeriod())}).
         </p>
       </div>
 
@@ -183,8 +220,8 @@ export default async function RentabilidadPage({
         </div>
         <p className="text-xs text-muted-foreground">
           {mode === "cashflow"
-            ? "Solo lo cobrado y pagado efectivamente."
-            : "Todo lo facturado y programado, esté cobrado o no — útil para proyectar."}
+            ? "Solo lo cobrado y pagado efectivamente (histórico real)."
+            : "Ingresos según el monto mensual contratado en cada servicio activo. Útil para ver el modelo de negocio aunque no hayas facturado todavía."}
         </p>
       </div>
 

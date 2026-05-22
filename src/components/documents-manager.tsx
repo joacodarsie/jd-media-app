@@ -89,6 +89,34 @@ export function DocumentsManager({
   const [docs] = useState(initial);
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<DocumentCategory | "all">("all");
+  const [dragOver, setDragOver] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
+
+  function onDragOver(e: React.DragEvent) {
+    if (!canEdit) return;
+    e.preventDefault();
+    if (e.dataTransfer.types.includes("Files")) {
+      e.dataTransfer.dropEffect = "copy";
+      setDragOver(true);
+    }
+  }
+  function onDragLeave(e: React.DragEvent) {
+    if (e.currentTarget === e.target) setDragOver(false);
+  }
+  function onDrop(e: React.DragEvent) {
+    if (!canEdit) return;
+    e.preventDefault();
+    setDragOver(false);
+    const f = e.dataTransfer.files?.[0];
+    if (!f) return;
+    if (f.size > MAX_MB * 1024 * 1024) {
+      toast.error(`El archivo no puede pesar más de ${MAX_MB}MB.`);
+      return;
+    }
+    setPendingFile(f);
+    setUploadOpen(true);
+  }
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -103,7 +131,21 @@ export function DocumentsManager({
   }, [docs, q, cat]);
 
   return (
-    <div className="space-y-4">
+    <div
+      className="relative space-y-4"
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      {dragOver && (
+        <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center bg-primary/20 backdrop-blur-sm">
+          <div className="rounded-xl border-2 border-dashed border-primary bg-card px-8 py-6 text-center shadow-xl">
+            <Upload className="mx-auto mb-2 h-8 w-8 text-primary" />
+            <p className="text-sm font-semibold">Soltá el archivo para subirlo</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative">
           <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -127,27 +169,53 @@ export function DocumentsManager({
             ))}
           </SelectContent>
         </Select>
-        {canEdit && <UploadDialog onDone={() => router.refresh()} />}
+        {canEdit && (
+          <UploadDialog
+            open={uploadOpen}
+            onOpenChange={setUploadOpen}
+            initialFile={pendingFile}
+            clearInitial={() => setPendingFile(null)}
+            onDone={() => router.refresh()}
+          />
+        )}
         <div className="ml-auto text-sm text-muted-foreground">
           {filtered.length} doc(s)
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {canEdit && docs.length === 0 && (
+        <div className="rounded-md border-2 border-dashed bg-muted/20 p-8 text-center">
+          <Upload className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
+          <p className="text-sm font-medium">
+            Arrastrá un archivo acá para subirlo
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            o usá el botón <b>Subir documento</b> arriba
+          </p>
+        </div>
+      )}
+
+      {filtered.length === 0 && docs.length > 0 && (
         <div className="rounded-md border border-dashed bg-muted/30 p-8 text-center">
           <FileText className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            {docs.length === 0
-              ? "Todavía no hay documentos. Tocá Subir documento."
-              : "Sin resultados con esos filtros."}
+            Sin resultados con esos filtros.
           </p>
         </div>
-      ) : (
+      )}
+
+      {filtered.length > 0 && (
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((d) => (
             <DocCard key={d.id} doc={d} canEdit={canEdit} />
           ))}
         </div>
+      )}
+
+      {canEdit && docs.length > 0 && (
+        <p className="text-center text-[11px] text-muted-foreground">
+          💡 Arrastrá un archivo a cualquier parte de esta pantalla para subir.
+        </p>
       )}
     </div>
   );
@@ -158,19 +226,23 @@ function DocCard({ doc, canEdit }: { doc: DocumentRow; canEdit: boolean }) {
   const [pending, start] = useTransition();
   const Icon = iconFor(doc.mime_type);
   const catLabel = DOC_CATEGORIES.find((c) => c.value === doc.categoria)?.label ?? doc.categoria;
+  const isImage = doc.mime_type?.startsWith("image/");
+  const isPdf = doc.mime_type === "application/pdf";
+  const previewable = isImage || isPdf;
 
-  function download() {
+  function open() {
     start(async () => {
       const res = await getDocumentSignedUrl(doc.id);
       if (res.error || !res.url) {
         toast.error(res.error ?? "Error");
         return;
       }
-      window.open(res.url, "_blank");
+      window.open(res.url, "_blank", "noopener,noreferrer");
     });
   }
 
-  function remove() {
+  function remove(e: React.MouseEvent) {
+    e.stopPropagation();
     if (!confirm("¿Eliminar este documento?")) return;
     start(async () => {
       const res = await deleteDocument(doc.id);
@@ -184,10 +256,22 @@ function DocCard({ doc, canEdit }: { doc: DocumentRow; canEdit: boolean }) {
   }
 
   return (
-    <div className="rounded-lg border bg-card p-3 transition-colors hover:border-primary/40">
+    <div
+      onClick={open}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          open();
+        }
+      }}
+      title={previewable ? "Click para abrir en pestaña nueva" : "Click para descargar"}
+      className="group cursor-pointer rounded-lg border bg-card p-3 transition-all hover:border-primary/40 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary"
+    >
       <div className="flex items-start gap-2">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted">
-          <Icon className="h-4 w-4" />
+          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
         </div>
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-sm font-semibold">{doc.titulo}</h3>
@@ -203,14 +287,17 @@ function DocCard({ doc, canEdit }: { doc: DocumentRow; canEdit: boolean }) {
         <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
           {catLabel}
         </span>
-        <div className="flex items-center gap-1">
+        <div
+          className="flex items-center gap-1 opacity-60 group-hover:opacity-100"
+          onClick={(e) => e.stopPropagation()}
+        >
           <Button
             size="icon"
             variant="ghost"
             className="h-7 w-7"
-            onClick={download}
+            onClick={open}
             disabled={pending}
-            title="Descargar"
+            title={previewable ? "Abrir" : "Descargar"}
           >
             {pending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -239,8 +326,26 @@ function DocCard({ doc, canEdit }: { doc: DocumentRow; canEdit: boolean }) {
   );
 }
 
-function UploadDialog({ onDone }: { onDone: () => void }) {
-  const [open, setOpen] = useState(false);
+function UploadDialog({
+  open: openProp,
+  onOpenChange,
+  onDone,
+  initialFile,
+  clearInitial,
+}: {
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
+  onDone: () => void;
+  initialFile?: File | null;
+  clearInitial?: () => void;
+}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = openProp ?? internalOpen;
+  const setOpen = (v: boolean) => {
+    if (onOpenChange) onOpenChange(v);
+    else setInternalOpen(v);
+    if (!v) clearInitial?.();
+  };
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [categoria, setCategoria] = useState<DocumentCategory>("otros");
@@ -248,12 +353,26 @@ function UploadDialog({ onDone }: { onDone: () => void }) {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Si llega un archivo arrastrado, lo precargamos y sugerimos título.
+  useMemo(() => {
+    if (initialFile && initialFile !== file) {
+      setFile(initialFile);
+      if (!titulo) {
+        // sugerir título a partir del nombre del archivo sin extensión
+        const base = initialFile.name.replace(/\.[^.]+$/, "");
+        setTitulo(base);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFile]);
+
   function reset() {
     setTitulo("");
     setDescripcion("");
     setCategoria("otros");
     setFile(null);
     if (fileRef.current) fileRef.current.value = "";
+    clearInitial?.();
   }
 
   async function submit() {

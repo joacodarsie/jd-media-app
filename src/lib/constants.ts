@@ -151,22 +151,26 @@ export const PUBLICATION_STATUS_LABEL: Record<PublicationStatus, string> = {
   rechazado: "Cambios pedidos",
 };
 
-// Paleta unificada con buen contraste en dark mode (tinte translúcido sobre fondo oscuro).
+// Rampa visual del flujo:
+//   gris (idea) → azul/indigo/violeta (producción)
+//   → ámbar/naranja (revisiones)
+//   → lime (aprobado, casi listo) → verde fuerte (publicado)
+//   → rojo solo cuando se cancela
 export const PUBLICATION_STATUS_BADGE: Record<PublicationStatus, string> = {
   idea:
-    "bg-zinc-200 text-zinc-700 dark:bg-zinc-600/50 dark:text-zinc-100",
+    "bg-slate-200 text-slate-700 dark:bg-slate-500/35 dark:text-slate-100",
   en_diseno:
-    "bg-sky-100 text-sky-800 dark:bg-sky-500/30 dark:text-sky-100",
+    "bg-blue-200 text-blue-800 dark:bg-blue-500/30 dark:text-blue-100",
   guion:
-    "bg-violet-100 text-violet-800 dark:bg-violet-500/30 dark:text-violet-100",
+    "bg-indigo-200 text-indigo-800 dark:bg-indigo-500/30 dark:text-indigo-100",
   edicion:
-    "bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-500/30 dark:text-fuchsia-100",
+    "bg-purple-200 text-purple-800 dark:bg-purple-500/30 dark:text-purple-100",
   revision_creativa:
-    "bg-yellow-200 text-yellow-900 dark:bg-yellow-400/25 dark:text-yellow-100",
+    "bg-amber-200 text-amber-900 dark:bg-amber-500/30 dark:text-amber-100",
   revision_cliente:
     "bg-orange-200 text-orange-900 dark:bg-orange-500/35 dark:text-orange-100",
   aprobado:
-    "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/25 dark:text-emerald-100",
+    "bg-lime-200 text-lime-900 dark:bg-lime-500/30 dark:text-lime-100",
   publicado: "bg-emerald-600 text-white dark:bg-emerald-500 dark:text-white",
   rechazado:
     "bg-rose-200 text-rose-900 dark:bg-rose-500/30 dark:text-rose-100",

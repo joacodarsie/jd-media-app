@@ -29,13 +29,20 @@ export default async function GastosPage({
     ? searchParams.m
     : null;
 
-  const { data } = await supabase
-    .from("expenses")
-    .select("*")
-    .order("fecha_pago", { ascending: false, nullsFirst: false })
-    .order("fecha_programada", { ascending: false, nullsFirst: false });
+  const [{ data }, { data: clientsData }] = await Promise.all([
+    supabase
+      .from("expenses")
+      .select("*")
+      .order("fecha_pago", { ascending: false, nullsFirst: false })
+      .order("fecha_programada", { ascending: false, nullsFirst: false }),
+    supabase
+      .from("clients")
+      .select("id, nombre")
+      .order("nombre"),
+  ]);
 
   const all = (data ?? []) as unknown as ExpenseTableRow[];
+  const clients = (clientsData ?? []) as { id: string; nombre: string }[];
 
   let rows = all;
   if (filter === "pendientes") rows = rows.filter((e) => !e.fecha_pago);
@@ -96,7 +103,7 @@ export default async function GastosPage({
         </Card>
       )}
 
-      <ExpensesTable rows={rows} rates={rates} filter={filter} monthFilter={monthFilter} />
+      <ExpensesTable rows={rows} rates={rates} filter={filter} monthFilter={monthFilter} clients={clients} />
     </div>
   );
 }

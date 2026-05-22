@@ -49,11 +49,13 @@ export function ExpensesTable({
   rates,
   filter,
   monthFilter,
+  clients,
 }: {
   rows: ExpenseTableRow[];
   rates: ExchangeRates;
   filter: "todos" | "pendientes" | "pagados";
   monthFilter: string | null;
+  clients?: { id: string; nombre: string }[];
 }) {
   const [q, setQ] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("fecha");
@@ -138,6 +140,7 @@ export function ExpensesTable({
         </div>
         <ExpenseFormDialog
           mode="create"
+          clients={clients}
           trigger={
             <Button size="sm" className="gap-1">
               <Plus className="h-4 w-4" />
@@ -231,6 +234,7 @@ export function ExpensesTable({
                       <td className="px-1 py-2">
                         <ExpenseFormDialog
                           mode="edit"
+                          clients={clients}
                           expense={{
                             id: e.id,
                             categoria: e.categoria,
@@ -242,6 +246,7 @@ export function ExpensesTable({
                             fecha_programada: e.fecha_programada,
                             notas: e.notas,
                             recurrente: e.recurrente,
+                            cliente_id: (e as unknown as { cliente_id?: string | null }).cliente_id ?? null,
                           }}
                           trigger={
                             <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar">

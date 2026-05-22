@@ -43,6 +43,7 @@ export const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string }[] = [
 
 interface BaseProps {
   trigger: React.ReactNode;
+  clients?: { id: string; nombre: string }[];
 }
 
 interface CreateProps extends BaseProps {
@@ -63,8 +64,11 @@ interface EditProps extends BaseProps {
     fecha_programada: string | null;
     notas: string | null;
     recurrente: boolean;
+    cliente_id?: string | null;
   };
 }
+
+const NO_CLIENT = "__none__";
 
 export function ExpenseFormDialog(props: CreateProps | EditProps) {
   const router = useRouter();
@@ -84,6 +88,7 @@ export function ExpenseFormDialog(props: CreateProps | EditProps) {
           fecha_programada: new Date().toISOString().slice(0, 10),
           notas: null as string | null,
           recurrente: false,
+          cliente_id: null as string | null,
         };
 
   const [categoria, setCategoria] = useState<ExpenseCategory>(initial.categoria);
@@ -95,6 +100,7 @@ export function ExpenseFormDialog(props: CreateProps | EditProps) {
   const [fecha, setFecha] = useState(initial.fecha_programada ?? "");
   const [recurrente, setRecurrente] = useState(initial.recurrente);
   const [notas, setNotas] = useState(initial.notas ?? "");
+  const [clienteId, setClienteId] = useState<string>(initial.cliente_id ?? NO_CLIENT);
 
   function submit() {
     if (!concepto.trim()) {
@@ -107,6 +113,7 @@ export function ExpenseFormDialog(props: CreateProps | EditProps) {
       return;
     }
     start(async () => {
+      const cliente_id = clienteId === NO_CLIENT ? null : clienteId;
       const res =
         props.mode === "create"
           ? await createExpense({
@@ -119,6 +126,7 @@ export function ExpenseFormDialog(props: CreateProps | EditProps) {
               fecha_programada: fecha || null,
               recurrente,
               notas: notas || null,
+              cliente_id,
             })
           : await updateExpense(props.expense.id, {
               categoria,
@@ -129,6 +137,7 @@ export function ExpenseFormDialog(props: CreateProps | EditProps) {
               fecha_programada: fecha || null,
               recurrente,
               notas: notas || null,
+              cliente_id,
             });
       if (res?.error) {
         toast.error(res.error);
@@ -256,6 +265,29 @@ export function ExpenseFormDialog(props: CreateProps | EditProps) {
             />
             Es recurrente (se repite todos los meses)
           </label>
+          {props.clients && props.clients.length > 0 && (
+            <div>
+              <Label className="text-xs">Imputar a cliente (opcional)</Label>
+              <Select value={clienteId} onValueChange={setClienteId}>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_CLIENT}>
+                    Sin cliente (gasto operativo general)
+                  </SelectItem>
+                  {props.clients.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                Si lo imputás a un cliente, se descuenta de su rentabilidad.
+              </p>
+            </div>
+          )}
           <div>
             <Label className="text-xs">Notas</Label>
             <Input

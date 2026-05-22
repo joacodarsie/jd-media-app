@@ -312,6 +312,7 @@ export default async function FinanzasPage() {
             <PaymentFormDialog
               mode="create"
               users={users}
+              clients={clients}
               trigger={
                 <Button size="sm" variant="outline" className="h-7 gap-1 px-2">
                   <Plus className="h-3 w-3" /> Nuevo
@@ -348,6 +349,7 @@ export default async function FinanzasPage() {
           newButton={
             <ExpenseFormDialog
               mode="create"
+              clients={clients}
               trigger={
                 <Button size="sm" variant="outline" className="h-7 gap-1 px-2">
                   <Plus className="h-3 w-3" /> Nuevo
@@ -358,12 +360,26 @@ export default async function FinanzasPage() {
         />
       </div>
 
-      <Link
-        href="/finanzas/movimientos"
-        className="block rounded-md border bg-card px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/40"
-      >
-        Ver historial completo de movimientos →
-      </Link>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Link
+          href="/finanzas/rentabilidad"
+          className="rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40"
+        >
+          <div className="font-semibold">Rentabilidad por cliente →</div>
+          <div className="text-xs text-muted-foreground">
+            Cuánto deja cada cliente neto.
+          </div>
+        </Link>
+        <Link
+          href="/finanzas/movimientos"
+          className="rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40"
+        >
+          <div className="font-semibold">Movimientos →</div>
+          <div className="text-xs text-muted-foreground">
+            Historial unificado de cobros y pagos.
+          </div>
+        </Link>
+      </div>
     </div>
   );
 }

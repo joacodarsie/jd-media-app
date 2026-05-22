@@ -37,6 +37,7 @@ export interface UserForPayment {
 interface BaseProps {
   users: UserForPayment[];
   trigger: React.ReactNode;
+  clients?: { id: string; nombre: string }[];
 }
 
 interface CreateProps extends BaseProps {
@@ -55,8 +56,11 @@ interface EditProps extends BaseProps {
     periodo: string;
     fecha_programada: string;
     notas: string | null;
+    cliente_id?: string | null;
   };
 }
+
+const NO_CLIENT = "__none__";
 
 export function PaymentFormDialog(props: CreateProps | EditProps) {
   const router = useRouter();
@@ -74,6 +78,7 @@ export function PaymentFormDialog(props: CreateProps | EditProps) {
           periodo: currentPeriod(),
           fecha_programada: new Date().toISOString().slice(0, 10),
           notas: null as string | null,
+          cliente_id: null as string | null,
         };
 
   const [userId, setUserId] = useState(initial.user_id);
@@ -83,6 +88,7 @@ export function PaymentFormDialog(props: CreateProps | EditProps) {
   const [periodo, setPeriodo] = useState(initial.periodo);
   const [fecha, setFecha] = useState(initial.fecha_programada);
   const [notas, setNotas] = useState(initial.notas ?? "");
+  const [clienteId, setClienteId] = useState<string>(initial.cliente_id ?? NO_CLIENT);
 
   function submit() {
     if (!userId) {
@@ -99,6 +105,7 @@ export function PaymentFormDialog(props: CreateProps | EditProps) {
       return;
     }
     start(async () => {
+      const cliente_id = clienteId === NO_CLIENT ? null : clienteId;
       const res =
         props.mode === "create"
           ? await createPayment({
@@ -109,6 +116,7 @@ export function PaymentFormDialog(props: CreateProps | EditProps) {
               periodo,
               fecha_programada: fecha,
               notas: notas || null,
+              cliente_id,
             })
           : await updatePayment(props.payment.id, {
               concepto,
@@ -116,6 +124,7 @@ export function PaymentFormDialog(props: CreateProps | EditProps) {
               moneda,
               fecha_programada: fecha,
               notas: notas || null,
+              cliente_id,
             });
       if (res?.error) {
         toast.error(res.error);
@@ -235,6 +244,30 @@ export function PaymentFormDialog(props: CreateProps | EditProps) {
               className="h-9"
             />
           </div>
+          {props.clients && props.clients.length > 0 && (
+            <div>
+              <Label className="text-xs">Imputar a cliente (opcional)</Label>
+              <Select value={clienteId} onValueChange={setClienteId}>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_CLIENT}>
+                    Sin cliente (costo general del equipo)
+                  </SelectItem>
+                  {props.clients.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                Si este pago corresponde a trabajo en un cliente puntual, marcarlo
+                ayuda a calcular su rentabilidad real.
+              </p>
+            </div>
+          )}
         </div>
         <DialogFooter className="gap-2 sm:gap-0">
           {props.mode === "edit" && (

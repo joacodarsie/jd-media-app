@@ -130,6 +130,7 @@ export interface PaymentInput {
   moneda: string;
   fecha_programada: string;
   notas?: string | null;
+  cliente_id?: string | null;
 }
 
 export async function createPayment(input: PaymentInput) {
@@ -142,6 +143,7 @@ export async function createPayment(input: PaymentInput) {
     moneda: input.moneda || "ARS",
     fecha_programada: input.fecha_programada,
     notas: input.notas?.trim() || null,
+    cliente_id: input.cliente_id ?? null,
     creado_por_id: userId,
   });
   if (error) return { error: error.message };
@@ -157,6 +159,7 @@ export async function updatePayment(id: string, input: Partial<PaymentInput>) {
   if (input.moneda !== undefined) patch.moneda = input.moneda;
   if (input.fecha_programada !== undefined) patch.fecha_programada = input.fecha_programada;
   if (input.notas !== undefined) patch.notas = input.notas?.trim() || null;
+  if (input.cliente_id !== undefined) patch.cliente_id = input.cliente_id;
   const { error } = await supabase.from("team_payments").update(patch).eq("id", id);
   if (error) return { error: error.message };
   invalidate();
@@ -226,6 +229,7 @@ export interface ExpenseInput {
   metodo_pago?: string | null;
   recurrente?: boolean;
   notas?: string | null;
+  cliente_id?: string | null;
 }
 
 export async function createExpense(input: ExpenseInput) {
@@ -242,6 +246,7 @@ export async function createExpense(input: ExpenseInput) {
     metodo_pago: input.metodo_pago?.trim() || null,
     recurrente: input.recurrente ?? false,
     notas: input.notas?.trim() || null,
+    cliente_id: input.cliente_id ?? null,
     creado_por_id: userId,
   });
   if (error) return { error: error.message };
@@ -261,6 +266,7 @@ export async function updateExpense(id: string, input: Partial<ExpenseInput>) {
   if (input.fecha_programada !== undefined) patch.fecha_programada = input.fecha_programada;
   if (input.recurrente !== undefined) patch.recurrente = input.recurrente;
   if (input.notas !== undefined) patch.notas = input.notas?.trim() || null;
+  if (input.cliente_id !== undefined) patch.cliente_id = input.cliente_id;
   const { error } = await supabase.from("expenses").update(patch).eq("id", id);
   if (error) return { error: error.message };
   invalidate();

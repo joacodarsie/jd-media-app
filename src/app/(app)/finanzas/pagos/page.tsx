@@ -30,11 +30,11 @@ export default async function PagosPage({
   const monthFilter =
     searchParams.m && /^\d{4}-\d{2}$/.test(searchParams.m) ? searchParams.m : null;
 
-  const [{ data: paymentsData }, { data: usersData }, { data: compsData }] = await Promise.all([
+  const [{ data: paymentsData }, { data: usersData }, { data: compsData }, { data: clientsData }] = await Promise.all([
     supabase
       .from("team_payments")
       .select(
-        "id, user_id, monto, moneda, periodo, concepto, fecha_programada, fecha_pago, metodo_pago, notas, usuario:users!team_payments_user_id_fkey(id,nombre)"
+        "id, user_id, cliente_id, monto, moneda, periodo, concepto, fecha_programada, fecha_pago, metodo_pago, notas, usuario:users!team_payments_user_id_fkey(id,nombre)"
       )
       .order("fecha_programada", { ascending: true }),
     supabase
@@ -45,7 +45,12 @@ export default async function PagosPage({
     supabase
       .from("compensation")
       .select("user_id, monto"),
+    supabase
+      .from("clients")
+      .select("id, nombre")
+      .order("nombre"),
   ]);
+  const clients = (clientsData ?? []) as { id: string; nombre: string }[];
 
   const all = (paymentsData ?? []) as unknown as PaymentTableRow[];
   const usersWithPos = (usersData ?? []) as { id: string; nombre: string; position_id: string | null }[];
@@ -181,7 +186,7 @@ export default async function PagosPage({
         />
       </div>
 
-      <PaymentsTable rows={rows} rates={rates} users={users} />
+      <PaymentsTable rows={rows} rates={rates} users={users} clients={clients} />
 
       {sinComp.length < totalActivos && (
         <Card>

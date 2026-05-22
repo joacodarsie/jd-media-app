@@ -33,10 +33,12 @@ export function PaymentsTable({
   rows,
   rates,
   users,
+  clients,
 }: {
   rows: PaymentTableRow[];
   rates: ExchangeRates;
   users: UserForPayment[];
+  clients?: { id: string; nombre: string }[];
 }) {
   const [q, setQ] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("fecha");
@@ -97,6 +99,7 @@ export function PaymentsTable({
         <PaymentFormDialog
           mode="create"
           users={users}
+          clients={clients}
           trigger={
             <Button size="sm" className="gap-1">
               <Plus className="h-4 w-4" />
@@ -176,6 +179,7 @@ export function PaymentsTable({
                         <PaymentFormDialog
                           mode="edit"
                           users={users}
+                          clients={clients}
                           payment={{
                             id: p.id,
                             user_id: p.user_id,
@@ -185,6 +189,7 @@ export function PaymentsTable({
                             periodo: p.periodo,
                             fecha_programada: p.fecha_programada,
                             notas: p.notas,
+                            cliente_id: (p as unknown as { cliente_id?: string | null }).cliente_id ?? null,
                           }}
                           trigger={
                             <Button

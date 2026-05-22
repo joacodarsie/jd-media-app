@@ -7,6 +7,7 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  KanbanSquare,
   List,
   Plus,
 } from "lucide-react";
@@ -28,10 +29,10 @@ import {
   type ClientForPub,
 } from "@/components/publication-form-dialog";
 import { PublicationDetailDialog } from "@/components/publication-detail-dialog";
-import { updatePublicationDate } from "@/app/(app)/contenidos/actions";
+import { updatePublicationDate, changePublicationStatus } from "@/app/(app)/contenidos/actions";
 
 const DAY_NAMES = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-type Mode = "mes" | "lista";
+type Mode = "mes" | "lista" | "kanban";
 
 const STATUS_ORDER: PublicationStatus[] = [
   "idea",
@@ -66,7 +67,6 @@ export function PublicationsMonth({
   const [hoverKey, setHoverKey] = useState<string | null>(null);
 
   function moveTo(id: string, date: string | null) {
-    // Optimistic UX: limpiar overlay y disparar
     setHoverKey(null);
     setDraggingId(null);
     startMove(async () => {
@@ -76,6 +76,19 @@ export function PublicationsMonth({
         return;
       }
       toast.success(date ? "Movida al " + date : "Sin fecha");
+      router.refresh();
+    });
+  }
+
+  function moveToStatus(id: string, status: PublicationStatus) {
+    setHoverKey(null);
+    setDraggingId(null);
+    startMove(async () => {
+      const res = await changePublicationStatus(id, status);
+      if (res?.error) {
+        toast.error("No se pudo cambiar: " + res.error);
+        return;
+      }
       router.refresh();
     });
   }
@@ -96,7 +109,7 @@ export function PublicationsMonth({
 
   useEffect(() => {
     const v = localStorage.getItem("jd:contenidos:mode") as Mode | null;
-    if (v === "mes" || v === "lista") setMode(v);
+    if (v === "mes" || v === "lista" || v === "kanban") setMode(v);
   }, []);
   useEffect(() => {
     localStorage.setItem("jd:contenidos:mode", mode);
@@ -242,6 +255,7 @@ export function PublicationsMonth({
           {/* Toggle Mes / Lista */}
           <div className="flex items-center rounded-md border bg-card p-0.5">
             <ModeBtn icon={CalendarDays} label="Mes" active={mode === "mes"} onClick={() => setMode("mes")} />
+            <ModeBtn icon={KanbanSquare} label="Kanban" active={mode === "kanban"} onClick={() => setMode("kanban")} />
             <ModeBtn icon={List} label="Lista" active={mode === "lista"} onClick={() => setMode("lista")} />
           </div>
           <PublicationFormDialog
@@ -533,6 +547,72 @@ export function PublicationsMonth({
             </div>
           </div>
         </>
+      ) : mode === "kanban" ? (
+        // Modo kanban — columnas por estado del flujo, drag & drop entre columnas
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          {STATUS_ORDER.map((s) => {
+            const arr = byStatus.get(s) ?? [];
+            const dropHover = hoverKey === "k_" + s && draggingId;
+            return (
+              <div
+                key={s}
+                onDragOver={(e) => {
+                  if (!draggingId) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  const k = "k_" + s;
+                  if (hoverKey !== k) setHoverKey(k);
+                }}
+                onDragLeave={() => {
+                  if (hoverKey === "k_" + s) setHoverKey(null);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const id = e.dataTransfer.getData("text/plain") || draggingId;
+                  if (id) moveToStatus(id, s);
+                }}
+                className={cn(
+                  "flex w-72 shrink-0 flex-col rounded-lg border bg-card transition-colors",
+                  dropHover && "ring-2 ring-inset ring-primary"
+                )}
+              >
+                <div className="flex items-center justify-between border-b px-3 py-2">
+                  <span
+                    className={cn(
+                      "rounded px-2 py-0.5 text-[11px] font-semibold",
+                      PUBLICATION_STATUS_BADGE[s]
+                    )}
+                  >
+                    {PUBLICATION_STATUS_LABEL[s]}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{arr.length}</span>
+                </div>
+                <div className="flex-1 space-y-1.5 overflow-y-auto p-2">
+                  {arr.length === 0 ? (
+                    <p className="px-1 py-3 text-center text-[11px] text-muted-foreground">
+                      Vacío.
+                    </p>
+                  ) : (
+                    arr.map((p) => (
+                      <PubKanbanCard
+                        key={p.id}
+                        pub={p}
+                        clients={clients}
+                        users={users}
+                        onDragStart={(id) => setDraggingId(id)}
+                        onDragEnd={() => {
+                          setDraggingId(null);
+                          setHoverKey(null);
+                        }}
+                        dragging={draggingId === p.id}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       ) : (
         // Modo lista — agrupado por estado del flujo
         <div className="space-y-4">
@@ -560,6 +640,57 @@ export function PublicationsMonth({
         </div>
       )}
     </div>
+  );
+}
+
+function PubKanbanCard({
+  pub,
+  clients,
+  users,
+  onDragStart,
+  onDragEnd,
+  dragging,
+}: {
+  pub: PublicationWithRels;
+  clients: ClientForPub[];
+  users: Pick<AppUser, "id" | "nombre">[];
+  onDragStart?: (id: string) => void;
+  onDragEnd?: () => void;
+  dragging?: boolean;
+}) {
+  const fechaShort = pub.fecha_publicacion
+    ? new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", {
+        day: "2-digit",
+        month: "short",
+      })
+    : null;
+  return (
+    <PublicationDetailDialog
+      publication={pub}
+      clients={clients}
+      users={users}
+      trigger={
+        <button
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData("text/plain", pub.id);
+            e.dataTransfer.effectAllowed = "move";
+            onDragStart?.(pub.id);
+          }}
+          onDragEnd={() => onDragEnd?.()}
+          className={cn(
+            "block w-full cursor-grab rounded-md border bg-background p-2 text-left text-xs transition-colors hover:border-primary/40 active:cursor-grabbing",
+            dragging && "opacity-40"
+          )}
+        >
+          <div className="line-clamp-2 font-medium">{pub.titulo}</div>
+          <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+            <span className="truncate">{pub.cliente?.nombre ?? "—"}</span>
+            <span className="shrink-0">{fechaShort ?? "sin fecha"}</span>
+          </div>
+        </button>
+      }
+    />
   );
 }
 

@@ -13,8 +13,10 @@ import {
   Briefcase,
   BarChart3,
   FileText,
+  FolderOpen,
   Sparkles,
   Wallet,
+  KeyRound,
   Menu,
   LogOut,
   type LucideIcon,
@@ -50,8 +52,10 @@ const ICONS: Record<string, LucideIcon> = {
   Briefcase,
   BarChart3,
   FileText,
+  FolderOpen,
   Sparkles,
   Wallet,
+  KeyRound,
 };
 
 function initials(nombre: string) {

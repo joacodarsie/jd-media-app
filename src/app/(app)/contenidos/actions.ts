@@ -157,6 +157,24 @@ export async function updatePublicationDate(id: string, date: string | null) {
   return { ok: true };
 }
 
+/** Update parcial sólo de los campos de "pieza publicada". */
+export async function updatePublicationFinalFields(
+  id: string,
+  publicacion_url: string | null,
+  resubido_tiktok: boolean
+) {
+  const { supabase } = await ctx();
+  const { data, error } = await supabase
+    .from("publications")
+    .update({ publicacion_url, resubido_tiktok })
+    .eq("id", id)
+    .select("cliente_id")
+    .single();
+  if (error) return { error: error.message };
+  invalidate(data?.cliente_id);
+  return { ok: true };
+}
+
 export async function deletePublication(id: string) {
   const { supabase } = await ctx();
   const { data, error } = await supabase

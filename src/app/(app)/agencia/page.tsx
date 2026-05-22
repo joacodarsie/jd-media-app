@@ -16,7 +16,7 @@ export default async function AgenciaPage() {
   const { data: pages } = await supabase
     .from("agency_pages")
     .select("*")
-    .in("kind", ["fundamentos", "buyer_persona", "accesos"])
+    .in("kind", ["fundamentos", "buyer_persona"])
     .order("kind")
     .order("orden");
 

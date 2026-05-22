@@ -112,12 +112,6 @@ export function PublicationFormDialog({
   const [hashtags, setHashtags] = useState(publication?.hashtags ?? "");
   const [assetUrl, setAssetUrl] = useState(publication?.asset_url ?? "");
   const [refUrl, setRefUrl] = useState(publication?.referencia_url ?? "");
-  const [publicacionUrl, setPublicacionUrl] = useState(
-    (publication as unknown as { publicacion_url?: string })?.publicacion_url ?? ""
-  );
-  const [resubidoTiktok, setResubidoTiktok] = useState<boolean>(
-    (publication as unknown as { resubido_tiktok?: boolean })?.resubido_tiktok ?? false
-  );
   const [audiovisual, setAudiovisual] = useState<string>(
     publication?.audiovisual_id ?? NONE
   );
@@ -161,8 +155,6 @@ export function PublicationFormDialog({
       audiovisual_id: audiovisual === NONE ? null : audiovisual,
       task_id: publication?.task_id ?? null,
       estado: mode === "edit" ? estado : undefined,
-      publicacion_url: publicacionUrl || null,
-      resubido_tiktok: resubidoTiktok,
     };
     start(async () => {
       const res =
@@ -373,25 +365,6 @@ export function PublicationFormDialog({
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-            <div className="space-y-2">
-              <Label>Link a la publicación (una vez subida)</Label>
-              <Input
-                value={publicacionUrl}
-                onChange={(e) => setPublicacionUrl(e.target.value)}
-                placeholder="https://instagram.com/p/…"
-              />
-            </div>
-            <label className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm">
-              <input
-                type="checkbox"
-                checked={resubidoTiktok}
-                onChange={(e) => setResubidoTiktok(e.target.checked)}
-                className="rounded"
-              />
-              <span>Resubido a TikTok</span>
-            </label>
-          </div>
 
           {mode === "edit" && (
             <div className="space-y-2">

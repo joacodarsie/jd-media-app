@@ -151,21 +151,25 @@ export const PUBLICATION_STATUS_LABEL: Record<PublicationStatus, string> = {
   rechazado: "Cambios pedidos",
 };
 
-// Paleta unificada: grises al inicio, fríos durante producción,
-// cálidos en revisión, verde para aprobado/publicado, rojo solo para cambios.
+// Paleta unificada con buen contraste en dark mode (tinte translúcido sobre fondo oscuro).
 export const PUBLICATION_STATUS_BADGE: Record<PublicationStatus, string> = {
-  idea: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
-  en_diseno: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200",
-  guion: "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200",
-  edicion: "bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-950 dark:text-fuchsia-200",
+  idea:
+    "bg-zinc-200 text-zinc-700 dark:bg-zinc-600/50 dark:text-zinc-100",
+  en_diseno:
+    "bg-sky-100 text-sky-800 dark:bg-sky-500/30 dark:text-sky-100",
+  guion:
+    "bg-violet-100 text-violet-800 dark:bg-violet-500/30 dark:text-violet-100",
+  edicion:
+    "bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-500/30 dark:text-fuchsia-100",
   revision_creativa:
-    "bg-yellow-100 text-yellow-900 dark:bg-yellow-950 dark:text-yellow-200",
+    "bg-yellow-200 text-yellow-900 dark:bg-yellow-400/25 dark:text-yellow-100",
   revision_cliente:
-    "bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200",
+    "bg-orange-200 text-orange-900 dark:bg-orange-500/35 dark:text-orange-100",
   aprobado:
-    "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
-  publicado: "bg-emerald-600 text-white dark:bg-emerald-700",
-  rechazado: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200",
+    "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/25 dark:text-emerald-100",
+  publicado: "bg-emerald-600 text-white dark:bg-emerald-500 dark:text-white",
+  rechazado:
+    "bg-rose-200 text-rose-900 dark:bg-rose-500/30 dark:text-rose-100",
 };
 
 export const PUBLICATION_NETWORK_LABEL: Record<PublicationNetwork, string> = {

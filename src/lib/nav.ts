@@ -27,6 +27,7 @@ export const NAV: NavItem[] = [
   { href: "/equipo", label: "Equipo", icon: "Users2" },
   { href: "/equipo/personas", label: "Personas", icon: "Users" },
   { href: "/procesos", label: "Procesos", icon: "FileText" },
+  { href: "/documentos", label: "Documentos", icon: "FolderOpen" },
   { href: "/agencia", label: "Agencia", icon: "Sparkles" },
   { href: "/mi-perfil", label: "Mi perfil", icon: "UserCircle" },
   {
@@ -39,6 +40,12 @@ export const NAV: NavItem[] = [
     href: "/finanzas",
     label: "Finanzas",
     icon: "Wallet",
+    roles: ["admin"],
+  },
+  {
+    href: "/accesos",
+    label: "Accesos",
+    icon: "KeyRound",
     roles: ["admin"],
   },
 ];

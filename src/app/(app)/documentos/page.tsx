@@ -15,6 +15,7 @@ export default async function DocumentosPage() {
     .select(
       "id, titulo, descripcion, categoria, file_name, file_size, mime_type, created_at, subido_por:users!documents_subido_por_id_fkey(id,nombre)"
     )
+    .is("cliente_id", null)
     .order("created_at", { ascending: false });
 
   const docs = (data ?? []) as unknown as DocumentRow[];

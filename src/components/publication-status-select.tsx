@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -46,6 +46,17 @@ export function PublicationStatusSelect({
   const [pendingNote, setPendingNote] = useState<PublicationStatus | null>(null);
   const [notes, setNotes] = useState("");
   const [inlineError, setInlineError] = useState<string | null>(null);
+  // Estado local optimista: refleja el estado mostrado en el SelectTrigger
+  // sin esperar a que el padre rerenderice tras router.refresh().
+  const [localEstado, setLocalEstado] = useState<PublicationStatus>(
+    publication.estado
+  );
+
+  // Si el padre rerendea con un estado nuevo (por router.refresh o cambio externo),
+  // sincronizamos el local.
+  useEffect(() => {
+    setLocalEstado(publication.estado);
+  }, [publication.estado]);
 
   function apply(target: PublicationStatus, finalNote?: string) {
     setInlineError(null);
@@ -62,6 +73,9 @@ export function PublicationStatusSelect({
           toast.error(msg);
           return;
         }
+        // Actualización optimista local: el trigger ya quedó OK en DB,
+        // reflejamos visualmente al instante.
+        setLocalEstado(target);
         toast.success("Estado: " + PUBLICATION_STATUS_LABEL[target]);
         setPendingNote(null);
         setNotes("");
@@ -76,7 +90,7 @@ export function PublicationStatusSelect({
 
   function onChange(target: string) {
     const t = target as PublicationStatus;
-    if (t === publication.estado) return;
+    if (t === localEstado) return;
     if (t === "rechazado") {
       setPendingNote(t);
       setInlineError(null);
@@ -88,10 +102,10 @@ export function PublicationStatusSelect({
   return (
     <div className={cn("space-y-2", className)}>
       <Select
-        // El key forzamos para que Radix resetee al valor canónico cada vez que
-        // el server-side cambia (evita quedar "atascado" en una selección no aplicada).
-        key={publication.estado}
-        value={publication.estado}
+        // El key forzamos que Radix re-monte cuando el estado local cambia,
+        // así el trigger refleja siempre el último valor aplicado.
+        key={localEstado}
+        value={localEstado}
         onValueChange={onChange}
         disabled={pending}
       >
@@ -99,7 +113,7 @@ export function PublicationStatusSelect({
           className={cn(
             "w-full font-medium",
             size === "sm" ? "h-8 text-xs" : "h-9 text-sm",
-            PUBLICATION_STATUS_BADGE[publication.estado]
+            PUBLICATION_STATUS_BADGE[localEstado]
           )}
         >
           <SelectValue />

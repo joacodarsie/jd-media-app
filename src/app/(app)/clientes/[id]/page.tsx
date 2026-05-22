@@ -28,6 +28,7 @@ import { ClientServicesEditor } from "@/components/client-services-editor";
 import { ApprovalLink } from "@/components/approval-link";
 import { ClientStatusToggle } from "@/components/client-status-toggle";
 import { ClientListEditor } from "@/components/client-list-editor";
+import { DocumentsManager, type DocumentRow } from "@/components/documents-manager";
 import type { ClientService } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +57,13 @@ export default async function ClientDetail({
   const me = await requireUser();
   const supabase = createClient();
 
-  const [{ data: client }, { data: tasks }, { data: users }, { data: services }] = await Promise.all([
+  const [
+    { data: client },
+    { data: tasks },
+    { data: users },
+    { data: services },
+    { data: clientDocs },
+  ] = await Promise.all([
     supabase
       .from("clients")
       .select("*, creativa:users!clients_creativa_asignada_id_fkey(id,nombre), cm:users!clients_cm_id_fkey(id,nombre), disenador:users!clients_disenador_id_fkey(id,nombre), audiovisual:users!clients_audiovisual_id_fkey(id,nombre)")
@@ -71,6 +78,13 @@ export default async function ClientDetail({
       .order("fecha_limite", { ascending: true, nullsFirst: false }),
     supabase.from("users").select("id, nombre").eq("activo", true).order("nombre"),
     supabase.from("client_services").select("*").eq("cliente_id", params.id).order("activo", { ascending: false }).order("tipo"),
+    supabase
+      .from("documents")
+      .select(
+        "id, titulo, descripcion, categoria, file_name, file_size, mime_type, created_at, subido_por:users!documents_subido_por_id_fkey(id,nombre)"
+      )
+      .eq("cliente_id", params.id)
+      .order("created_at", { ascending: false }),
   ]);
 
   if (!client) notFound();
@@ -355,6 +369,27 @@ export default async function ClientDetail({
           )}
         </div>
       </div>
+
+      {/* Documentos del cliente (IA los usa como contexto) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
+            Documentos del cliente
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Subí acá el informe diagnóstico, manual de marca, brief o lo que sea
+            específico de este cliente. La IA los va a usar como contexto al
+            sugerir ideas de contenido para esta cuenta.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <DocumentsManager
+            initial={(clientDocs ?? []) as unknown as DocumentRow[]}
+            canEdit={isStaff(me.rol)}
+            clienteId={c.id}
+          />
+        </CardContent>
+      </Card>
 
       {/* Links libres + Redes + Credenciales */}
       <div className="grid gap-4 md:grid-cols-2">

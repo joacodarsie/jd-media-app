@@ -28,6 +28,8 @@ export interface DocumentInput {
   file_name: string;
   file_size: number | null;
   mime_type: string | null;
+  cliente_id?: string | null;
+  usar_en_ia?: boolean;
 }
 
 export async function createDocument(input: DocumentInput) {
@@ -41,33 +43,47 @@ export async function createDocument(input: DocumentInput) {
     file_size: input.file_size,
     mime_type: input.mime_type,
     subido_por_id: me.id,
+    cliente_id: input.cliente_id ?? null,
+    usar_en_ia: input.usar_en_ia ?? true,
   });
   if (error) return { error: error.message };
   revalidatePath("/documentos");
+  if (input.cliente_id) revalidatePath(`/clientes/${input.cliente_id}`);
   return { ok: true };
 }
 
 export async function updateDocument(
   id: string,
-  patch: { titulo?: string; descripcion?: string | null; categoria?: DocumentCategory }
+  patch: {
+    titulo?: string;
+    descripcion?: string | null;
+    categoria?: DocumentCategory;
+    usar_en_ia?: boolean;
+  }
 ) {
   const { supabase } = await ctx();
   const payload: Record<string, unknown> = {};
   if (patch.titulo !== undefined) payload.titulo = patch.titulo.trim();
   if (patch.descripcion !== undefined) payload.descripcion = patch.descripcion?.trim() || null;
   if (patch.categoria !== undefined) payload.categoria = patch.categoria;
-  const { error } = await supabase.from("documents").update(payload).eq("id", id);
+  if (patch.usar_en_ia !== undefined) payload.usar_en_ia = patch.usar_en_ia;
+  const { data, error } = await supabase
+    .from("documents")
+    .update(payload)
+    .eq("id", id)
+    .select("cliente_id")
+    .single();
   if (error) return { error: error.message };
   revalidatePath("/documentos");
+  if (data?.cliente_id) revalidatePath(`/clientes/${data.cliente_id}`);
   return { ok: true };
 }
 
 export async function deleteDocument(id: string) {
   const { supabase } = await ctx();
-  // Obtener storage_path para borrar el archivo también
   const { data: doc } = await supabase
     .from("documents")
-    .select("storage_path")
+    .select("storage_path, cliente_id")
     .eq("id", id)
     .maybeSingle();
   if (doc?.storage_path) {
@@ -76,6 +92,7 @@ export async function deleteDocument(id: string) {
   const { error } = await supabase.from("documents").delete().eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/documentos");
+  if (doc?.cliente_id) revalidatePath(`/clientes/${doc.cliente_id}`);
   return { ok: true };
 }
 

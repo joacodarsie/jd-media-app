@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AIContentSuggester } from "@/components/ai-content-suggester";
 import {
   Select,
   SelectContent,
@@ -234,7 +235,21 @@ export function PublicationFormDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Título interno</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label>Título interno</Label>
+              <AIContentSuggester
+                clienteId={cliente || undefined}
+                tipo={tipo}
+                red={red}
+                onApply={(s) => {
+                  if (s.titulo) setTitulo((cur) => cur || s.titulo);
+                  if (s.copy) setCopy(s.copy);
+                  if (s.hashtags) setHashtags(s.hashtags);
+                  if (s.descripcion) setDescripcion(s.descripcion);
+                  if (s.guion) setGuion(s.guion);
+                }}
+              />
+            </div>
             <Input
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}

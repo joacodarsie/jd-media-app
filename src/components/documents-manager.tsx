@@ -81,9 +81,12 @@ function iconFor(mime: string | null) {
 export function DocumentsManager({
   initial,
   canEdit,
+  clienteId,
 }: {
   initial: DocumentRow[];
   canEdit: boolean;
+  /** Si está presente, los documentos subidos se asocian a este cliente. */
+  clienteId?: string;
 }) {
   const router = useRouter();
   // Usamos `initial` directo — Next nos re-renderiza con datos nuevos en cada router.refresh().
@@ -208,6 +211,7 @@ export function DocumentsManager({
             initialFile={pendingFile}
             clearInitial={() => setPendingFile(null)}
             onDone={() => router.refresh()}
+            clienteId={clienteId}
           />
         )}
         <div className="ml-auto text-sm text-muted-foreground">
@@ -364,12 +368,14 @@ function UploadDialog({
   onDone,
   initialFile,
   clearInitial,
+  clienteId,
 }: {
   open?: boolean;
   onOpenChange?: (v: boolean) => void;
   onDone: () => void;
   initialFile?: File | null;
   clearInitial?: () => void;
+  clienteId?: string;
 }) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = openProp ?? internalOpen;
@@ -444,6 +450,7 @@ function UploadDialog({
         file_name: file.name,
         file_size: file.size,
         mime_type: file.type || null,
+        cliente_id: clienteId ?? null,
       });
       if (res?.error) {
         toast.error(res.error);

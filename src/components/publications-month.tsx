@@ -761,7 +761,7 @@ function PubChip({
           }}
           onDragEnd={() => onDragEnd?.()}
           className={cn(
-            "relative w-full cursor-grab truncate rounded px-1.5 py-1 text-left text-[11px] font-medium active:cursor-grabbing",
+            "flex w-full cursor-grab items-center gap-1 rounded px-1.5 py-1 text-left text-[11px] font-medium active:cursor-grabbing",
             PUBLICATION_STATUS_BADGE[pub.estado],
             dragging && "opacity-40"
           )}
@@ -770,12 +770,14 @@ function PubChip({
           {unseenCount > 0 && (
             <span
               aria-label={`${unseenCount} comentario(s) sin ver`}
-              className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-600 text-[8px] font-bold text-white shadow ring-2 ring-background"
+              className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-red-600 text-[8px] font-bold leading-none text-white"
             >
               {unseenCount > 9 ? "9+" : unseenCount}
             </span>
           )}
-          {PUBLICATION_TYPE_LABEL[pub.tipo]} · {pub.titulo}
+          <span className="truncate">
+            {PUBLICATION_TYPE_LABEL[pub.tipo]} · {pub.titulo}
+          </span>
         </button>
       }
     />

@@ -43,10 +43,12 @@ export function AIContentSuggester({
   const [hint, setHint] = useState("");
   const [pending, start] = useTransition();
   const [suggestion, setSuggestion] = useState<AISuggestion | null>(null);
+  const [docsUsed, setDocsUsed] = useState<string[]>([]);
 
   function reset() {
     setHint("");
     setSuggestion(null);
+    setDocsUsed([]);
   }
 
   function generate() {
@@ -55,6 +57,7 @@ export function AIContentSuggester({
       return;
     }
     setSuggestion(null);
+    setDocsUsed([]);
     start(async () => {
       const res = await suggestPublicationContent({
         cliente_id: clienteId,
@@ -67,6 +70,7 @@ export function AIContentSuggester({
         return;
       }
       setSuggestion(res.suggestion);
+      setDocsUsed(res.docsUsed ?? []);
     });
   }
 
@@ -132,6 +136,12 @@ export function AIContentSuggester({
 
           {suggestion && (
             <div className="space-y-3 rounded-md border bg-card p-3">
+              {docsUsed.length > 0 && (
+                <div className="rounded-md bg-emerald-50 px-2 py-1.5 text-[11px] text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+                  ✓ Leyó {docsUsed.length} doc{docsUsed.length > 1 ? "s" : ""}{" "}
+                  del cliente: <i>{docsUsed.join(", ")}</i>
+                </div>
+              )}
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Idea

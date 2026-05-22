@@ -5,6 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AgencyPageDialog } from "@/components/agency-page-dialog";
+import {
+  TeamCredentialsManager,
+  type TeamRow,
+} from "@/components/team-credentials-manager";
 
 export const dynamic = "force-dynamic";
 
@@ -12,14 +16,22 @@ export default async function AccesosPage() {
   // Restringido a admin SOLAMENTE (no coordinación)
   await requireRole(["admin"]);
   const supabase = createClient();
-  const { data: pages } = await supabase
-    .from("agency_pages")
-    .select("slug, title, content, orden, updated_at")
-    .eq("kind", "accesos")
-    .order("orden")
-    .order("title");
+  const [{ data: pages }, { data: usersData }] = await Promise.all([
+    supabase
+      .from("agency_pages")
+      .select("slug, title, content, orden, updated_at")
+      .eq("kind", "accesos")
+      .order("orden")
+      .order("title"),
+    supabase
+      .from("users")
+      .select("id, nombre, email, rol, area, activo")
+      .order("activo", { ascending: false })
+      .order("nombre"),
+  ]);
 
   const list = pages ?? [];
+  const users = (usersData ?? []) as TeamRow[];
 
   return (
     <div className="space-y-5">
@@ -58,34 +70,41 @@ export default async function AccesosPage() {
         </CardContent>
       </Card>
 
-      {list.length === 0 ? (
-        <div className="rounded-md border border-dashed bg-muted/30 p-8 text-center text-sm text-muted-foreground">
-          Sin accesos cargados todavía. Tocá <b>Nuevo acceso</b> para empezar.
-        </div>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {list.map((p) => (
-            <Link
-              key={p.slug}
-              href={`/agencia/${p.slug}`}
-              className="group rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <KeyRound className="h-4 w-4 text-primary" />
-                  <h3 className="font-semibold">{p.title}</h3>
+      <section className="space-y-2">
+        <h2 className="text-base font-semibold">Accesos guardados</h2>
+        {list.length === 0 ? (
+          <div className="rounded-md border border-dashed bg-muted/30 p-8 text-center text-sm text-muted-foreground">
+            Sin accesos cargados todavía. Tocá <b>Nuevo acceso</b> para empezar.
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {list.map((p) => (
+              <Link
+                key={p.slug}
+                href={`/agencia/${p.slug}`}
+                className="group rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <KeyRound className="h-4 w-4 text-primary" />
+                    <h3 className="font-semibold">{p.title}</h3>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                 </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-              </div>
-              {p.content && (
-                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                  {p.content.slice(0, 120)}…
-                </p>
-              )}
-            </Link>
-          ))}
-        </div>
-      )}
+                {p.content && (
+                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                    {p.content.slice(0, 120)}…
+                  </p>
+                )}
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <TeamCredentialsManager users={users} />
+      </section>
     </div>
   );
 }

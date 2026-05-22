@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -86,28 +86,42 @@ export function DocumentsManager({
   canEdit: boolean;
 }) {
   const router = useRouter();
-  const [docs] = useState(initial);
+  // Usamos `initial` directo — Next nos re-renderiza con datos nuevos en cada router.refresh().
+  // (Si pusiéramos useState, congelaríamos el array y no veríamos los cambios.)
+  const docs = initial;
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<DocumentCategory | "all">("all");
   const [dragOver, setDragOver] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
 
+  // Trackeo cuántos elementos están en "drag enter" para no parpadear cuando
+  // el cursor cruza un hijo. Cuando vuelve a 0 → ocultamos overlay.
+  const dragCountRef = useRef(0);
+
+  function onDragEnter(e: React.DragEvent) {
+    if (!canEdit) return;
+    if (!e.dataTransfer.types.includes("Files")) return;
+    dragCountRef.current += 1;
+    setDragOver(true);
+  }
   function onDragOver(e: React.DragEvent) {
     if (!canEdit) return;
+    if (!e.dataTransfer.types.includes("Files")) return;
     e.preventDefault();
-    if (e.dataTransfer.types.includes("Files")) {
-      e.dataTransfer.dropEffect = "copy";
-      setDragOver(true);
-    }
+    e.dataTransfer.dropEffect = "copy";
   }
   function onDragLeave(e: React.DragEvent) {
-    if (e.currentTarget === e.target) setDragOver(false);
+    if (!canEdit) return;
+    if (!e.dataTransfer.types.includes("Files")) return;
+    dragCountRef.current = Math.max(0, dragCountRef.current - 1);
+    if (dragCountRef.current === 0) setDragOver(false);
   }
   function onDrop(e: React.DragEvent) {
+    dragCountRef.current = 0;
+    setDragOver(false);
     if (!canEdit) return;
     e.preventDefault();
-    setDragOver(false);
     const f = e.dataTransfer.files?.[0];
     if (!f) return;
     if (f.size > MAX_MB * 1024 * 1024) {
@@ -117,6 +131,23 @@ export function DocumentsManager({
     setPendingFile(f);
     setUploadOpen(true);
   }
+
+  // Salvavidas: si el drag termina en cualquier parte (incluso fuera de la ventana),
+  // limpiamos el overlay. Evita el "overlay pegado".
+  useEffect(() => {
+    function clear() {
+      dragCountRef.current = 0;
+      setDragOver(false);
+    }
+    window.addEventListener("dragend", clear);
+    window.addEventListener("drop", clear);
+    window.addEventListener("mouseup", clear);
+    return () => {
+      window.removeEventListener("dragend", clear);
+      window.removeEventListener("drop", clear);
+      window.removeEventListener("mouseup", clear);
+    };
+  }, []);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -133,6 +164,7 @@ export function DocumentsManager({
   return (
     <div
       className="relative space-y-4"
+      onDragEnter={onDragEnter}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}

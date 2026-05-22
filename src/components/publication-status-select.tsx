@@ -7,6 +7,7 @@ import { changePublicationStatus } from "@/app/(app)/contenidos/actions";
 import {
   PUBLICATION_STATUS_LABEL,
   PUBLICATION_STATUS_BADGE,
+  PUBLICATION_STATUS_DOT,
 } from "@/lib/constants";
 import type { PublicationStatus, Publication } from "@/lib/types";
 import {
@@ -94,8 +95,8 @@ export function PublicationStatusSelect({
               <span className="flex items-center gap-2">
                 <span
                   className={cn(
-                    "inline-block h-2 w-2 rounded-full",
-                    PUBLICATION_STATUS_BADGE[s]
+                    "inline-block h-2.5 w-2.5 shrink-0 rounded-full",
+                    PUBLICATION_STATUS_DOT[s]
                   )}
                 />
                 {PUBLICATION_STATUS_LABEL[s]}

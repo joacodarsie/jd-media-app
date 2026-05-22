@@ -14,6 +14,7 @@ import {
 import {
   PUBLICATION_NETWORK_LABEL,
   PUBLICATION_STATUS_BADGE,
+  PUBLICATION_STATUS_DOT,
   PUBLICATION_STATUS_LABEL,
   PUBLICATION_TYPE_LABEL,
 } from "@/lib/constants";
@@ -623,8 +624,8 @@ export function PublicationsMonth({
                 <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   <span
                     className={cn(
-                      "inline-block h-2 w-2 rounded-full",
-                      PUBLICATION_STATUS_BADGE[s].split(" ")[0]
+                      "inline-block h-2.5 w-2.5 rounded-full",
+                      PUBLICATION_STATUS_DOT[s]
                     )}
                   />
                   {PUBLICATION_STATUS_LABEL[s]} · {arr.length}

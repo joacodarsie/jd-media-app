@@ -158,22 +158,35 @@ export const PUBLICATION_STATUS_LABEL: Record<PublicationStatus, string> = {
 //   → rojo solo cuando se cancela
 export const PUBLICATION_STATUS_BADGE: Record<PublicationStatus, string> = {
   idea:
-    "bg-slate-200 text-slate-700 dark:bg-slate-500/35 dark:text-slate-100",
+    "bg-slate-200 text-slate-700 dark:bg-slate-500/40 dark:text-slate-100",
   en_diseno:
-    "bg-blue-200 text-blue-800 dark:bg-blue-500/30 dark:text-blue-100",
+    "bg-blue-200 text-blue-800 dark:bg-blue-500/40 dark:text-blue-100",
   guion:
-    "bg-indigo-200 text-indigo-800 dark:bg-indigo-500/30 dark:text-indigo-100",
+    "bg-indigo-200 text-indigo-800 dark:bg-indigo-500/40 dark:text-indigo-100",
   edicion:
-    "bg-purple-200 text-purple-800 dark:bg-purple-500/30 dark:text-purple-100",
+    "bg-purple-200 text-purple-800 dark:bg-purple-500/40 dark:text-purple-100",
   revision_creativa:
-    "bg-amber-200 text-amber-900 dark:bg-amber-500/30 dark:text-amber-100",
+    "bg-amber-200 text-amber-900 dark:bg-amber-500/40 dark:text-amber-100",
   revision_cliente:
-    "bg-orange-200 text-orange-900 dark:bg-orange-500/35 dark:text-orange-100",
+    "bg-orange-200 text-orange-900 dark:bg-orange-500/45 dark:text-orange-100",
   aprobado:
-    "bg-lime-200 text-lime-900 dark:bg-lime-500/30 dark:text-lime-100",
+    "bg-lime-200 text-lime-900 dark:bg-lime-500/40 dark:text-lime-100",
   publicado: "bg-emerald-600 text-white dark:bg-emerald-500 dark:text-white",
   rechazado:
-    "bg-rose-200 text-rose-900 dark:bg-rose-500/30 dark:text-rose-100",
+    "bg-rose-200 text-rose-900 dark:bg-rose-500/40 dark:text-rose-100",
+};
+
+// Colores sólidos para los dots/indicadores (visibles en cualquier fondo).
+export const PUBLICATION_STATUS_DOT: Record<PublicationStatus, string> = {
+  idea: "bg-slate-400",
+  en_diseno: "bg-blue-500",
+  guion: "bg-indigo-500",
+  edicion: "bg-purple-500",
+  revision_creativa: "bg-amber-500",
+  revision_cliente: "bg-orange-500",
+  aprobado: "bg-lime-500",
+  publicado: "bg-emerald-500",
+  rechazado: "bg-rose-500",
 };
 
 export const PUBLICATION_NETWORK_LABEL: Record<PublicationNetwork, string> = {

@@ -81,7 +81,7 @@ export default async function ClientDetail({
     supabase
       .from("documents")
       .select(
-        "id, titulo, descripcion, categoria, file_name, file_size, mime_type, created_at, subido_por:users!documents_subido_por_id_fkey(id,nombre)"
+        "id, titulo, descripcion, categoria, file_name, file_size, mime_type, created_at, cliente_id, texto_extraido, texto_extraido_at, subido_por:users!documents_subido_por_id_fkey(id,nombre)"
       )
       .eq("cliente_id", params.id)
       .order("created_at", { ascending: false }),

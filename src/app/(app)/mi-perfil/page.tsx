@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Compensation, Position } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CompensationCard } from "@/components/compensation-card";
+import { WhatsAppOptinCard } from "@/components/whatsapp-optin-card";
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +66,15 @@ export default async function MiPerfilPage() {
       <CompensationCard
         compensation={(comp as Compensation) ?? null}
         position={(position as Position) ?? null}
+      />
+
+      <WhatsAppOptinCard
+        initialPhone={
+          (me as unknown as { whatsapp_phone?: string | null }).whatsapp_phone ?? null
+        }
+        initialOptin={
+          (me as unknown as { whatsapp_optin?: boolean }).whatsapp_optin ?? false
+        }
       />
     </div>
   );

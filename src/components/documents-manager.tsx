@@ -13,7 +13,11 @@ import {
   Search,
   Loader2,
   Pencil,
+  Sparkles,
+  Check,
 } from "lucide-react";
+import { summarizeClientDocument } from "@/app/(app)/documentos/ai-summarize";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,6 +64,9 @@ export interface DocumentRow {
   mime_type: string | null;
   created_at: string;
   subido_por: { id: string; nombre: string } | null;
+  texto_extraido?: string | null;
+  texto_extraido_at?: string | null;
+  cliente_id?: string | null;
 }
 
 const MAX_MB = 50;
@@ -317,6 +324,12 @@ function DocCard({ doc, canEdit }: { doc: DocumentRow; canEdit: boolean }) {
           {doc.descripcion && (
             <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{doc.descripcion}</p>
           )}
+          {doc.cliente_id && doc.texto_extraido && (
+            <p className="mt-1 inline-flex items-center gap-1 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+              <Check className="h-2.5 w-2.5" />
+              IA leyó este doc
+            </p>
+          )}
         </div>
       </div>
       <div className="mt-2 flex items-center justify-between gap-2">
@@ -327,6 +340,9 @@ function DocCard({ doc, canEdit }: { doc: DocumentRow; canEdit: boolean }) {
           className="flex items-center gap-1 opacity-60 group-hover:opacity-100"
           onClick={(e) => e.stopPropagation()}
         >
+          {canEdit && doc.cliente_id && (
+            <SummarizeButton doc={doc} />
+          )}
           <Button
             size="icon"
             variant="ghost"
@@ -359,6 +375,52 @@ function DocCard({ doc, canEdit }: { doc: DocumentRow; canEdit: boolean }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function SummarizeButton({ doc }: { doc: DocumentRow }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const isImage = doc.mime_type?.startsWith("image/");
+  if (isImage) return null;
+
+  function run(e: React.MouseEvent) {
+    e.stopPropagation();
+    const re = !!doc.texto_extraido;
+    if (re && !confirm("¿Volver a generar el resumen? Va a reemplazar el actual.")) return;
+    start(async () => {
+      const res = await summarizeClientDocument(doc.id);
+      if ("error" in res) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success(re ? "Resumen regenerado" : "Resumen generado");
+      router.refresh();
+    });
+  }
+
+  return (
+    <Button
+      size="icon"
+      variant="ghost"
+      className="h-7 w-7"
+      onClick={run}
+      disabled={pending}
+      title={doc.texto_extraido ? "Regenerar resumen IA" : "Generar resumen con IA para usar como contexto"}
+    >
+      {pending ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : (
+        <Sparkles
+          className={cn(
+            "h-3.5 w-3.5",
+            doc.texto_extraido
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-primary"
+          )}
+        />
+      )}
+    </Button>
   );
 }
 

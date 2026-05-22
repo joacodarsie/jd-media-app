@@ -9,6 +9,7 @@ import {
   TeamCredentialsManager,
   type TeamRow,
 } from "@/components/team-credentials-manager";
+import { WaConfigCard } from "@/components/wa-config-card";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,15 @@ export default async function AccesosPage() {
   // Restringido a admin SOLAMENTE (no coordinación)
   await requireRole(["admin"]);
   const supabase = createClient();
-  const [{ data: pages }, { data: usersData }] = await Promise.all([
+  const [
+    { data: pages },
+    { data: usersData },
+    { data: secret },
+    pendCount,
+    sentCount,
+    failedCount,
+    { count: optinCount },
+  ] = await Promise.all([
     supabase
       .from("agency_pages")
       .select("slug, title, content, orden, updated_at")
@@ -28,10 +37,40 @@ export default async function AccesosPage() {
       .select("id, nombre, email, rol, area, activo, permisos")
       .order("activo", { ascending: false })
       .order("nombre"),
+    supabase
+      .from("app_secrets")
+      .select("valor")
+      .eq("clave", "wa_queue_secret")
+      .maybeSingle(),
+    supabase
+      .from("notification_queue")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pendiente"),
+    supabase
+      .from("notification_queue")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "enviado"),
+    supabase
+      .from("notification_queue")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "fallido"),
+    supabase
+      .from("users")
+      .select("id", { count: "exact", head: true })
+      .eq("whatsapp_optin", true)
+      .not("whatsapp_phone", "is", null),
   ]);
 
   const list = pages ?? [];
   const users = (usersData ?? []) as TeamRow[];
+  const hasSecret = !!secret?.valor;
+  const waStats = {
+    pendiente: pendCount.count ?? 0,
+    enviado: sentCount.count ?? 0,
+    fallido: failedCount.count ?? 0,
+    optinUsers: optinCount ?? 0,
+  };
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 
   return (
     <div className="space-y-5">
@@ -104,6 +143,10 @@ export default async function AccesosPage() {
 
       <section>
         <TeamCredentialsManager users={users} />
+      </section>
+
+      <section>
+        <WaConfigCard hasSecret={hasSecret} stats={waStats} baseUrl={baseUrl} />
       </section>
     </div>
   );

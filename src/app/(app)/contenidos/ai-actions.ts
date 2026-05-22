@@ -28,6 +28,7 @@ interface DocRow {
   storage_path: string;
   file_size: number | null;
   mime_type: string | null;
+  texto_extraido: string | null;
 }
 
 interface ClientContext {
@@ -71,11 +72,13 @@ export async function suggestPublicationContent(args: {
       .eq("activo", true),
     sb
       .from("documents")
-      .select("id, titulo, categoria, descripcion, storage_path, file_size, mime_type")
+      .select(
+        "id, titulo, categoria, descripcion, storage_path, file_size, mime_type, texto_extraido"
+      )
       .eq("cliente_id", args.cliente_id)
       .eq("usar_en_ia", true)
       .order("created_at", { ascending: false })
-      .limit(MAX_DOCS_TO_READ * 2), // tomamos más por si algunos fallan al descargar
+      .limit(MAX_DOCS_TO_READ * 2),
     sb
       .from("publications")
       .select("titulo, copy, tipo, red")
@@ -108,6 +111,17 @@ export async function suggestPublicationContent(args: {
       docsSkipped.push({ titulo: d.titulo, reason: "límite de docs alcanzado" });
       continue;
     }
+
+    // Fast path: si ya tenemos texto_extraido, lo usamos sin re-descargar el PDF.
+    if (d.texto_extraido && d.texto_extraido.trim().length > 50) {
+      docBlocks.push({
+        type: "text",
+        text: `[Resumen estructurado de "${d.titulo}" (${d.categoria})${d.descripcion ? ` — ${d.descripcion}` : ""}]\n---\n${d.texto_extraido}\n---`,
+      });
+      docsUsed.push(d.titulo + " (resumen)");
+      continue;
+    }
+
     const sizeOk = !d.file_size || d.file_size <= MAX_BYTES_PER_DOC;
     if (!sizeOk) {
       docsSkipped.push({ titulo: d.titulo, reason: "archivo muy grande" });

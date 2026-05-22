@@ -20,6 +20,7 @@ import { TaskFormDialog } from "@/components/task-form-dialog";
 import { DeleteTaskButton } from "@/components/delete-task-button";
 import { TaskLinks } from "@/components/task-links";
 import { TaskComments } from "@/components/task-comments";
+import { TaskTimer, type TimeEntry } from "@/components/task-timer";
 import { Pencil } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +40,7 @@ export default async function TaskDetail({
     { data: clients },
     { data: history },
     { data: linkedPub },
+    { data: timeEntries },
   ] = await Promise.all([
     supabase
       .from("tasks")
@@ -69,6 +71,14 @@ export default async function TaskDetail({
       .select("id, titulo, estado, tipo, red, fecha_publicacion, cliente:clients(id,nombre)")
       .eq("task_id", params.id)
       .maybeSingle(),
+    supabase
+      .from("task_time_entries")
+      .select(
+        "id, user_id, started_at, stopped_at, duration_seg, notas, autor:users!task_time_entries_user_id_fkey(id,nombre)"
+      )
+      .eq("task_id", params.id)
+      .order("started_at", { ascending: false })
+      .limit(50),
   ]);
 
   if (!task) notFound();
@@ -191,6 +201,19 @@ export default async function TaskDetail({
           }
         />
       </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Tiempo en esta tarea</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TaskTimer
+            taskId={t.id}
+            entries={(timeEntries ?? []) as unknown as TimeEntry[]}
+            currentUserId={me.id}
+          />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

@@ -32,37 +32,59 @@ export default async function TaskDetail({
   const me = await requireUser();
   const supabase = createClient();
 
-  const [{ data: task }, { data: comments }, { data: users }, { data: clients }, { data: history }] =
-    await Promise.all([
-      supabase
-        .from("tasks")
-        .select(
-          "*, cliente:clients(id,nombre), asignado:users!tasks_asignado_a_id_fkey(id,nombre,avatar_url), creador:users!tasks_creado_por_id_fkey(id,nombre), aprobador:users!tasks_aprobador_id_fkey(id,nombre)"
-        )
-        .eq("id", params.id)
-        .maybeSingle(),
-      supabase
-        .from("comments")
-        .select("*, autor:users(id,nombre,avatar_url)")
-        .eq("task_id", params.id)
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("users")
-        .select("id,nombre")
-        .eq("activo", true)
-        .order("nombre"),
-      supabase.from("clients").select("id,nombre").order("nombre"),
-      supabase
-        .from("task_history")
-        .select("id, campo, valor_anterior, valor_nuevo, created_at, user_id")
-        .eq("task_id", params.id)
-        .order("created_at", { ascending: false })
-        .limit(50),
-    ]);
+  const [
+    { data: task },
+    { data: comments },
+    { data: users },
+    { data: clients },
+    { data: history },
+    { data: linkedPub },
+  ] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select(
+        "*, cliente:clients(id,nombre), asignado:users!tasks_asignado_a_id_fkey(id,nombre,avatar_url), creador:users!tasks_creado_por_id_fkey(id,nombre), aprobador:users!tasks_aprobador_id_fkey(id,nombre)"
+      )
+      .eq("id", params.id)
+      .maybeSingle(),
+    supabase
+      .from("comments")
+      .select("*, autor:users(id,nombre,avatar_url)")
+      .eq("task_id", params.id)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("users")
+      .select("id,nombre")
+      .eq("activo", true)
+      .order("nombre"),
+    supabase.from("clients").select("id,nombre").order("nombre"),
+    supabase
+      .from("task_history")
+      .select("id, campo, valor_anterior, valor_nuevo, created_at, user_id")
+      .eq("task_id", params.id)
+      .order("created_at", { ascending: false })
+      .limit(50),
+    supabase
+      .from("publications")
+      .select("id, titulo, estado, tipo, red, fecha_publicacion, cliente:clients(id,nombre)")
+      .eq("task_id", params.id)
+      .maybeSingle(),
+  ]);
 
   if (!task) notFound();
   const t = task as TaskWithRels;
   const due = dueState(t.fecha_limite, t.estado);
+
+  // Pub vinculada (cuando esta tarea fue creada desde una publicación del calendario)
+  const pub = (linkedPub as unknown as {
+    id: string;
+    titulo: string;
+    estado: string;
+    tipo: string;
+    red: string;
+    fecha_publicacion: string | null;
+    cliente: { id: string; nombre: string } | null;
+  } | null) ?? null;
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
@@ -72,6 +94,35 @@ export default async function TaskDetail({
       >
         <ArrowLeft className="h-4 w-4" /> Volver a tareas
       </Link>
+
+      {pub && (
+        <Link
+          href={`/contenidos${pub.cliente ? `?cliente=${pub.cliente.id}` : ""}`}
+          className="block rounded-md border border-primary/30 bg-primary/5 p-3 transition-colors hover:bg-primary/10"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-primary">
+                Pieza vinculada del calendario
+              </div>
+              <div className="truncate text-sm font-medium">{pub.titulo}</div>
+              <div className="text-xs text-muted-foreground">
+                {pub.tipo} · {pub.red}
+                {pub.cliente && ` · ${pub.cliente.nombre}`}
+                {pub.fecha_publicacion &&
+                  ` · ${new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", { day: "2-digit", month: "short" })}`}
+              </div>
+            </div>
+            <span className="rounded bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground">
+              Abrir contenido →
+            </span>
+          </div>
+          <p className="mt-2 text-[10px] text-muted-foreground">
+            El estado de esta tarea está sincronizado con el de la pieza. Cuando la marcás
+            <b> completada</b>, la pieza pasa a <b>revisión creativa</b> automáticamente.
+          </p>
+        </Link>
+      )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">

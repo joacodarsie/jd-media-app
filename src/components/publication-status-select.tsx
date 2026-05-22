@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 import { changePublicationStatus } from "@/app/(app)/contenidos/actions";
 import {
   PUBLICATION_STATUS_LABEL,
@@ -44,22 +45,32 @@ export function PublicationStatusSelect({
   const [pending, start] = useTransition();
   const [pendingNote, setPendingNote] = useState<PublicationStatus | null>(null);
   const [notes, setNotes] = useState("");
+  const [inlineError, setInlineError] = useState<string | null>(null);
 
   function apply(target: PublicationStatus, finalNote?: string) {
+    setInlineError(null);
     start(async () => {
-      const res = await changePublicationStatus(
-        publication.id,
-        target,
-        finalNote
-      );
-      if (res?.error) {
-        toast.error("No se pudo cambiar: " + res.error);
-        return;
+      try {
+        const res = await changePublicationStatus(
+          publication.id,
+          target,
+          finalNote
+        );
+        if (res?.error) {
+          const msg = "No se pudo cambiar: " + res.error;
+          setInlineError(msg);
+          toast.error(msg);
+          return;
+        }
+        toast.success("Estado: " + PUBLICATION_STATUS_LABEL[target]);
+        setPendingNote(null);
+        setNotes("");
+        router.refresh();
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Error desconocido";
+        setInlineError(msg);
+        toast.error(msg);
       }
-      toast.success("Estado: " + PUBLICATION_STATUS_LABEL[target]);
-      setPendingNote(null);
-      setNotes("");
-      router.refresh();
     });
   }
 
@@ -68,6 +79,7 @@ export function PublicationStatusSelect({
     if (t === publication.estado) return;
     if (t === "rechazado") {
       setPendingNote(t);
+      setInlineError(null);
       return;
     }
     apply(t);
@@ -76,6 +88,9 @@ export function PublicationStatusSelect({
   return (
     <div className={cn("space-y-2", className)}>
       <Select
+        // El key forzamos para que Radix resetee al valor canónico cada vez que
+        // el server-side cambia (evita quedar "atascado" en una selección no aplicada).
+        key={publication.estado}
         value={publication.estado}
         onValueChange={onChange}
         disabled={pending}
@@ -118,15 +133,23 @@ export function PublicationStatusSelect({
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Ej: cambiar el copy del primer slide, color del fondo más oscuro…"
             className="w-full rounded-md border bg-background p-2 text-xs"
+            disabled={pending}
           />
+          {inlineError && (
+            <p className="rounded bg-red-100 px-2 py-1 text-[11px] text-red-700 dark:bg-red-950/40 dark:text-red-300">
+              {inlineError}
+            </p>
+          )}
           <div className="flex justify-end gap-2">
             <button
               type="button"
               onClick={() => {
                 setPendingNote(null);
                 setNotes("");
+                setInlineError(null);
               }}
-              className="text-xs text-muted-foreground hover:text-foreground"
+              disabled={pending}
+              className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
             >
               Cancelar
             </button>
@@ -139,10 +162,11 @@ export function PublicationStatusSelect({
                 }
                 apply("rechazado", notes);
               }}
-              disabled={pending}
-              className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+              disabled={pending || !notes.trim()}
+              className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
-              Confirmar
+              {pending && <Loader2 className="h-3 w-3 animate-spin" />}
+              {pending ? "Guardando…" : "Confirmar"}
             </button>
           </div>
         </div>

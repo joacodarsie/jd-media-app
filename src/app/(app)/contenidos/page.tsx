@@ -9,7 +9,12 @@ export default async function ContenidosPage() {
   await requireUser();
   const supabase = createClient();
 
-  const [{ data: pubs }, { data: users }, { data: clients }] = await Promise.all([
+  const [
+    { data: pubs },
+    { data: users },
+    { data: clients },
+    { data: unseenComments },
+  ] = await Promise.all([
     supabase
       .from("publications")
       .select(
@@ -17,8 +22,21 @@ export default async function ContenidosPage() {
       )
       .order("fecha_publicacion", { ascending: true, nullsFirst: false }),
     supabase.from("users").select("id, nombre").eq("activo", true).order("nombre"),
-    supabase.from("clients").select("id, nombre, estado, cm_id, disenador_id, audiovisual_id").order("nombre"),
+    supabase
+      .from("clients")
+      .select("id, nombre, estado, cm_id, disenador_id, audiovisual_id")
+      .order("nombre"),
+    supabase
+      .from("client_pub_comments")
+      .select("publication_id")
+      .is("visto_at", null),
   ]);
+
+  // Map: publication_id → cantidad de comentarios sin ver del cliente
+  const unseenByPub: Record<string, number> = {};
+  for (const c of (unseenComments ?? []) as { publication_id: string }[]) {
+    unseenByPub[c.publication_id] = (unseenByPub[c.publication_id] ?? 0) + 1;
+  }
 
   return (
     <div className="space-y-5">
@@ -40,6 +58,7 @@ export default async function ContenidosPage() {
         publications={(pubs ?? []) as PublicationWithRels[]}
         clients={clients ?? []}
         users={users ?? []}
+        unseenByPub={unseenByPub}
       />
     </div>
   );

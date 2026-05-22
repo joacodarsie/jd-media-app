@@ -56,11 +56,13 @@ export function PublicationsMonth({
   clients,
   users,
   defaultClientId,
+  unseenByPub,
 }: {
   publications: PublicationWithRels[];
   clients: ClientForPub[];
   users: Pick<AppUser, "id" | "nombre">[];
   defaultClientId?: string;
+  unseenByPub?: Record<string, number>;
 }) {
   const router = useRouter();
   const [, startMove] = useTransition();
@@ -483,6 +485,7 @@ export function PublicationsMonth({
                           pub={p}
                           clients={clients}
                           users={users}
+                          unseenCount={unseenByPub?.[p.id] ?? 0}
                           onDragStart={(id) => setDraggingId(id)}
                           onDragEnd={() => {
                             setDraggingId(null);
@@ -725,6 +728,7 @@ function PubChip({
   pub,
   clients,
   users,
+  unseenCount = 0,
   onDragStart,
   onDragEnd,
   dragging,
@@ -732,10 +736,16 @@ function PubChip({
   pub: PublicationWithRels;
   clients: ClientForPub[];
   users: Pick<AppUser, "id" | "nombre">[];
+  unseenCount?: number;
   onDragStart?: (id: string) => void;
   onDragEnd?: () => void;
   dragging?: boolean;
 }) {
+  const titleWithBadge =
+    unseenCount > 0
+      ? `${pub.titulo} · ${PUBLICATION_STATUS_LABEL[pub.estado]} · ${unseenCount} comentario(s) del cliente sin ver`
+      : `${pub.titulo} · ${PUBLICATION_STATUS_LABEL[pub.estado]}`;
+
   return (
     <PublicationDetailDialog
       publication={pub}
@@ -751,12 +761,20 @@ function PubChip({
           }}
           onDragEnd={() => onDragEnd?.()}
           className={cn(
-            "w-full cursor-grab truncate rounded px-1.5 py-1 text-left text-[11px] font-medium active:cursor-grabbing",
+            "relative w-full cursor-grab truncate rounded px-1.5 py-1 text-left text-[11px] font-medium active:cursor-grabbing",
             PUBLICATION_STATUS_BADGE[pub.estado],
             dragging && "opacity-40"
           )}
-          title={`${pub.titulo} · ${PUBLICATION_STATUS_LABEL[pub.estado]}`}
+          title={titleWithBadge}
         >
+          {unseenCount > 0 && (
+            <span
+              aria-label={`${unseenCount} comentario(s) sin ver`}
+              className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-600 text-[8px] font-bold text-white shadow ring-2 ring-background"
+            >
+              {unseenCount > 9 ? "9+" : unseenCount}
+            </span>
+          )}
           {PUBLICATION_TYPE_LABEL[pub.tipo]} · {pub.titulo}
         </button>
       }

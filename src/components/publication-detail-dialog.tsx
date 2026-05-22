@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarDays, ExternalLink, Trash2, Pencil } from "lucide-react";
+import Link from "next/link";
+import { CalendarDays, ExternalLink, Trash2, Pencil, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import {
   deletePublication,
@@ -98,6 +99,17 @@ export function PublicationDetailDialog({
             {p.creador && <span>· creó {p.creador.nombre}</span>}
             {p.audiovisual && <span>· asignado {p.audiovisual.nombre}</span>}
           </div>
+
+          {p.task_id && (
+            <Link
+              href={`/tareas/${p.task_id}`}
+              className="inline-flex items-center gap-1.5 rounded-md border bg-primary/5 px-2 py-1 text-xs hover:bg-primary/10"
+            >
+              <ListChecks className="h-3.5 w-3.5 text-primary" />
+              Ver tarea vinculada
+              <ExternalLink className="h-3 w-3" />
+            </Link>
+          )}
 
           {p.guion && (
             <div className="rounded-md border border-indigo-200 bg-indigo-50/50 p-3 dark:border-indigo-900 dark:bg-indigo-950/30">

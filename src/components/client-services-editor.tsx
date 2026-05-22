@@ -17,6 +17,7 @@ import {
 } from "@/lib/constants";
 import type { ClientService } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { ServiceHistory } from "@/components/service-history";
 import {
   Dialog,
   DialogContent,
@@ -69,6 +70,10 @@ export function ClientServicesEditor({
           ))}
         </div>
       )}
+
+      <div className="pt-1">
+        <ServiceHistory clienteId={clienteId} />
+      </div>
     </div>
   );
 }

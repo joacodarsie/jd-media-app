@@ -5,6 +5,7 @@ import { ensureDueNotifications } from "@/lib/notifications";
 import type { Notification } from "@/lib/types";
 import { AppShell } from "@/components/app-shell";
 import { NotificationBell } from "@/components/notification-bell";
+import type { QuickLinkRow } from "@/components/quick-links-manager";
 
 const AIChat = dynamic(
   () => import("@/components/ai-chat").then((m) => m.AIChat),
@@ -21,7 +22,7 @@ export default async function AppLayout({
 
   await ensureDueNotifications(supabase, user.id);
 
-  const [{ data: items }, { count }] = await Promise.all([
+  const [{ data: items }, { count }, { data: links }] = await Promise.all([
     supabase
       .from("notifications")
       .select("*")
@@ -33,6 +34,10 @@ export default async function AppLayout({
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id)
       .eq("leida", false),
+    supabase
+      .from("quick_links")
+      .select("id, label, url, icon, orden")
+      .order("orden"),
   ]);
 
   const bell = (
@@ -43,7 +48,11 @@ export default async function AppLayout({
   );
 
   return (
-    <AppShell user={user} bell={bell}>
+    <AppShell
+      user={user}
+      bell={bell}
+      quickLinks={(links ?? []) as QuickLinkRow[]}
+    >
       {children}
       <AIChat />
     </AppShell>

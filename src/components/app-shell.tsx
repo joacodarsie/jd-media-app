@@ -29,6 +29,8 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { GlobalSearch } from "@/components/global-search";
+import { QuickLinksMenu } from "@/components/quick-links-menu";
+import type { QuickLinkRow } from "@/components/quick-links-manager";
 import {
   Avatar,
   AvatarFallback,
@@ -118,10 +120,12 @@ function SidebarContent({
 export function AppShell({
   user,
   bell,
+  quickLinks,
   children,
 }: {
   user: AppUser;
   bell?: React.ReactNode;
+  quickLinks?: QuickLinkRow[];
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -154,6 +158,9 @@ export function AppShell({
           </Button>
           <GlobalSearch />
           <div className="flex-1" />
+          {quickLinks && quickLinks.length > 0 && (
+            <QuickLinksMenu links={quickLinks} />
+          )}
           {bell}
           <ThemeToggle />
           <DropdownMenu>

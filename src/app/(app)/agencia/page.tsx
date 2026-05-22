@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Markdown } from "@/components/markdown";
 import { AgencyPageDialog } from "@/components/agency-page-dialog";
+import { QuickLinksManager, type QuickLinkRow } from "@/components/quick-links-manager";
 
 export const dynamic = "force-dynamic";
 
@@ -13,13 +14,21 @@ export default async function AgenciaPage() {
   const me = await requireUser();
   const supabase = createClient();
 
-  const { data: pages } = await supabase
-    .from("agency_pages")
-    .select("*")
-    .in("kind", ["fundamentos", "buyer_persona"])
-    .order("kind")
-    .order("orden");
+  const [pagesRes, linksRes] = await Promise.all([
+    supabase
+      .from("agency_pages")
+      .select("*")
+      .in("kind", ["fundamentos", "buyer_persona"])
+      .order("kind")
+      .order("orden"),
+    supabase
+      .from("quick_links")
+      .select("id, label, url, icon, orden")
+      .order("orden"),
+  ]);
 
+  const pages = pagesRes.data;
+  const links: QuickLinkRow[] = (linksRes.data ?? []) as QuickLinkRow[];
   const canEdit = isStaff(me.rol);
 
   return (
@@ -43,6 +52,8 @@ export default async function AgenciaPage() {
           />
         )}
       </div>
+
+      <QuickLinksManager links={links} canEdit={canEdit} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         {(pages ?? []).map((p) => (

@@ -62,3 +62,52 @@ export async function deleteAgencyPage(slug: string) {
   revalidatePath("/procesos");
   return { ok: true };
 }
+
+// ---------- Quick Links ----------
+
+export interface QuickLinkInput {
+  id?: string;
+  label: string;
+  url: string;
+  icon: string | null;
+  orden: number;
+}
+
+function cleanQuickLink(input: QuickLinkInput) {
+  return {
+    label: input.label.trim(),
+    url: input.url.trim(),
+    icon: input.icon?.trim() || null,
+    orden: Number.isFinite(input.orden) ? input.orden : 0,
+  };
+}
+
+export async function upsertQuickLink(input: QuickLinkInput) {
+  const { supabase } = await ctx();
+  const payload = cleanQuickLink(input);
+  if (!payload.label || !payload.url) {
+    return { error: "Faltan label o URL." };
+  }
+  if (input.id) {
+    const { error } = await supabase
+      .from("quick_links")
+      .update(payload)
+      .eq("id", input.id);
+    if (error) return { error: error.message };
+  } else {
+    const { error } = await supabase.from("quick_links").insert(payload);
+    if (error) return { error: error.message };
+  }
+  revalidatePath("/agencia");
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+export async function deleteQuickLink(id: string) {
+  const { supabase } = await ctx();
+  const { error } = await supabase.from("quick_links").delete().eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/agencia");
+  revalidatePath("/", "layout");
+  return { ok: true };
+}

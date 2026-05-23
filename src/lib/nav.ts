@@ -31,6 +31,7 @@ export const NAV: NavItem[] = [
   { href: "/equipo/personas", label: "Personas", icon: "Users" },
   { href: "/procesos", label: "Procesos", icon: "FileText" },
   { href: "/documentos", label: "Documentos", icon: "FolderOpen" },
+  { href: "/jdmedia", label: "JDmedIA", icon: "MessageCircle" },
   { href: "/agencia", label: "Agencia", icon: "Sparkles" },
   { href: "/mi-perfil", label: "Mi perfil", icon: "UserCircle" },
   {

@@ -48,7 +48,7 @@ export function ServiceDialog({
   const [name, setName] = useState(service?.name ?? "");
   const [description, setDescription] = useState(service?.description ?? "");
   const [color, setColor] = useState(service?.color ?? "#FFD400");
-  const [icon, setIcon] = useState(service?.icon ?? "Sparkles");
+  const icon = service?.icon ?? "Sparkles";
   const [areas, setAreas] = useState((service?.areas ?? []).join(", "));
   const [orden, setOrden] = useState<number>(
     service?.orden ?? defaultOrden ?? 100

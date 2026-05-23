@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -51,12 +50,16 @@ Ayudás al equipo a operar JD Media: planificar, analizar clientes, escribir cop
 Profesional pero cercano. Sin emoji a menos que el usuario los use. Sin disclaimers innecesarios.`;
 }
 
-const MAX_HISTORY_MSGS = 40; // Limitamos el contexto para no explotar tokens.
+const MAX_HISTORY_MSGS = 40;
 const MAX_USER_TEXT = 12_000;
+
+function sseEvent(obj: unknown) {
+  return `data: ${JSON.stringify(obj)}\n\n`;
+}
 
 export async function POST(req: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: "Falta ANTHROPIC_API_KEY." }, { status: 500 });
+    return new Response("Falta ANTHROPIC_API_KEY.", { status: 500 });
   }
   const me = await requireUser();
   const supabase = createClient();
@@ -68,7 +71,7 @@ export async function POST(req: Request) {
 
   const text = (body.text ?? "").toString().slice(0, MAX_USER_TEXT).trim();
   if (!text) {
-    return NextResponse.json({ error: "Mensaje vacío." }, { status: 400 });
+    return new Response("Mensaje vacío.", { status: 400 });
   }
 
   // 1) Asegurar conversación
@@ -81,10 +84,7 @@ export async function POST(req: Request) {
       .eq("user_id", me.id)
       .maybeSingle();
     if (!conv) {
-      return NextResponse.json(
-        { error: "Conversación no encontrada." },
-        { status: 404 }
-      );
+      return new Response("Conversación no encontrada.", { status: 404 });
     }
   } else {
     const initialTitle = text.slice(0, 60);
@@ -94,8 +94,8 @@ export async function POST(req: Request) {
       .select("id")
       .single();
     if (convErr || !created) {
-      return NextResponse.json(
-        { error: "No se pudo crear la conversación: " + (convErr?.message ?? "") },
+      return new Response(
+        "No se pudo crear la conversación: " + (convErr?.message ?? ""),
         { status: 500 }
       );
     }
@@ -107,10 +107,10 @@ export async function POST(req: Request) {
     .from("ai_messages")
     .insert({ conversation_id: conversationId, role: "user", content: text });
   if (insErr) {
-    return NextResponse.json({ error: insErr.message }, { status: 500 });
+    return new Response(insErr.message, { status: 500 });
   }
 
-  // 3) Cargar historial de la conversación
+  // 3) Cargar historial
   const { data: history } = await supabase
     .from("ai_messages")
     .select("role, content")
@@ -124,66 +124,124 @@ export async function POST(req: Request) {
   }));
 
   const system = systemPrompt(me.nombre, me.area, me.rol);
+  const finalConversationId = conversationId;
 
-  // 4) Tool-use loop (igual que el chat flotante)
-  let iter = 0;
-  let finalText = "";
-  while (iter < 6) {
-    iter++;
-    let response: Anthropic.Message;
-    try {
-      response = await client.messages.create({
-        model: MODEL,
-        max_tokens: 4096,
-        system,
-        tools: TOOLS,
-        messages,
-      });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return NextResponse.json({ error: msg, conversationId }, { status: 500 });
-    }
+  // 4) Stream SSE
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      function send(obj: unknown) {
+        controller.enqueue(encoder.encode(sseEvent(obj)));
+      }
 
-    messages.push({ role: "assistant", content: response.content });
+      send({ type: "meta", conversationId: finalConversationId });
 
-    const turnText = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("\n");
-    if (turnText) finalText = turnText;
+      let accumulatedText = "";
+      let iter = 0;
 
-    if (response.stop_reason !== "tool_use") break;
+      try {
+        while (iter < 6) {
+          iter++;
 
-    const toolUses = response.content.filter(
-      (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
-    );
-    const toolResults: Anthropic.ToolResultBlockParam[] = [];
-    for (const tu of toolUses) {
-      const res = await runTool(tu.name, tu.input as Record<string, unknown>, me.id);
-      toolResults.push({
-        type: "tool_result",
-        tool_use_id: tu.id,
-        content: JSON.stringify(res).slice(0, 8000),
-        is_error: !res.ok,
-      });
-    }
-    messages.push({ role: "user", content: toolResults });
-  }
+          const turnText = await streamOneTurn({
+            messages,
+            system,
+            onDelta: (d) => {
+              accumulatedText += d;
+              send({ type: "delta", text: d });
+            },
+          });
 
-  // 5) Guardar respuesta del assistant
-  if (finalText) {
-    await supabase
-      .from("ai_messages")
-      .insert({ conversation_id: conversationId, role: "assistant", content: finalText });
-    // Bump updated_at de la conversación para que ordene por reciente
-    await supabase
-      .from("ai_conversations")
-      .update({ updated_at: new Date().toISOString() })
-      .eq("id", conversationId);
-  }
+          if (turnText.stopReason !== "tool_use") {
+            break;
+          }
 
-  return NextResponse.json({
-    reply: finalText,
-    conversationId,
+          // Hay tool_use: ejecutarlas y seguir
+          send({ type: "status", text: "Consultando datos…" });
+
+          const toolUses = turnText.content.filter(
+            (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
+          );
+          const toolResults: Anthropic.ToolResultBlockParam[] = [];
+          for (const tu of toolUses) {
+            const res = await runTool(
+              tu.name,
+              tu.input as Record<string, unknown>,
+              me.id
+            );
+            toolResults.push({
+              type: "tool_result",
+              tool_use_id: tu.id,
+              content: JSON.stringify(res).slice(0, 8000),
+              is_error: !res.ok,
+            });
+          }
+          messages.push({ role: "user", content: toolResults });
+        }
+
+        // Guardar respuesta final en DB
+        if (accumulatedText.trim()) {
+          await supabase.from("ai_messages").insert({
+            conversation_id: finalConversationId,
+            role: "assistant",
+            content: accumulatedText,
+          });
+          await supabase
+            .from("ai_conversations")
+            .update({ updated_at: new Date().toISOString() })
+            .eq("id", finalConversationId);
+        }
+
+        send({ type: "done" });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        send({ type: "error", message: msg });
+      } finally {
+        controller.close();
+      }
+    },
   });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    },
+  });
+}
+
+async function streamOneTurn({
+  messages,
+  system,
+  onDelta,
+}: {
+  messages: Anthropic.MessageParam[];
+  system: string;
+  onDelta: (delta: string) => void;
+}): Promise<{
+  content: Anthropic.ContentBlock[];
+  stopReason: Anthropic.Message["stop_reason"];
+}> {
+  const messageStream = client.messages.stream({
+    model: MODEL,
+    max_tokens: 4096,
+    system,
+    tools: TOOLS,
+    messages,
+  });
+
+  messageStream.on("text", (delta) => {
+    onDelta(delta);
+  });
+
+  const final = await messageStream.finalMessage();
+  // Append assistant turn al historial para la próxima iteración
+  messages.push({ role: "assistant", content: final.content });
+
+  return {
+    content: final.content,
+    stopReason: final.stop_reason,
+  };
 }

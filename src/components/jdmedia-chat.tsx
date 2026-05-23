@@ -56,48 +56,94 @@ export function JdmediaChat({
     if (!content || sending) return;
     setInput("");
     setSending(true);
-    setMessages((curr) => [...curr, { role: "user", content }]);
+    setMessages((curr) => [
+      ...curr,
+      { role: "user", content },
+      { role: "assistant", content: "" },
+    ]);
+
+    let newConvId: string | null = null;
+    let gotError = false;
 
     try {
       const res = await fetch("/api/jdmedia/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          conversationId,
-          text: content,
-        }),
+        body: JSON.stringify({ conversationId, text: content }),
       });
-      const data = (await res.json()) as {
-        reply?: string;
-        conversationId?: string;
-        error?: string;
-      };
-      if (!res.ok || data.error) {
-        toast.error(data.error || "Error inesperado");
-        setMessages((curr) => curr.slice(0, -1));
-        setSending(false);
+      if (!res.ok || !res.body) {
+        const errText = await res.text().catch(() => "Error inesperado");
+        toast.error(errText || "Error inesperado");
+        setMessages((curr) => curr.slice(0, -2));
         return;
       }
-      setMessages((curr) => [
-        ...curr,
-        { role: "assistant", content: data.reply ?? "" },
-      ]);
 
-      // Si era una conversación nueva, actualizar URL y refrescar sidebar
-      if (!conversationId && data.conversationId) {
-        setConversationId(data.conversationId);
-        router.replace(`/jdmedia?c=${data.conversationId}`);
-        router.refresh();
-      } else {
-        // Sólo refrescar la sidebar (no recargar mensajes)
-        router.refresh();
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // Procesar eventos SSE separados por \n\n
+        let sepIdx: number;
+        while ((sepIdx = buffer.indexOf("\n\n")) !== -1) {
+          const rawEvent = buffer.slice(0, sepIdx);
+          buffer = buffer.slice(sepIdx + 2);
+          const line = rawEvent.startsWith("data: ")
+            ? rawEvent.slice(6)
+            : rawEvent;
+          if (!line.trim()) continue;
+          let ev: {
+            type: string;
+            text?: string;
+            conversationId?: string;
+            message?: string;
+          };
+          try {
+            ev = JSON.parse(line);
+          } catch {
+            continue;
+          }
+
+          if (ev.type === "meta" && ev.conversationId) {
+            newConvId = ev.conversationId;
+          } else if (ev.type === "delta" && ev.text) {
+            setMessages((curr) => {
+              const copy = curr.slice();
+              const last = copy[copy.length - 1];
+              if (last && last.role === "assistant") {
+                copy[copy.length - 1] = {
+                  role: "assistant",
+                  content: last.content + ev.text!,
+                };
+              }
+              return copy;
+            });
+          } else if (ev.type === "error") {
+            gotError = true;
+            toast.error(ev.message || "Error del servidor");
+            setMessages((curr) => curr.slice(0, -2));
+          }
+        }
       }
     } catch (e) {
+      gotError = true;
       toast.error("No se pudo enviar: " + (e instanceof Error ? e.message : ""));
-      setMessages((curr) => curr.slice(0, -1));
+      setMessages((curr) => curr.slice(0, -2));
     } finally {
       setSending(false);
       textareaRef.current?.focus();
+
+      if (!gotError && newConvId) {
+        if (!conversationId) {
+          setConversationId(newConvId);
+          router.replace(`/jdmedia?c=${newConvId}`);
+        }
+        router.refresh();
+      }
     }
   }
 
@@ -149,38 +195,40 @@ export function JdmediaChat({
           </div>
         ) : (
           <div className="mx-auto max-w-3xl space-y-4">
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "flex",
-                  m.role === "user" ? "justify-end" : "justify-start"
-                )}
-              >
+            {messages.map((m, i) => {
+              const last = i === messages.length - 1;
+              const emptyAssistant =
+                m.role === "assistant" && !m.content && last && sending;
+              return (
                 <div
+                  key={i}
                   className={cn(
-                    "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm",
-                    m.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-foreground"
+                    "flex",
+                    m.role === "user" ? "justify-end" : "justify-start"
                   )}
                 >
-                  {m.role === "assistant" ? (
-                    <Markdown>{m.content}</Markdown>
-                  ) : (
-                    <p className="whitespace-pre-wrap">{m.content}</p>
-                  )}
+                  <div
+                    className={cn(
+                      "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm",
+                      m.role === "user"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-foreground"
+                    )}
+                  >
+                    {emptyAssistant ? (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Pensando…
+                      </div>
+                    ) : m.role === "assistant" ? (
+                      <Markdown>{m.content}</Markdown>
+                    ) : (
+                      <p className="whitespace-pre-wrap">{m.content}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-            {sending && (
-              <div className="flex justify-start">
-                <div className="flex items-center gap-2 rounded-2xl bg-muted px-4 py-2.5 text-sm text-muted-foreground">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Pensando…
-                </div>
-              </div>
-            )}
+              );
+            })}
             <div ref={bottomRef} />
           </div>
         )}

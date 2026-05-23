@@ -199,7 +199,7 @@ export function AgendaView({
   initialFrom: string;
   initialTo: string;
 }) {
-  const [view, setView] = useState<ViewMode>("list");
+  const [view, setView] = useState<ViewMode>("month");
   const [cursor, setCursor] = useState<Date>(() => new Date());
   // Cache de fetches: rangeKey -> events
   const cacheRef = useRef<Map<string, CalendarEvent[]>>(new Map());

@@ -1,7 +1,4 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { Calendar, Video, MapPin, ExternalLink, Loader2 } from "lucide-react";
+import { Calendar, Video, MapPin, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface CalendarEvent {
@@ -34,22 +31,15 @@ function formatWhen(start: string) {
   });
 }
 
-export function UpcomingMeetingsCard() {
-  const [events, setEvents] = useState<CalendarEvent[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch("/api/google/events")
-      .then((r) => r.json())
-      .then((j) => {
-        if (j.error) setError(j.error);
-        else setEvents(j.events ?? []);
-      })
-      .catch((e) => setError(String(e)));
-  }, []);
-
-  if (error)
-    return null; // silencioso si falla; el card no aporta si no hay calendar conectado
+export function UpcomingMeetingsCard({
+  events,
+  hasConnections,
+}: {
+  events: CalendarEvent[];
+  hasConnections: boolean;
+}) {
+  // Si no hay conexiones, no renderizar nada — el user todavía no setea Calendar.
+  if (!hasConnections) return null;
 
   return (
     <Card>
@@ -59,18 +49,8 @@ export function UpcomingMeetingsCard() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2 text-sm">
-        {events === null ? (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Cargando…
-          </div>
-        ) : events.length === 0 ? (
-          <p className="text-muted-foreground">
-            No hay reuniones próximas. Conectá tu Calendar desde{" "}
-            <a href="/mi-perfil" className="underline">
-              Mi perfil
-            </a>
-            .
-          </p>
+        {events.length === 0 ? (
+          <p className="text-muted-foreground">No hay reuniones próximas.</p>
         ) : (
           events.slice(0, 6).map((e) => (
             <div key={`${e.source_email}-${e.id}`} className="rounded-md border p-2">
@@ -82,6 +62,7 @@ export function UpcomingMeetingsCard() {
                     target="_blank"
                     rel="noreferrer"
                     className="text-muted-foreground hover:text-foreground"
+                    aria-label="Abrir en Google Calendar"
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>

@@ -23,12 +23,18 @@ export default async function AgendaPage() {
     mine: c.owner_user_id === me.id,
   }));
 
-  // Initial fetch SSR: últimos 7 + próximos 22 (cubre la vista Lista por defecto).
+  // Initial fetch SSR: grilla del mes actual (≈42 días) — cubre Mes default + Lista + Semana.
   const now = new Date();
-  const start = new Date(now);
-  start.setHours(0, 0, 0, 0);
-  const from = new Date(start.getTime() - 7 * 86400000);
-  const to = new Date(start.getTime() + 22 * 86400000);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  // startOfWeek (lunes) del primer día del mes
+  const dayOfWeek = monthStart.getDay();
+  const monStartDiff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const from = new Date(monthStart);
+  from.setDate(from.getDate() + monStartDiff);
+  from.setHours(0, 0, 0, 0);
+  const to = new Date(from);
+  to.setDate(to.getDate() + 42);
+  to.setHours(23, 59, 59, 999);
 
   let initialEvents: Awaited<ReturnType<typeof listEventsForUser>> = [];
   if (connections.length > 0) {

@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdmin } from "@/lib/supabase/admin";
+import { listEventsForUser } from "@/lib/google-calendar";
 import { PRIORITY_ORDER } from "@/lib/constants";
 import type { PublicationWithRels, TaskWithRels } from "@/lib/types";
 import { dueState } from "@/lib/dates";
@@ -30,14 +32,19 @@ export default async function DashboardPage() {
   const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
   const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
 
-  // Clientes donde el user está asignado como CM, diseñador o audiovisual
-  const { data: myClients } = await supabase
-    .from("clients")
-    .select("id")
-    .or(`cm_id.eq.${user.id},disenador_id.eq.${user.id},audiovisual_id.eq.${user.id}`);
-  const myClientIds = (myClients ?? []).map((c) => c.id);
-
-  const [{ data: taskData }, { data: pubData }, { data: clientPubsToday }] = await Promise.all([
+  // Paralelizo: myClients, tasks, pubs y calendar (estos no dependen entre sí).
+  const admin = createAdmin();
+  const inTwoWeeks = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const [
+    { data: myClients },
+    { data: taskData },
+    { data: pubData },
+    { data: calConns },
+  ] = await Promise.all([
+    supabase
+      .from("clients")
+      .select("id")
+      .or(`cm_id.eq.${user.id},disenador_id.eq.${user.id},audiovisual_id.eq.${user.id}`),
     supabase
       .from("tasks")
       .select(
@@ -50,27 +57,35 @@ export default async function DashboardPage() {
       .select(
         "id, titulo, fecha_publicacion, estado, red, tipo, cliente:clients(id,nombre)"
       )
-      .or(
-        `creado_por_id.eq.${user.id},audiovisual_id.eq.${user.id}`
-      )
+      .or(`creado_por_id.eq.${user.id},audiovisual_id.eq.${user.id}`)
       .gte("fecha_publicacion", today.toISOString())
       .lte("fecha_publicacion", inAWeek.toISOString())
       .order("fecha_publicacion", { ascending: true })
       .limit(5),
-    // Pubs de HOY de los clientes donde el user es responsable (CM/diseñador/AV)
-    myClientIds.length > 0
-      ? supabase
-          .from("publications")
-          .select(
-            "id, titulo, fecha_publicacion, estado, red, tipo, cliente:clients(id,nombre)"
-          )
-          .in("cliente_id", myClientIds)
-          .gte("fecha_publicacion", startOfDay.toISOString())
-          .lte("fecha_publicacion", endOfDay.toISOString())
-          .order("fecha_publicacion", { ascending: true })
-          .limit(10)
-      : Promise.resolve({ data: [] }),
+    admin
+      .from("google_calendar_connections")
+      .select("id")
+      .or(`owner_user_id.eq.${user.id},visibility.eq.shared`)
+      .limit(1),
   ]);
+  const hasCalendarConnections = (calConns ?? []).length > 0;
+  const calendarEvents = hasCalendarConnections
+    ? await listEventsForUser(user.id, today.toISOString(), inTwoWeeks.toISOString()).catch(() => [])
+    : [];
+  const myClientIds = (myClients ?? []).map((c) => c.id);
+
+  const { data: clientPubsToday } = myClientIds.length > 0
+    ? await supabase
+        .from("publications")
+        .select(
+          "id, titulo, fecha_publicacion, estado, red, tipo, cliente:clients(id,nombre)"
+        )
+        .in("cliente_id", myClientIds)
+        .gte("fecha_publicacion", startOfDay.toISOString())
+        .lte("fecha_publicacion", endOfDay.toISOString())
+        .order("fecha_publicacion", { ascending: true })
+        .limit(10)
+    : { data: [] };
 
   const tasks = (taskData ?? []) as TaskWithRels[];
   tasks.sort((a, b) => PRIORITY_ORDER[a.prioridad] - PRIORITY_ORDER[b.prioridad]);
@@ -175,7 +190,10 @@ export default async function DashboardPage() {
         </div>
 
         <div className="space-y-3">
-          <UpcomingMeetingsCard />
+          <UpcomingMeetingsCard
+            events={calendarEvents}
+            hasConnections={hasCalendarConnections}
+          />
 
           {/* Pubs de hoy de los clientes que coordinás */}
           {pubsHoy.length > 0 && (

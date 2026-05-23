@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { JdmediaChat } from "@/components/jdmedia-chat";
+import { JdmediaChat, type ChatAttachment } from "@/components/jdmedia-chat";
 import { ConversationsSidebar } from "@/components/jdmedia-conversations-sidebar";
 
 export const dynamic = "force-dynamic";
@@ -27,20 +27,75 @@ export default async function JdmediaPage({
     updated_at: string;
   }[];
 
-  // Si pidieron una conversación puntual via ?c=, validamos que sea del usuario
   const activeId = searchParams.c ?? null;
   if (activeId && !convList.some((c) => c.id === activeId)) {
     redirect("/jdmedia");
   }
 
-  let messages: { id: string; role: "user" | "assistant"; content: string }[] = [];
+  type RawMsg = { id: string; role: "user" | "assistant"; content: string };
+  type RawAtt = {
+    id: string;
+    message_id: string;
+    name: string;
+    mime_type: string;
+    storage_path: string;
+    size: number | null;
+  };
+
+  let messages: {
+    id: string;
+    role: "user" | "assistant";
+    content: string;
+    attachments: ChatAttachment[];
+  }[] = [];
+
   if (activeId) {
-    const { data } = await supabase
-      .from("ai_messages")
-      .select("id, role, content")
-      .eq("conversation_id", activeId)
-      .order("created_at", { ascending: true });
-    messages = (data ?? []) as typeof messages;
+    const [{ data: rawMsgs }, { data: rawAtts }] = await Promise.all([
+      supabase
+        .from("ai_messages")
+        .select("id, role, content")
+        .eq("conversation_id", activeId)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("ai_attachments")
+        .select(
+          "id, message_id, name, mime_type, storage_path, size, ai_messages!inner(conversation_id)"
+        )
+        .eq("ai_messages.conversation_id", activeId),
+    ]);
+
+    const attsByMsg = new Map<string, RawAtt[]>();
+    for (const a of (rawAtts ?? []) as unknown as RawAtt[]) {
+      if (!attsByMsg.has(a.message_id)) attsByMsg.set(a.message_id, []);
+      attsByMsg.get(a.message_id)!.push(a);
+    }
+
+    // Crear signed URLs (válidas 1h) para visualizar/descargar
+    const allPaths: string[] = [];
+    for (const arr of attsByMsg.values()) {
+      for (const a of arr) allPaths.push(a.storage_path);
+    }
+    const signedUrlMap = new Map<string, string>();
+    if (allPaths.length > 0) {
+      const { data: signed } = await supabase.storage
+        .from("documents")
+        .createSignedUrls(allPaths, 60 * 60);
+      for (const s of signed ?? []) {
+        if (s?.signedUrl && s.path) signedUrlMap.set(s.path, s.signedUrl);
+      }
+    }
+
+    messages = ((rawMsgs ?? []) as RawMsg[]).map((m) => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      attachments: (attsByMsg.get(m.id) ?? []).map((a) => ({
+        name: a.name,
+        mime_type: a.mime_type,
+        url: signedUrlMap.get(a.storage_path) ?? "",
+        size: a.size ?? undefined,
+      })),
+    }));
   }
 
   return (

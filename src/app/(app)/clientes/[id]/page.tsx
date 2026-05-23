@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { requireUser, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdmin } from "@/lib/supabase/admin";
+import { listEventsForUser } from "@/lib/google-calendar";
 import { CLIENT_STATUS_LABEL } from "@/lib/constants";
 import { fmtDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -30,6 +32,7 @@ import { ApprovalLink } from "@/components/approval-link";
 import { ClientStatusToggle } from "@/components/client-status-toggle";
 import { ClientListEditor } from "@/components/client-list-editor";
 import { DocumentsManager, type DocumentRow } from "@/components/documents-manager";
+import { ClientMeetingsCard } from "@/components/client-meetings-card";
 import type { ClientService } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -58,12 +61,14 @@ export default async function ClientDetail({
   const me = await requireUser();
   const supabase = createClient();
 
+  const admin = createAdmin();
   const [
     { data: client },
     { data: tasks },
     { data: users },
     { data: services },
     { data: clientDocs },
+    { data: calConns },
   ] = await Promise.all([
     supabase
       .from("clients")
@@ -86,9 +91,35 @@ export default async function ClientDetail({
       )
       .eq("cliente_id", params.id)
       .order("created_at", { ascending: false }),
+    admin
+      .from("google_calendar_connections")
+      .select("id")
+      .or(`owner_user_id.eq.${me.id},visibility.eq.shared`)
+      .limit(1),
   ]);
 
   if (!client) notFound();
+
+  // Eventos del Calendar que matcheen este cliente.
+  let clientEvents: Awaited<ReturnType<typeof listEventsForUser>> = [];
+  if ((calConns ?? []).length > 0) {
+    const now = new Date();
+    const in30 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    try {
+      const all = await listEventsForUser(me.id, now.toISOString(), in30.toISOString());
+      const nameLc = (client as Client).nombre.toLowerCase();
+      const emailLc = ((client as unknown as { contacto_email?: string }).contacto_email ?? "").toLowerCase();
+      clientEvents = all.filter((e) => {
+        if (e.status === "cancelled") return false;
+        const title = (e.summary ?? "").toLowerCase();
+        if (title.includes(nameLc)) return true;
+        if (emailLc && (e.attendees ?? []).some((a) => a.email?.toLowerCase() === emailLc)) return true;
+        return false;
+      });
+    } catch {
+      /* silencioso */
+    }
+  }
   const c = client as ClientWithCreativa;
   const allTasks = (tasks ?? []) as TaskWithRels[];
   const activas = allTasks.filter((t) => t.estado !== "completada");
@@ -341,6 +372,8 @@ export default async function ClientDetail({
               </CardContent>
             </Card>
           )}
+
+          <ClientMeetingsCard events={clientEvents} />
 
           {(c.contacto_nombre || c.contacto_email || c.contacto_telefono) && (
             <Card>

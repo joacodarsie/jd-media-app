@@ -192,6 +192,66 @@ export async function setChannelMembers(channelId: string, memberIds: string[]) 
   return { ok: true, added: toAdd.length, removed: toRemove.length };
 }
 
+/**
+ * Devuelve el canal DM entre el usuario actual y `otherUserId`.
+ * Si no existe, lo crea con ambos miembros.
+ */
+export async function getOrCreateDM(otherUserId: string) {
+  const { supabase, userId } = await ctx();
+  if (!otherUserId || otherUserId === userId) {
+    return { error: "Usuario inválido." };
+  }
+
+  // Buscar DM existente: canal kind=dm con exactamente estos 2 miembros.
+  const { data: existing } = await supabase
+    .from("team_channels")
+    .select(
+      "id, kind, members:team_channel_members(user_id)"
+    )
+    .eq("kind", "dm");
+  type RawCh = {
+    id: string;
+    kind: string;
+    members: { user_id: string }[];
+  };
+  for (const ch of (existing ?? []) as RawCh[]) {
+    const ids = ch.members.map((m) => m.user_id);
+    if (
+      ids.length === 2 &&
+      ids.includes(userId) &&
+      ids.includes(otherUserId)
+    ) {
+      return { ok: true, id: ch.id };
+    }
+  }
+
+  // Crear nuevo canal DM. Nombre canónico para debug; la UI no lo muestra.
+  const canon = [userId, otherUserId].sort().join(":");
+  const { data: created, error } = await supabase
+    .from("team_channels")
+    .insert({
+      kind: "dm",
+      name: `dm:${canon}`.slice(0, 60),
+      created_by: userId,
+    })
+    .select("id")
+    .single();
+  if (error || !created) {
+    return { error: error?.message ?? "No se pudo crear el DM." };
+  }
+
+  const { error: memErr } = await supabase
+    .from("team_channel_members")
+    .insert([
+      { channel_id: created.id, user_id: userId },
+      { channel_id: created.id, user_id: otherUserId },
+    ]);
+  if (memErr) return { error: memErr.message };
+
+  revalidatePath("/chat");
+  return { ok: true, id: created.id };
+}
+
 export async function deleteMessage(messageId: string, channelId: string) {
   const { supabase } = await ctx();
   const { error } = await supabase

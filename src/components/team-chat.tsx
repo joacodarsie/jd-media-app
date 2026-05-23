@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   createChannel,
   deleteMessage,
+  getOrCreateDM,
   sendMessage,
   setChannelMembers,
 } from "@/app/(app)/chat/actions";
@@ -33,8 +34,10 @@ export interface ChatChannel {
   id: string;
   name: string;
   description: string | null;
+  kind: "public" | "dm";
   updated_at: string;
   unread: number;
+  peer: { id: string; nombre: string; avatar_url: string | null } | null;
 }
 
 export interface ChatMessageRow {
@@ -109,20 +112,27 @@ export function ChatLayout({
       />
       <div className="flex min-w-0 flex-1 flex-col">
         {activeChannelId ? (
-          <ChannelView
-            key={activeChannelId}
-            channelId={activeChannelId}
-            channelName={
-              channels.find((c) => c.id === activeChannelId)?.name ?? "canal"
-            }
-            channelDescription={
-              channels.find((c) => c.id === activeChannelId)?.description ?? null
-            }
-            currentUserId={currentUserId}
-            initialMessages={initialMessages}
-            initialMembers={initialMembers}
-            users={users}
-          />
+          (() => {
+            const active = channels.find((c) => c.id === activeChannelId);
+            return (
+              <ChannelView
+                key={activeChannelId}
+                channelId={activeChannelId}
+                channelName={
+                  active?.kind === "dm"
+                    ? active.peer?.nombre ?? "Directo"
+                    : active?.name ?? "canal"
+                }
+                channelDescription={active?.description ?? null}
+                channelKind={active?.kind ?? "public"}
+                peerAvatarUrl={active?.peer?.avatar_url ?? null}
+                currentUserId={currentUserId}
+                initialMessages={initialMessages}
+                initialMembers={initialMembers}
+                users={users}
+              />
+            );
+          })()
         ) : (
           <div className="flex flex-1 items-center justify-center p-8 text-sm text-muted-foreground">
             No tenés canales todavía.
@@ -275,38 +285,164 @@ function ChannelsSidebar({
         </Dialog>
       </div>
       <div className="flex-1 overflow-y-auto px-2 py-2">
-        {channels.length === 0 ? (
-          <p className="px-2 py-4 text-xs text-muted-foreground">
-            No tenés canales.
+        <SidebarSection
+          title="Canales"
+          items={channels.filter((c) => c.kind === "public")}
+          activeId={activeId}
+        />
+        <div className="mt-3 flex items-center justify-between px-2 py-1">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Directos
+          </span>
+          <DMPicker
+            users={users.filter((u) => u.id !== currentUserId)}
+          />
+        </div>
+        {channels.filter((c) => c.kind === "dm").length === 0 ? (
+          <p className="px-2 py-1 text-[11px] text-muted-foreground">
+            No tenés conversaciones directas.
           </p>
         ) : (
-          <ul className="space-y-0.5">
-            {channels.map((c) => {
-              const active = c.id === activeId;
-              return (
-                <li key={c.id}>
-                  <Link
-                    href={`/chat?c=${c.id}`}
-                    className={cn(
-                      "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm",
-                      active ? "bg-muted font-medium" : "hover:bg-muted/60"
-                    )}
-                  >
-                    <Hash className="h-4 w-4 text-muted-foreground" />
-                    <span className="min-w-0 flex-1 truncate">{c.name}</span>
-                    {c.unread > 0 && !active && (
-                      <span className="rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold text-primary-foreground">
-                        {c.unread > 99 ? "99+" : c.unread}
-                      </span>
-                    )}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          <SidebarSection
+            title=""
+            items={channels.filter((c) => c.kind === "dm")}
+            activeId={activeId}
+          />
         )}
       </div>
     </aside>
+  );
+}
+
+function SidebarSection({
+  title,
+  items,
+  activeId,
+}: {
+  title: string;
+  items: ChatChannel[];
+  activeId: string | null;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <div className="mb-1">
+      {title && (
+        <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {title}
+        </div>
+      )}
+      <ul className="space-y-0.5">
+        {items.map((c) => {
+          const active = c.id === activeId;
+          const label = c.kind === "dm" ? c.peer?.nombre ?? "Directo" : c.name;
+          return (
+            <li key={c.id}>
+              <Link
+                href={`/chat?c=${c.id}`}
+                className={cn(
+                  "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm",
+                  active ? "bg-muted font-medium" : "hover:bg-muted/60"
+                )}
+              >
+                {c.kind === "dm" ? (
+                  <Avatar className="h-5 w-5">
+                    {c.peer?.avatar_url && (
+                      <AvatarImage src={c.peer.avatar_url} alt={label} />
+                    )}
+                    <AvatarFallback className="text-[8px]">
+                      {initials(label)}
+                    </AvatarFallback>
+                  </Avatar>
+                ) : (
+                  <Hash className="h-4 w-4 text-muted-foreground" />
+                )}
+                <span className="min-w-0 flex-1 truncate">{label}</span>
+                {c.unread > 0 && !active && (
+                  <span className="rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold text-primary-foreground">
+                    {c.unread > 99 ? "99+" : c.unread}
+                  </span>
+                )}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function DMPicker({ users }: { users: UserOption[] }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [q, setQ] = useState("");
+
+  async function start(otherId: string) {
+    setPending(true);
+    const res = await getOrCreateDM(otherId);
+    setPending(false);
+    if (res?.error) {
+      toast.error(res.error);
+      return;
+    }
+    setOpen(false);
+    setQ("");
+    if (res.id) router.push(`/chat?c=${res.id}`);
+  }
+
+  const filtered = q.trim()
+    ? users.filter((u) => u.nombre.toLowerCase().includes(q.toLowerCase()))
+    : users;
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button
+          className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+          title="Nuevo directo"
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Nuevo mensaje directo</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <Input
+            autoFocus
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar persona…"
+          />
+          <div className="max-h-72 space-y-0.5 overflow-y-auto rounded-md border bg-card p-1">
+            {filtered.length === 0 ? (
+              <p className="px-2 py-3 text-xs text-muted-foreground">
+                Sin resultados.
+              </p>
+            ) : (
+              filtered.map((u) => (
+                <button
+                  key={u.id}
+                  type="button"
+                  onClick={() => start(u.id)}
+                  disabled={pending}
+                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+                >
+                  <Avatar className="h-6 w-6">
+                    {u.avatar_url && <AvatarImage src={u.avatar_url} alt={u.nombre} />}
+                    <AvatarFallback className="text-[10px]">
+                      {initials(u.nombre)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span>{u.nombre}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -314,6 +450,8 @@ function ChannelView({
   channelId,
   channelName,
   channelDescription,
+  channelKind,
+  peerAvatarUrl,
   currentUserId,
   initialMessages,
   initialMembers,
@@ -322,6 +460,8 @@ function ChannelView({
   channelId: string;
   channelName: string;
   channelDescription: string | null;
+  channelKind: "public" | "dm";
+  peerAvatarUrl: string | null;
   currentUserId: string;
   initialMessages: ChatMessageRow[];
   initialMembers: string[];
@@ -509,29 +649,48 @@ function ChannelView({
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2">
-          <Hash className="h-4 w-4 text-muted-foreground" />
+          {channelKind === "dm" ? (
+            <Avatar className="h-7 w-7">
+              {peerAvatarUrl && <AvatarImage src={peerAvatarUrl} alt={channelName} />}
+              <AvatarFallback className="text-[10px]">
+                {initials(channelName)}
+              </AvatarFallback>
+            </Avatar>
+          ) : (
+            <Hash className="h-4 w-4 text-muted-foreground" />
+          )}
           <div>
             <div className="text-sm font-semibold">{channelName}</div>
-            {channelDescription && (
+            {channelKind === "dm" ? (
               <div className="text-[11px] text-muted-foreground">
-                {channelDescription}
+                Mensaje directo
               </div>
+            ) : (
+              channelDescription && (
+                <div className="text-[11px] text-muted-foreground">
+                  {channelDescription}
+                </div>
+              )
             )}
           </div>
         </div>
-        <MembersButton
-          channelId={channelId}
-          channelName={channelName}
-          users={users}
-          initialMembers={initialMembers}
-          currentUserId={currentUserId}
-        />
+        {channelKind === "public" && (
+          <MembersButton
+            channelId={channelId}
+            channelName={channelName}
+            users={users}
+            initialMembers={initialMembers}
+            currentUserId={currentUserId}
+          />
+        )}
       </div>
 
       <div className="flex-1 space-y-1 overflow-y-auto px-4 py-4">
         {messages.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">
-            Todavía no hay mensajes en #{channelName}. Empezá vos.
+            {channelKind === "dm"
+              ? `Empezá la conversación con ${channelName}.`
+              : `Todavía no hay mensajes en #${channelName}. Empezá vos.`}
           </p>
         ) : (
           messages.map((m, i) => {
@@ -581,7 +740,11 @@ function ChannelView({
             value={input}
             onChange={handleChange}
             onKeyDown={handleKey}
-            placeholder={`Mensaje a #${channelName}… (usá @ para mencionar)`}
+            placeholder={
+              channelKind === "dm"
+                ? `Mensaje a ${channelName}…`
+                : `Mensaje a #${channelName}… (usá @ para mencionar)`
+            }
             rows={1}
             disabled={sending}
             className="max-h-40 min-h-[44px] flex-1 resize-none rounded-md border bg-card px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"

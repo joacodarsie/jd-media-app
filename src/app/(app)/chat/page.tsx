@@ -36,6 +36,28 @@ export default async function ChatPage({
     (m) => m.channel && !m.channel.archived
   );
 
+  // Para DMs, resolvemos quién es el "otro" miembro (no yo)
+  const dmChannelIds = channelsRaw
+    .filter((m) => m.channel!.kind === "dm")
+    .map((m) => m.channel!.id);
+  const dmPeers = new Map<
+    string,
+    { id: string; nombre: string; avatar_url: string | null }
+  >();
+  if (dmChannelIds.length > 0) {
+    const { data: dmMembers } = await supabase
+      .from("team_channel_members")
+      .select("channel_id, user:users!team_channel_members_user_id_fkey(id, nombre, avatar_url)")
+      .in("channel_id", dmChannelIds)
+      .neq("user_id", me.id);
+    for (const row of (dmMembers ?? []) as unknown as {
+      channel_id: string;
+      user: { id: string; nombre: string; avatar_url: string | null } | null;
+    }[]) {
+      if (row.user) dmPeers.set(row.channel_id, row.user);
+    }
+  }
+
   // Conteo de mensajes no leídos por canal
   const channelIds = channelsRaw.map((c) => c.channel!.id);
   const unreadByChannel = new Map<string, number>();
@@ -54,13 +76,21 @@ export default async function ChatPage({
   }
 
   const channels: ChatChannel[] = channelsRaw
-    .map((m) => ({
-      id: m.channel!.id,
-      name: m.channel!.name,
-      description: m.channel!.description,
-      updated_at: m.channel!.updated_at,
-      unread: unreadByChannel.get(m.channel!.id) ?? 0,
-    }))
+    .map((m) => {
+      const ch = m.channel!;
+      const peer = ch.kind === "dm" ? dmPeers.get(ch.id) : null;
+      return {
+        id: ch.id,
+        name: ch.name,
+        description: ch.description,
+        kind: ch.kind,
+        updated_at: ch.updated_at,
+        unread: unreadByChannel.get(ch.id) ?? 0,
+        peer: peer
+          ? { id: peer.id, nombre: peer.nombre, avatar_url: peer.avatar_url }
+          : null,
+      };
+    })
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 
   // Default a #general o el más reciente

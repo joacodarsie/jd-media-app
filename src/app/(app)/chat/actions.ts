@@ -20,16 +20,24 @@ const MAX_MESSAGE = 4000;
  */
 async function parseMentions(
   supabase: ReturnType<typeof createClient>,
-  text: string
+  text: string,
+  channelId: string
 ): Promise<string[]> {
   const matches = Array.from(text.matchAll(/@([\p{L}][\p{L}\p{N}_.-]{1,30})/giu));
   if (matches.length === 0) return [];
   const handles = Array.from(new Set(matches.map((m) => m[1].toLowerCase())));
-  const { data: users } = await supabase
-    .from("users")
-    .select("id, nombre")
-    .eq("activo", true);
-  const list = (users ?? []) as { id: string; nombre: string }[];
+  // Solo se pueden mencionar miembros del canal.
+  const { data: rows } = await supabase
+    .from("team_channel_members")
+    .select("user_id, user:users!team_channel_members_user_id_fkey(id, nombre, activo)")
+    .eq("channel_id", channelId);
+  type Row = {
+    user_id: string;
+    user: { id: string; nombre: string; activo: boolean } | null;
+  };
+  const list = ((rows ?? []) as unknown as Row[])
+    .map((r) => r.user)
+    .filter((u): u is { id: string; nombre: string; activo: boolean } => !!u && u.activo);
   if (list.length === 0) return [];
   const out: string[] = [];
   for (const h of handles) {
@@ -51,8 +59,8 @@ export async function sendMessage(channelId: string, content: string) {
   const text = (content ?? "").toString().trim().slice(0, MAX_MESSAGE);
   if (!text) return { error: "Mensaje vacío." };
 
-  // Resolver menciones
-  const mentions = await parseMentions(supabase, text);
+  // Resolver menciones (sólo entre miembros del canal)
+  const mentions = await parseMentions(supabase, text, channelId);
 
   // Insertar mensaje
   const { data: msg, error } = await supabase

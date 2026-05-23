@@ -341,6 +341,12 @@ function ChannelView({
     return m;
   }, [users]);
 
+  // Solo los miembros del canal son candidatos a @-mención
+  const channelMembers = useMemo(() => {
+    const set = new Set(initialMembers);
+    return users.filter((u) => set.has(u.id));
+  }, [users, initialMembers]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
@@ -489,7 +495,7 @@ function ChannelView({
   }
 
   const filteredMentionUsers = mentionQuery !== null
-    ? users
+    ? channelMembers
         .filter((u) => u.id !== currentUserId)
         .filter((u) => {
           if (!mentionQuery) return true;

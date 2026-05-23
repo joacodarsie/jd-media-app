@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import { usePathname } from "next/navigation";
 import { MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -11,8 +12,17 @@ const AIChat = dynamic(() => import("@/components/ai-chat").then((m) => m.AIChat
   ssr: false,
 });
 
+// Rutas donde el flotante estorba (ya hay su propio chat full-page o input pegado al borde).
+const HIDDEN_ROUTES = ["/chat", "/jdmedia"];
+
 export function AIChatLauncher() {
+  const pathname = usePathname();
   const [opened, setOpened] = useState(false);
+
+  const hidden = HIDDEN_ROUTES.some(
+    (r) => pathname === r || pathname.startsWith(r + "/")
+  );
+  if (hidden) return null;
 
   if (opened) {
     return <AIChat initialOpen onClosed={() => setOpened(false)} />;

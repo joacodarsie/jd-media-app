@@ -518,6 +518,7 @@ function ChannelView({
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
   const [recSeconds, setRecSeconds] = useState(0);
+  const [recLevels, setRecLevels] = useState<number[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -526,6 +527,9 @@ function ChannelView({
   const recChunksRef = useRef<BlobPart[]>([]);
   const recTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recCancelledRef = useRef(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const rafRef = useRef<number | null>(null);
 
   function addFiles(files: FileList | File[]) {
     const arr = Array.from(files);
@@ -574,7 +578,7 @@ function ChannelView({
     addFiles(files);
   }
 
-  async function uploadPending(): Promise<
+  async function uploadFiles(files: File[]): Promise<
     {
       storage_path: string;
       name: string;
@@ -582,7 +586,7 @@ function ChannelView({
       size: number;
     }[]
   > {
-    if (pending.length === 0) return [];
+    if (files.length === 0) return [];
     const supabase = createClient();
     const out: {
       storage_path: string;
@@ -590,25 +594,25 @@ function ChannelView({
       mime_type: string;
       size: number;
     }[] = [];
-    for (const p of pending) {
-      const ext = p.file.name.split(".").pop() ?? "bin";
+    for (const f of files) {
+      const ext = f.name.split(".").pop() ?? "bin";
       const path = `chat/${currentUserId}/${channelId}/${Date.now()}-${Math.random()
         .toString(36)
         .slice(2, 8)}.${ext}`;
       const { error } = await supabase.storage
         .from("documents")
-        .upload(path, p.file, {
-          contentType: p.file.type || "application/octet-stream",
+        .upload(path, f, {
+          contentType: f.type || "application/octet-stream",
         });
       if (error) {
-        toast.error(`Subiendo ${p.file.name}: ${error.message}`);
+        toast.error(`Subiendo ${f.name}: ${error.message}`);
         continue;
       }
       out.push({
         storage_path: path,
-        name: p.file.name,
-        mime_type: p.file.type || "application/octet-stream",
-        size: p.file.size,
+        name: f.name,
+        mime_type: f.type || "application/octet-stream",
+        size: f.size,
       });
     }
     return out;
@@ -761,6 +765,18 @@ function ChannelView({
     return "audio/webm";
   }
 
+  function cleanupAudioGraph() {
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    analyserRef.current = null;
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+  }
+
   async function startRecording() {
     if (recording) return;
     try {
@@ -772,21 +788,58 @@ function ChannelView({
       recChunksRef.current = [];
       recCancelledRef.current = false;
 
+      // AnalyserNode para waveform en vivo
+      const NUM_BARS = 28;
+      try {
+        const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const ctx = new AC();
+        const source = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.6;
+        source.connect(analyser);
+        audioContextRef.current = ctx;
+        analyserRef.current = analyser;
+        const data = new Uint8Array(analyser.frequencyBinCount);
+        setRecLevels(new Array(NUM_BARS).fill(0));
+
+        const tick = () => {
+          if (!analyserRef.current) return;
+          analyserRef.current.getByteFrequencyData(data);
+          // Reducir a NUM_BARS valores (muestreando rangos de frecuencia)
+          const bars: number[] = [];
+          const step = Math.floor(data.length / NUM_BARS);
+          for (let i = 0; i < NUM_BARS; i++) {
+            let sum = 0;
+            for (let j = 0; j < step; j++) sum += data[i * step + j] ?? 0;
+            const avg = sum / step / 255; // 0..1
+            // Boost para que se vea más en voz hablada
+            bars.push(Math.min(1, Math.pow(avg, 0.7) * 1.6));
+          }
+          setRecLevels(bars);
+          rafRef.current = requestAnimationFrame(tick);
+        };
+        rafRef.current = requestAnimationFrame(tick);
+      } catch {
+        // Si no hay AnalyserNode disponible, seguimos sin waveform
+      }
+
       recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) recChunksRef.current.push(e.data);
       };
-      recorder.onstop = () => {
+      recorder.onstop = async () => {
         const blob = new Blob(recChunksRef.current, { type: mimeType });
-        // Stop tracks del stream
         mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
         mediaStreamRef.current = null;
         mediaRecorderRef.current = null;
+        cleanupAudioGraph();
         if (recTimerRef.current) {
           clearInterval(recTimerRef.current);
           recTimerRef.current = null;
         }
         setRecording(false);
         setRecSeconds(0);
+        setRecLevels([]);
 
         if (recCancelledRef.current) return;
         if (blob.size === 0) {
@@ -798,13 +851,13 @@ function ChannelView({
           : mimeType.includes("mp4")
           ? "m4a"
           : "webm";
-        const file = new File(
-          [blob],
-          `audio-${Date.now()}.${ext}`,
-          { type: mimeType }
-        );
-        addFiles([file]);
-        inputRef.current?.focus();
+        const file = new File([blob], `audio-${Date.now()}.${ext}`, {
+          type: mimeType,
+        });
+        // Auto-send (estilo WhatsApp): se envía solo el audio inmediatamente.
+        const previewUrl = URL.createObjectURL(blob);
+        const previewMap = new Map<File, string>([[file, previewUrl]]);
+        await sendWith("", [file], previewMap);
       };
 
       recorder.start();
@@ -812,7 +865,6 @@ function ChannelView({
       setRecSeconds(0);
       recTimerRef.current = setInterval(() => {
         setRecSeconds((s) => {
-          // Auto-stop a los 5 minutos para evitar archivos enormes
           if (s + 1 >= 300) {
             stopRecording();
             return s;
@@ -845,22 +897,25 @@ function ChannelView({
     return () => {
       mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
       if (recTimerRef.current) clearInterval(recTimerRef.current);
+      cleanupAudioGraph();
     };
   }, []);
 
-  async function send() {
-    const text = input.trim();
-    if ((!text && pending.length === 0) || sending) return;
+  /**
+   * Envía un mensaje al canal. Acepta texto + archivos (sin pasar por pending).
+   * Usado por el botón Enviar y por el auto-send después de grabar audio.
+   */
+  async function sendWith(text: string, files: File[], previewMap?: Map<File, string>) {
+    if ((!text && files.length === 0) || sending) return;
     setSending(true);
 
-    // Optimista
     const tempId = `temp-${Date.now()}`;
     const me = users.find((u) => u.id === currentUserId);
-    const optimisticAtts: ChatAttachment[] = pending.map((p) => ({
-      name: p.file.name,
-      mime_type: p.file.type,
-      url: p.previewUrl ?? "",
-      size: p.file.size,
+    const optimisticAtts: ChatAttachment[] = files.map((f) => ({
+      name: f.name,
+      mime_type: f.type,
+      url: previewMap?.get(f) ?? "",
+      size: f.size,
     }));
     setMessages((curr) => [
       ...curr,
@@ -879,9 +934,9 @@ function ChannelView({
       },
     ]);
 
-    let uploaded: Awaited<ReturnType<typeof uploadPending>> = [];
+    let uploaded: Awaited<ReturnType<typeof uploadFiles>> = [];
     try {
-      uploaded = await uploadPending();
+      uploaded = await uploadFiles(files);
     } catch (e) {
       toast.error("Falló subir adjuntos: " + (e instanceof Error ? e.message : ""));
       setMessages((curr) => curr.filter((m) => m.id !== tempId));
@@ -890,13 +945,8 @@ function ChannelView({
       return;
     }
 
-    setInput("");
-    setMentionQuery(null);
-    setPending([]);
-
     const res = await sendMessage(channelId, text, uploaded);
     setSending(false);
-    // Devolver el foco para escribir el siguiente mensaje sin click
     inputRef.current?.focus();
     if (res?.error) {
       toast.error(res.error);
@@ -909,6 +959,21 @@ function ChannelView({
       );
     }
     router.refresh();
+  }
+
+  async function send() {
+    const text = input.trim();
+    if ((!text && pending.length === 0) || sending) return;
+
+    const files = pending.map((p) => p.file);
+    const previewMap = new Map<File, string>();
+    for (const p of pending) if (p.previewUrl) previewMap.set(p.file, p.previewUrl);
+
+    setInput("");
+    setMentionQuery(null);
+    setPending([]);
+
+    await sendWith(text, files, previewMap);
   }
 
   function handleKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -1092,20 +1157,24 @@ function ChannelView({
                   {Math.floor(recSeconds / 60)}:
                   {String(recSeconds % 60).padStart(2, "0")}
                 </span>
-                <div className="flex flex-1 items-center justify-center gap-0.5 overflow-hidden">
-                  {Array.from({ length: 24 }).map((_, i) => (
+                <div className="flex flex-1 items-center justify-center gap-[2px] overflow-hidden">
+                  {(recLevels.length > 0
+                    ? recLevels
+                    : new Array(28).fill(0.1)
+                  ).map((lvl, i) => (
                     <span
                       key={i}
-                      className="inline-block w-0.5 rounded-full bg-red-500/70 dark:bg-red-400/60"
+                      className="inline-block w-[2px] rounded-full bg-red-500 dark:bg-red-400"
                       style={{
-                        height: `${6 + Math.abs(Math.sin((i + recSeconds * 1.5) * 0.6)) * 14}px`,
-                        transition: "height 120ms ease-out",
+                        height: `${4 + Math.max(0.05, lvl) * 20}px`,
+                        transition: "height 60ms linear",
+                        opacity: 0.5 + lvl * 0.5,
                       }}
                     />
                   ))}
                 </div>
                 <span className="hidden shrink-0 text-[10px] text-red-700/70 sm:inline dark:text-red-400/70">
-                  Tocá ✓ para enviar
+                  Tocá ➤ para enviar
                 </span>
               </div>
               <Button

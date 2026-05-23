@@ -25,6 +25,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/dashboard", label: "Mi día", icon: "Sun" },
       { href: "/tareas", label: "Tareas", icon: "ListChecks" },
       { href: "/contenidos", label: "Contenidos", icon: "Calendar" },
+      { href: "/agenda", label: "Agenda", icon: "CalendarClock" },
       { href: "/jdmedia", label: "JDmedIA", icon: "MessageCircle" },
       { href: "/chat", label: "Chat equipo", icon: "Hash" },
     ],

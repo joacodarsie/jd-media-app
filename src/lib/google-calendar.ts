@@ -29,14 +29,20 @@ export interface GoogleCalendarConnection {
 export interface CalendarEvent {
   id: string;
   summary: string;
+  description?: string;
   start: string;
   end: string;
+  isAllDay: boolean;
   hangoutLink?: string;
   htmlLink?: string;
   location?: string;
+  organizer?: { email?: string; displayName?: string; self?: boolean };
   attendees?: { email: string; displayName?: string; responseStatus?: string }[];
+  status?: string; // "confirmed" | "tentative" | "cancelled"
+  source_id: string;
   source_label: string;
   source_email: string;
+  source_visibility: "private" | "shared";
 }
 
 function env(name: string) {
@@ -167,11 +173,14 @@ export async function listEvents(
     items?: Array<{
       id: string;
       summary?: string;
+      description?: string;
       start?: { dateTime?: string; date?: string };
       end?: { dateTime?: string; date?: string };
       hangoutLink?: string;
       htmlLink?: string;
       location?: string;
+      status?: string;
+      organizer?: { email?: string; displayName?: string; self?: boolean };
       attendees?: { email: string; displayName?: string; responseStatus?: string }[];
     }>;
   };
@@ -180,14 +189,20 @@ export async function listEvents(
     .map((e) => ({
       id: e.id,
       summary: e.summary ?? "(Sin título)",
+      description: e.description,
       start: e.start!.dateTime ?? e.start!.date!,
       end: e.end?.dateTime ?? e.end?.date ?? e.start!.dateTime ?? e.start!.date!,
+      isAllDay: !e.start!.dateTime,
       hangoutLink: e.hangoutLink,
       htmlLink: e.htmlLink,
       location: e.location,
+      status: e.status,
+      organizer: e.organizer,
       attendees: e.attendees,
+      source_id: conn.id,
       source_label: conn.label,
       source_email: conn.google_email,
+      source_visibility: conn.visibility,
     }));
 }
 

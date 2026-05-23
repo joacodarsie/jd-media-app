@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
+  CalendarClock,
   CalendarDays,
   ChevronDown,
   FolderOpen,
@@ -18,6 +19,18 @@ import { TaskList } from "@/components/task-list";
 
 interface ClientRow extends Client {
   creativa?: { id: string; nombre: string } | null;
+  cm?: { id: string; nombre: string } | null;
+  disenador?: { id: string; nombre: string } | null;
+  audiovisual?: { id: string; nombre: string } | null;
+}
+
+interface UpcomingPub {
+  id: string;
+  cliente_id: string;
+  titulo: string;
+  fecha_publicacion: string;
+  red: string;
+  estado: string;
 }
 
 type Quick = "activos" | "perdido" | "todos";
@@ -37,9 +50,11 @@ const ESTADO_BADGE: Record<string, string> = {
 export function ClientsDashboard({
   clients,
   tasks,
+  upcomingPubs = [],
 }: {
   clients: ClientRow[];
   tasks: TaskWithRels[];
+  upcomingPubs?: UpcomingPub[];
 }) {
   const [q, setQ] = useState("");
   const [quick, setQuick] = useState<Quick>("activos");
@@ -63,6 +78,25 @@ export function ClientsDashboard({
     }
     return m;
   }, [tasks]);
+
+  const pubByClient = useMemo(() => {
+    const m = new Map<string, UpcomingPub>();
+    for (const p of upcomingPubs) {
+      if (!p.cliente_id) continue;
+      // upcomingPubs ya viene ordenado asc por fecha → me quedo con la primera
+      if (!m.has(p.cliente_id)) m.set(p.cliente_id, p);
+    }
+    return m;
+  }, [upcomingPubs]);
+
+  const pubCountByClient = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of upcomingPubs) {
+      if (!p.cliente_id) continue;
+      m.set(p.cliente_id, (m.get(p.cliente_id) ?? 0) + 1);
+    }
+    return m;
+  }, [upcomingPubs]);
 
   const responsables = useMemo(() => {
     const m = new Map<string, string>();
@@ -159,7 +193,13 @@ export function ClientsDashboard({
           </div>
         ) : (
           filtered.map((c) => (
-            <ClientCard key={c.id} client={c} tasks={byClient.get(c.id) ?? []} />
+            <ClientCard
+              key={c.id}
+              client={c}
+              tasks={byClient.get(c.id) ?? []}
+              nextPub={pubByClient.get(c.id) ?? null}
+              pubsTotal={pubCountByClient.get(c.id) ?? 0}
+            />
           ))
         )}
         {showInternas && internas.length > 0 && (
@@ -173,14 +213,23 @@ export function ClientsDashboard({
 function ClientCard({
   client,
   tasks,
+  nextPub,
+  pubsTotal,
 }: {
   client: ClientRow;
   tasks: TaskWithRels[];
+  nextPub?: UpcomingPub | null;
+  pubsTotal?: number;
 }) {
   const activas = tasks.filter((t) => t.estado !== "completada");
   const vencidas = activas.filter(
     (t) => dueState(t.fecha_limite, t.estado) === "vencida"
   ).length;
+
+  const equipo: { rol: string; nombre: string }[] = [];
+  if (client.cm) equipo.push({ rol: "CM", nombre: client.cm.nombre });
+  if (client.disenador) equipo.push({ rol: "Diseño", nombre: client.disenador.nombre });
+  if (client.audiovisual) equipo.push({ rol: "AV", nombre: client.audiovisual.nombre });
 
   return (
     <details className="group rounded-lg border bg-card transition-colors hover:border-primary/40">
@@ -206,6 +255,43 @@ function ClientCard({
           <div className="mt-0.5 text-xs text-muted-foreground">
             {client.pack} · {client.creativa?.nombre ?? "Sin responsable"}
           </div>
+          {(nextPub || equipo.length > 0) && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+              {nextPub && (
+                <span
+                  className="inline-flex items-center gap-1 text-muted-foreground"
+                  title={nextPub.titulo}
+                >
+                  <CalendarClock className="h-3 w-3 text-primary" />
+                  <span className="font-medium text-foreground">
+                    {new Date(nextPub.fecha_publicacion).toLocaleDateString(
+                      "es-AR",
+                      { day: "2-digit", month: "short" }
+                    )}
+                  </span>
+                  <span className="max-w-[180px] truncate">· {nextPub.titulo}</span>
+                  {pubsTotal && pubsTotal > 1 ? (
+                    <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px]">
+                      +{pubsTotal - 1}
+                    </span>
+                  ) : null}
+                </span>
+              )}
+              {equipo.length > 0 && (
+                <span className="flex flex-wrap items-center gap-1">
+                  {equipo.map((m) => (
+                    <span
+                      key={m.rol}
+                      className="rounded-full bg-muted px-1.5 py-0.5 text-[10px]"
+                      title={`${m.rol}: ${m.nombre}`}
+                    >
+                      {m.rol}: {m.nombre.split(" ")[0]}
+                    </span>
+                  ))}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-3 text-sm">
           {client.calendario_url && (

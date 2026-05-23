@@ -178,6 +178,49 @@ export const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "list_services",
+    description:
+      "Devuelve el catálogo de servicios que ofrece la agencia (gestión de redes, paid media, producción de contenido, diseño gráfico, desarrollo web, botly). Cada servicio trae nombre, descripción, color y áreas/puestos que participan. Usalo cuando te pregunten qué ofrece la agencia, qué áreas trabajan un servicio, o necesites el slug exacto de un servicio.",
+    input_schema: {
+      type: "object",
+      properties: {
+        solo_activos: { type: "boolean" },
+      },
+    },
+  },
+  {
+    name: "list_positions",
+    description:
+      "Devuelve los puestos del equipo con su descripción, área, servicios donde participan, modelo de pago default y personas asignadas (principal + secundarios). Usalo para preguntas como 'qué hace un CM', 'quién es director creativo', 'qué puesto tiene Bri', 'cuánto se paga a un editor'.",
+    input_schema: {
+      type: "object",
+      properties: {
+        puesto_nombre: { type: "string" },
+        area: { type: "string" },
+      },
+    },
+  },
+  {
+    name: "list_services",
+    description:
+      "Lista los servicios activos del catálogo de la agencia (Gestión de redes, Paid Media, Producción de contenido, Diseño gráfico, Desarrollo web, Botly, etc.). Útil cuando el usuario pregunta '¿qué servicios ofrecemos?' o '¿qué áreas participan en cada servicio?'.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "list_positions",
+    description:
+      "Lista los puestos del equipo con su descripción, área, servicios donde participa y modelo de pago default. Útil para '¿qué puestos tiene la agencia?', '¿quiénes son Community Managers?', '¿qué hace una Directora Creativa?'.",
+    input_schema: {
+      type: "object",
+      properties: {
+        nombre_like: {
+          type: "string",
+          description: "Filtro parcial sobre el nombre del puesto",
+        },
+      },
+    },
+  },
+  {
     name: "list_leads",
     description:
       "Lista leads del pipeline comercial. Filtros opcionales por stage (nuevo, contactado, calificado, propuesta, negociacion, ganado, perdido), asignado_a_nombre (parcial), o solo_activos (excluye ganados y perdidos). Útil para preguntas como '¿qué leads tiene Sol?', '¿cuántos leads están en propuesta?', 'pipeline activo'.",
@@ -461,6 +504,127 @@ export async function runTool(
             })),
           },
         };
+      }
+
+      case "list_services": {
+        let q = sb
+          .from("services")
+          .select("slug, name, description, color, areas, orden, active")
+          .order("orden");
+        if (input.solo_activos !== false) q = q.eq("active", true);
+        const { data, error } = await q;
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data };
+      }
+
+      case "list_positions": {
+        let q = sb
+          .from("positions")
+          .select(
+            "id, nombre, area, descripcion, services, pago_default_monto, pago_default_moneda, pago_default_frecuencia"
+          )
+          .order("area")
+          .order("nombre");
+        if (input.puesto_nombre) {
+          q = q.ilike("nombre", `%${String(input.puesto_nombre)}%`);
+        }
+        if (input.area) q = q.ilike("area", `%${String(input.area)}%`);
+        const { data: positions, error } = await q;
+        if (error) return { ok: false, error: error.message };
+
+        const ids = (positions ?? []).map((p) => p.id);
+        const { data: principals } = await sb
+          .from("users")
+          .select("id, nombre, position_id")
+          .in("position_id", ids.length > 0 ? ids : ["00000000-0000-0000-0000-000000000000"])
+          .eq("activo", true);
+        const { data: secondaryUsers } = await sb
+          .from("users")
+          .select("id, nombre, secondary_position_ids")
+          .eq("activo", true);
+
+        const principalsByPos = new Map<string, { id: string; nombre: string }[]>();
+        for (const u of principals ?? []) {
+          const pid = (u as { position_id: string | null }).position_id;
+          if (!pid) continue;
+          if (!principalsByPos.has(pid)) principalsByPos.set(pid, []);
+          principalsByPos.get(pid)!.push({ id: u.id as string, nombre: u.nombre as string });
+        }
+        const secondariesByPos = new Map<string, { id: string; nombre: string }[]>();
+        for (const u of secondaryUsers ?? []) {
+          const sids =
+            (u as { secondary_position_ids: string[] | null }).secondary_position_ids ?? [];
+          for (const sid of sids) {
+            if (!secondariesByPos.has(sid)) secondariesByPos.set(sid, []);
+            secondariesByPos
+              .get(sid)!
+              .push({ id: u.id as string, nombre: u.nombre as string });
+          }
+        }
+
+        const enriched = (positions ?? []).map((p) => ({
+          ...p,
+          principales: principalsByPos.get(p.id as string) ?? [],
+          secundarios: secondariesByPos.get(p.id as string) ?? [],
+        }));
+
+        return { ok: true, data: enriched };
+      }
+
+      case "list_services": {
+        const { data, error } = await sb
+          .from("services")
+          .select("slug, name, description, areas, active, orden")
+          .eq("active", true)
+          .order("orden");
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data };
+      }
+
+      case "list_positions": {
+        let q = sb
+          .from("positions")
+          .select(
+            "id, nombre, area, descripcion, services, pago_default_monto, pago_default_moneda, pago_default_frecuencia"
+          )
+          .order("area")
+          .order("nombre");
+        if (input.nombre_like) {
+          q = q.ilike("nombre", `%${String(input.nombre_like)}%`);
+        }
+        const { data, error } = await q;
+        if (error) return { ok: false, error: error.message };
+
+        // Sumar quiénes ocupan cada puesto (principal + secundarios)
+        const positions = data ?? [];
+        if (positions.length > 0) {
+          const ids = positions.map((p) => p.id);
+          const { data: users } = await sb
+            .from("users")
+            .select("nombre, position_id, secondary_position_ids")
+            .eq("activo", true);
+          const occupants = new Map<string, string[]>();
+          for (const u of users ?? []) {
+            if (u.position_id && ids.includes(u.position_id)) {
+              if (!occupants.has(u.position_id)) occupants.set(u.position_id, []);
+              occupants.get(u.position_id)!.push(u.nombre);
+            }
+            for (const sid of u.secondary_position_ids ?? []) {
+              if (ids.includes(sid)) {
+                if (!occupants.has(sid)) occupants.set(sid, []);
+                occupants.get(sid)!.push(`${u.nombre} (secundario)`);
+              }
+            }
+          }
+          return {
+            ok: true,
+            data: positions.map((p) => ({
+              ...p,
+              integrantes: occupants.get(p.id) ?? [],
+            })),
+          };
+        }
+        return { ok: true, data: positions };
       }
 
       case "list_leads": {

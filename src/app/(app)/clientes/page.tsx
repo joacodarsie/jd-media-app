@@ -12,19 +12,35 @@ export default async function ClientesPage() {
   await requireRole(["admin", "coordinador"]);
   const supabase = createClient();
 
-  const [{ data: clients }, { data: tasks }, { data: users }] = await Promise.all([
-    supabase
-      .from("clients")
-      .select("*, creativa:users!clients_creativa_asignada_id_fkey(id,nombre)")
-      .order("nombre"),
-    supabase
-      .from("tasks")
-      .select(
-        "*, cliente:clients(id,nombre), asignado:users!tasks_asignado_a_id_fkey(id,nombre,avatar_url)"
-      )
-      .order("fecha_limite", { ascending: true, nullsFirst: false }),
-    supabase.from("users").select("id, nombre").eq("activo", true).order("nombre"),
-  ]);
+  const todayISO = new Date().toISOString();
+
+  const [{ data: clients }, { data: tasks }, { data: users }, { data: pubs }] =
+    await Promise.all([
+      supabase
+        .from("clients")
+        .select(
+          "*, creativa:users!clients_creativa_asignada_id_fkey(id,nombre), cm:users!clients_cm_id_fkey(id,nombre), disenador:users!clients_disenador_id_fkey(id,nombre), audiovisual:users!clients_audiovisual_id_fkey(id,nombre)"
+        )
+        .order("nombre"),
+      supabase
+        .from("tasks")
+        .select(
+          "*, cliente:clients(id,nombre), asignado:users!tasks_asignado_a_id_fkey(id,nombre,avatar_url)"
+        )
+        .order("fecha_limite", { ascending: true, nullsFirst: false }),
+      supabase
+        .from("users")
+        .select("id, nombre")
+        .eq("activo", true)
+        .order("nombre"),
+      supabase
+        .from("publications")
+        .select("id, cliente_id, titulo, fecha_publicacion, red, estado")
+        .gte("fecha_publicacion", todayISO)
+        .neq("estado", "publicado")
+        .order("fecha_publicacion", { ascending: true })
+        .limit(200),
+    ]);
 
   return (
     <div className="space-y-5">
@@ -48,6 +64,7 @@ export default async function ClientesPage() {
       <ClientsDashboard
         clients={(clients ?? []) as never}
         tasks={(tasks ?? []) as TaskWithRels[]}
+        upcomingPubs={(pubs ?? []) as never}
       />
     </div>
   );

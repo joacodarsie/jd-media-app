@@ -1,7 +1,15 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, MessageSquare, XCircle } from "lucide-react";
-import { requireUser } from "@/lib/auth";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ExternalLink,
+  MessageSquare,
+  Megaphone,
+  TrendingUp,
+  XCircle,
+} from "lucide-react";
+import { requireUser, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   PUBLICATION_NETWORK_LABEL,
@@ -9,7 +17,14 @@ import {
   PUBLICATION_STATUS_LABEL,
 } from "@/lib/constants";
 import type { Client, PublicationStatus } from "@/lib/types";
+import { Markdown } from "@/components/markdown";
 import { PrintButton } from "@/components/print-button";
+import { ReportMonthPicker } from "@/components/report-month-picker";
+import {
+  MonthlyReportEditor,
+  PublicationLinkEditor,
+} from "@/components/monthly-report-editor";
+import type { MonthlyMetrics } from "@/app/reporte/cliente/[id]/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +37,7 @@ interface RawPub {
   tipo: string;
   estado: PublicationStatus;
   asset_url: string | null;
+  link_publicacion: string | null;
   notas_revision: string | null;
 }
 
@@ -101,7 +117,8 @@ export default async function ReporteClientePage({
   params: { id: string };
   searchParams: { mes?: string };
 }) {
-  await requireUser();
+  const me = await requireUser();
+  const canEdit = isStaff(me.rol);
   const supabase = createClient();
 
   const today = new Date();
@@ -123,6 +140,7 @@ export default async function ReporteClientePage({
     { data: comments },
     { data: services },
     { data: nextPubs },
+    { data: monthly },
   ] = await Promise.all([
     supabase
       .from("clients")
@@ -134,7 +152,7 @@ export default async function ReporteClientePage({
     supabase
       .from("publications")
       .select(
-        "id, titulo, copy, fecha_publicacion, red, tipo, estado, asset_url, notas_revision"
+        "id, titulo, copy, fecha_publicacion, red, tipo, estado, asset_url, link_publicacion, notas_revision"
       )
       .eq("cliente_id", params.id)
       .gte("fecha_publicacion", start)
@@ -174,7 +192,35 @@ export default async function ReporteClientePage({
       .neq("estado", "rechazado")
       .order("fecha_publicacion", { ascending: true })
       .limit(8),
+    supabase
+      .from("client_monthly_reports")
+      .select("nota, metricas")
+      .eq("cliente_id", params.id)
+      .eq("year_month", mes)
+      .maybeSingle(),
   ]);
+
+  const monthlyReport = (monthly ?? null) as
+    | { nota: string | null; metricas: MonthlyMetrics }
+    | null;
+  const nota = monthlyReport?.nota ?? null;
+  const metricas: MonthlyMetrics = monthlyReport?.metricas ?? {};
+  const hasOrganicMetrics = [
+    metricas.seguidores_nuevos,
+    metricas.reach,
+    metricas.impresiones,
+    metricas.interacciones,
+    metricas.visitas_perfil,
+  ].some((v) => v != null);
+  const hasAdsMetrics = [
+    metricas.ads_inversion,
+    metricas.ads_impresiones,
+    metricas.ads_clicks,
+    metricas.ads_ctr,
+    metricas.ads_cpm,
+    metricas.ads_conversiones,
+    metricas.ads_roas,
+  ].some((v) => v != null) || !!metricas.ads_notas;
 
   if (!client) notFound();
   const c = client as Client & {
@@ -247,7 +293,15 @@ export default async function ReporteClientePage({
             <ArrowLeft className="mr-1 h-4 w-4" /> Volver al cliente
           </Link>
           <div className="flex items-center gap-2">
-            <MonthPickerForm currentMes={mes} clientId={params.id} />
+            <ReportMonthPicker currentMes={mes} clientId={params.id} />
+            {canEdit && (
+              <MonthlyReportEditor
+                clienteId={params.id}
+                yearMonth={mes}
+                initialNota={nota}
+                initialMetricas={metricas}
+              />
+            )}
             <PrintButton />
           </div>
         </div>
@@ -312,6 +366,18 @@ export default async function ReporteClientePage({
             </div>
           )}
         </header>
+
+        {/* Nota destacada del mes */}
+        {nota && (
+          <section className="mt-6 break-inside-avoid rounded-lg border-l-4 border-[#FFD400] bg-yellow-50/50 p-5">
+            <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+              Highlights del mes
+            </div>
+            <div className="prose prose-sm max-w-none text-zinc-800">
+              <Markdown>{nota}</Markdown>
+            </div>
+          </section>
+        )}
 
         {/* Métricas principales */}
         <section className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -383,6 +449,56 @@ export default async function ReporteClientePage({
             <Field label="Audiovisual" value={c.audiovisual?.nombre ?? "—"} />
           </div>
         </section>
+
+        {/* Métricas orgánicas */}
+        {hasOrganicMetrics && (
+          <section className="mt-8 break-inside-avoid">
+            <h2 className="mb-2 flex items-center gap-2 text-base font-semibold text-zinc-900">
+              <TrendingUp className="h-4 w-4 text-emerald-600" />
+              Métricas del mes (orgánico)
+            </h2>
+            <div className="grid grid-cols-2 gap-3 rounded-lg border border-zinc-200 p-4 md:grid-cols-5">
+              <MetricBox label="Seguidores nuevos" value={metricas.seguidores_nuevos} prefix="+" />
+              <MetricBox label="Reach" value={metricas.reach} />
+              <MetricBox label="Impresiones" value={metricas.impresiones} />
+              <MetricBox label="Interacciones" value={metricas.interacciones} />
+              <MetricBox label="Visitas al perfil" value={metricas.visitas_perfil} />
+            </div>
+          </section>
+        )}
+
+        {/* Meta Ads */}
+        {hasAdsMetrics && (
+          <section className="mt-8 break-inside-avoid">
+            <h2 className="mb-2 flex items-center gap-2 text-base font-semibold text-zinc-900">
+              <Megaphone className="h-4 w-4 text-blue-600" />
+              Paid Media (Meta Ads)
+            </h2>
+            <div className="rounded-lg border border-blue-200 bg-blue-50/30 p-4">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                {metricas.ads_inversion != null && (
+                  <MetricBox
+                    label="Inversión"
+                    value={metricas.ads_inversion}
+                    prefix={`${metricas.ads_moneda ?? "ARS"} `}
+                    decimals={2}
+                  />
+                )}
+                <MetricBox label="Impresiones" value={metricas.ads_impresiones} />
+                <MetricBox label="Clicks" value={metricas.ads_clicks} />
+                <MetricBox label="CTR" value={metricas.ads_ctr} suffix="%" decimals={2} />
+                <MetricBox label="CPM" value={metricas.ads_cpm} decimals={2} />
+                <MetricBox label="Conversiones" value={metricas.ads_conversiones} />
+                <MetricBox label="ROAS" value={metricas.ads_roas} suffix="x" decimals={2} />
+              </div>
+              {metricas.ads_notas && (
+                <div className="mt-3 border-t border-blue-100 pt-3 text-sm text-zinc-700">
+                  {metricas.ads_notas}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* Breakdown por red y tipo */}
         {publicadas > 0 && (
@@ -468,7 +584,30 @@ export default async function ReporteClientePage({
                           )
                         : "—"}
                     </td>
-                    <td className="py-2 font-medium">{p.titulo}</td>
+                    <td className="py-2 font-medium">
+                      <span className="inline-flex items-center gap-1.5">
+                        <span>{p.titulo}</span>
+                        {p.link_publicacion && (
+                          <a
+                            href={p.link_publicacion}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-blue-600 hover:text-blue-800"
+                            title="Abrir publicación"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                        {canEdit && (
+                          <span className="print:hidden">
+                            <PublicationLinkEditor
+                              publicationId={p.id}
+                              currentLink={p.link_publicacion}
+                            />
+                          </span>
+                        )}
+                      </span>
+                    </td>
                     <td className="py-2 text-zinc-600">
                       {(PUBLICATION_NETWORK_LABEL as Record<string, string>)[p.red] ?? p.red}
                       {" · "}
@@ -666,6 +805,38 @@ function ApprovalCard({
   );
 }
 
+function MetricBox({
+  label,
+  value,
+  prefix,
+  suffix,
+  decimals = 0,
+}: {
+  label: string;
+  value: number | null | undefined;
+  prefix?: string;
+  suffix?: string;
+  decimals?: number;
+}) {
+  const display =
+    value == null
+      ? "—"
+      : `${prefix ?? ""}${Number(value).toLocaleString("es-AR", {
+          minimumFractionDigits: decimals,
+          maximumFractionDigits: decimals,
+        })}${suffix ?? ""}`;
+  return (
+    <div>
+      <div className="text-xl font-bold leading-none tabular-nums text-zinc-900">
+        {display}
+      </div>
+      <div className="mt-1 text-[10px] uppercase tracking-wider text-zinc-500">
+        {label}
+      </div>
+    </div>
+  );
+}
+
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -715,35 +886,3 @@ function Breakdown({
   );
 }
 
-function MonthPickerForm({
-  currentMes,
-  clientId,
-}: {
-  currentMes: string;
-  clientId: string;
-}) {
-  return (
-    <form
-      action={`/reporte/cliente/${clientId}`}
-      method="get"
-      className="flex items-center gap-2"
-    >
-      <label htmlFor="mes" className="text-xs text-zinc-600">
-        Mes:
-      </label>
-      <input
-        id="mes"
-        type="month"
-        name="mes"
-        defaultValue={currentMes}
-        className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm"
-      />
-      <button
-        type="submit"
-        className="rounded-md border border-zinc-300 bg-white px-3 py-1 text-xs font-medium hover:bg-zinc-50"
-      >
-        Cambiar
-      </button>
-    </form>
-  );
-}

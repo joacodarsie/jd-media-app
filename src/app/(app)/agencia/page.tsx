@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Markdown } from "@/components/markdown";
 import { AgencyPageDialog } from "@/components/agency-page-dialog";
 import { QuickLinksManager, type QuickLinkRow } from "@/components/quick-links-manager";
+import { ServicesManager } from "@/components/services-manager";
+import type { ServiceInit } from "@/components/service-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +16,7 @@ export default async function AgenciaPage() {
   const me = await requireUser();
   const supabase = createClient();
 
-  const [pagesRes, linksRes] = await Promise.all([
+  const [pagesRes, linksRes, servicesRes] = await Promise.all([
     supabase
       .from("agency_pages")
       .select("*")
@@ -25,10 +27,15 @@ export default async function AgenciaPage() {
       .from("quick_links")
       .select("id, label, url, icon, orden")
       .order("orden"),
+    supabase
+      .from("services")
+      .select("slug, name, description, color, icon, areas, orden, active")
+      .order("orden"),
   ]);
 
   const pages = pagesRes.data;
   const links: QuickLinkRow[] = (linksRes.data ?? []) as QuickLinkRow[];
+  const services: ServiceInit[] = (servicesRes.data ?? []) as ServiceInit[];
   const canEdit = isStaff(me.rol);
 
   return (
@@ -52,6 +59,8 @@ export default async function AgenciaPage() {
           />
         )}
       </div>
+
+      <ServicesManager services={services} canEdit={canEdit} />
 
       <QuickLinksManager links={links} canEdit={canEdit} />
 

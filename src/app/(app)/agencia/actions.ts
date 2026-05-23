@@ -111,3 +111,66 @@ export async function deleteQuickLink(id: string) {
   revalidatePath("/", "layout");
   return { ok: true };
 }
+
+// ---------- Services (catálogo) ----------
+
+export interface ServiceInput {
+  slug: string;
+  originalSlug?: string;
+  name: string;
+  description: string | null;
+  color: string | null;
+  icon: string | null;
+  areas: string[];
+  orden: number;
+  active: boolean;
+}
+
+function slugify(s: string) {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/(^_|_$)/g, "");
+}
+
+export async function upsertService(input: ServiceInput) {
+  const { supabase } = await ctx();
+  const slug = input.slug ? slugify(input.slug) : slugify(input.name);
+  if (!slug) return { error: "Falta nombre del servicio." };
+  const payload = {
+    slug,
+    name: input.name.trim(),
+    description: input.description?.trim() || null,
+    color: input.color?.trim() || null,
+    icon: input.icon?.trim() || null,
+    areas: (input.areas ?? []).map((a) => a.trim()).filter(Boolean),
+    orden: Number.isFinite(input.orden) ? input.orden : 0,
+    active: input.active,
+  };
+  if (!payload.name) return { error: "Falta nombre." };
+
+  if (input.originalSlug && input.originalSlug !== slug) {
+    const { error } = await supabase
+      .from("services")
+      .update(payload)
+      .eq("slug", input.originalSlug);
+    if (error) return { error: error.message };
+  } else {
+    const { error } = await supabase
+      .from("services")
+      .upsert(payload, { onConflict: "slug" });
+    if (error) return { error: error.message };
+  }
+  revalidatePath("/agencia");
+  return { ok: true, slug };
+}
+
+export async function deleteService(slug: string) {
+  const { supabase } = await ctx();
+  const { error } = await supabase.from("services").delete().eq("slug", slug);
+  if (error) return { error: error.message };
+  revalidatePath("/agencia");
+  return { ok: true };
+}

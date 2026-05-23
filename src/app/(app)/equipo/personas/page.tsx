@@ -25,7 +25,12 @@ export default async function EquipoPersonasPage() {
       )
       .eq("activo", true)
       .order("nombre"),
-    supabase.from("positions").select("*").order("nombre"),
+    supabase
+      .from("positions")
+      .select(
+        "id, nombre, area, pago_default_monto, pago_default_moneda, pago_default_frecuencia"
+      )
+      .order("nombre"),
     isAdmin
       ? supabase.from("compensation").select("*")
       : Promise.resolve({ data: [] as Compensation[] }),

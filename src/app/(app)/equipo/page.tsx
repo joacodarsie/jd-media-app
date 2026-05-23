@@ -51,7 +51,11 @@ export default async function EquipoPage() {
 
   const [{ data: positions }, { data: users }, { data: servicesData }] =
     await Promise.all([
-      supabase.from("positions").select("*").order("area").order("nombre"),
+      supabase
+        .from("positions")
+        .select("id, nombre, area, descripcion, services")
+        .order("area")
+        .order("nombre"),
       supabase
         .from("users")
         .select("id, nombre, avatar_url, position_id, area")

@@ -1,16 +1,11 @@
-import dynamic from "next/dynamic";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ensureDueNotifications } from "@/lib/notifications";
 import type { Notification } from "@/lib/types";
 import { AppShell } from "@/components/app-shell";
 import { NotificationBell } from "@/components/notification-bell";
+import { AIChatLauncher } from "@/components/ai-chat-launcher";
 import type { QuickLinkRow } from "@/components/quick-links-manager";
-
-const AIChat = dynamic(
-  () => import("@/components/ai-chat").then((m) => m.AIChat),
-  { ssr: false }
-);
 
 export default async function AppLayout({
   children,
@@ -25,7 +20,7 @@ export default async function AppLayout({
   const [{ data: items }, { count }, { data: links }] = await Promise.all([
     supabase
       .from("notifications")
-      .select("*")
+      .select("id, user_id, task_id, tipo, mensaje, leida, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20),
@@ -54,7 +49,7 @@ export default async function AppLayout({
       quickLinks={(links ?? []) as QuickLinkRow[]}
     >
       {children}
-      <AIChat />
+      <AIChatLauncher />
     </AppShell>
   );
 }

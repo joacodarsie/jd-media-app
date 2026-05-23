@@ -97,9 +97,20 @@ function renderUserImages(blocks: ContentBlock[]): { src: string; mt: string }[]
     }));
 }
 
-export function AIChat() {
+export function AIChat({
+  initialOpen = false,
+  onClosed,
+}: {
+  initialOpen?: boolean;
+  onClosed?: () => void;
+} = {}) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [open, setOpenInner] = useState(initialOpen);
+  function setOpen(v: boolean) {
+    setOpenInner(v);
+    if (!v && onClosed) onClosed();
+  }
+  const externallyManaged = onClosed !== undefined;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -323,16 +334,18 @@ export function AIChat() {
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        aria-label="Abrir asistente"
-        className={cn(
-          "fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:scale-105",
-          open && "hidden"
-        )}
-      >
-        <MessageCircle className="h-5 w-5" />
-      </button>
+      {!externallyManaged && (
+        <button
+          onClick={() => setOpen(true)}
+          aria-label="Abrir asistente"
+          className={cn(
+            "fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:scale-105",
+            open && "hidden"
+          )}
+        >
+          <MessageCircle className="h-5 w-5" />
+        </button>
+      )}
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-end justify-end p-3 sm:p-5">

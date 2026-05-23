@@ -54,13 +54,26 @@ async function parseMentions(
   return out;
 }
 
-export async function sendMessage(channelId: string, content: string) {
+interface ChatAttachmentInput {
+  storage_path: string;
+  name: string;
+  mime_type: string;
+  size?: number;
+}
+
+export async function sendMessage(
+  channelId: string,
+  content: string,
+  attachments: ChatAttachmentInput[] = []
+) {
   const { supabase, userId } = await ctx();
   const text = (content ?? "").toString().trim().slice(0, MAX_MESSAGE);
-  if (!text) return { error: "Mensaje vacío." };
+  if (!text && attachments.length === 0) return { error: "Mensaje vacío." };
 
   // Resolver menciones (sólo entre miembros del canal)
-  const mentions = await parseMentions(supabase, text, channelId);
+  const mentions = text
+    ? await parseMentions(supabase, text, channelId)
+    : [];
 
   // Insertar mensaje
   const { data: msg, error } = await supabase
@@ -68,12 +81,30 @@ export async function sendMessage(channelId: string, content: string) {
     .insert({
       channel_id: channelId,
       user_id: userId,
-      content: text,
+      content: text || "",
       mentions,
     })
     .select("id")
     .single();
   if (error || !msg) return { error: error?.message ?? "Error" };
+
+  // Registrar adjuntos
+  if (attachments.length > 0) {
+    const rows = attachments.map((a) => ({
+      message_id: msg.id,
+      name: a.name,
+      mime_type: a.mime_type,
+      storage_path: a.storage_path,
+      size: a.size ?? null,
+    }));
+    const { error: attErr } = await supabase
+      .from("chat_attachments")
+      .insert(rows);
+    if (attErr) {
+      // Mensaje queda creado igual, pero avisamos
+      return { error: "Adjuntando archivos: " + attErr.message, id: msg.id };
+    }
+  }
 
   // Bump updated_at del canal para ordenar por reciente
   await supabase

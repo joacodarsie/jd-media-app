@@ -1,7 +1,12 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { ChatLayout, type ChatMessageRow, type ChatChannel } from "@/components/team-chat";
+import {
+  ChatLayout,
+  type ChatAttachment,
+  type ChatMessageRow,
+  type ChatChannel,
+} from "@/components/team-chat";
 
 export const dynamic = "force-dynamic";
 
@@ -104,7 +109,7 @@ export default async function ChatPage({
     redirect("/chat");
   }
 
-  // Mensajes del canal activo + miembros
+  // Mensajes del canal activo + miembros + adjuntos
   let messages: ChatMessageRow[] = [];
   let activeMembers: string[] = [];
   if (activeId) {
@@ -122,10 +127,56 @@ export default async function ChatPage({
         .select("user_id")
         .eq("channel_id", activeId),
     ]);
-    messages = (msgs ?? []) as unknown as ChatMessageRow[];
+    const baseMsgs = ((msgs ?? []) as unknown) as Omit<
+      ChatMessageRow,
+      "attachments"
+    >[];
     activeMembers = ((members ?? []) as { user_id: string }[]).map((m) => m.user_id);
 
-    // Marcar canal como leído (solo si hay msgs)
+    // Adjuntos + signed URLs
+    type RawAtt = {
+      id: string;
+      message_id: string;
+      name: string;
+      mime_type: string;
+      storage_path: string;
+      size: number | null;
+    };
+    const attsByMsg = new Map<string, RawAtt[]>();
+    if (baseMsgs.length > 0) {
+      const ids = baseMsgs.map((m) => m.id);
+      const { data: atts } = await supabase
+        .from("chat_attachments")
+        .select("id, message_id, name, mime_type, storage_path, size")
+        .in("message_id", ids);
+      const allPaths: string[] = [];
+      for (const a of (atts ?? []) as RawAtt[]) {
+        if (!attsByMsg.has(a.message_id)) attsByMsg.set(a.message_id, []);
+        attsByMsg.get(a.message_id)!.push(a);
+        allPaths.push(a.storage_path);
+      }
+      const signedUrlMap = new Map<string, string>();
+      if (allPaths.length > 0) {
+        const { data: signed } = await supabase.storage
+          .from("documents")
+          .createSignedUrls(allPaths, 60 * 60);
+        for (const s of signed ?? []) {
+          if (s?.signedUrl && s.path) signedUrlMap.set(s.path, s.signedUrl);
+        }
+      }
+      messages = baseMsgs.map((m) => ({
+        ...m,
+        attachments: (attsByMsg.get(m.id) ?? []).map<ChatAttachment>((a) => ({
+          name: a.name,
+          mime_type: a.mime_type,
+          url: signedUrlMap.get(a.storage_path) ?? "",
+          size: a.size ?? undefined,
+        })),
+      }));
+    } else {
+      messages = [];
+    }
+
     if (messages.length > 0) {
       await supabase
         .from("team_channel_members")

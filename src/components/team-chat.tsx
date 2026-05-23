@@ -3,7 +3,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Hash, Plus, Send, Settings, Trash2, Users } from "lucide-react";
+import {
+  FileText,
+  Hash,
+  Image as ImageIcon,
+  Paperclip,
+  Plus,
+  Send,
+  Settings,
+  Trash2,
+  Users,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -40,6 +51,13 @@ export interface ChatChannel {
   peer: { id: string; nombre: string; avatar_url: string | null } | null;
 }
 
+export interface ChatAttachment {
+  name: string;
+  mime_type: string;
+  url: string;
+  size?: number;
+}
+
 export interface ChatMessageRow {
   id: string;
   channel_id: string;
@@ -49,6 +67,30 @@ export interface ChatMessageRow {
   created_at: string;
   edited_at: string | null;
   autor: { id: string; nombre: string; avatar_url: string | null } | null;
+  attachments: ChatAttachment[];
+}
+
+interface PendingFile {
+  file: File;
+  kind: "image" | "audio" | "video" | "pdf" | "text" | "other";
+  previewUrl?: string;
+}
+
+const MAX_FILE_MB = 10;
+const ALLOWED_IMAGE = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+function classifyFile(file: File): PendingFile["kind"] {
+  if (ALLOWED_IMAGE.includes(file.type)) return "image";
+  if (file.type.startsWith("audio/")) return "audio";
+  if (file.type.startsWith("video/")) return "video";
+  if (file.type === "application/pdf") return "pdf";
+  if (
+    file.type.startsWith("text/") ||
+    file.type === "application/json" ||
+    file.name.endsWith(".csv")
+  )
+    return "text";
+  return "other";
 }
 
 interface UserOption {
@@ -470,10 +512,94 @@ function ChannelView({
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessageRow[]>(initialMessages);
   const [input, setInput] = useState("");
+  const [pending, setPending] = useState<PendingFile[]>([]);
   const [sending, setSending] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  function addFiles(files: FileList | File[]) {
+    const arr = Array.from(files);
+    const accepted: PendingFile[] = [];
+    for (const f of arr) {
+      if (f.size > MAX_FILE_MB * 1024 * 1024) {
+        toast.error(`${f.name}: supera ${MAX_FILE_MB}MB`);
+        continue;
+      }
+      const kind = classifyFile(f);
+      accepted.push({
+        file: f,
+        kind,
+        previewUrl: kind === "image" ? URL.createObjectURL(f) : undefined,
+      });
+    }
+    if (accepted.length > 0) setPending((curr) => [...curr, ...accepted]);
+  }
+
+  function removePending(idx: number) {
+    setPending((curr) => {
+      const copy = curr.slice();
+      const [removed] = copy.splice(idx, 1);
+      if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+      return copy;
+    });
+  }
+
+  function onPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const files: File[] = [];
+    for (const it of Array.from(items)) {
+      if (it.kind === "file") {
+        const f = it.getAsFile();
+        if (f) files.push(f);
+      }
+    }
+    if (files.length === 0) return;
+    e.preventDefault();
+    addFiles(files);
+  }
+
+  async function uploadPending(): Promise<
+    {
+      storage_path: string;
+      name: string;
+      mime_type: string;
+      size: number;
+    }[]
+  > {
+    if (pending.length === 0) return [];
+    const supabase = createClient();
+    const out: {
+      storage_path: string;
+      name: string;
+      mime_type: string;
+      size: number;
+    }[] = [];
+    for (const p of pending) {
+      const ext = p.file.name.split(".").pop() ?? "bin";
+      const path = `chat/${currentUserId}/${channelId}/${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}.${ext}`;
+      const { error } = await supabase.storage
+        .from("documents")
+        .upload(path, p.file, {
+          contentType: p.file.type || "application/octet-stream",
+        });
+      if (error) {
+        toast.error(`Subiendo ${p.file.name}: ${error.message}`);
+        continue;
+      }
+      out.push({
+        storage_path: path,
+        name: p.file.name,
+        mime_type: p.file.type || "application/octet-stream",
+        size: p.file.size,
+      });
+    }
+    return out;
+  }
 
   const usersById = useMemo(() => {
     const m = new Map<string, UserOption>();
@@ -517,6 +643,37 @@ function ChannelView({
           // Si es nuestro propio mensaje, ya lo agregamos optimista en send()
           if (newMsg.user_id === currentUserId) return;
           const autor = usersById.get(newMsg.user_id);
+          // Fetch adjuntos del nuevo mensaje + signed URLs
+          let attachments: ChatAttachment[] = [];
+          const { data: atts } = await supabase
+            .from("chat_attachments")
+            .select("name, mime_type, storage_path, size")
+            .eq("message_id", newMsg.id);
+          type AttRow = {
+            name: string;
+            mime_type: string;
+            storage_path: string;
+            size: number | null;
+          };
+          const rows = (atts ?? []) as AttRow[];
+          if (rows.length > 0) {
+            const { data: signed } = await supabase.storage
+              .from("documents")
+              .createSignedUrls(
+                rows.map((r) => r.storage_path),
+                60 * 60
+              );
+            const urls = new Map<string, string>();
+            for (const s of signed ?? []) {
+              if (s?.signedUrl && s.path) urls.set(s.path, s.signedUrl);
+            }
+            attachments = rows.map((r) => ({
+              name: r.name,
+              mime_type: r.mime_type,
+              url: urls.get(r.storage_path) ?? "",
+              size: r.size ?? undefined,
+            }));
+          }
           setMessages((curr) => {
             if (curr.some((m) => m.id === newMsg.id)) return curr;
             return [
@@ -526,6 +683,7 @@ function ChannelView({
                 autor: autor
                   ? { id: autor.id, nombre: autor.nombre, avatar_url: autor.avatar_url }
                   : null,
+                attachments,
               },
             ];
           });
@@ -577,14 +735,18 @@ function ChannelView({
 
   async function send() {
     const text = input.trim();
-    if (!text || sending) return;
-    setInput("");
-    setMentionQuery(null);
+    if ((!text && pending.length === 0) || sending) return;
     setSending(true);
 
     // Optimista
     const tempId = `temp-${Date.now()}`;
     const me = users.find((u) => u.id === currentUserId);
+    const optimisticAtts: ChatAttachment[] = pending.map((p) => ({
+      name: p.file.name,
+      mime_type: p.file.type,
+      url: p.previewUrl ?? "",
+      size: p.file.size,
+    }));
     setMessages((curr) => [
       ...curr,
       {
@@ -598,17 +760,34 @@ function ChannelView({
         autor: me
           ? { id: me.id, nombre: me.nombre, avatar_url: me.avatar_url }
           : null,
+        attachments: optimisticAtts,
       },
     ]);
 
-    const res = await sendMessage(channelId, text);
+    let uploaded: Awaited<ReturnType<typeof uploadPending>> = [];
+    try {
+      uploaded = await uploadPending();
+    } catch (e) {
+      toast.error("Falló subir adjuntos: " + (e instanceof Error ? e.message : ""));
+      setMessages((curr) => curr.filter((m) => m.id !== tempId));
+      setSending(false);
+      inputRef.current?.focus();
+      return;
+    }
+
+    setInput("");
+    setMentionQuery(null);
+    setPending([]);
+
+    const res = await sendMessage(channelId, text, uploaded);
     setSending(false);
+    // Devolver el foco para escribir el siguiente mensaje sin click
+    inputRef.current?.focus();
     if (res?.error) {
       toast.error(res.error);
       setMessages((curr) => curr.filter((m) => m.id !== tempId));
       return;
     }
-    // Reemplazar id temporal con real
     if (res.id) {
       setMessages((curr) =>
         curr.map((m) => (m.id === tempId ? { ...m, id: res.id! } : m))
@@ -734,24 +913,55 @@ function ChannelView({
             ))}
           </div>
         )}
+        {pending.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-2">
+            {pending.map((p, idx) => (
+              <PendingChip
+                key={idx}
+                pending={p}
+                onRemove={() => removePending(idx)}
+              />
+            ))}
+          </div>
+        )}
         <div className="flex items-end gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            hidden
+            onChange={(e) => {
+              if (e.target.files) addFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-11 w-11 shrink-0"
+            onClick={() => fileInputRef.current?.click()}
+            title="Adjuntar archivo"
+          >
+            <Paperclip className="h-4 w-4" />
+          </Button>
           <textarea
             ref={inputRef}
             value={input}
             onChange={handleChange}
             onKeyDown={handleKey}
+            onPaste={onPaste}
             placeholder={
               channelKind === "dm"
                 ? `Mensaje a ${channelName}…`
                 : `Mensaje a #${channelName}… (usá @ para mencionar)`
             }
             rows={1}
-            disabled={sending}
             className="max-h-40 min-h-[44px] flex-1 resize-none rounded-md border bg-card px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
           <Button
             onClick={send}
-            disabled={sending || !input.trim()}
+            disabled={sending || (!input.trim() && pending.length === 0)}
             size="icon"
             className="h-11 w-11 shrink-0"
           >
@@ -808,9 +1018,16 @@ function MessageRow({
             </span>
           </div>
         )}
-        <div className="whitespace-pre-wrap break-words text-sm">
-          {renderContentWithMentions(msg.content)}
-        </div>
+        {msg.content && (
+          <div className="whitespace-pre-wrap break-words text-sm">
+            {renderContentWithMentions(msg.content)}
+          </div>
+        )}
+        {msg.attachments && msg.attachments.length > 0 && (
+          <div className="mt-1">
+            <MessageAttachments items={msg.attachments} />
+          </div>
+        )}
       </div>
       {isMe && (
         <button
@@ -959,6 +1176,104 @@ function MembersButton({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function PendingChip({
+  pending,
+  onRemove,
+}: {
+  pending: PendingFile;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 rounded-md border bg-muted px-2 py-1 text-xs">
+      {pending.previewUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={pending.previewUrl}
+          alt=""
+          className="h-8 w-8 rounded object-cover"
+        />
+      ) : pending.kind === "pdf" ? (
+        <FileText className="h-4 w-4 text-red-500" />
+      ) : pending.kind === "audio" ? (
+        <FileText className="h-4 w-4 text-purple-500" />
+      ) : pending.kind === "video" ? (
+        <FileText className="h-4 w-4 text-blue-500" />
+      ) : (
+        <FileText className="h-4 w-4 text-muted-foreground" />
+      )}
+      <span className="max-w-[160px] truncate">{pending.file.name}</span>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="rounded p-0.5 text-muted-foreground hover:bg-background hover:text-foreground"
+        aria-label="Quitar adjunto"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
+function MessageAttachments({ items }: { items: ChatAttachment[] }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {items.map((a, i) => {
+        const isImage = a.mime_type.startsWith("image/");
+        const isAudio = a.mime_type.startsWith("audio/");
+        const isVideo = a.mime_type.startsWith("video/");
+        if (isImage && a.url) {
+          return (
+            <a key={i} href={a.url} target="_blank" rel="noreferrer">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={a.url}
+                alt={a.name}
+                className="max-h-48 rounded-md object-cover"
+              />
+            </a>
+          );
+        }
+        if (isAudio && a.url) {
+          return (
+            <audio
+              key={i}
+              src={a.url}
+              controls
+              className="max-w-[280px]"
+            />
+          );
+        }
+        if (isVideo && a.url) {
+          return (
+            <video
+              key={i}
+              src={a.url}
+              controls
+              className="max-h-60 max-w-[320px] rounded-md"
+            />
+          );
+        }
+        return (
+          <a
+            key={i}
+            href={a.url}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-2 rounded-md border bg-background/50 px-2 py-1 text-xs hover:bg-background"
+          >
+            {a.mime_type === "application/pdf" ? (
+              <FileText className="h-3.5 w-3.5 text-red-500" />
+            ) : (
+              <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
+            )}
+            <span className="max-w-[180px] truncate">{a.name}</span>
+          </a>
+        );
+      })}
+    </div>
   );
 }
 

@@ -111,7 +111,11 @@ export async function markChannelRead(channelId: string) {
   return { ok: true };
 }
 
-export async function createChannel(name: string, description: string | null) {
+export async function createChannel(
+  name: string,
+  description: string | null,
+  memberIds: string[]
+) {
   const { supabase, userId } = await ctx();
   const slug = (name ?? "")
     .toLowerCase()
@@ -134,16 +138,50 @@ export async function createChannel(name: string, description: string | null) {
     .single();
   if (error || !created) return { error: error?.message ?? "Error" };
 
-  // Sumar todos los users activos por default
-  const { data: users } = await supabase.from("users").select("id").eq("activo", true);
-  if (users && users.length > 0) {
+  // Siempre incluir al creador. Después los miembros seleccionados.
+  const all = Array.from(new Set([userId, ...(memberIds ?? []).filter(Boolean)]));
+  if (all.length > 0) {
     await supabase
       .from("team_channel_members")
-      .insert(users.map((u) => ({ channel_id: created.id, user_id: u.id })));
+      .insert(all.map((uid) => ({ channel_id: created.id, user_id: uid })));
   }
 
   revalidatePath("/chat");
   return { ok: true, id: created.id };
+}
+
+export async function setChannelMembers(channelId: string, memberIds: string[]) {
+  const { supabase, userId } = await ctx();
+  // Asegurar que el creador (current) siempre quede como miembro
+  const target = Array.from(new Set([userId, ...(memberIds ?? []).filter(Boolean)]));
+
+  const { data: existingRows } = await supabase
+    .from("team_channel_members")
+    .select("user_id")
+    .eq("channel_id", channelId);
+  const existing = ((existingRows ?? []) as { user_id: string }[]).map(
+    (r) => r.user_id
+  );
+
+  const toAdd = target.filter((u) => !existing.includes(u));
+  const toRemove = existing.filter((u) => !target.includes(u));
+
+  if (toAdd.length > 0) {
+    const { error } = await supabase
+      .from("team_channel_members")
+      .insert(toAdd.map((uid) => ({ channel_id: channelId, user_id: uid })));
+    if (error) return { error: "Sumando: " + error.message };
+  }
+  if (toRemove.length > 0) {
+    const { error } = await supabase
+      .from("team_channel_members")
+      .delete()
+      .eq("channel_id", channelId)
+      .in("user_id", toRemove);
+    if (error) return { error: "Quitando: " + error.message };
+  }
+  revalidatePath("/chat");
+  return { ok: true, added: toAdd.length, removed: toRemove.length };
 }
 
 export async function deleteMessage(messageId: string, channelId: string) {

@@ -74,18 +74,26 @@ export default async function ChatPage({
     redirect("/chat");
   }
 
-  // Mensajes del canal activo + autor + mentions resueltos
+  // Mensajes del canal activo + miembros
   let messages: ChatMessageRow[] = [];
+  let activeMembers: string[] = [];
   if (activeId) {
-    const { data: msgs } = await supabase
-      .from("team_messages")
-      .select(
-        "id, channel_id, user_id, content, mentions, created_at, edited_at, autor:users!team_messages_user_id_fkey(id,nombre,avatar_url)"
-      )
-      .eq("channel_id", activeId)
-      .order("created_at", { ascending: true })
-      .limit(200);
+    const [{ data: msgs }, { data: members }] = await Promise.all([
+      supabase
+        .from("team_messages")
+        .select(
+          "id, channel_id, user_id, content, mentions, created_at, edited_at, autor:users!team_messages_user_id_fkey(id,nombre,avatar_url)"
+        )
+        .eq("channel_id", activeId)
+        .order("created_at", { ascending: true })
+        .limit(200),
+      supabase
+        .from("team_channel_members")
+        .select("user_id")
+        .eq("channel_id", activeId),
+    ]);
     messages = (msgs ?? []) as unknown as ChatMessageRow[];
+    activeMembers = ((members ?? []) as { user_id: string }[]).map((m) => m.user_id);
 
     // Marcar canal como leído (solo si hay msgs)
     if (messages.length > 0) {
@@ -110,6 +118,7 @@ export default async function ChatPage({
       channels={channels}
       activeChannelId={activeId}
       initialMessages={messages}
+      initialMembers={activeMembers}
       users={(users ?? []) as { id: string; nombre: string; avatar_url: string | null }[]}
     />
   );

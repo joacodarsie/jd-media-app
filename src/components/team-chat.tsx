@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Hash, Plus, Send, Trash2 } from "lucide-react";
+import { Hash, Plus, Send, Settings, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -11,6 +11,7 @@ import {
   createChannel,
   deleteMessage,
   sendMessage,
+  setChannelMembers,
 } from "@/app/(app)/chat/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,17 +89,24 @@ export function ChatLayout({
   channels,
   activeChannelId,
   initialMessages,
+  initialMembers,
   users,
 }: {
   currentUserId: string;
   channels: ChatChannel[];
   activeChannelId: string | null;
   initialMessages: ChatMessageRow[];
+  initialMembers: string[];
   users: UserOption[];
 }) {
   return (
     <div className="-m-4 flex h-[calc(100vh-3.5rem)] md:-m-6">
-      <ChannelsSidebar channels={channels} activeId={activeChannelId} />
+      <ChannelsSidebar
+        channels={channels}
+        activeId={activeChannelId}
+        users={users}
+        currentUserId={currentUserId}
+      />
       <div className="flex min-w-0 flex-1 flex-col">
         {activeChannelId ? (
           <ChannelView
@@ -112,6 +120,7 @@ export function ChatLayout({
             }
             currentUserId={currentUserId}
             initialMessages={initialMessages}
+            initialMembers={initialMembers}
             users={users}
           />
         ) : (
@@ -127,15 +136,28 @@ export function ChatLayout({
 function ChannelsSidebar({
   channels,
   activeId,
+  users,
+  currentUserId,
 }: {
   channels: ChatChannel[];
   activeId: string | null;
+  users: UserOption[];
+  currentUserId: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
+  const [memberIds, setMemberIds] = useState<string[]>(() =>
+    users.filter((u) => u.id !== currentUserId).map((u) => u.id)
+  );
   const [pending, setPending] = useState(false);
+
+  function toggleMember(id: string) {
+    setMemberIds((curr) =>
+      curr.includes(id) ? curr.filter((x) => x !== id) : [...curr, id]
+    );
+  }
 
   async function submit() {
     if (!name.trim()) {
@@ -143,7 +165,7 @@ function ChannelsSidebar({
       return;
     }
     setPending(true);
-    const res = await createChannel(name, desc);
+    const res = await createChannel(name, desc, memberIds);
     setPending(false);
     if (res?.error) {
       toast.error(res.error);
@@ -152,6 +174,7 @@ function ChannelsSidebar({
     setOpen(false);
     setName("");
     setDesc("");
+    setMemberIds(users.filter((u) => u.id !== currentUserId).map((u) => u.id));
     if (res.id) router.push(`/chat?c=${res.id}`);
   }
 
@@ -165,7 +188,7 @@ function ChannelsSidebar({
               <Plus className="h-4 w-4" />
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-sm">
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Nuevo canal</DialogTitle>
             </DialogHeader>
@@ -186,9 +209,59 @@ function ChannelsSidebar({
                   placeholder="De qué se habla acá"
                 />
               </div>
-              <p className="text-[11px] text-muted-foreground">
-                Por default suma a todo el equipo activo.
-              </p>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium">
+                    Miembros ({memberIds.length + 1})
+                  </label>
+                  <div className="flex gap-1 text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setMemberIds(
+                          users.filter((u) => u.id !== currentUserId).map((u) => u.id)
+                        )
+                      }
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      Todos
+                    </button>
+                    <span className="text-muted-foreground">·</span>
+                    <button
+                      type="button"
+                      onClick={() => setMemberIds([])}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      Ninguno
+                    </button>
+                  </div>
+                </div>
+                <div className="max-h-56 space-y-0.5 overflow-y-auto rounded-md border bg-card p-1">
+                  <div className="flex items-center gap-2 rounded px-2 py-1.5 text-sm opacity-70">
+                    <input type="checkbox" checked disabled className="h-3.5 w-3.5" />
+                    <span>Vos (creador)</span>
+                  </div>
+                  {users
+                    .filter((u) => u.id !== currentUserId)
+                    .map((u) => {
+                      const active = memberIds.includes(u.id);
+                      return (
+                        <label
+                          key={u.id}
+                          className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={active}
+                            onChange={() => toggleMember(u.id)}
+                            className="h-3.5 w-3.5"
+                          />
+                          <span>{u.nombre}</span>
+                        </label>
+                      );
+                    })}
+                </div>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setOpen(false)} disabled={pending}>
@@ -243,6 +316,7 @@ function ChannelView({
   channelDescription,
   currentUserId,
   initialMessages,
+  initialMembers,
   users,
 }: {
   channelId: string;
@@ -250,6 +324,7 @@ function ChannelView({
   channelDescription: string | null;
   currentUserId: string;
   initialMessages: ChatMessageRow[];
+  initialMembers: string[];
   users: UserOption[];
 }) {
   const router = useRouter();
@@ -426,7 +501,7 @@ function ChannelView({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b px-4 py-3">
+      <div className="flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2">
           <Hash className="h-4 w-4 text-muted-foreground" />
           <div>
@@ -438,6 +513,13 @@ function ChannelView({
             )}
           </div>
         </div>
+        <MembersButton
+          channelId={channelId}
+          channelName={channelName}
+          users={users}
+          initialMembers={initialMembers}
+          currentUserId={currentUserId}
+        />
       </div>
 
       <div className="flex-1 space-y-1 overflow-y-auto px-4 py-4">
@@ -571,6 +653,143 @@ function MessageRow({
         </button>
       )}
     </div>
+  );
+}
+
+function MembersButton({
+  channelId,
+  channelName,
+  users,
+  initialMembers,
+  currentUserId,
+}: {
+  channelId: string;
+  channelName: string;
+  users: UserOption[];
+  initialMembers: string[];
+  currentUserId: string;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<string[]>(initialMembers);
+  const [pending, setPending] = useState(false);
+
+  function toggle(id: string) {
+    if (id === currentUserId) return; // No se puede sacar a uno mismo
+    setSelected((curr) =>
+      curr.includes(id) ? curr.filter((x) => x !== id) : [...curr, id]
+    );
+  }
+
+  async function save() {
+    setPending(true);
+    const res = await setChannelMembers(channelId, selected);
+    setPending(false);
+    if (res?.error) {
+      toast.error(res.error);
+      return;
+    }
+    const added = res.added ?? 0;
+    const removed = res.removed ?? 0;
+    toast.success(
+      added || removed
+        ? `Listo. +${added} · -${removed}`
+        : "Sin cambios"
+    );
+    setOpen(false);
+    router.refresh();
+  }
+
+  const memberCount = selected.length;
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) setSelected(initialMembers);
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
+          <Users className="h-3.5 w-3.5" />
+          {memberCount}
+          <Settings className="h-3 w-3 opacity-60" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Miembros de #{channelName}</DialogTitle>
+        </DialogHeader>
+        <p className="text-xs text-muted-foreground">
+          Marcá quién participa en este canal. Vos no podés quitarte de un canal
+          que estás administrando.
+        </p>
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-muted-foreground">
+            {selected.length} {selected.length === 1 ? "miembro" : "miembros"}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setSelected(users.map((u) => u.id))}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Todos
+            </button>
+            <span className="text-muted-foreground">·</span>
+            <button
+              type="button"
+              onClick={() => setSelected([currentUserId])}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Solo yo
+            </button>
+          </div>
+        </div>
+        <div className="max-h-72 space-y-0.5 overflow-y-auto rounded-md border bg-card p-1">
+          {users.map((u) => {
+            const isMe = u.id === currentUserId;
+            const active = selected.includes(u.id);
+            return (
+              <label
+                key={u.id}
+                className={cn(
+                  "flex items-center gap-2 rounded px-2 py-1.5 text-sm",
+                  isMe ? "opacity-70" : "cursor-pointer hover:bg-muted"
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={active}
+                  disabled={isMe}
+                  onChange={() => toggle(u.id)}
+                  className="h-3.5 w-3.5"
+                />
+                <Avatar className="h-6 w-6">
+                  {u.avatar_url && <AvatarImage src={u.avatar_url} alt={u.nombre} />}
+                  <AvatarFallback className="text-[10px]">
+                    {initials(u.nombre)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="flex-1">{u.nombre}</span>
+                {isMe && (
+                  <span className="text-[10px] text-muted-foreground">tú</span>
+                )}
+              </label>
+            );
+          })}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={pending}>
+            Cancelar
+          </Button>
+          <Button onClick={save} disabled={pending}>
+            {pending ? "Guardando…" : "Guardar"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

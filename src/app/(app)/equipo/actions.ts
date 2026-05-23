@@ -22,6 +22,7 @@ export interface PositionInput {
   herramientas: PositionTool[];
   kpis: string | null;
   procesos: string | null;
+  services: string[];
   pago_default_monto: number | null;
   pago_default_moneda: string | null;
   pago_default_frecuencia: string | null;
@@ -39,6 +40,7 @@ function clean(input: PositionInput) {
     herramientas: input.herramientas ?? [],
     kpis: input.kpis?.trim() || null,
     procesos: input.procesos?.trim() || null,
+    services: (input.services ?? []).filter(Boolean),
     pago_default_monto: input.pago_default_monto,
     pago_default_moneda: input.pago_default_moneda || "ARS",
     pago_default_frecuencia: input.pago_default_frecuencia || "mensual",
@@ -84,6 +86,22 @@ export async function assignUserPosition(userId: string, positionId: string | nu
     .eq("id", userId);
   if (error) return { error: error.message };
   revalidatePath("/equipo");
+  return { ok: true };
+}
+
+export async function assignUserSecondaryPositions(
+  userId: string,
+  positionIds: string[]
+) {
+  const { supabase } = await ctx();
+  const clean = Array.from(new Set(positionIds.filter(Boolean)));
+  const { error } = await supabase
+    .from("users")
+    .update({ secondary_position_ids: clean })
+    .eq("id", userId);
+  if (error) return { error: error.message };
+  revalidatePath("/equipo");
+  revalidatePath("/equipo/personas");
   return { ok: true };
 }
 

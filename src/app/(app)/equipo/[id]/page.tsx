@@ -21,17 +21,27 @@ export default async function PositionDetail({
   const me = await requireUser();
   const supabase = createClient();
 
-  const [{ data: position }, { data: integrantes }, { data: allPositions }] =
-    await Promise.all([
-      supabase.from("positions").select("*").eq("id", params.id).maybeSingle(),
-      supabase
-        .from("users")
-        .select("id, nombre, avatar_url, position_id, area")
-        .eq("position_id", params.id)
-        .eq("activo", true)
-        .order("nombre"),
-      supabase.from("positions").select("id, nombre").order("nombre"),
-    ]);
+  const [
+    { data: position },
+    { data: integrantes },
+    { data: allPositions },
+    { data: servicesData },
+  ] = await Promise.all([
+    supabase.from("positions").select("*").eq("id", params.id).maybeSingle(),
+    supabase
+      .from("users")
+      .select("id, nombre, avatar_url, position_id, area")
+      .eq("position_id", params.id)
+      .eq("activo", true)
+      .order("nombre"),
+    supabase.from("positions").select("id, nombre").order("nombre"),
+    supabase
+      .from("services")
+      .select("slug, name")
+      .eq("active", true)
+      .order("orden"),
+  ]);
+  const serviceOptions = (servicesData ?? []) as { slug: string; name: string }[];
 
   if (!position) notFound();
   const p = position as Position;
@@ -50,6 +60,7 @@ export default async function PositionDetail({
           <PositionFormDialog
             mode="edit"
             position={p}
+            services={serviceOptions}
             trigger={
               <Button variant="outline" size="sm">
                 <Pencil className="mr-2 h-4 w-4" /> Editar

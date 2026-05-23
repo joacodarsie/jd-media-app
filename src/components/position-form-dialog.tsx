@@ -31,13 +31,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+export interface ServiceOption {
+  slug: string;
+  name: string;
+}
+
 export function PositionFormDialog({
   mode,
   position,
+  services,
   trigger,
 }: {
   mode: "create" | "edit";
   position?: Position;
+  services?: ServiceOption[];
   trigger: React.ReactNode;
 }) {
   const router = useRouter();
@@ -59,6 +66,15 @@ export function PositionFormDialog({
   const [freq, setFreq] = useState<string>(position?.pago_default_frecuencia ?? "mensual");
   const [forma, setForma] = useState(position?.pago_default_forma ?? "");
   const [pagoNotas, setPagoNotas] = useState(position?.pago_default_notas ?? "");
+  const [selectedServices, setSelectedServices] = useState<string[]>(
+    position?.services ?? []
+  );
+
+  function toggleService(slug: string) {
+    setSelectedServices((curr) =>
+      curr.includes(slug) ? curr.filter((s) => s !== slug) : [...curr, slug]
+    );
+  }
 
   function addTool() {
     setTools([...tools, { nombre: "", url: "" }]);
@@ -86,6 +102,7 @@ export function PositionFormDialog({
       herramientas: tools.filter((t) => t.nombre.trim()),
       kpis,
       procesos,
+      services: selectedServices,
       pago_default_monto: monto ? Number(monto) : null,
       pago_default_moneda: moneda,
       pago_default_frecuencia: freq,
@@ -218,6 +235,36 @@ export function PositionFormDialog({
               placeholder="- CTR objetivo: 1.5%&#10;- Tiempo de respuesta..."
             />
           </div>
+
+          {services && services.length > 0 && (
+            <div className="space-y-2">
+              <Label>Servicios donde participa</Label>
+              <div className="flex flex-wrap gap-2">
+                {services.map((s) => {
+                  const active = selectedServices.includes(s.slug);
+                  return (
+                    <button
+                      key={s.slug}
+                      type="button"
+                      onClick={() => toggleService(s.slug)}
+                      className={
+                        "rounded-full border px-3 py-1 text-xs font-medium transition-colors " +
+                        (active
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-muted hover:bg-muted/70")
+                      }
+                    >
+                      {s.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                A qué servicios de la agencia aporta este puesto. Tocá para
+                tildar/destildar.
+              </p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Procesos / SOPs (Markdown)</Label>

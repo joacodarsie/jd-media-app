@@ -62,6 +62,7 @@ export interface AppUser {
   avatar_url: string | null;
   activo: boolean;
   position_id: string | null;
+  secondary_position_ids: string[];
   fecha_ingreso: string | null;
   telefono: string | null;
   dni_cuit: string | null;
@@ -95,6 +96,7 @@ export interface Position {
   herramientas: PositionTool[];
   kpis: string | null;
   procesos: string | null;
+  services: string[];
   pago_default_monto: number | null;
   pago_default_moneda: string | null;
   pago_default_frecuencia: PayFrequency | null;

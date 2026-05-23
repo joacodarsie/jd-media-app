@@ -49,14 +49,21 @@ export default async function EquipoPage() {
   const me = await requireUser();
   const supabase = createClient();
 
-  const [{ data: positions }, { data: users }] = await Promise.all([
-    supabase.from("positions").select("*").order("area").order("nombre"),
-    supabase
-      .from("users")
-      .select("id, nombre, avatar_url, position_id, area")
-      .eq("activo", true)
-      .order("nombre"),
-  ]);
+  const [{ data: positions }, { data: users }, { data: servicesData }] =
+    await Promise.all([
+      supabase.from("positions").select("*").order("area").order("nombre"),
+      supabase
+        .from("users")
+        .select("id, nombre, avatar_url, position_id, area")
+        .eq("activo", true)
+        .order("nombre"),
+      supabase
+        .from("services")
+        .select("slug, name")
+        .eq("active", true)
+        .order("orden"),
+    ]);
+  const serviceOptions = (servicesData ?? []) as { slug: string; name: string }[];
 
   const integrantes = new Map<string, AppUser[]>();
   for (const u of (users ?? []) as AppUser[]) {
@@ -98,6 +105,7 @@ export default async function EquipoPage() {
           {isAdmin && (
             <PositionFormDialog
               mode="create"
+              services={serviceOptions}
               trigger={
                 <Button>
                   <Plus className="mr-2 h-4 w-4" /> Nuevo puesto

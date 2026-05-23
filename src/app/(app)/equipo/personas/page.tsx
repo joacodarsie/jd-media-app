@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AssignPositionSelect } from "@/components/assign-position-select";
 import { CompensationFormDialog } from "@/components/compensation-form-dialog";
+import { SecondaryPositionsEditor } from "@/components/secondary-positions-editor";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,9 @@ export default async function EquipoPersonasPage() {
   const [{ data: users }, { data: positions }, { data: comps }] = await Promise.all([
     supabase
       .from("users")
-      .select("id, nombre, email, area, rol, position_id, avatar_url, activo")
+      .select(
+        "id, nombre, email, area, rol, position_id, secondary_position_ids, avatar_url, activo"
+      )
       .eq("activo", true)
       .order("nombre"),
     supabase.from("positions").select("*").order("nombre"),
@@ -87,6 +90,23 @@ export default async function EquipoPersonasPage() {
                           </span>
                         )}
                       </div>
+                      {(u.secondary_position_ids?.length ?? 0) > 0 && (
+                        <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground">
+                          <span>también:</span>
+                          {(u.secondary_position_ids ?? []).map((sid) => {
+                            const sp = posMap.get(sid);
+                            if (!sp) return null;
+                            return (
+                              <span
+                                key={sid}
+                                className="rounded-full bg-muted px-1.5 py-0.5"
+                              >
+                                {sp.nombre}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </Link>
 
@@ -114,10 +134,19 @@ export default async function EquipoPersonasPage() {
                             </>
                           )}
                         </div>
-                        <div className="w-44">
-                          <AssignPositionSelect
+                        <div className="flex flex-col items-end gap-1">
+                          <div className="w-44">
+                            <AssignPositionSelect
+                              userId={u.id}
+                              current={u.position_id}
+                              positions={(positions ?? []) as Position[]}
+                            />
+                          </div>
+                          <SecondaryPositionsEditor
                             userId={u.id}
-                            current={u.position_id}
+                            userName={u.nombre}
+                            primaryId={u.position_id}
+                            current={u.secondary_position_ids ?? []}
                             positions={(positions ?? []) as Position[]}
                           />
                         </div>

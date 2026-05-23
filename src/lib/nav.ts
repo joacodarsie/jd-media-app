@@ -38,6 +38,12 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "Briefcase",
         roles: ["admin", "coordinador"],
       },
+      {
+        href: "/comercial",
+        label: "Comercial",
+        icon: "Target",
+        roles: ["admin", "coordinador", "comercial", "prospecting"],
+      },
       { href: "/equipo", label: "Equipo", icon: "Users2" },
       { href: "/equipo/personas", label: "Personas", icon: "Users" },
     ],

@@ -16,6 +16,7 @@ import {
   FolderOpen,
   MessageCircle,
   Sparkles,
+  Target,
   Wallet,
   KeyRound,
   Menu,
@@ -59,6 +60,7 @@ const ICONS: Record<string, LucideIcon> = {
   FolderOpen,
   MessageCircle,
   Sparkles,
+  Target,
   Wallet,
   KeyRound,
 };

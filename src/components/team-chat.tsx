@@ -7,10 +7,12 @@ import {
   FileText,
   Hash,
   Image as ImageIcon,
+  Mic,
   Paperclip,
   Plus,
   Send,
   Settings,
+  Square,
   Trash2,
   Users,
   X,
@@ -515,9 +517,16 @@ function ChannelView({
   const [pending, setPending] = useState<PendingFile[]>([]);
   const [sending, setSending] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [recSeconds, setRecSeconds] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const recChunksRef = useRef<BlobPart[]>([]);
+  const recTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recCancelledRef = useRef(false);
 
   function addFiles(files: FileList | File[]) {
     const arr = Array.from(files);
@@ -733,6 +742,108 @@ function ChannelView({
     setTimeout(() => inputRef.current?.focus(), 0);
   }
 
+  function pickMimeType(): string {
+    const candidates = [
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/ogg;codecs=opus",
+      "audio/mp4",
+    ];
+    for (const c of candidates) {
+      if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(c)) {
+        return c;
+      }
+    }
+    return "audio/webm";
+  }
+
+  async function startRecording() {
+    if (recording) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+      const mimeType = pickMimeType();
+      const recorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = recorder;
+      recChunksRef.current = [];
+      recCancelledRef.current = false;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) recChunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(recChunksRef.current, { type: mimeType });
+        // Stop tracks del stream
+        mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+        mediaStreamRef.current = null;
+        mediaRecorderRef.current = null;
+        if (recTimerRef.current) {
+          clearInterval(recTimerRef.current);
+          recTimerRef.current = null;
+        }
+        setRecording(false);
+        setRecSeconds(0);
+
+        if (recCancelledRef.current) return;
+        if (blob.size === 0) {
+          toast.error("No se capturó audio.");
+          return;
+        }
+        const ext = mimeType.includes("ogg")
+          ? "ogg"
+          : mimeType.includes("mp4")
+          ? "m4a"
+          : "webm";
+        const file = new File(
+          [blob],
+          `audio-${Date.now()}.${ext}`,
+          { type: mimeType }
+        );
+        addFiles([file]);
+        inputRef.current?.focus();
+      };
+
+      recorder.start();
+      setRecording(true);
+      setRecSeconds(0);
+      recTimerRef.current = setInterval(() => {
+        setRecSeconds((s) => {
+          // Auto-stop a los 5 minutos para evitar archivos enormes
+          if (s + 1 >= 300) {
+            stopRecording();
+            return s;
+          }
+          return s + 1;
+        });
+      }, 1000);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error("No se pudo acceder al micrófono: " + msg);
+    }
+  }
+
+  function stopRecording() {
+    const r = mediaRecorderRef.current;
+    if (!r) return;
+    recCancelledRef.current = false;
+    if (r.state !== "inactive") r.stop();
+  }
+
+  function cancelRecording() {
+    const r = mediaRecorderRef.current;
+    if (!r) return;
+    recCancelledRef.current = true;
+    if (r.state !== "inactive") r.stop();
+  }
+
+  // Cleanup si el user navega o desmonta mientras graba
+  useEffect(() => {
+    return () => {
+      mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+      if (recTimerRef.current) clearInterval(recTimerRef.current);
+    };
+  }, []);
+
   async function send() {
     const text = input.trim();
     if ((!text && pending.length === 0) || sending) return;
@@ -935,38 +1046,90 @@ function ChannelView({
               e.target.value = "";
             }}
           />
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="h-11 w-11 shrink-0"
-            onClick={() => fileInputRef.current?.click()}
-            title="Adjuntar archivo"
-          >
-            <Paperclip className="h-4 w-4" />
-          </Button>
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={handleChange}
-            onKeyDown={handleKey}
-            onPaste={onPaste}
-            placeholder={
-              channelKind === "dm"
-                ? `Mensaje a ${channelName}…`
-                : `Mensaje a #${channelName}… (usá @ para mencionar)`
-            }
-            rows={1}
-            className="max-h-40 min-h-[44px] flex-1 resize-none rounded-md border bg-card px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-          <Button
-            onClick={send}
-            disabled={sending || (!input.trim() && pending.length === 0)}
-            size="icon"
-            className="h-11 w-11 shrink-0"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
+          {!recording && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-11 w-11 shrink-0"
+                onClick={() => fileInputRef.current?.click()}
+                title="Adjuntar archivo"
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-11 w-11 shrink-0"
+                onClick={startRecording}
+                title="Grabar audio"
+              >
+                <Mic className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+          {recording ? (
+            <div className="flex h-11 flex-1 items-center justify-between gap-2 rounded-md border border-red-300 bg-red-50 px-3 text-sm dark:border-red-900 dark:bg-red-950/30">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+                </span>
+                <span className="font-medium text-red-800 dark:text-red-300">
+                  Grabando · {Math.floor(recSeconds / 60)}:
+                  {String(recSeconds % 60).padStart(2, "0")}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 px-2 text-red-700 hover:bg-red-100 hover:text-red-900 dark:text-red-300 dark:hover:bg-red-900/30"
+                  onClick={cancelRecording}
+                  title="Cancelar"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  className="h-8 w-8 bg-red-500 hover:bg-red-600"
+                  onClick={stopRecording}
+                  title="Terminar grabación"
+                >
+                  <Square className="h-3.5 w-3.5 fill-white" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={handleChange}
+              onKeyDown={handleKey}
+              onPaste={onPaste}
+              placeholder={
+                channelKind === "dm"
+                  ? `Mensaje a ${channelName}…`
+                  : `Mensaje a #${channelName}… (usá @ para mencionar)`
+              }
+              rows={1}
+              className="max-h-40 min-h-[44px] flex-1 resize-none rounded-md border bg-card px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          )}
+          {!recording && (
+            <Button
+              onClick={send}
+              disabled={sending || (!input.trim() && pending.length === 0)}
+              size="icon"
+              className="h-11 w-11 shrink-0"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     </div>

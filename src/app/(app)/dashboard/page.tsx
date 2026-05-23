@@ -18,7 +18,6 @@ import { PRIORITY_ORDER } from "@/lib/constants";
 import type { PublicationWithRels, TaskWithRels } from "@/lib/types";
 import { dueState } from "@/lib/dates";
 import { cn } from "@/lib/utils";
-import { Card, CardContent } from "@/components/ui/card";
 import { TaskList } from "@/components/task-list";
 
 export const dynamic = "force-dynamic";

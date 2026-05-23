@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   CalendarDays,
   ExternalLink,
+  FileBarChart,
   FileText,
   FolderOpen,
   Globe,
@@ -109,6 +110,13 @@ export default async function ClientDetail({
             className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
           >
             <CalendarDays className="mr-2 h-4 w-4" /> Calendario de contenidos
+          </Link>
+          <Link
+            href={`/reporte/cliente/${c.id}`}
+            target="_blank"
+            className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
+          >
+            <FileBarChart className="mr-2 h-4 w-4" /> Reporte mensual
           </Link>
           {canEdit && (
           <>

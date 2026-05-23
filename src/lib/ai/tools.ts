@@ -201,26 +201,6 @@ export const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
-    name: "list_services",
-    description:
-      "Lista los servicios activos del catálogo de la agencia (Gestión de redes, Paid Media, Producción de contenido, Diseño gráfico, Desarrollo web, Botly, etc.). Útil cuando el usuario pregunta '¿qué servicios ofrecemos?' o '¿qué áreas participan en cada servicio?'.",
-    input_schema: { type: "object", properties: {} },
-  },
-  {
-    name: "list_positions",
-    description:
-      "Lista los puestos del equipo con su descripción, área, servicios donde participa y modelo de pago default. Útil para '¿qué puestos tiene la agencia?', '¿quiénes son Community Managers?', '¿qué hace una Directora Creativa?'.",
-    input_schema: {
-      type: "object",
-      properties: {
-        nombre_like: {
-          type: "string",
-          description: "Filtro parcial sobre el nombre del puesto",
-        },
-      },
-    },
-  },
-  {
     name: "list_leads",
     description:
       "Lista leads del pipeline comercial. Filtros opcionales por stage (nuevo, contactado, calificado, propuesta, negociacion, ganado, perdido), asignado_a_nombre (parcial), o solo_activos (excluye ganados y perdidos). Útil para preguntas como '¿qué leads tiene Sol?', '¿cuántos leads están en propuesta?', 'pipeline activo'.",

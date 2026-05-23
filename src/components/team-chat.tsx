@@ -12,7 +12,6 @@ import {
   Plus,
   Send,
   Settings,
-  Square,
   Trash2,
   Users,
   X,
@@ -537,10 +536,15 @@ function ChannelView({
         continue;
       }
       const kind = classifyFile(f);
+      // Para image/audio/video creamos un blob URL así el render optimista
+      // tiene contenido para mostrar (img/audio/video) antes de que el server
+      // devuelva la signed URL definitiva.
+      const needsPreview =
+        kind === "image" || kind === "audio" || kind === "video";
       accepted.push({
         file: f,
         kind,
-        previewUrl: kind === "image" ? URL.createObjectURL(f) : undefined,
+        previewUrl: needsPreview ? URL.createObjectURL(f) : undefined,
       });
     }
     if (accepted.length > 0) setPending((curr) => [...curr, ...accepted]);
@@ -1071,38 +1075,48 @@ function ChannelView({
             </>
           )}
           {recording ? (
-            <div className="flex h-11 flex-1 items-center justify-between gap-2 rounded-md border border-red-300 bg-red-50 px-3 text-sm dark:border-red-900 dark:bg-red-950/30">
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
-                </span>
-                <span className="font-medium text-red-800 dark:text-red-300">
-                  Grabando · {Math.floor(recSeconds / 60)}:
+            <div className="flex h-11 flex-1 items-center gap-3 rounded-md border border-red-300 bg-red-50 px-3 dark:border-red-900 dark:bg-red-950/30">
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 shrink-0 text-red-700 hover:bg-red-100 hover:text-red-900 dark:text-red-300 dark:hover:bg-red-900/30"
+                onClick={cancelRecording}
+                title="Cancelar grabación"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              <div className="flex flex-1 items-center gap-2 overflow-hidden">
+                <Mic className="h-4 w-4 shrink-0 animate-pulse text-red-600 dark:text-red-400" />
+                <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-red-800 dark:text-red-300">
+                  {Math.floor(recSeconds / 60)}:
                   {String(recSeconds % 60).padStart(2, "0")}
                 </span>
+                <div className="flex flex-1 items-center justify-center gap-0.5 overflow-hidden">
+                  {Array.from({ length: 24 }).map((_, i) => (
+                    <span
+                      key={i}
+                      className="inline-block w-0.5 rounded-full bg-red-500/70 dark:bg-red-400/60"
+                      style={{
+                        height: `${6 + Math.abs(Math.sin((i + recSeconds * 1.5) * 0.6)) * 14}px`,
+                        transition: "height 120ms ease-out",
+                      }}
+                    />
+                  ))}
+                </div>
+                <span className="hidden shrink-0 text-[10px] text-red-700/70 sm:inline dark:text-red-400/70">
+                  Tocá ✓ para enviar
+                </span>
               </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 px-2 text-red-700 hover:bg-red-100 hover:text-red-900 dark:text-red-300 dark:hover:bg-red-900/30"
-                  onClick={cancelRecording}
-                  title="Cancelar"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="button"
-                  size="icon"
-                  className="h-8 w-8 bg-red-500 hover:bg-red-600"
-                  onClick={stopRecording}
-                  title="Terminar grabación"
-                >
-                  <Square className="h-3.5 w-3.5 fill-white" />
-                </Button>
-              </div>
+              <Button
+                type="button"
+                size="icon"
+                className="h-9 w-9 shrink-0 rounded-full bg-red-600 text-white shadow hover:bg-red-700"
+                onClick={stopRecording}
+                title="Terminar y adjuntar"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
             </div>
           ) : (
             <textarea

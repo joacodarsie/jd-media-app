@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
+import { listEventsForUser } from "@/lib/google-calendar";
 import { AgendaView } from "@/components/agenda-view";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,22 @@ export default async function AgendaPage() {
     mine: c.owner_user_id === me.id,
   }));
 
+  // Initial fetch SSR: últimos 7 + próximos 22 (cubre la vista Lista por defecto).
+  const now = new Date();
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  const from = new Date(start.getTime() - 7 * 86400000);
+  const to = new Date(start.getTime() + 22 * 86400000);
+
+  let initialEvents: Awaited<ReturnType<typeof listEventsForUser>> = [];
+  if (connections.length > 0) {
+    try {
+      initialEvents = await listEventsForUser(me.id, from.toISOString(), to.toISOString());
+    } catch {
+      initialEvents = [];
+    }
+  }
+
   return (
     <div className="space-y-5">
       <div>
@@ -31,7 +48,12 @@ export default async function AgendaPage() {
         </p>
       </div>
 
-      <AgendaView connections={connections} />
+      <AgendaView
+        connections={connections}
+        initialEvents={initialEvents}
+        initialFrom={from.toISOString()}
+        initialTo={to.toISOString()}
+      />
     </div>
   );
 }

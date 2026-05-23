@@ -27,6 +27,7 @@ import {
   LayoutGrid,
   AlertTriangle,
   Keyboard,
+  Briefcase,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,29 @@ interface Connection {
   google_email: string;
   visibility: "private" | "shared";
   mine: boolean;
+}
+
+interface ClientLite {
+  id: string;
+  nombre: string;
+  contacto_email: string | null;
+}
+
+function matchClient(
+  event: CalendarEvent,
+  clients: ClientLite[]
+): ClientLite | null {
+  const title = (event.summary ?? "").toLowerCase();
+  const attendeeEmails = (event.attendees ?? []).map((a) => a.email?.toLowerCase()).filter(Boolean);
+  for (const c of clients) {
+    const name = c.nombre.toLowerCase();
+    if (name.length >= 3 && title.includes(name)) return c;
+    if (c.contacto_email) {
+      const e = c.contacto_email.toLowerCase();
+      if (attendeeEmails.includes(e)) return c;
+    }
+  }
+  return null;
 }
 
 interface CalendarEvent {
@@ -190,11 +214,13 @@ const LS_VIEW_KEY = "agenda:view";
 
 export function AgendaView({
   connections,
+  clients = [],
   initialEvents,
   initialFrom,
   initialTo,
 }: {
   connections: Connection[];
+  clients?: ClientLite[];
   initialEvents: CalendarEvent[];
   initialFrom: string;
   initialTo: string;
@@ -522,6 +548,7 @@ export function AgendaView({
         <ListView
           events={filtered}
           connections={connections}
+          clients={clients}
           conflictDays={conflictDays}
           expanded={expanded}
           toggleExpanded={toggleExpanded}
@@ -554,6 +581,7 @@ export function AgendaView({
           day={selectedDay}
           events={filtered}
           connections={connections}
+          clients={clients}
           onClose={() => setSelectedDay(null)}
           expanded={expanded}
           toggleExpanded={toggleExpanded}
@@ -606,12 +634,14 @@ function ViewTab({
 function ListView({
   events,
   connections,
+  clients,
   conflictDays,
   expanded,
   toggleExpanded,
 }: {
   events: CalendarEvent[];
   connections: Connection[];
+  clients: ClientLite[];
   conflictDays: Set<string>;
   expanded: Set<string>;
   toggleExpanded: (k: string) => void;
@@ -662,6 +692,7 @@ function ListView({
                   key={`${e.source_id}-${e.id}`}
                   event={e}
                   connections={connections}
+                  client={matchClient(e, clients)}
                   expanded={expanded}
                   toggleExpanded={toggleExpanded}
                 />
@@ -894,6 +925,7 @@ function DayDetail({
   day,
   events,
   connections,
+  clients,
   onClose,
   expanded,
   toggleExpanded,
@@ -901,6 +933,7 @@ function DayDetail({
   day: Date;
   events: CalendarEvent[];
   connections: Connection[];
+  clients: ClientLite[];
   onClose: () => void;
   expanded: Set<string>;
   toggleExpanded: (k: string) => void;
@@ -935,6 +968,7 @@ function DayDetail({
               key={`${e.source_id}-${e.id}`}
               event={e}
               connections={connections}
+              client={matchClient(e, clients)}
               expanded={expanded}
               toggleExpanded={toggleExpanded}
               compact
@@ -951,12 +985,14 @@ function DayDetail({
 function EventCard({
   event: e,
   connections,
+  client,
   expanded,
   toggleExpanded,
   compact = false,
 }: {
   event: CalendarEvent;
   connections: Connection[];
+  client?: ClientLite | null;
   expanded: Set<string>;
   toggleExpanded: (k: string) => void;
   compact?: boolean;
@@ -996,6 +1032,16 @@ function EventCard({
                 <Users className="h-3 w-3" />
                 {attendeesCount}
               </span>
+            )}
+            {client && (
+              <a
+                href={`/clientes/${client.id}`}
+                className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-primary hover:bg-primary/20"
+                title={`Cliente: ${client.nombre}`}
+              >
+                <Briefcase className="h-3 w-3" />
+                {client.nombre}
+              </a>
             )}
           </div>
           <div className="mt-2 flex flex-wrap gap-2 text-xs">

@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { listEventsForUser } from "@/lib/google-calendar";
 import { AgendaView } from "@/components/agenda-view";
@@ -7,13 +8,20 @@ export const dynamic = "force-dynamic";
 
 export default async function AgendaPage() {
   const me = await requireUser();
+  const supabase = createClient();
 
   const admin = createAdmin();
-  const { data: conns } = await admin
-    .from("google_calendar_connections")
-    .select("id, label, google_email, visibility, owner_user_id")
-    .or(`owner_user_id.eq.${me.id},visibility.eq.shared`)
-    .order("created_at", { ascending: true });
+  const [{ data: conns }, { data: clientsRaw }] = await Promise.all([
+    admin
+      .from("google_calendar_connections")
+      .select("id, label, google_email, visibility, owner_user_id")
+      .or(`owner_user_id.eq.${me.id},visibility.eq.shared`)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("clients")
+      .select("id, nombre, contacto_email")
+      .order("nombre"),
+  ]);
 
   const connections = (conns ?? []).map((c) => ({
     id: c.id,
@@ -21,6 +29,12 @@ export default async function AgendaPage() {
     google_email: c.google_email,
     visibility: c.visibility,
     mine: c.owner_user_id === me.id,
+  }));
+
+  const clients = (clientsRaw ?? []).map((c) => ({
+    id: c.id as string,
+    nombre: c.nombre as string,
+    contacto_email: (c.contacto_email as string | null) ?? null,
   }));
 
   // Initial fetch SSR: grilla del mes actual (≈42 días) — cubre Mes default + Lista + Semana.
@@ -56,6 +70,7 @@ export default async function AgendaPage() {
 
       <AgendaView
         connections={connections}
+        clients={clients}
         initialEvents={initialEvents}
         initialFrom={from.toISOString()}
         initialTo={to.toISOString()}

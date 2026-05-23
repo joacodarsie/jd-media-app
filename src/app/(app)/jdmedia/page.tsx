@@ -28,7 +28,7 @@ export default async function JdmediaPage({
   }[];
 
   // Si pidieron una conversación puntual via ?c=, validamos que sea del usuario
-  let activeId = searchParams.c ?? null;
+  const activeId = searchParams.c ?? null;
   if (activeId && !convList.some((c) => c.id === activeId)) {
     redirect("/jdmedia");
   }

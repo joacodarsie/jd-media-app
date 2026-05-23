@@ -29,15 +29,16 @@ async function parseMentions(
     .from("users")
     .select("id, nombre")
     .eq("activo", true);
-  if (!users) return [];
+  const list = (users ?? []) as { id: string; nombre: string }[];
+  if (list.length === 0) return [];
   const out: string[] = [];
   for (const h of handles) {
-    const match = users.find((u) => {
+    const match = list.find((u) => {
       const n = u.nombre.toLowerCase();
       return (
         n === h ||
         n.startsWith(h + " ") ||
-        n.split(" ").some((part) => part === h)
+        n.split(" ").some((part: string) => part === h)
       );
     });
     if (match && !out.includes(match.id)) out.push(match.id);

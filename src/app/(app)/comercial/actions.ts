@@ -107,3 +107,76 @@ export async function assignLead(id: string, userId: string | null) {
   revalidatePath("/comercial");
   return { ok: true };
 }
+
+/**
+ * Convierte un lead en cliente real. Crea fila en clients y
+ * (si el lead tenía servicio interesado) en client_services.
+ * Vincula ganado_cliente_id en el lead y lo marca como "ganado".
+ */
+export async function convertLeadToClient(leadId: string) {
+  const { supabase } = await ctx();
+
+  const { data: lead, error: leadErr } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("id", leadId)
+    .maybeSingle();
+  if (leadErr || !lead) {
+    return { error: leadErr?.message ?? "Lead no encontrado" };
+  }
+  if (lead.ganado_cliente_id) {
+    return {
+      error: "Este lead ya fue convertido. Cliente: " + lead.ganado_cliente_id,
+    };
+  }
+
+  const clientName = (lead.empresa?.trim() || lead.nombre?.trim() || "Cliente").slice(
+    0,
+    120
+  );
+
+  const { data: created, error: cErr } = await supabase
+    .from("clients")
+    .insert({
+      nombre: clientName,
+      contacto_nombre: lead.empresa ? lead.nombre : null,
+      contacto_email: lead.email,
+      contacto_telefono: lead.telefono,
+      monto_mensual: lead.monto_estimado,
+      notas: lead.notas,
+      fecha_inicio: new Date().toISOString().slice(0, 10),
+    })
+    .select("id")
+    .single();
+  if (cErr || !created) {
+    return { error: "No se pudo crear el cliente: " + (cErr?.message ?? "") };
+  }
+
+  // Si el lead tenía servicio interesado, crear client_services con el monto
+  if (lead.servicio_interesado) {
+    const { error: csErr } = await supabase.from("client_services").insert({
+      cliente_id: created.id,
+      tipo: lead.servicio_interesado,
+      monto_mensual: lead.monto_estimado,
+      moneda: lead.moneda ?? "ARS",
+      fecha_inicio: new Date().toISOString().slice(0, 10),
+      activo: true,
+    });
+    if (csErr) {
+      // No bloquea: el cliente ya existe. Avisamos solo en logs.
+      console.warn("convertLeadToClient: client_services insert failed", csErr);
+    }
+  }
+
+  // Marcar lead como ganado y vincular al cliente
+  await supabase
+    .from("leads")
+    .update({ stage: "ganado", ganado_cliente_id: created.id })
+    .eq("id", leadId);
+
+  revalidatePath("/comercial");
+  revalidatePath("/clientes");
+  revalidatePath(`/clientes/${created.id}`);
+
+  return { ok: true, clientId: created.id };
+}

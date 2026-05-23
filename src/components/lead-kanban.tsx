@@ -3,8 +3,11 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import Link from "next/link";
 import {
+  ArrowRight,
   Calendar,
+  CheckCheck,
   CircleUser,
   DollarSign,
   Mail,
@@ -16,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   changeLeadStage,
+  convertLeadToClient,
   deleteLead,
   type LeadStage,
 } from "@/app/(app)/comercial/actions";
@@ -36,6 +40,7 @@ export interface LeadRow extends LeadInit {
   id: string;
   asignado_nombre?: string | null;
   servicio_nombre?: string | null;
+  ganado_cliente_id?: string | null;
 }
 
 export function LeadKanban({
@@ -194,6 +199,26 @@ function LeadCard({
       router.refresh();
     });
   }
+  function convert() {
+    if (
+      !confirm(
+        `Crear cliente a partir de "${lead.nombre}"?\n\nSe va a:\n- Crear un cliente nuevo con los datos del lead\n- Agregar el servicio interesado al cliente (si tiene)\n- Marcar este lead como Ganado`
+      )
+    )
+      return;
+    start(async () => {
+      const res = await convertLeadToClient(lead.id);
+      if (res?.error) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success("Cliente creado");
+      router.push(`/clientes/${res.clientId}`);
+    });
+  }
+  const canConvert =
+    (lead.stage === "ganado" || lead.stage === "negociacion") &&
+    !lead.ganado_cliente_id;
   return (
     <div
       draggable
@@ -289,6 +314,24 @@ function LeadCard({
           → {lead.proxima_accion}
         </div>
       )}
+
+      {lead.ganado_cliente_id ? (
+        <Link
+          href={`/clientes/${lead.ganado_cliente_id}`}
+          className="mt-2 flex items-center justify-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300"
+        >
+          <CheckCheck className="h-3 w-3" /> Ver cliente <ArrowRight className="h-3 w-3" />
+        </Link>
+      ) : canConvert ? (
+        <button
+          type="button"
+          onClick={convert}
+          disabled={pending}
+          className="mt-2 flex w-full items-center justify-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary hover:bg-primary/20"
+        >
+          <CheckCheck className="h-3 w-3" /> Convertir a cliente
+        </button>
+      ) : null}
     </div>
   );
 }

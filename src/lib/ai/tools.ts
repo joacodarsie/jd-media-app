@@ -177,6 +177,20 @@ export const TOOLS: Anthropic.Tool[] = [
       required: ["cliente_nombre"],
     },
   },
+  {
+    name: "list_leads",
+    description:
+      "Lista leads del pipeline comercial. Filtros opcionales por stage (nuevo, contactado, calificado, propuesta, negociacion, ganado, perdido), asignado_a_nombre (parcial), o solo_activos (excluye ganados y perdidos). Útil para preguntas como '¿qué leads tiene Sol?', '¿cuántos leads están en propuesta?', 'pipeline activo'.",
+    input_schema: {
+      type: "object",
+      properties: {
+        stage: { type: "string" },
+        asignado_a_nombre: { type: "string" },
+        solo_activos: { type: "boolean" },
+        limit: { type: "number" },
+      },
+    },
+  },
 ];
 
 type Result = { ok: true; data: unknown } | { ok: false; error: string };
@@ -447,6 +461,27 @@ export async function runTool(
             })),
           },
         };
+      }
+
+      case "list_leads": {
+        let q = sb
+          .from("leads")
+          .select(
+            "id, nombre, empresa, email, telefono, stage, monto_estimado, moneda, servicio_interesado, proxima_accion, proxima_accion_at, asignado:users!leads_asignado_a_id_fkey(nombre), servicio:services(name)"
+          )
+          .order("updated_at", { ascending: false })
+          .limit(Math.min(Number(input.limit ?? 30), 100));
+        if (input.stage) q = q.eq("stage", String(input.stage));
+        if (input.asignado_a_nombre) {
+          const uid = await findUserId(sb, String(input.asignado_a_nombre));
+          if (uid) q = q.eq("asignado_a_id", uid);
+        }
+        if (input.solo_activos) {
+          q = q.not("stage", "in", "(ganado,perdido)");
+        }
+        const { data, error } = await q;
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data };
       }
 
       default:

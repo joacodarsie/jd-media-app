@@ -16,7 +16,7 @@ export default async function ComercialPage() {
       supabase
         .from("leads")
         .select(
-          "id, nombre, empresa, email, telefono, origen, servicio_interesado, monto_estimado, moneda, stage, asignado_a_id, notas, proxima_accion, proxima_accion_at, perdido_motivo, asignado:users!leads_asignado_a_id_fkey(id,nombre), servicio:services(slug,name)"
+          "id, nombre, empresa, email, telefono, origen, servicio_interesado, monto_estimado, moneda, stage, asignado_a_id, notas, proxima_accion, proxima_accion_at, perdido_motivo, ganado_cliente_id, asignado:users!leads_asignado_a_id_fkey(id,nombre), servicio:services(slug,name)"
         )
         .order("updated_at", { ascending: false }),
       supabase
@@ -47,6 +47,7 @@ export default async function ComercialPage() {
     proxima_accion: string | null;
     proxima_accion_at: string | null;
     perdido_motivo: string | null;
+    ganado_cliente_id: string | null;
     asignado?: { id: string; nombre: string } | null;
     servicio?: { slug: string; name: string } | null;
   };
@@ -68,6 +69,7 @@ export default async function ComercialPage() {
       proxima_accion: l.proxima_accion,
       proxima_accion_at: l.proxima_accion_at,
       perdido_motivo: l.perdido_motivo,
+      ganado_cliente_id: l.ganado_cliente_id,
       asignado_nombre: l.asignado?.nombre ?? null,
       servicio_nombre: l.servicio?.name ?? null,
     })

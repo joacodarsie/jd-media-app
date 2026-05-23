@@ -159,15 +159,20 @@ export function PublicationDetailDialog({
             )}
           </div>
 
-          <PublicationFinalFields
-            id={p.id}
-            initialUrl={
-              (p as unknown as { publicacion_url?: string | null }).publicacion_url ?? null
-            }
-            initialResubido={
-              (p as unknown as { resubido_tiktok?: boolean }).resubido_tiktok ?? false
-            }
-          />
+          {p.estado === "publicado" && (
+            <PublicationFinalFields
+              id={p.id}
+              initialLinkInstagram={
+                (p as unknown as { link_instagram?: string | null }).link_instagram ?? null
+              }
+              initialLinkTiktok={
+                (p as unknown as { link_tiktok?: string | null }).link_tiktok ?? null
+              }
+              initialLinkFacebook={
+                (p as unknown as { link_facebook?: string | null }).link_facebook ?? null
+              }
+            />
+          )}
 
           {p.notas_revision && (
             <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950/40">

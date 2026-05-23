@@ -157,16 +157,17 @@ export async function updatePublicationDate(id: string, date: string | null) {
   return { ok: true };
 }
 
-/** Update parcial sólo de los campos de "pieza publicada". */
+/** Update parcial de los links por red de la publicación (cuando ya se publicó). */
 export async function updatePublicationFinalFields(
   id: string,
-  publicacion_url: string | null,
-  resubido_tiktok: boolean
+  link_instagram: string | null,
+  link_tiktok: string | null,
+  link_facebook: string | null
 ) {
   const { supabase } = await ctx();
   const { data, error } = await supabase
     .from("publications")
-    .update({ publicacion_url, resubido_tiktok })
+    .update({ link_instagram, link_tiktok, link_facebook })
     .eq("id", id)
     .select("cliente_id")
     .single();

@@ -64,13 +64,12 @@ export function MonthlyReportEditor({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5 text-xs"
+        <button
+          type="button"
+          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
         >
           <Pencil className="h-3.5 w-3.5" /> Editar reporte
-        </Button>
+        </button>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
@@ -93,12 +92,40 @@ export function MonthlyReportEditor({
             <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Métricas orgánicas (Instagram / TikTok / etc.)
             </legend>
+            <p className="text-[11px] text-muted-foreground">
+              Cargá los valores manualmente desde las estadísticas de la red social.
+            </p>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Num label="Seguidores nuevos" value={m.seguidores_nuevos ?? null} onChange={(v) => field("seguidores_nuevos", v)} />
-              <Num label="Reach total" value={m.reach ?? null} onChange={(v) => field("reach", v)} />
-              <Num label="Impresiones" value={m.impresiones ?? null} onChange={(v) => field("impresiones", v)} />
-              <Num label="Interacciones" value={m.interacciones ?? null} onChange={(v) => field("interacciones", v)} />
-              <Num label="Visitas al perfil" value={m.visitas_perfil ?? null} onChange={(v) => field("visitas_perfil", v)} />
+              <Num
+                label="Seguidores nuevos"
+                hint="Diferencia de seguidores entre el inicio y el fin del mes."
+                value={m.seguidores_nuevos ?? null}
+                onChange={(v) => field("seguidores_nuevos", v)}
+              />
+              <Num
+                label="Alcance"
+                hint="Cuántas personas distintas vieron tu contenido en el mes."
+                value={m.reach ?? null}
+                onChange={(v) => field("reach", v)}
+              />
+              <Num
+                label="Impresiones"
+                hint="Total de veces que tu contenido se mostró (sumando repeticiones)."
+                value={m.impresiones ?? null}
+                onChange={(v) => field("impresiones", v)}
+              />
+              <Num
+                label="Interacciones"
+                hint="Likes, comentarios, guardados y compartidos sumados."
+                value={m.interacciones ?? null}
+                onChange={(v) => field("interacciones", v)}
+              />
+              <Num
+                label="Visitas al perfil"
+                hint="Cantidad de veces que entraron a tu perfil."
+                value={m.visitas_perfil ?? null}
+                onChange={(v) => field("visitas_perfil", v)}
+              />
             </div>
           </fieldset>
 
@@ -170,11 +197,13 @@ function Num({
   value,
   onChange,
   step = "1",
+  hint,
 }: {
   label: string;
   value: number | null;
   onChange: (v: number | null) => void;
   step?: string;
+  hint?: string;
 }) {
   return (
     <div className="space-y-1">
@@ -188,6 +217,7 @@ function Num({
         }
         placeholder="—"
       />
+      {hint && <p className="text-[10px] text-muted-foreground">{hint}</p>}
     </div>
   );
 }

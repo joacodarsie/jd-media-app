@@ -20,10 +20,7 @@ import type { Client, PublicationStatus } from "@/lib/types";
 import { Markdown } from "@/components/markdown";
 import { PrintButton } from "@/components/print-button";
 import { ReportMonthPicker } from "@/components/report-month-picker";
-import {
-  MonthlyReportEditor,
-  PublicationLinkEditor,
-} from "@/components/monthly-report-editor";
+import { MonthlyReportEditor } from "@/components/monthly-report-editor";
 import type { MonthlyMetrics } from "@/app/reporte/cliente/[id]/actions";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +35,25 @@ interface RawPub {
   estado: PublicationStatus;
   asset_url: string | null;
   link_publicacion: string | null;
+  link_instagram: string | null;
+  link_tiktok: string | null;
+  link_facebook: string | null;
   notas_revision: string | null;
+}
+
+function preferredLink(p: RawPub): string | null {
+  // 1) Si está la red específica con su link, usar esa
+  if (p.red === "instagram" && p.link_instagram) return p.link_instagram;
+  if (p.red === "tiktok" && p.link_tiktok) return p.link_tiktok;
+  if (p.red === "facebook" && p.link_facebook) return p.link_facebook;
+  // 2) Cualquier link cargado en orden de prioridad
+  return (
+    p.link_instagram ||
+    p.link_tiktok ||
+    p.link_facebook ||
+    p.link_publicacion ||
+    null
+  );
 }
 
 interface RawTask {
@@ -152,7 +167,7 @@ export default async function ReporteClientePage({
     supabase
       .from("publications")
       .select(
-        "id, titulo, copy, fecha_publicacion, red, tipo, estado, asset_url, link_publicacion, notas_revision"
+        "id, titulo, copy, fecha_publicacion, red, tipo, estado, asset_url, link_publicacion, link_instagram, link_tiktok, link_facebook, notas_revision"
       )
       .eq("cliente_id", params.id)
       .gte("fecha_publicacion", start)
@@ -459,7 +474,7 @@ export default async function ReporteClientePage({
             </h2>
             <div className="grid grid-cols-2 gap-3 rounded-lg border border-zinc-200 p-4 md:grid-cols-5">
               <MetricBox label="Seguidores nuevos" value={metricas.seguidores_nuevos} prefix="+" />
-              <MetricBox label="Reach" value={metricas.reach} />
+              <MetricBox label="Alcance" value={metricas.reach} />
               <MetricBox label="Impresiones" value={metricas.impresiones} />
               <MetricBox label="Interacciones" value={metricas.interacciones} />
               <MetricBox label="Visitas al perfil" value={metricas.visitas_perfil} />
@@ -587,9 +602,9 @@ export default async function ReporteClientePage({
                     <td className="py-2 font-medium">
                       <span className="inline-flex items-center gap-1.5">
                         <span>{p.titulo}</span>
-                        {p.link_publicacion && (
+                        {preferredLink(p) && (
                           <a
-                            href={p.link_publicacion}
+                            href={preferredLink(p)!}
                             target="_blank"
                             rel="noreferrer"
                             className="text-blue-600 hover:text-blue-800"
@@ -597,14 +612,6 @@ export default async function ReporteClientePage({
                           >
                             <ExternalLink className="h-3 w-3" />
                           </a>
-                        )}
-                        {canEdit && (
-                          <span className="print:hidden">
-                            <PublicationLinkEditor
-                              publicationId={p.id}
-                              currentLink={p.link_publicacion}
-                            />
-                          </span>
                         )}
                       </span>
                     </td>

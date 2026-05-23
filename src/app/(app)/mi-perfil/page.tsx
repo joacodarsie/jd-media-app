@@ -6,6 +6,7 @@ import type { Compensation, Position } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CompensationCard } from "@/components/compensation-card";
 import { WhatsAppOptinCard } from "@/components/whatsapp-optin-card";
+import { GoogleCalendarCard } from "@/components/google-calendar-card";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +68,8 @@ export default async function MiPerfilPage() {
         compensation={(comp as Compensation) ?? null}
         position={(position as Position) ?? null}
       />
+
+      <GoogleCalendarCard userId={me.id} isAdmin={me.rol === "admin"} />
 
       <WhatsAppOptinCard
         initialPhone={

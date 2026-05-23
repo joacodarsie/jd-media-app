@@ -17,6 +17,7 @@ import { dueState } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { TaskList } from "@/components/task-list";
+import { UpcomingMeetingsCard } from "@/components/upcoming-meetings-card";
 
 export const dynamic = "force-dynamic";
 
@@ -174,6 +175,8 @@ export default async function DashboardPage() {
         </div>
 
         <div className="space-y-3">
+          <UpcomingMeetingsCard />
+
           {/* Pubs de hoy de los clientes que coordinás */}
           {pubsHoy.length > 0 && (
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">

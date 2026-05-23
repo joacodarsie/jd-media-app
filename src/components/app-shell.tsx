@@ -23,7 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { visibleNav } from "@/lib/nav";
+import { visibleNavGroups } from "@/lib/nav";
 import { ROLE_LABEL } from "@/lib/constants";
 import type { AppUser } from "@/lib/types";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -80,7 +80,7 @@ function SidebarContent({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const items = visibleNav(user);
+  const groups = visibleNavGroups(user);
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex items-center gap-2 px-5 py-5">
@@ -89,31 +89,45 @@ function SidebarContent({
         </div>
         <span className="text-lg font-bold">JD Media</span>
       </div>
-      <nav className="flex-1 space-y-1 px-3">
-        {items.map((item) => {
-          const Icon = ICONS[item.icon] ?? ListChecks;
-          const active =
-            pathname === item.href || pathname.startsWith(item.href + "/");
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onNavigate}
-              className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                active
-                  ? "bg-[#FFD400] text-black"
-                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              )}
-            >
-              <Icon className="h-[18px] w-[18px]" />
-              {item.label}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 space-y-4 overflow-y-auto px-3 pb-4">
+        {groups.map((group, gi) => (
+          <div key={group.label ?? `g-${gi}`} className="space-y-0.5">
+            {group.label && (
+              <div className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">
+                {group.label}
+              </div>
+            )}
+            {group.items.map((item) => {
+              const Icon = ICONS[item.icon] ?? ListChecks;
+              const active =
+                pathname === item.href || pathname.startsWith(item.href + "/");
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onNavigate}
+                  className={cn(
+                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    active
+                      ? "bg-[#FFD400] text-black"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  )}
+                >
+                  <Icon className="h-[18px] w-[18px]" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
-      <div className="border-t border-sidebar-border px-5 py-4 text-xs text-sidebar-foreground/60">
-        {ROLE_LABEL[user.rol]} · {user.area}
+      <div className="border-t border-sidebar-border px-5 py-3 text-xs text-sidebar-foreground/60">
+        <div className="truncate font-medium text-sidebar-foreground/80">
+          {user.nombre}
+        </div>
+        <div className="truncate">
+          {ROLE_LABEL[user.rol]} · {user.area}
+        </div>
       </div>
     </div>
   );

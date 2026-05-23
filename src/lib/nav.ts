@@ -12,47 +12,62 @@ export interface NavItem {
   feature?: Feature;
 }
 
-export const NAV: NavItem[] = [
-  { href: "/dashboard", label: "Mi día", icon: "Sun" },
-  { href: "/tareas", label: "Tareas", icon: "ListChecks" },
-  { href: "/contenidos", label: "Contenidos", icon: "Calendar" },
+export interface NavGroup {
+  /** Etiqueta que se muestra arriba del grupo. null para grupo sin label (el primero) */
+  label: string | null;
+  items: NavItem[];
+}
+
+export const NAV_GROUPS: NavGroup[] = [
   {
-    href: "/area",
-    label: "Por área",
-    icon: "Users",
+    label: null,
+    items: [
+      { href: "/dashboard", label: "Mi día", icon: "Sun" },
+      { href: "/tareas", label: "Tareas", icon: "ListChecks" },
+      { href: "/contenidos", label: "Contenidos", icon: "Calendar" },
+      { href: "/jdmedia", label: "JDmedIA", icon: "MessageCircle" },
+    ],
   },
   {
-    href: "/clientes",
-    label: "Clientes",
-    icon: "Briefcase",
-    roles: ["admin", "coordinador"],
-  },
-  { href: "/equipo", label: "Equipo", icon: "Users2" },
-  { href: "/equipo/personas", label: "Personas", icon: "Users" },
-  { href: "/procesos", label: "Procesos", icon: "FileText" },
-  { href: "/documentos", label: "Documentos", icon: "FolderOpen" },
-  { href: "/jdmedia", label: "JDmedIA", icon: "MessageCircle" },
-  { href: "/agencia", label: "Agencia", icon: "Sparkles" },
-  { href: "/mi-perfil", label: "Mi perfil", icon: "UserCircle" },
-  {
-    href: "/global",
-    label: "Global",
-    icon: "BarChart3",
-    feature: "global",
+    label: "Equipo & clientes",
+    items: [
+      { href: "/area", label: "Por área", icon: "Users" },
+      {
+        href: "/clientes",
+        label: "Clientes",
+        icon: "Briefcase",
+        roles: ["admin", "coordinador"],
+      },
+      { href: "/equipo", label: "Equipo", icon: "Users2" },
+      { href: "/equipo/personas", label: "Personas", icon: "Users" },
+    ],
   },
   {
-    href: "/finanzas",
-    label: "Finanzas",
-    icon: "Wallet",
-    feature: "finanzas",
+    label: "Conocimiento",
+    items: [
+      { href: "/documentos", label: "Documentos", icon: "FolderOpen" },
+      { href: "/procesos", label: "Procesos", icon: "FileText" },
+      { href: "/agencia", label: "Agencia", icon: "Sparkles" },
+    ],
   },
   {
-    href: "/accesos",
-    label: "Accesos",
-    icon: "KeyRound",
-    roles: ["admin"],
+    label: "Métricas",
+    items: [
+      { href: "/global", label: "Global", icon: "BarChart3", feature: "global" },
+      { href: "/finanzas", label: "Finanzas", icon: "Wallet", feature: "finanzas" },
+    ],
+  },
+  {
+    label: "Cuenta",
+    items: [
+      { href: "/mi-perfil", label: "Mi perfil", icon: "UserCircle" },
+      { href: "/accesos", label: "Accesos", icon: "KeyRound", roles: ["admin"] },
+    ],
   },
 ];
+
+// Compat: lista plana para quien todavía la consuma.
+export const NAV: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
 
 function userHasFeature(user: AppUser, feature: Feature): boolean {
   if (user.rol === "admin") return true;
@@ -60,10 +75,19 @@ function userHasFeature(user: AppUser, feature: Feature): boolean {
   return p?.[feature] === true;
 }
 
+function itemVisible(user: AppUser, i: NavItem) {
+  if (i.roles && !i.roles.includes(user.rol)) return false;
+  if (i.feature && !userHasFeature(user, i.feature)) return false;
+  return true;
+}
+
 export function visibleNav(user: AppUser) {
-  return NAV.filter((i) => {
-    if (i.roles && !i.roles.includes(user.rol)) return false;
-    if (i.feature && !userHasFeature(user, i.feature)) return false;
-    return true;
-  });
+  return NAV.filter((i) => itemVisible(user, i));
+}
+
+export function visibleNavGroups(user: AppUser): NavGroup[] {
+  return NAV_GROUPS.map((g) => ({
+    label: g.label,
+    items: g.items.filter((i) => itemVisible(user, i)),
+  })).filter((g) => g.items.length > 0);
 }

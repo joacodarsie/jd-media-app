@@ -2,12 +2,15 @@ import Link from "next/link";
 import {
   AlertCircle,
   ArrowRight,
+  AtSign,
+  Bell,
   CalendarClock,
-  CalendarDays,
   Clock,
   MapPin,
+  MessageCircle,
   Sparkles,
   Sun,
+  UserPlus,
   Video,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
@@ -88,9 +91,9 @@ export default async function DashboardPage() {
   const [
     { data: myClients },
     { data: taskData },
-    { data: pubData },
     { data: calConns },
     { data: delegatedRaw },
+    { data: recentNotifsRaw },
   ] = await Promise.all([
     supabase
       .from("clients")
@@ -103,16 +106,6 @@ export default async function DashboardPage() {
       )
       .eq("asignado_a_id", user.id)
       .order("fecha_limite", { ascending: true, nullsFirst: false }),
-    supabase
-      .from("publications")
-      .select(
-        "id, titulo, fecha_publicacion, estado, red, tipo, cliente:clients(id,nombre)"
-      )
-      .or(`creado_por_id.eq.${user.id},audiovisual_id.eq.${user.id}`)
-      .gte("fecha_publicacion", startOfDay.toISOString())
-      .lte("fecha_publicacion", inAWeek.toISOString())
-      .order("fecha_publicacion", { ascending: true })
-      .limit(8),
     admin
       .from("google_calendar_connections")
       .select("id")
@@ -126,6 +119,14 @@ export default async function DashboardPage() {
       .neq("asignado_a_id", user.id)
       .neq("estado", "completada")
       .order("fecha_limite", { ascending: true, nullsFirst: false })
+      .limit(5),
+    // Notificaciones recientes sin leer
+    supabase
+      .from("notifications")
+      .select("id, tipo, mensaje, task_id, created_at")
+      .eq("user_id", user.id)
+      .eq("leida", false)
+      .order("created_at", { ascending: false })
       .limit(5),
   ]);
 
@@ -150,7 +151,6 @@ export default async function DashboardPage() {
 
   const tasks = (taskData ?? []) as TaskWithRels[];
   tasks.sort((a, b) => PRIORITY_ORDER[a.prioridad] - PRIORITY_ORDER[b.prioridad]);
-  const allPubs = (pubData ?? []) as unknown as PublicationWithRels[];
   const pubsHoy = (clientPubsToday ?? []) as unknown as PublicationWithRels[];
 
   const activas = tasks.filter((t) => t.estado !== "completada");
@@ -172,10 +172,6 @@ export default async function DashboardPage() {
   // Eventos hoy y resto de la semana
   const eventsHoy = calendarEvents.filter((e) => isToday(new Date(e.start)));
   const eventsSemana = calendarEvents.filter((e) => !isToday(new Date(e.start)));
-
-  // Pubs semana = todas las del pubData que no son de hoy
-  const pubsHoyIds = new Set(pubsHoy.map((p) => p.id));
-  const pubsSemana = allPubs.filter((p) => !pubsHoyIds.has(p.id));
 
   // Próximo evento: el primero que aún no terminó
   const nextEvent =
@@ -199,6 +195,15 @@ export default async function DashboardPage() {
   const delegatedVencidas = delegated.filter(
     (t) => dueState(t.fecha_limite, t.estado) === "vencida"
   );
+
+  type NotifLite = {
+    id: string;
+    tipo: string;
+    mensaje: string;
+    task_id: string | null;
+    created_at: string;
+  };
+  const recentNotifs = (recentNotifsRaw ?? []) as unknown as NotifLite[];
 
   const fechaHoy = now.toLocaleDateString("es-AR", {
     weekday: "long",
@@ -372,24 +377,22 @@ export default async function DashboardPage() {
               )}
             </SubBlock>
 
-            <SubBlock
-              title="Próximas publicaciones"
-              right={
-                <Link href="/contenidos" className="text-xs text-muted-foreground hover:text-foreground">
-                  Calendario →
-                </Link>
-              }
-            >
-              {pubsSemana.length === 0 ? (
-                <EmptyMini icon={CalendarDays} text="Nada agendado." />
-              ) : (
+            {recentNotifs.length > 0 && (
+              <SubBlock
+                title={`Novedades (${recentNotifs.length})`}
+                right={
+                  <Link href="/notificaciones" className="text-xs text-muted-foreground hover:text-foreground">
+                    Ver todas →
+                  </Link>
+                }
+              >
                 <div className="space-y-1.5">
-                  {pubsSemana.slice(0, 5).map((p) => (
-                    <PubItem key={p.id} pub={p} />
+                  {recentNotifs.map((n) => (
+                    <NotifItem key={n.id} notif={n} />
                   ))}
                 </div>
-              )}
-            </SubBlock>
+              </SubBlock>
+            )}
 
             {delegated.length > 0 && delegatedVencidas.length === 0 && (
               <SubBlock
@@ -663,6 +666,56 @@ function PubItem({ pub }: { pub: PublicationWithRels }) {
           <CalendarClock className="h-3 w-3" />
           {date}
         </div>
+      </div>
+    </Link>
+  );
+}
+
+function NotifItem({
+  notif,
+}: {
+  notif: { id: string; tipo: string; mensaje: string; task_id: string | null; created_at: string };
+}) {
+  const Icon =
+    notif.tipo === "mencion"
+      ? AtSign
+      : notif.tipo === "asignacion"
+      ? UserPlus
+      : notif.tipo === "comentario"
+      ? MessageCircle
+      : notif.tipo === "vencida"
+      ? AlertCircle
+      : notif.tipo === "proxima_a_vencer"
+      ? Clock
+      : Bell;
+  const color =
+    notif.tipo === "vencida"
+      ? "text-red-500"
+      : notif.tipo === "proxima_a_vencer"
+      ? "text-amber-500"
+      : notif.tipo === "mencion"
+      ? "text-primary"
+      : "text-muted-foreground";
+  const href = notif.task_id
+    ? `/tareas/${notif.task_id}`
+    : notif.tipo === "mencion"
+    ? "/chat"
+    : "/notificaciones";
+  const time = new Date(notif.created_at).toLocaleString("es-AR", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return (
+    <Link
+      href={href}
+      className="flex items-start gap-2 rounded-md border bg-card p-2 text-xs transition hover:border-primary/30"
+    >
+      <Icon className={"mt-0.5 h-3.5 w-3.5 shrink-0 " + color} />
+      <div className="min-w-0 flex-1">
+        <div className="line-clamp-2">{notif.mensaje}</div>
+        <div className="mt-0.5 text-[10px] text-muted-foreground">{time}</div>
       </div>
     </Link>
   );

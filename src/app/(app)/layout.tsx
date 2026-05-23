@@ -17,7 +17,12 @@ export default async function AppLayout({
 
   await ensureDueNotifications(supabase, user.id);
 
-  const [{ data: items }, { count }, { data: links }] = await Promise.all([
+  const [
+    { data: items },
+    { count: unreadCount },
+    { data: links },
+    { data: chatUnread },
+  ] = await Promise.all([
     supabase
       .from("notifications")
       .select("id, user_id, task_id, tipo, mensaje, leida, created_at")
@@ -33,20 +38,29 @@ export default async function AppLayout({
       .from("quick_links")
       .select("id, label, url, icon, orden")
       .order("orden"),
+    supabase.rpc("team_chat_unread_count", { p_user_id: user.id }),
   ]);
 
   const bell = (
     <NotificationBell
       items={(items ?? []) as Notification[]}
-      unreadCount={count ?? 0}
+      unreadCount={unreadCount ?? 0}
     />
   );
+
+  // Badge por sección de la sidebar.
+  const chatUnreadNum =
+    typeof chatUnread === "number" ? chatUnread : Number(chatUnread ?? 0);
+  const badges: Record<string, number> = {
+    "/chat": chatUnreadNum,
+  };
 
   return (
     <AppShell
       user={user}
       bell={bell}
       quickLinks={(links ?? []) as QuickLinkRow[]}
+      badges={badges}
     >
       {children}
       <AIChatLauncher />

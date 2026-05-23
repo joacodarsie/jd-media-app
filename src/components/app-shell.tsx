@@ -80,9 +80,11 @@ function initials(nombre: string) {
 
 function SidebarContent({
   user,
+  badges = {},
   onNavigate,
 }: {
   user: AppUser;
+  badges?: Record<string, number>;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
@@ -107,6 +109,7 @@ function SidebarContent({
               const Icon = ICONS[item.icon] ?? ListChecks;
               const active =
                 pathname === item.href || pathname.startsWith(item.href + "/");
+              const badge = badges[item.href] ?? 0;
               return (
                 <Link
                   key={item.href}
@@ -120,7 +123,20 @@ function SidebarContent({
                   )}
                 >
                   <Icon className="h-[18px] w-[18px]" />
-                  {item.label}
+                  <span className="flex-1 truncate">{item.label}</span>
+                  {badge > 0 && (
+                    <span
+                      className={cn(
+                        "inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-[10px] font-bold tabular-nums",
+                        active
+                          ? "bg-black text-[#FFD400]"
+                          : "bg-red-500 text-white"
+                      )}
+                      aria-label={`${badge} ${badge === 1 ? "novedad" : "novedades"}`}
+                    >
+                      {badge > 99 ? "99+" : badge}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -143,11 +159,13 @@ export function AppShell({
   user,
   bell,
   quickLinks,
+  badges,
   children,
 }: {
   user: AppUser;
   bell?: React.ReactNode;
   quickLinks?: QuickLinkRow[];
+  badges?: Record<string, number>;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -156,14 +174,14 @@ export function AppShell({
     <div className="flex min-h-screen">
       <aside className="hidden w-60 shrink-0 md:block">
         <div className="fixed h-screen w-60">
-          <SidebarContent user={user} />
+          <SidebarContent user={user} badges={badges} />
         </div>
       </aside>
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="left" className="w-64 p-0">
           <SheetTitle className="sr-only">Menú</SheetTitle>
-          <SidebarContent user={user} onNavigate={() => setOpen(false)} />
+          <SidebarContent user={user} badges={badges} onNavigate={() => setOpen(false)} />
         </SheetContent>
       </Sheet>
 

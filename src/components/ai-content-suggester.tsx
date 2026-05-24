@@ -112,14 +112,14 @@ export function AIContentSuggester({
         <Sparkles className="h-3.5 w-3.5 text-primary" />
         Sugerir con IA
       </Button>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="flex max-h-[90vh] flex-col gap-0 p-0 sm:max-w-2xl">
+        <DialogHeader className="border-b px-5 py-3">
+          <DialogTitle className="flex items-center gap-2 text-base">
             <Wand2 className="h-4 w-4 text-primary" />
             Sugerir contenido con IA
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-3 text-sm">
+        <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4 text-sm">
           <p className="rounded-md bg-primary/10 px-2 py-1.5 text-[11px] text-foreground/80">
             Usa el rubro, las notas, los documentos cargados y los últimos
             posts del cliente para mantener consistencia.
@@ -184,7 +184,7 @@ export function AIContentSuggester({
             </div>
           )}
         </div>
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="gap-2 border-t px-5 py-3 sm:gap-0">
           {suggestion ? (
             <>
               <Button

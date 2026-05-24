@@ -39,6 +39,15 @@ interface ClientContext {
   redes_sociales: { red: string; url: string }[];
   servicios: { tipo: string; pack: string | null; pack_detalle: Record<string, unknown> | null }[];
   posts_anteriores: { titulo: string; copy: string | null; tipo: string; red: string }[];
+  diagnostico: {
+    version: number;
+    resumen_ejecutivo?: unknown;
+    contexto?: unknown;
+    publico_objetivo?: unknown;
+    marca?: unknown;
+    diferenciales?: unknown;
+    pilares_contenido?: unknown;
+  } | null;
 }
 
 export async function suggestPublicationContent(args: {
@@ -59,6 +68,7 @@ export async function suggestPublicationContent(args: {
     { data: services },
     { data: docs },
     { data: lastPubs },
+    { data: diagRow },
   ] = await Promise.all([
     sb
       .from("clients")
@@ -85,9 +95,31 @@ export async function suggestPublicationContent(args: {
       .eq("cliente_id", args.cliente_id)
       .order("fecha_publicacion", { ascending: false })
       .limit(6),
+    sb
+      .from("client_diagnostics")
+      .select("version, content")
+      .eq("cliente_id", args.cliente_id)
+      .eq("status", "approved")
+      .order("version", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   if (!cli) return { error: "Cliente no encontrado" };
+
+  let diagnostico: ClientContext["diagnostico"] = null;
+  if (diagRow && diagRow.content && typeof diagRow.content === "object") {
+    const c = diagRow.content as Record<string, unknown>;
+    diagnostico = {
+      version: diagRow.version,
+      resumen_ejecutivo: c.resumen_ejecutivo,
+      contexto: c.contexto,
+      publico_objetivo: c.publico_objetivo,
+      marca: c.marca,
+      diferenciales: c.diferenciales,
+      pilares_contenido: c.pilares_contenido,
+    };
+  }
 
   const ctx: ClientContext = {
     nombre: cli.nombre,
@@ -97,6 +129,7 @@ export async function suggestPublicationContent(args: {
     redes_sociales: (cli.redes_sociales ?? []) as { red: string; url: string }[],
     servicios: (services ?? []) as ClientContext["servicios"],
     posts_anteriores: (lastPubs ?? []) as ClientContext["posts_anteriores"],
+    diagnostico,
   };
 
   // Bajar documentos del storage y armar blocks
@@ -281,6 +314,43 @@ function buildPrompt(
     lines.push(
       `Redes del cliente: ${ctx.redes_sociales.map((r) => r.red).join(", ")}`
     );
+  }
+  if (ctx.diagnostico) {
+    lines.push("");
+    lines.push(`## BRIEF ESTRATÉGICO — Diagnóstico inicial aprobado (v${ctx.diagnostico.version})`);
+    lines.push(
+      "Esta es la fuente de verdad del cliente. Aplicá EL TONO, los PILARES y el PÚBLICO definidos acá."
+    );
+    if (ctx.diagnostico.resumen_ejecutivo) {
+      lines.push("");
+      lines.push("### Resumen ejecutivo");
+      lines.push(JSON.stringify(ctx.diagnostico.resumen_ejecutivo));
+    }
+    if (ctx.diagnostico.contexto) {
+      lines.push("");
+      lines.push("### Contexto del negocio");
+      lines.push(JSON.stringify(ctx.diagnostico.contexto));
+    }
+    if (ctx.diagnostico.publico_objetivo) {
+      lines.push("");
+      lines.push("### Público objetivo");
+      lines.push(JSON.stringify(ctx.diagnostico.publico_objetivo));
+    }
+    if (ctx.diagnostico.marca) {
+      lines.push("");
+      lines.push("### Marca y tono de voz");
+      lines.push(JSON.stringify(ctx.diagnostico.marca));
+    }
+    if (ctx.diagnostico.diferenciales) {
+      lines.push("");
+      lines.push("### Diferenciales");
+      lines.push(JSON.stringify(ctx.diagnostico.diferenciales));
+    }
+    if (ctx.diagnostico.pilares_contenido) {
+      lines.push("");
+      lines.push("### Pilares de contenido (la pieza tiene que encajar en uno)");
+      lines.push(JSON.stringify(ctx.diagnostico.pilares_contenido));
+    }
   }
   if (ctx.notas) {
     lines.push("");

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   FileText,
+  FileBarChart,
   CheckCircle2,
   CreditCard,
   Users,
@@ -57,6 +58,7 @@ interface OnboardingState {
   equipo_asignado_at: string | null;
   grupo_wpp_creado_at: string | null;
   mensajes_enviados_at: string | null;
+  diagnostico_generado_at: string | null;
   tareas_iniciales_at: string | null;
   kickoff_agendado_at: string | null;
 }
@@ -110,6 +112,7 @@ export default async function OnboardingPage({
     equipo_asignado_at: null,
     grupo_wpp_creado_at: null,
     mensajes_enviados_at: null,
+    diagnostico_generado_at: null,
     tareas_iniciales_at: null,
     kickoff_agendado_at: null,
   }) as OnboardingState;
@@ -132,6 +135,7 @@ export default async function OnboardingPage({
       | "equipo_asignado_at"
       | "grupo_wpp_creado_at"
       | "mensajes_enviados_at"
+      | "diagnostico_generado_at"
       | "tareas_iniciales_at"
       | "kickoff_agendado_at";
     title: string;
@@ -173,6 +177,13 @@ export default async function OnboardingPage({
       done: onb.mensajes_enviados_at,
       icon: MessageSquare,
       description: "Generá la cadena adaptada a los servicios contratados, copiala y pegala en el grupo.",
+    },
+    {
+      key: "diagnostico_generado_at",
+      title: "Diagnóstico inicial generado",
+      done: onb.diagnostico_generado_at,
+      icon: FileBarChart,
+      description: "Subí la transcripción del meet de onboarding (PDF de Tactiq). La IA arma el informe estratégico que después usamos como brief.",
     },
     {
       key: "tareas_iniciales_at",
@@ -405,6 +416,14 @@ export default async function OnboardingPage({
                     )}
                     {step.key === "mensajes_enviados_at" && (
                       <WelcomeMessagesDialog clientId={client.id} alreadyDone={isDone} />
+                    )}
+                    {step.key === "diagnostico_generado_at" && (
+                      <Link
+                        href={`/clientes/${client.id}/diagnostico`}
+                        className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-xs text-primary hover:bg-primary/20"
+                      >
+                        <FileBarChart className="h-3 w-3" /> Abrir diagnóstico
+                      </Link>
                     )}
                     {step.key === "tareas_iniciales_at" && (
                       <GenerateInitialTasksButton

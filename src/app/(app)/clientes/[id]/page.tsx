@@ -144,6 +144,12 @@ export default async function ClientDetail({
             <Sparkles className="mr-2 h-4 w-4" /> Onboarding
           </Link>
           <Link
+            href={`/clientes/${c.id}/diagnostico`}
+            className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
+          >
+            <FileBarChart className="mr-2 h-4 w-4" /> Diagnóstico
+          </Link>
+          <Link
             href={`/clientes/${c.id}/calendario`}
             className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
           >

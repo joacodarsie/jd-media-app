@@ -14,6 +14,7 @@ type StepKey =
   | "equipo_asignado_at"
   | "grupo_wpp_creado_at"
   | "mensajes_enviados_at"
+  | "diagnostico_generado_at"
   | "tareas_iniciales_at"
   | "kickoff_agendado_at";
 
@@ -23,6 +24,7 @@ const VALID_STEPS: StepKey[] = [
   "equipo_asignado_at",
   "grupo_wpp_creado_at",
   "mensajes_enviados_at",
+  "diagnostico_generado_at",
   "tareas_iniciales_at",
   "kickoff_agendado_at",
 ];

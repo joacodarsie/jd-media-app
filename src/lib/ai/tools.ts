@@ -168,7 +168,7 @@ export const TOOLS: Anthropic.Tool[] = [
   {
     name: "client_brand_context",
     description:
-      "Devuelve contexto de marca para redactar copy de un cliente: notas del cliente, rubro, pack, buyer persona y tono extraídos de las páginas de agencia. Usalo ANTES de escribir copy/guion para una publicación, así el resultado respeta la voz del cliente.",
+      "Devuelve el brief completo de un cliente para redactar copy, planear calendario o sugerir ideas: datos básicos + el **diagnóstico inicial aprobado** (resumen ejecutivo, contexto, público objetivo con insight clave, marca/tono, diferenciales, pilares de contenido). Usalo SIEMPRE antes de escribir copy/guion/calendario para un cliente, así el resultado respeta la estrategia que armó la agencia y la voz real de la marca.",
     input_schema: {
       type: "object",
       properties: {
@@ -507,6 +507,34 @@ export async function runTool(
           .limit(1).maybeSingle();
         if (!client) return { ok: false, error: "Cliente no encontrado" };
 
+        // Diagnóstico inicial aprobado más reciente — es el brief estratégico
+        // que armó la agencia. Le pasamos las secciones clave a la IA.
+        const { data: diag } = await sb
+          .from("client_diagnostics")
+          .select("version, content, approved_at")
+          .eq("cliente_id", client.id)
+          .eq("status", "approved")
+          .order("version", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        let diagnostico: Record<string, unknown> | null = null;
+        if (diag && diag.content && typeof diag.content === "object") {
+          const c = diag.content as Record<string, unknown>;
+          diagnostico = {
+            version: diag.version,
+            aprobado_el: diag.approved_at,
+            resumen_ejecutivo: c.resumen_ejecutivo,
+            contexto: c.contexto,
+            publico_objetivo: c.publico_objetivo,
+            marca: c.marca,
+            diferenciales: c.diferenciales,
+            pilares_contenido: c.pilares_contenido,
+            // Plan + problemas quedan disponibles si el modelo los pide explícito,
+            // pero los omitimos del default para no inflar tokens.
+          };
+        }
+
         // Páginas de agencia relevantes para tono/buyer persona
         const { data: pages } = await sb.from("agency_pages")
           .select("slug, title, content")
@@ -517,6 +545,7 @@ export async function runTool(
           ok: true,
           data: {
             cliente: client,
+            diagnostico,
             referencias: (pages ?? []).map((p) => ({
               slug: p.slug,
               title: p.title,

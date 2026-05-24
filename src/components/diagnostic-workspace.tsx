@@ -12,6 +12,8 @@ import {
   Loader2,
   Save,
   AlertCircle,
+  FileText,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,9 +53,30 @@ export function DiagnosticWorkspace({ clienteId, clienteNombre, active, history 
   const [phase, setPhase] = useState<Phase>(initialPhase);
   const current = active;
   const [content, setContent] = useState<DiagnosticContent | null>(active?.content ?? null);
+  const [genProgress, setGenProgress] = useState<number>(0);
 
   // ── Upload de PDF ─────────────────────────────────────────────────
   const [file, setFile] = useState<File | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  function pickFile(f: File | null | undefined) {
+    if (!f) return;
+    if (!f.name.toLowerCase().endsWith(".pdf")) {
+      toast.error("Tiene que ser un PDF.");
+      return;
+    }
+    if (f.size > 20 * 1024 * 1024) {
+      toast.error("El PDF supera los 20 MB.");
+      return;
+    }
+    setFile(f);
+  }
+
+  function fmtBytes(n: number) {
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / 1024 / 1024).toFixed(2)} MB`;
+  }
 
   async function handleUploadAndGenerate() {
     if (!file) {
@@ -86,7 +109,7 @@ export function DiagnosticWorkspace({ clienteId, clienteNombre, active, history 
       return;
     }
 
-    // 2) Generación IA.
+    // 2) Generación IA — consume SSE para evitar el timeout del gateway.
     setPhase("generating");
     try {
       const res = await fetch("/api/diagnostico/generate", {
@@ -94,10 +117,55 @@ export function DiagnosticWorkspace({ clienteId, clienteNombre, active, history 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cliente_id: clienteId, transcript_text, source_pdf_path }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Error generando");
-      toast.success(`Diagnóstico v${json.version} generado. Revisalo y aprobá.`);
-      router.refresh();
+      if (!res.ok || !res.body) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(txt || `Error ${res.status}`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let done: { version: number } | null = null;
+      let errMsg: string | null = null;
+
+      while (true) {
+        const { value, done: streamDone } = await reader.read();
+        if (streamDone) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+
+        for (const part of parts) {
+          for (const line of part.split("\n")) {
+            if (!line.startsWith("data: ")) continue;
+            const payload = line.slice(6).trim();
+            if (!payload) continue;
+            try {
+              const evt = JSON.parse(payload) as { type: string; [k: string]: unknown };
+              if (evt.type === "progress") {
+                setGenProgress(typeof evt.chars === "number" ? evt.chars : 0);
+              } else if (evt.type === "saving") {
+                setGenProgress(-1); // -1 = "guardando"
+              } else if (evt.type === "done") {
+                done = { version: (evt.version as number) ?? 0 };
+              } else if (evt.type === "error") {
+                errMsg = (evt.error as string) ?? "Error generando";
+              }
+            } catch {
+              /* línea ignorada */
+            }
+          }
+        }
+      }
+
+      if (errMsg) throw new Error(errMsg);
+      if (done) {
+        toast.success(`Diagnóstico v${done.version} generado. Revisalo y aprobá.`);
+        router.refresh();
+      } else {
+        throw new Error("La generación terminó sin resultado.");
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error";
       toast.error(msg);
@@ -157,19 +225,76 @@ export function DiagnosticWorkspace({ clienteId, clienteNombre, active, history 
             Generar diagnóstico inicial
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5">
           <p className="text-sm text-muted-foreground">
             Subí el PDF de la transcripción del meet de onboarding (Tactiq de Google Meet).
             La IA va a analizarla y generar las 14 secciones del informe estratégico para{" "}
             <strong>{clienteNombre}</strong>.
           </p>
-          <Input
-            type="file"
-            accept="application/pdf"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
-          <Button onClick={handleUploadAndGenerate} disabled={!file || phase !== "idle"}>
-            <Upload className="mr-1 h-4 w-4" /> Subir y generar
+
+          {!file ? (
+            <label
+              htmlFor="diag-file-input"
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragOver(true);
+              }}
+              onDragLeave={() => setIsDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragOver(false);
+                pickFile(e.dataTransfer.files?.[0]);
+              }}
+              className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-10 text-center transition ${
+                isDragOver
+                  ? "border-primary bg-primary/5"
+                  : "border-muted-foreground/30 bg-muted/20 hover:border-primary/60 hover:bg-muted/40"
+              }`}
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <Upload className="h-6 w-6" />
+              </div>
+              <div className="text-sm font-medium">
+                Arrastrá el PDF acá o <span className="text-primary underline">clic para elegir</span>
+              </div>
+              <div className="text-xs text-muted-foreground">PDF · hasta 20 MB</div>
+              <input
+                id="diag-file-input"
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={(e) => pickFile(e.target.files?.[0])}
+              />
+            </label>
+          ) : (
+            <div className="flex items-center justify-between gap-3 rounded-xl border bg-muted/30 p-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">{file.name}</div>
+                  <div className="text-xs text-muted-foreground">{fmtBytes(file.size)}</div>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFile(null)}
+                aria-label="Quitar archivo"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+
+          <Button
+            onClick={handleUploadAndGenerate}
+            disabled={!file || phase !== "idle"}
+            size="lg"
+            className="w-full"
+          >
+            <Sparkles className="mr-2 h-4 w-4" /> Generar diagnóstico
           </Button>
         </CardContent>
       </Card>
@@ -184,7 +309,11 @@ export function DiagnosticWorkspace({ clienteId, clienteNombre, active, history 
           <p className="text-sm text-muted-foreground">
             {phase === "uploading"
               ? "Leyendo el PDF y extrayendo texto…"
-              : "Generando diagnóstico con IA (puede tardar 30-60 segundos)…"}
+              : genProgress === -1
+              ? "Guardando draft…"
+              : genProgress > 0
+              ? `Generando diagnóstico… ${genProgress.toLocaleString()} caracteres recibidos`
+              : "Generando diagnóstico con IA (puede tardar 60-90 segundos)…"}
           </p>
         </CardContent>
       </Card>

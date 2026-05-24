@@ -5,6 +5,7 @@ import type { Notification } from "@/lib/types";
 import { AppShell } from "@/components/app-shell";
 import { NotificationBell } from "@/components/notification-bell";
 import { AIChatLauncher } from "@/components/ai-chat-launcher";
+import { RealtimeBadgesSync } from "@/components/realtime-badges-sync";
 import type { QuickLinkRow } from "@/components/quick-links-manager";
 
 export default async function AppLayout({
@@ -22,6 +23,7 @@ export default async function AppLayout({
     { count: unreadCount },
     { data: links },
     { data: chatUnread },
+    { count: taskUnreadCount },
   ] = await Promise.all([
     supabase
       .from("notifications")
@@ -39,6 +41,13 @@ export default async function AppLayout({
       .select("id, label, url, icon, orden")
       .order("orden"),
     supabase.rpc("team_chat_unread_count", { p_user_id: user.id }),
+    // Notificaciones sin leer asociadas a tareas (asignación, comentario, vencidas)
+    supabase
+      .from("notifications")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("leida", false)
+      .not("task_id", "is", null),
   ]);
 
   const bell = (
@@ -48,11 +57,12 @@ export default async function AppLayout({
     />
   );
 
-  // Badge por sección de la sidebar.
   const chatUnreadNum =
     typeof chatUnread === "number" ? chatUnread : Number(chatUnread ?? 0);
+
   const badges: Record<string, number> = {
     "/chat": chatUnreadNum,
+    "/tareas": taskUnreadCount ?? 0,
   };
 
   return (
@@ -62,6 +72,7 @@ export default async function AppLayout({
       quickLinks={(links ?? []) as QuickLinkRow[]}
       badges={badges}
     >
+      <RealtimeBadgesSync userId={user.id} />
       {children}
       <AIChatLauncher />
     </AppShell>

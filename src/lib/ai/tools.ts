@@ -229,9 +229,34 @@ export const TOOLS: Anthropic.Tool[] = [
       },
     },
   },
+  {
+    name: "finance_compare",
+    description:
+      "Compara dos periodos financieros. Devuelve totales y % de cambio en cobros, pagos al equipo, gastos y balance neto. Usalo para preguntas como 'compará este mes con el anterior', 'cómo veníamos vs marzo', '¿estamos mejor o peor que el mes pasado?'. Si no se pasa periodo_b, usa el mes anterior a periodo_a automáticamente.",
+    input_schema: {
+      type: "object",
+      properties: {
+        periodo_a: {
+          type: "string",
+          description: "Periodo principal en YYYY-MM. Si se omite, usa el mes actual.",
+        },
+        periodo_b: {
+          type: "string",
+          description: "Periodo a comparar en YYYY-MM. Si se omite, usa el mes anterior a periodo_a.",
+        },
+      },
+    },
+  },
 ];
 
 type Result = { ok: true; data: unknown } | { ok: false; error: string };
+
+function previousMonth(periodo: string): string {
+  const [y, m] = periodo.split("-").map(Number);
+  if (!y || !m) return periodo;
+  const prev = new Date(y, m - 2, 1);
+  return `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
+}
 
 async function findUserId(sb: SupabaseClient, nameLike: string): Promise<string | null> {
   const { data } = await sb
@@ -686,6 +711,130 @@ export async function runTool(
               cantidad: expenses?.length ?? 0,
             },
             balance_neto: balance,
+          },
+        };
+      }
+
+      case "finance_compare": {
+        const periodoA =
+          (input.periodo_a as string | undefined) ??
+          new Date()
+            .toLocaleDateString("en-CA", { timeZone: "America/Argentina/Cordoba" })
+            .slice(0, 7);
+        const periodoB =
+          (input.periodo_b as string | undefined) ?? previousMonth(periodoA);
+
+        const summaryFor = async (periodo: string) => {
+          const [{ data: invoices }, { data: payments }, { data: expenses }] =
+            await Promise.all([
+              sb
+                .from("client_invoices")
+                .select("monto, moneda, fecha_cobro")
+                .eq("periodo", periodo),
+              sb
+                .from("team_payments")
+                .select("monto, moneda, fecha_pago")
+                .eq("periodo", periodo),
+              sb
+                .from("expenses")
+                .select("monto, moneda, fecha_pago")
+                .eq("periodo", periodo),
+            ]);
+
+          const sumByCurrency = (
+            rows: { monto: number; moneda: string; pagado: boolean }[]
+          ) => {
+            const out: Record<string, { total: number; pagado: number; pendiente: number }> = {};
+            for (const r of rows) {
+              const m = r.moneda ?? "ARS";
+              if (!out[m]) out[m] = { total: 0, pagado: 0, pendiente: 0 };
+              const v = Number(r.monto) || 0;
+              out[m].total += v;
+              if (r.pagado) out[m].pagado += v;
+              else out[m].pendiente += v;
+            }
+            return out;
+          };
+
+          const inv = sumByCurrency(
+            (invoices ?? []).map((i) => ({
+              monto: Number(i.monto),
+              moneda: i.moneda as string,
+              pagado: !!i.fecha_cobro,
+            }))
+          );
+          const pay = sumByCurrency(
+            (payments ?? []).map((p) => ({
+              monto: Number(p.monto),
+              moneda: p.moneda as string,
+              pagado: !!p.fecha_pago,
+            }))
+          );
+          const exp = sumByCurrency(
+            (expenses ?? []).map((e) => ({
+              monto: Number(e.monto),
+              moneda: e.moneda as string,
+              pagado: !!e.fecha_pago,
+            }))
+          );
+
+          const currencies = new Set([
+            ...Object.keys(inv),
+            ...Object.keys(pay),
+            ...Object.keys(exp),
+          ]);
+          const balance: Record<string, number> = {};
+          for (const m of currencies) {
+            balance[m] =
+              (inv[m]?.pagado ?? 0) - (pay[m]?.pagado ?? 0) - (exp[m]?.pagado ?? 0);
+          }
+
+          return { cobros: inv, pagos_equipo: pay, gastos: exp, balance };
+        };
+
+        const [a, b] = await Promise.all([summaryFor(periodoA), summaryFor(periodoB)]);
+
+        const allCurrencies = new Set([
+          ...Object.keys(a.cobros),
+          ...Object.keys(a.pagos_equipo),
+          ...Object.keys(a.gastos),
+          ...Object.keys(b.cobros),
+          ...Object.keys(b.pagos_equipo),
+          ...Object.keys(b.gastos),
+        ]);
+
+        const diff: Record<
+          string,
+          {
+            cobros: { a: number; b: number; delta: number; pct: number | null };
+            pagos_equipo: { a: number; b: number; delta: number; pct: number | null };
+            gastos: { a: number; b: number; delta: number; pct: number | null };
+            balance: { a: number; b: number; delta: number; pct: number | null };
+          }
+        > = {};
+        for (const m of allCurrencies) {
+          const cA = a.cobros[m]?.total ?? 0;
+          const cB = b.cobros[m]?.total ?? 0;
+          const pA = a.pagos_equipo[m]?.total ?? 0;
+          const pB = b.pagos_equipo[m]?.total ?? 0;
+          const gA = a.gastos[m]?.total ?? 0;
+          const gB = b.gastos[m]?.total ?? 0;
+          const balA = a.balance[m] ?? 0;
+          const balB = b.balance[m] ?? 0;
+          diff[m] = {
+            cobros: { a: cA, b: cB, delta: cA - cB, pct: cB === 0 ? null : ((cA - cB) / cB) * 100 },
+            pagos_equipo: { a: pA, b: pB, delta: pA - pB, pct: pB === 0 ? null : ((pA - pB) / pB) * 100 },
+            gastos: { a: gA, b: gB, delta: gA - gB, pct: gB === 0 ? null : ((gA - gB) / gB) * 100 },
+            balance: { a: balA, b: balB, delta: balA - balB, pct: balB === 0 ? null : ((balA - balB) / balB) * 100 },
+          };
+        }
+
+        return {
+          ok: true,
+          data: {
+            periodo_a: periodoA,
+            periodo_b: periodoB,
+            comparacion: diff,
           },
         };
       }

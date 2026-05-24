@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CompensationCard } from "@/components/compensation-card";
 import { WhatsAppOptinCard } from "@/components/whatsapp-optin-card";
 import { GoogleCalendarCard } from "@/components/google-calendar-card";
+import { BrowserNotificationsCard } from "@/components/browser-notifications-card";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +71,8 @@ export default async function MiPerfilPage() {
       />
 
       <GoogleCalendarCard userId={me.id} isAdmin={me.rol === "admin"} />
+
+      <BrowserNotificationsCard />
 
       <WhatsAppOptinCard
         initialPhone={

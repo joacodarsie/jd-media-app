@@ -49,7 +49,7 @@ export function DiagnosticWorkspace({ clienteId, clienteNombre, active, history 
     : "idle";
 
   const [phase, setPhase] = useState<Phase>(initialPhase);
-  const [current, setCurrent] = useState<DiagnosticRow | null>(active);
+  const current = active;
   const [content, setContent] = useState<DiagnosticContent | null>(active?.content ?? null);
 
   // ── Upload de PDF ─────────────────────────────────────────────────

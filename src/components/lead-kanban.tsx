@@ -75,7 +75,7 @@ export function LeadKanban({
   }
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-3">
+    <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 [scrollbar-width:thin]">
       {STAGES.map((s) => {
         const arr = byStage.get(s.value) ?? [];
         const totalMonto = arr.reduce(
@@ -101,7 +101,7 @@ export function LeadKanban({
               if (id) moveTo(id, s.value);
             }}
             className={cn(
-              "flex w-72 shrink-0 flex-col rounded-lg border bg-card transition-colors",
+              "flex w-64 shrink-0 snap-start flex-col rounded-lg border bg-card transition-colors sm:w-72",
               hovered && "ring-2 ring-inset ring-primary"
             )}
           >

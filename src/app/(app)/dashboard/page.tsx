@@ -232,8 +232,8 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-          {/* Stat compactas en la esquina */}
-          <div className="flex gap-3 text-sm">
+          {/* Stat compactas en la esquina (grid en mobile, fila en desktop) */}
+          <div className="grid w-full grid-cols-4 gap-3 text-sm sm:flex sm:w-auto">
             <MiniStat label="Vencidas" value={vencidas.length} tone={vencidas.length > 0 ? "red" : "muted"} />
             <MiniStat label="Hoy" value={venceHoy.length + eventsHoy.length} tone="primary" />
             <MiniStat label="Esta semana" value={venceEstaSemana.length} tone="muted" />
@@ -445,11 +445,11 @@ function MiniStat({
     muted: "text-muted-foreground",
   };
   return (
-    <div className="flex flex-col items-end">
+    <div className="flex flex-col items-center rounded-md border bg-card p-2 sm:items-end sm:border-0 sm:bg-transparent sm:p-0">
       <div className={cn("text-xl font-bold leading-none tabular-nums", toneCls[tone])}>
         {value}
       </div>
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+      <div className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
         {label}
       </div>
     </div>

@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { OnboardingStepToggle } from "@/components/onboarding-step-toggle";
 import { OnboardingContractForm } from "@/components/onboarding-contract-form";
+import { MeetGuideGenerator } from "@/components/meet-guide-generator";
 import { WelcomeMessagesDialog } from "@/components/welcome-messages-dialog";
 import { PaymentMessageDialog } from "@/components/payment-message-dialog";
 import { GenerateInitialTasksButton } from "@/components/generate-initial-tasks-button";
@@ -61,6 +62,8 @@ interface OnboardingState {
   diagnostico_generado_at: string | null;
   tareas_iniciales_at: string | null;
   kickoff_agendado_at: string | null;
+  meet_guide_md: string | null;
+  meet_guide_generated_at: string | null;
 }
 
 function calendarUrl(client: ClientLite) {
@@ -115,6 +118,8 @@ export default async function OnboardingPage({
     diagnostico_generado_at: null,
     tareas_iniciales_at: null,
     kickoff_agendado_at: null,
+    meet_guide_md: null,
+    meet_guide_generated_at: null,
   }) as OnboardingState;
 
   // Estado derivado
@@ -239,6 +244,13 @@ export default async function OnboardingPage({
           style={{ width: `${progress}%` }}
         />
       </div>
+
+      {/* Guía personalizada del meet de onboarding (IA) */}
+      <MeetGuideGenerator
+        clienteId={client.id}
+        initialMarkdown={onb.meet_guide_md}
+        initialGeneratedAt={onb.meet_guide_generated_at}
+      />
 
       {/* Datos contractuales (form) */}
       <Card>

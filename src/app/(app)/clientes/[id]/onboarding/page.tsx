@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { OnboardingStepToggle } from "@/components/onboarding-step-toggle";
 import { OnboardingContractForm } from "@/components/onboarding-contract-form";
 import { WelcomeMessagesDialog } from "@/components/welcome-messages-dialog";
+import { PaymentMessageDialog } from "@/components/payment-message-dialog";
 import { GenerateInitialTasksButton } from "@/components/generate-initial-tasks-button";
 import { AssignContractNumberButton } from "@/components/assign-contract-number-button";
 
@@ -140,10 +141,10 @@ export default async function OnboardingPage({
   }> = [
     {
       key: "carta_enviada_at",
-      title: "Carta acuerdo enviada",
+      title: "Carta acuerdo + cobro enviados",
       done: onb.carta_enviada_at,
       icon: FileText,
-      description: "Generá el PDF de la carta acuerdo y mandasela al cliente con el monto del primer pago.",
+      description: "Descargá el PDF de la carta acuerdo y mandá el mensaje de cobro (con proporcional y datos bancarios autocalculados).",
     },
     {
       key: "pago_recibido_at",
@@ -380,13 +381,19 @@ export default async function OnboardingPage({
                   {/* Acciones contextuales */}
                   <div className="mt-2 flex flex-wrap gap-2">
                     {step.key === "carta_enviada_at" && (
-                      <Link
-                        href={`/contrato/cliente/${client.id}`}
-                        target="_blank"
-                        className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-xs text-primary hover:bg-primary/20"
-                      >
-                        <FileText className="h-3 w-3" /> Abrir PDF
-                      </Link>
+                      <>
+                        <Link
+                          href={`/contrato/cliente/${client.id}`}
+                          target="_blank"
+                          className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-xs text-primary hover:bg-primary/20"
+                        >
+                          <FileText className="h-3 w-3" /> Abrir PDF
+                        </Link>
+                        <PaymentMessageDialog
+                          clientId={client.id}
+                          alreadyDone={isDone}
+                        />
+                      </>
                     )}
                     {step.key === "equipo_asignado_at" && (
                       <Link

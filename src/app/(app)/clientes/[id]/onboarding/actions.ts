@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { SERVICE_TYPE_LABEL } from "@/lib/constants";
+import { AGENCY } from "@/lib/agency";
 import type { ServiceType, ClientService } from "@/lib/types";
 
 type StepKey =
@@ -357,6 +358,156 @@ Con eso ya podemos arrancar a trabajar con material original desde el primer mom
   // El user vendrá y tocará "Marcar mensajes enviados" después.
 
   return { ok: true, messages };
+}
+
+/**
+ * Genera el mensaje de cobro que se envía al cliente junto con la carta acuerdo.
+ * Calcula automáticamente el proporcional si la fecha de inicio no es día 1.
+ */
+export async function buildPaymentMessage(clientId: string): Promise<
+  | {
+      ok: true;
+      message: string;
+      breakdown: {
+        moneda: string;
+        totalMensual: number;
+        montoConDescuento: number | null;
+        montoEsteMes: number;
+        esProporcional: boolean;
+        diasRestantes: number;
+        diasMes: number;
+        fechaInicio: string | null;
+      };
+    }
+  | { ok: false; error: string }
+> {
+  await requireUser();
+  const supabase = createClient();
+
+  const { data: client } = await supabase
+    .from("clients")
+    .select(
+      "nombre, contacto_nombre, contrato_fecha_inicio, contrato_descuento_pct, contrato_descuento_meses, contrato_moneda"
+    )
+    .eq("id", clientId)
+    .maybeSingle();
+
+  if (!client) return { ok: false, error: "Cliente no encontrado" };
+
+  const { data: services } = await supabase
+    .from("client_services")
+    .select("monto_mensual")
+    .eq("cliente_id", clientId)
+    .eq("activo", true);
+
+  const c = client as {
+    nombre: string;
+    contacto_nombre: string | null;
+    contrato_fecha_inicio: string | null;
+    contrato_descuento_pct: number | null;
+    contrato_descuento_meses: number | null;
+    contrato_moneda: string | null;
+  };
+  const moneda = c.contrato_moneda ?? "ARS";
+  const totalMensual = (services ?? []).reduce(
+    (acc, s) => acc + (Number(s.monto_mensual) || 0),
+    0
+  );
+
+  const descPct = Number(c.contrato_descuento_pct) || 0;
+  const descMeses = Number(c.contrato_descuento_meses) || 0;
+  const hayDescuento = descPct > 0 && descMeses > 0;
+  const montoEffective = hayDescuento ? totalMensual * (1 - descPct / 100) : totalMensual;
+
+  // Cálculo proporcional
+  const inicio = c.contrato_fecha_inicio
+    ? new Date(c.contrato_fecha_inicio + "T00:00:00")
+    : null;
+  let esProporcional = false;
+  let diasRestantes = 0;
+  let diasMes = 30;
+  let montoEsteMes = montoEffective;
+
+  if (inicio) {
+    const día = inicio.getDate();
+    diasMes = new Date(inicio.getFullYear(), inicio.getMonth() + 1, 0).getDate();
+    diasRestantes = diasMes - día + 1;
+    if (día !== 1) {
+      esProporcional = true;
+      // Prorrateo y redondeo a múltiplos de 10
+      const prorrateado = (montoEffective * diasRestantes) / diasMes;
+      montoEsteMes = Math.round(prorrateado / 10) * 10;
+    }
+  }
+
+  function fmtMoney(n: number) {
+    try {
+      return new Intl.NumberFormat("es-AR", {
+        style: "currency",
+        currency: moneda,
+        maximumFractionDigits: 0,
+      }).format(n);
+    } catch {
+      return `${moneda} ${n.toLocaleString("es-AR")}`;
+    }
+  }
+
+  function fmtShort(iso: string) {
+    const d = new Date(iso + "T00:00:00");
+    return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+  }
+
+  const nombre = (c.contacto_nombre ?? c.nombre).split(" ")[0];
+
+  const lines: string[] = [];
+  lines.push(`Listo ${nombre}, te envío la carta acuerdo junto con el alcance de los servicios contratados.`);
+  lines.push("");
+
+  if (esProporcional && inicio) {
+    const fechaFin = new Date(inicio.getFullYear(), inicio.getMonth() + 1, 0);
+    const fechaFinIso = fechaFin.toISOString().slice(0, 10);
+    lines.push(
+      `En caso de dar inicio al servicio el día ${fmtShort(c.contrato_fecha_inicio!)}, corresponde abonar un proporcional equivalente a ${fmtMoney(montoEsteMes)}, que cubre el período comprendido entre el ${fmtShort(c.contrato_fecha_inicio!)} y el ${fmtShort(fechaFinIso)}.`
+    );
+    lines.push(`A partir del próximo mes, el monto será de ${fmtMoney(montoEffective)} mensuales, como acordamos.`);
+  } else {
+    lines.push(`El monto mensual del servicio es de ${fmtMoney(montoEffective)}, como acordamos.`);
+    if (inicio) {
+      lines.push(`Fecha de inicio: ${fmtShort(c.contrato_fecha_inicio!)}.`);
+    }
+  }
+
+  if (hayDescuento) {
+    lines.push("");
+    lines.push(
+      `📌 Recordá que durante los primeros ${descMeses} ${descMeses === 1 ? "mes" : "meses"} aplica el descuento promocional del ${descPct}%. Luego se factura el monto pleno.`
+    );
+  }
+
+  lines.push("");
+  lines.push("👉 Datos para transferencia:");
+  lines.push(`Banco: ${AGENCY.bank.nombre}`);
+  lines.push(`Alias: ${AGENCY.bank.alias}`);
+  lines.push(`Titular: ${AGENCY.bank.titular}`);
+  lines.push(`CUIL: ${AGENCY.bank.cuil}`);
+  lines.push("");
+  lines.push("Una vez realizado el pago, el servicio queda vigente y arrancamos 🚀");
+  lines.push(`Cualquier duda comentame ${nombre}!`);
+
+  return {
+    ok: true,
+    message: lines.join("\n"),
+    breakdown: {
+      moneda,
+      totalMensual,
+      montoConDescuento: hayDescuento ? montoEffective : null,
+      montoEsteMes,
+      esProporcional,
+      diasRestantes,
+      diasMes,
+      fechaInicio: c.contrato_fecha_inicio,
+    },
+  };
 }
 
 void SERVICE_TYPE_LABEL; // mantener import por si lo usamos más adelante

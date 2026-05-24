@@ -161,8 +161,11 @@ export function DiagnosticWorkspace({ clienteId, clienteNombre, active, history 
 
       if (errMsg) throw new Error(errMsg);
       if (done) {
-        toast.success(`Diagnóstico v${done.version} generado. Revisalo y aprobá.`);
-        router.refresh();
+        toast.success(`Diagnóstico v${done.version} generado. Cargando…`);
+        // Hard reload: garantiza que la página se monte de cero con el draft
+        // recién guardado. router.refresh() no alcanza porque el estado local
+        // de React (phase, content) sobrevive y deja la UI trabada.
+        window.location.reload();
       } else {
         throw new Error("La generación terminó sin resultado.");
       }

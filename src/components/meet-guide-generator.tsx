@@ -126,10 +126,9 @@ export function MeetGuideGenerator({
       if (errMsg) throw new Error(errMsg);
       if (done) {
         toast.success("Guía generada y guardada.");
-        router.refresh();
-        setOpen(false);
-        setFile(null);
-        setText("");
+        // Hard reload por la misma razón que en diagnostic-workspace:
+        // así la guía persistida se carga desde la nueva fetch del server.
+        window.location.reload();
       } else {
         throw new Error("Generación terminó sin resultado.");
       }

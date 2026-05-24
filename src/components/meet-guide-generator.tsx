@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   Upload,
@@ -28,7 +27,6 @@ export function MeetGuideGenerator({
   initialMarkdown: string | null;
   initialGeneratedAt: string | null;
 }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>("pdf");
   const [file, setFile] = useState<File | null>(null);

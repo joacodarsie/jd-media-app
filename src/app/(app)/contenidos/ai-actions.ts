@@ -38,7 +38,8 @@ interface ClientContext {
   notas: string | null;
   redes_sociales: { red: string; url: string }[];
   servicios: { tipo: string; pack: string | null; pack_detalle: Record<string, unknown> | null }[];
-  posts_anteriores: { titulo: string; copy: string | null; tipo: string; red: string }[];
+  posts_publicados: { titulo: string; copy: string | null; tipo: string; red: string; fecha: string | null }[];
+  posts_planificados: { titulo: string; copy: string | null; tipo: string; red: string; fecha: string | null; estado: string }[];
   diagnostico: {
     version: number;
     resumen_ejecutivo?: unknown;
@@ -67,7 +68,8 @@ export async function suggestPublicationContent(args: {
     { data: cli },
     { data: services },
     { data: docs },
-    { data: lastPubs },
+    { data: publishedPubs },
+    { data: pipelinePubs },
     { data: diagRow },
   ] = await Promise.all([
     sb
@@ -89,12 +91,22 @@ export async function suggestPublicationContent(args: {
       .eq("usar_en_ia", true)
       .order("created_at", { ascending: false })
       .limit(MAX_DOCS_TO_READ * 2),
+    // Historial: todo lo subido en los últimos 90 días.
     sb
       .from("publications")
-      .select("titulo, copy, tipo, red")
+      .select("titulo, copy, tipo, red, fecha_publicacion")
       .eq("cliente_id", args.cliente_id)
+      .eq("estado", "publicado")
       .order("fecha_publicacion", { ascending: false })
-      .limit(6),
+      .limit(15),
+    // Pipeline: lo que está planificado / en producción / a punto de salir.
+    sb
+      .from("publications")
+      .select("titulo, copy, tipo, red, fecha_publicacion, estado")
+      .eq("cliente_id", args.cliente_id)
+      .not("estado", "eq", "publicado")
+      .order("fecha_publicacion", { ascending: true, nullsFirst: false })
+      .limit(15),
     sb
       .from("client_diagnostics")
       .select("version, content")
@@ -128,7 +140,34 @@ export async function suggestPublicationContent(args: {
     notas: cli.notas,
     redes_sociales: (cli.redes_sociales ?? []) as { red: string; url: string }[],
     servicios: (services ?? []) as ClientContext["servicios"],
-    posts_anteriores: (lastPubs ?? []) as ClientContext["posts_anteriores"],
+    posts_publicados: ((publishedPubs ?? []) as Array<{
+      titulo: string;
+      copy: string | null;
+      tipo: string;
+      red: string;
+      fecha_publicacion: string | null;
+    }>).map((p) => ({
+      titulo: p.titulo,
+      copy: p.copy,
+      tipo: p.tipo,
+      red: p.red,
+      fecha: p.fecha_publicacion,
+    })),
+    posts_planificados: ((pipelinePubs ?? []) as Array<{
+      titulo: string;
+      copy: string | null;
+      tipo: string;
+      red: string;
+      fecha_publicacion: string | null;
+      estado: string;
+    }>).map((p) => ({
+      titulo: p.titulo,
+      copy: p.copy,
+      tipo: p.tipo,
+      red: p.red,
+      fecha: p.fecha_publicacion,
+      estado: p.estado,
+    })),
     diagnostico,
   };
 
@@ -234,7 +273,13 @@ export async function suggestPublicationContent(args: {
   }
 
   const system = `Sos el director creativo asistente de JD Media, una agencia de marketing digital cordobesa.
-Tu trabajo: proponer ideas de contenido alineadas a la marca del cliente, leyendo a fondo los documentos adjuntos (informe diagnóstico, manual de marca, brief, etc.) cuando estén disponibles.
+Tu trabajo: proponer ideas de contenido alineadas a la marca del cliente, leyendo a fondo el diagnóstico estratégico, los documentos adjuntos y el historial del calendario.
+
+# Reglas de oro
+1. **Respetá el diagnóstico** — la pieza tiene que encajar en uno de los pilares definidos, hablarle al público objetivo y mantener el tono.
+2. **NO repitas** ideas, ángulos, ganchos o copys que ya aparezcan en el calendario (publicados o planificados). Si vas a tocar un tema usado, encaralo desde otra perspectiva.
+3. **Concreto, no vago** — "un reel sobre el día a día" está MAL. "Un reel mostrando a Nico estudiando con la canción nueva de fondo durante semana de parciales" está BIEN.
+4. **El copy tiene que sonar como el cliente, no como IA**. Usá las frases representativas del brief si las hay.
 
 Devolvés un JSON ESTRICTO con esta forma:
 {
@@ -372,13 +417,32 @@ function buildPrompt(
       .map((d) => `${d.titulo} — ${d.reason}`)
       .join("; ")})`);
   }
-  if (ctx.posts_anteriores.length > 0) {
+  if (ctx.posts_publicados.length > 0 || ctx.posts_planificados.length > 0) {
     lines.push("");
-    lines.push("## Posts recientes (para mantener consistencia de voz)");
-    for (const p of ctx.posts_anteriores) {
-      if (!p.copy) continue;
-      lines.push(`- ${p.tipo}/${p.red}: ${p.titulo}`);
-      lines.push(`  copy: ${p.copy.slice(0, 240)}`);
+    lines.push("## CONTENIDO YA HECHO O PLANIFICADO — NO REPETIR");
+    lines.push(
+      "Las siguientes piezas ya existen para este cliente (publicadas o en el calendario). " +
+      "Tu sugerencia tiene que ser un **ángulo o tema distinto**: cambiar pilar, momento, ocasión, " +
+      "o enfoque. Si vas a tocar un tema que aparece abajo, hacelo desde otra perspectiva. " +
+      "Mantené coherencia de voz, pero no repitas ideas, ganchos ni copys."
+    );
+    if (ctx.posts_publicados.length > 0) {
+      lines.push("");
+      lines.push(`### Ya publicadas (${ctx.posts_publicados.length})`);
+      for (const p of ctx.posts_publicados) {
+        const fecha = p.fecha ? p.fecha.slice(0, 10) : "—";
+        lines.push(`- [${fecha}] ${p.tipo}/${p.red}: ${p.titulo}`);
+        if (p.copy) lines.push(`  copy: ${p.copy.slice(0, 200)}`);
+      }
+    }
+    if (ctx.posts_planificados.length > 0) {
+      lines.push("");
+      lines.push(`### Ya planificadas / en producción (${ctx.posts_planificados.length})`);
+      for (const p of ctx.posts_planificados) {
+        const fecha = p.fecha ? p.fecha.slice(0, 10) : "sin fecha";
+        lines.push(`- [${fecha} · ${p.estado}] ${p.tipo}/${p.red}: ${p.titulo}`);
+        if (p.copy) lines.push(`  copy: ${p.copy.slice(0, 200)}`);
+      }
     }
   }
   lines.push("");

@@ -40,7 +40,17 @@ Un documento estratégico de 14 secciones, con DOS audiencias en mente:
 "diseno" | "community" | "produccion" | "paid" | "estrategia" | "desarrollo" | "otro"
 
 # Tu output
-Vas a llamar a la tool \`save_diagnostic\` con el JSON estructurado. NO escribas texto fuera de la tool call. NO uses markdown en los strings del JSON salvo donde la UI lo renderice (descripciones largas pueden tener saltos de línea simples \\n).`;
+Vas a llamar a la tool \`save_diagnostic\` con el JSON estructurado. NO escribas texto fuera de la tool call. NO uses markdown en los strings del JSON salvo donde la UI lo renderice (descripciones largas pueden tener saltos de línea simples \\n).
+
+# IMPORTANTE — formato del JSON
+Los campos como \`contexto\`, \`marca\`, \`modelo_negocio\`, \`publico_objetivo\`, \`recursos_limitaciones\`, \`competencia_referencias\` son **OBJETOS anidados con subcampos**, no strings.
+
+❌ MAL:  "contexto": "{\\"que_es\\": \\"...\\", \\"etapa\\": \\"...\\"}"
+✅ BIEN: "contexto": { "que_es": "...", "etapa": "..." }
+
+Idem los campos de arrays (\`diferenciales\`, \`problemas\`, \`plan_accion\`, etc.): son **arrays de objetos**, no strings que parezcan arrays.
+
+Devolvé objetos y arrays nativos del JSON. Nunca serialices a string.`;
 
 /**
  * Ejemplos reales de informes pasados, condensados al esqueleto JSON.

@@ -8,7 +8,7 @@ import {
   SAVE_DIAGNOSTIC_TOOL,
   buildGenerateUserMessage,
 } from "@/lib/diagnostics/generate-prompt";
-import { isDiagnosticShape, type DiagnosticContent } from "@/lib/diagnostics/schema";
+import { isDiagnosticShape, normalizeDiagnostic, type DiagnosticContent } from "@/lib/diagnostics/schema";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -169,6 +169,9 @@ export async function POST(req: Request) {
           controller.close();
           return;
         }
+
+        // Normaliza: a veces el modelo serializa subcampos como strings.
+        toolInput = normalizeDiagnostic(toolInput);
 
         if (!isDiagnosticShape(toolInput)) {
           console.error("[diagnostico/generate] invalid shape", toolInput);

@@ -212,6 +212,71 @@ export function isDiagnosticShape(value: unknown): value is DiagnosticContent {
   );
 }
 
+/**
+ * Sanea el diagnóstico generado por la IA antes de persistirlo.
+ *
+ * El modelo a veces serializa campos anidados (contexto, marca, modelo_negocio,
+ * etc.) como STRINGS de JSON en lugar de objetos. Esto pasa el schema de la
+ * tool pero rompe el render.
+ *
+ * Esta función intenta parsear esos strings de vuelta a objetos.
+ */
+export function normalizeDiagnostic(value: unknown): unknown {
+  if (!value || typeof value !== "object") return value;
+  const v = { ...(value as Record<string, unknown>) };
+
+  const objectKeys: (keyof DiagnosticContent)[] = [
+    "resumen_ejecutivo",
+    "contexto",
+    "modelo_negocio",
+    "publico_objetivo",
+    "marca",
+    "competencia_referencias",
+    "recursos_limitaciones",
+  ];
+  const arrayKeys: (keyof DiagnosticContent)[] = [
+    "diferenciales",
+    "problemas",
+    "objetivos_trimestre",
+    "pilares_contenido",
+    "plan_accion",
+    "proximos_pasos",
+  ];
+
+  const tryParse = (s: string): unknown | null => {
+    try {
+      return JSON.parse(s);
+    } catch {
+      // Caso típico: el modelo deja un `}` o `]` extra al final.
+      const trimmed = s.replace(/[}\]]+\s*$/, (m) => m.slice(0, -1));
+      try {
+        return JSON.parse(trimmed);
+      } catch {
+        return null;
+      }
+    }
+  };
+
+  for (const k of objectKeys) {
+    const cur = v[k as string];
+    if (typeof cur === "string") {
+      const parsed = tryParse(cur);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        v[k as string] = parsed;
+      }
+    }
+  }
+  for (const k of arrayKeys) {
+    const cur = v[k as string];
+    if (typeof cur === "string") {
+      const parsed = tryParse(cur);
+      if (Array.isArray(parsed)) v[k as string] = parsed;
+    }
+  }
+
+  return v;
+}
+
 export type DiagnosticRow = {
   id: string;
   cliente_id: string;

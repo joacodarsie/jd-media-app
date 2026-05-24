@@ -214,6 +214,21 @@ export const TOOLS: Anthropic.Tool[] = [
       },
     },
   },
+  {
+    name: "finance_summary",
+    description:
+      "Resumen financiero del mes. Devuelve cobros a clientes (facturado, cobrado, pendiente), pagos al equipo (programado, pagado, pendiente), gastos operativos (programado, pagado, pendiente) y balance neto del periodo. Usalo para preguntas como '¿cómo viene el mes financieramente?', 'resumen de finanzas', 'cuánto facturé este mes', 'qué pendientes de cobro tengo'.",
+    input_schema: {
+      type: "object",
+      properties: {
+        periodo: {
+          type: "string",
+          description:
+            "Periodo a consultar en formato YYYY-MM. Si se omite, usa el mes actual.",
+        },
+      },
+    },
+  },
 ];
 
 type Result = { ok: true; data: unknown } | { ok: false; error: string };
@@ -551,61 +566,6 @@ export async function runTool(
         return { ok: true, data: enriched };
       }
 
-      case "list_services": {
-        const { data, error } = await sb
-          .from("services")
-          .select("slug, name, description, areas, active, orden")
-          .eq("active", true)
-          .order("orden");
-        if (error) return { ok: false, error: error.message };
-        return { ok: true, data };
-      }
-
-      case "list_positions": {
-        let q = sb
-          .from("positions")
-          .select(
-            "id, nombre, area, descripcion, services, pago_default_monto, pago_default_moneda, pago_default_frecuencia"
-          )
-          .order("area")
-          .order("nombre");
-        if (input.nombre_like) {
-          q = q.ilike("nombre", `%${String(input.nombre_like)}%`);
-        }
-        const { data, error } = await q;
-        if (error) return { ok: false, error: error.message };
-
-        // Sumar quiénes ocupan cada puesto (principal + secundarios)
-        const positions = data ?? [];
-        if (positions.length > 0) {
-          const ids = positions.map((p) => p.id);
-          const { data: users } = await sb
-            .from("users")
-            .select("nombre, position_id, secondary_position_ids")
-            .eq("activo", true);
-          const occupants = new Map<string, string[]>();
-          for (const u of users ?? []) {
-            if (u.position_id && ids.includes(u.position_id)) {
-              if (!occupants.has(u.position_id)) occupants.set(u.position_id, []);
-              occupants.get(u.position_id)!.push(u.nombre);
-            }
-            for (const sid of u.secondary_position_ids ?? []) {
-              if (ids.includes(sid)) {
-                if (!occupants.has(sid)) occupants.set(sid, []);
-                occupants.get(sid)!.push(`${u.nombre} (secundario)`);
-              }
-            }
-          }
-          return {
-            ok: true,
-            data: positions.map((p) => ({
-              ...p,
-              integrantes: occupants.get(p.id) ?? [],
-            })),
-          };
-        }
-        return { ok: true, data: positions };
-      }
 
       case "list_leads": {
         let q = sb
@@ -626,6 +586,108 @@ export async function runTool(
         const { data, error } = await q;
         if (error) return { ok: false, error: error.message };
         return { ok: true, data };
+      }
+
+      case "finance_summary": {
+        const periodo =
+          (input.periodo as string | undefined) ??
+          new Date().toLocaleDateString("en-CA", {
+            timeZone: "America/Argentina/Cordoba",
+          }).slice(0, 7); // YYYY-MM
+
+        const [{ data: invoices }, { data: payments }, { data: expenses }] =
+          await Promise.all([
+            sb
+              .from("client_invoices")
+              .select("monto, moneda, fecha_cobro, cliente:clients(nombre), concepto")
+              .eq("periodo", periodo),
+            sb
+              .from("team_payments")
+              .select("monto, moneda, fecha_pago, user:users(nombre), concepto")
+              .eq("periodo", periodo),
+            sb
+              .from("expenses")
+              .select("monto, moneda, fecha_pago, categoria, concepto, proveedor")
+              .eq("periodo", periodo),
+          ]);
+
+        type Row = { monto: number; moneda: string; pagado: boolean };
+        const sumByCurrency = (rows: Row[]) => {
+          const out: Record<string, { total: number; pagado: number; pendiente: number }> = {};
+          for (const r of rows) {
+            const m = r.moneda ?? "ARS";
+            if (!out[m]) out[m] = { total: 0, pagado: 0, pendiente: 0 };
+            const v = Number(r.monto) || 0;
+            out[m].total += v;
+            if (r.pagado) out[m].pagado += v;
+            else out[m].pendiente += v;
+          }
+          return out;
+        };
+
+        const invSummary = sumByCurrency(
+          (invoices ?? []).map((i) => ({
+            monto: Number(i.monto),
+            moneda: i.moneda as string,
+            pagado: !!i.fecha_cobro,
+          }))
+        );
+        const paySummary = sumByCurrency(
+          (payments ?? []).map((p) => ({
+            monto: Number(p.monto),
+            moneda: p.moneda as string,
+            pagado: !!p.fecha_pago,
+          }))
+        );
+        const expSummary = sumByCurrency(
+          (expenses ?? []).map((e) => ({
+            monto: Number(e.monto),
+            moneda: e.moneda as string,
+            pagado: !!e.fecha_pago,
+          }))
+        );
+
+        // Balance neto por moneda (cobrado - pagado al equipo - gastos pagados)
+        const currencies = new Set([
+          ...Object.keys(invSummary),
+          ...Object.keys(paySummary),
+          ...Object.keys(expSummary),
+        ]);
+        const balance: Record<string, number> = {};
+        for (const m of currencies) {
+          balance[m] =
+            (invSummary[m]?.pagado ?? 0) -
+            (paySummary[m]?.pagado ?? 0) -
+            (expSummary[m]?.pagado ?? 0);
+        }
+
+        return {
+          ok: true,
+          data: {
+            periodo,
+            cobros: {
+              resumen: invSummary,
+              cantidad: invoices?.length ?? 0,
+              pendientes: (invoices ?? [])
+                .filter((i) => !i.fecha_cobro)
+                .map((i) => ({
+                  cliente: (i.cliente as unknown as { nombre?: string })?.nombre,
+                  concepto: i.concepto,
+                  monto: i.monto,
+                  moneda: i.moneda,
+                })),
+            },
+            pagos_equipo: {
+              resumen: paySummary,
+              cantidad: payments?.length ?? 0,
+            },
+            gastos: {
+              resumen: expSummary,
+              cantidad: expenses?.length ?? 0,
+            },
+            balance_neto: balance,
+          },
+        };
       }
 
       default:

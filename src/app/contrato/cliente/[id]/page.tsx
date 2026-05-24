@@ -295,25 +295,52 @@ export default async function CartaAcuerdoPage({
           white-space: pre-line;
         }
 
-        /* Firmas */
-        .firmas {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 48px;
-          margin-top: 72px;
+        /* Bloque de aceptación digital */
+        .aceptacion {
+          margin-top: 40px;
+          padding: 18px 20px;
+          background: #fafafa;
+          border: 1px solid #e9e9e9;
+          border-left: 3px solid #FFD400;
+          border-radius: 6px;
           page-break-inside: avoid;
         }
-        .firma {
-          border-top: 1px solid #1a1a1a;
-          padding-top: 8px;
+        .aceptacion .titulo {
           font-size: 11px;
-          color: #555;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          color: #1a1a1a;
+          margin-bottom: 8px;
         }
-        .firma .name {
+        .aceptacion p {
+          margin: 4px 0;
+          font-size: 12px;
+          color: #2a2a2a;
+        }
+        .partes {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 32px;
+          margin-top: 16px;
+          padding-top: 14px;
+          border-top: 1px solid #e9e9e9;
+        }
+        .parte .label {
+          font-size: 9px;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          color: #888;
+          margin-bottom: 4px;
+        }
+        .parte .name {
           font-weight: 700;
           color: #1a1a1a;
           font-size: 13px;
-          margin-bottom: 2px;
+        }
+        .parte .meta {
+          color: #555;
+          font-size: 11px;
         }
 
         /* Footer */
@@ -732,15 +759,39 @@ export default async function CartaAcuerdoPage({
           </section>
         )}
 
-        {/* Firmas */}
-        <div className="firmas">
-          <div className="firma">
-            <div className="name">{AGENCY.representante}</div>
-            {AGENCY.rol_representante} — {AGENCY.brand}
-          </div>
-          <div className="firma">
-            <div className="name">{c.contacto_nombre ?? c.nombre}</div>
-            El Cliente
+        {/* Bloque de aceptación digital */}
+        <div className="aceptacion">
+          <div className="titulo">Aceptación del acuerdo</div>
+          <p>
+            La aceptación del presente acuerdo por parte del Cliente se
+            perfecciona mediante la <strong>acreditación del pago del primer honorario</strong>,
+            conforme a la cláusula de Entrada en vigencia. Dicho pago implica la
+            conformidad expresa con la totalidad de los términos y condiciones
+            descriptos en este documento.
+          </p>
+          <div className="partes">
+            <div className="parte">
+              <div className="label">La Agencia</div>
+              <div className="name">{AGENCY.representante}</div>
+              <div className="meta">
+                {AGENCY.rol_representante} — {AGENCY.brand}
+                <br />
+                CUIT {AGENCY.cuit}
+              </div>
+            </div>
+            <div className="parte">
+              <div className="label">El Cliente</div>
+              <div className="name">{c.contacto_nombre ?? c.nombre}</div>
+              <div className="meta">
+                {c.contacto_dni_cuit && <>DNI/CUIT {c.contacto_dni_cuit}</>}
+                {c.contacto_email && (
+                  <>
+                    {c.contacto_dni_cuit ? <br /> : null}
+                    {c.contacto_email}
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 

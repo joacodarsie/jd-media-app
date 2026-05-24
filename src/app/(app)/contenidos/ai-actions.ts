@@ -49,6 +49,14 @@ interface ClientContext {
     diferenciales?: unknown;
     pilares_contenido?: unknown;
   } | null;
+  plan_mensual: {
+    periodo_label: string;
+    mix_por_red?: unknown;
+    distribucion_pilares?: unknown;
+    temas_destacados?: unknown;
+    campanas?: unknown;
+    reglas_operativas?: unknown;
+  } | null;
 }
 
 export async function suggestPublicationContent(args: {
@@ -71,6 +79,7 @@ export async function suggestPublicationContent(args: {
     { data: publishedPubs },
     { data: pipelinePubs },
     { data: diagRow },
+    { data: planRow },
   ] = await Promise.all([
     sb
       .from("clients")
@@ -115,6 +124,14 @@ export async function suggestPublicationContent(args: {
       .order("version", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    sb
+      .from("client_content_plans")
+      .select("periodo_label, content")
+      .eq("cliente_id", args.cliente_id)
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   if (!cli) return { error: "Cliente no encontrado" };
@@ -130,6 +147,19 @@ export async function suggestPublicationContent(args: {
       marca: c.marca,
       diferenciales: c.diferenciales,
       pilares_contenido: c.pilares_contenido,
+    };
+  }
+
+  let plan_mensual: ClientContext["plan_mensual"] = null;
+  if (planRow && planRow.content && typeof planRow.content === "object") {
+    const p = planRow.content as Record<string, unknown>;
+    plan_mensual = {
+      periodo_label: planRow.periodo_label,
+      mix_por_red: p.mix_por_red,
+      distribucion_pilares: p.distribucion_pilares,
+      temas_destacados: p.temas_destacados,
+      campanas: p.campanas,
+      reglas_operativas: p.reglas_operativas,
     };
   }
 
@@ -153,6 +183,7 @@ export async function suggestPublicationContent(args: {
       red: p.red,
       fecha: p.fecha_publicacion,
     })),
+    plan_mensual,
     posts_planificados: ((pipelinePubs ?? []) as Array<{
       titulo: string;
       copy: string | null;
@@ -359,6 +390,38 @@ function buildPrompt(
     lines.push(
       `Redes del cliente: ${ctx.redes_sociales.map((r) => r.red).join(", ")}`
     );
+  }
+  if (ctx.plan_mensual) {
+    lines.push("");
+    lines.push(`## PLAN DEL PERÍODO — "${ctx.plan_mensual.periodo_label}" (capa operativa)`);
+    lines.push(
+      "Esta es la estrategia operativa vigente para este cliente. La pieza tiene que ENCAJAR en el mix, en uno de los pilares con su peso, y respetar las reglas operativas. Si hay temas destacados del período, priorizalos antes de inventar otros."
+    );
+    if (ctx.plan_mensual.distribucion_pilares) {
+      lines.push("");
+      lines.push("### Distribución por pilar");
+      lines.push(JSON.stringify(ctx.plan_mensual.distribucion_pilares));
+    }
+    if (ctx.plan_mensual.mix_por_red) {
+      lines.push("");
+      lines.push("### Mix por red (cadencia mensual)");
+      lines.push(JSON.stringify(ctx.plan_mensual.mix_por_red));
+    }
+    if (ctx.plan_mensual.temas_destacados) {
+      lines.push("");
+      lines.push("### Temas destacados del período");
+      lines.push(JSON.stringify(ctx.plan_mensual.temas_destacados));
+    }
+    if (ctx.plan_mensual.campanas) {
+      lines.push("");
+      lines.push("### Campañas activas");
+      lines.push(JSON.stringify(ctx.plan_mensual.campanas));
+    }
+    if (ctx.plan_mensual.reglas_operativas) {
+      lines.push("");
+      lines.push("### Reglas operativas");
+      lines.push(JSON.stringify(ctx.plan_mensual.reglas_operativas));
+    }
   }
   if (ctx.diagnostico) {
     lines.push("");

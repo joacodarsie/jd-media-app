@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  ChevronLeft,
   FileText,
   Hash,
   Image as ImageIcon,
@@ -147,13 +148,28 @@ export function ChatLayout({
 }) {
   return (
     <div className="-m-4 flex h-[calc(100vh-3.5rem)] md:-m-6">
-      <ChannelsSidebar
-        channels={channels}
-        activeId={activeChannelId}
-        users={users}
-        currentUserId={currentUserId}
-      />
-      <div className="flex min-w-0 flex-1 flex-col">
+      {/* Sidebar: en mobile se oculta cuando hay un canal activo */}
+      <div
+        className={cn(
+          "flex w-full shrink-0 flex-col md:flex md:w-64",
+          activeChannelId ? "hidden md:flex" : "flex"
+        )}
+      >
+        <ChannelsSidebar
+          channels={channels}
+          activeId={activeChannelId}
+          users={users}
+          currentUserId={currentUserId}
+        />
+      </div>
+
+      {/* ChannelView: en mobile se oculta si no hay canal activo */}
+      <div
+        className={cn(
+          "min-w-0 flex-1 flex-col md:flex",
+          activeChannelId ? "flex" : "hidden md:flex"
+        )}
+      >
         {activeChannelId ? (
           (() => {
             const active = channels.find((c) => c.id === activeChannelId);
@@ -232,7 +248,7 @@ function ChannelsSidebar({
   }
 
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r bg-card/40 md:flex">
+    <aside className="flex w-full shrink-0 flex-col border-r bg-card/40 md:w-64">
       <div className="flex items-center justify-between border-b px-3 py-3">
         <div className="text-sm font-semibold">Chat interno</div>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -1008,6 +1024,13 @@ function ChannelView({
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2">
+          <a
+            href="/chat"
+            className="-ml-1 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground md:hidden"
+            aria-label="Volver a canales"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </a>
           {channelKind === "dm" ? (
             <Avatar className="h-7 w-7">
               {peerAvatarUrl && <AvatarImage src={peerAvatarUrl} alt={channelName} />}

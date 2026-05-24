@@ -11,6 +11,7 @@ import {
   Mail,
   Phone,
   Pencil,
+  Sparkles,
   User as UserIcon,
 } from "lucide-react";
 import { requireUser, isStaff } from "@/lib/auth";
@@ -136,6 +137,12 @@ export default async function ClientDetail({
           <ArrowLeft className="mr-1 h-4 w-4" /> Volver a clientes
         </Link>
         <div className="flex items-center gap-2">
+          <Link
+            href={`/clientes/${c.id}/onboarding`}
+            className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
+          >
+            <Sparkles className="mr-2 h-4 w-4" /> Onboarding
+          </Link>
           <Link
             href={`/clientes/${c.id}/calendario`}
             className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"

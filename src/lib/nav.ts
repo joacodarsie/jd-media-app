@@ -62,6 +62,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/documentos", label: "Documentos", icon: "FolderOpen" },
       { href: "/procesos", label: "Procesos", icon: "FileText" },
       { href: "/agencia", label: "Agencia", icon: "Sparkles" },
+      { href: "/ayuda", label: "Ayuda", icon: "BookOpen" },
+      { href: "/novedades", label: "Novedades", icon: "Megaphone" },
     ],
   },
   {

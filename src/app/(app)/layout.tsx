@@ -60,9 +60,13 @@ export default async function AppLayout({
   const chatUnreadNum =
     typeof chatUnread === "number" ? chatUnread : Number(chatUnread ?? 0);
 
+  const { hasRecentChanges } = await import("@/lib/help/changelog");
+  const showNovedadesBadge = hasRecentChanges(14);
+
   const badges: Record<string, number> = {
     "/chat": chatUnreadNum,
     "/tareas": taskUnreadCount ?? 0,
+    "/novedades": showNovedadesBadge ? 1 : 0,
   };
 
   return (

@@ -230,6 +230,76 @@ export const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "create_publication_idea",
+    description:
+      "Crea una publicación nueva en estado 'idea' para un cliente. Pensada para cuando el usuario dice 'agregá un reel sobre X para Cliente Y' o 'sumá una idea de post sobre tal cosa'. Si no se especifica red/tipo asume instagram + post.",
+    input_schema: {
+      type: "object",
+      properties: {
+        cliente_nombre: { type: "string", description: "Nombre del cliente (búsqueda parcial)." },
+        titulo: { type: "string", description: "Título corto de la publicación (la idea)." },
+        copy: { type: "string", description: "Copy/texto principal sugerido (opcional)." },
+        red: {
+          type: "string",
+          enum: ["instagram", "facebook", "tiktok", "linkedin", "youtube"],
+          description: "Red social. Default 'instagram'.",
+        },
+        tipo: {
+          type: "string",
+          enum: ["post", "reel", "historia", "carrusel", "video"],
+          description: "Tipo de pieza. Default 'post'.",
+        },
+        fecha_publicacion: {
+          type: "string",
+          description: "Fecha tentativa en formato YYYY-MM-DD o ISO. Opcional.",
+        },
+      },
+      required: ["cliente_nombre", "titulo"],
+    },
+  },
+  {
+    name: "mark_publication_published",
+    description:
+      "Marca una publicación como 'publicado'. Usalo cuando el usuario confirma que ya subió la pieza. Necesitás el ID o el título exacto.",
+    input_schema: {
+      type: "object",
+      properties: {
+        publication_id: { type: "string", description: "UUID de la publicación." },
+        publication_titulo: {
+          type: "string",
+          description: "Si no tenés el ID, pasá el título exacto.",
+        },
+      },
+    },
+  },
+  {
+    name: "request_client_approval",
+    description:
+      "Pasa una publicación al estado 'revision_cliente' para que el cliente la apruebe desde el portal. Útil cuando el usuario dice 'mandalo a aprobación' o 'que lo vea el cliente'.",
+    input_schema: {
+      type: "object",
+      properties: {
+        publication_id: { type: "string", description: "UUID de la publicación." },
+        publication_titulo: {
+          type: "string",
+          description: "Si no tenés el ID, pasá el título exacto.",
+        },
+      },
+    },
+  },
+  {
+    name: "apply_plan_to_calendar",
+    description:
+      "Aplica los temas pendientes del plan de contenido activo del cliente al calendario, creando publicaciones en estado 'idea'. Pensado para cuando el usuario dice 'pasá el plan al calendario' o 'arrancá a llenar el calendario del mes'.",
+    input_schema: {
+      type: "object",
+      properties: {
+        cliente_nombre: { type: "string", description: "Nombre del cliente (búsqueda parcial)." },
+      },
+      required: ["cliente_nombre"],
+    },
+  },
+  {
     name: "finance_compare",
     description:
       "Compara dos periodos financieros. Devuelve totales y % de cambio en cobros, pagos al equipo, gastos y balance neto. Usalo para preguntas como 'compará este mes con el anterior', 'cómo veníamos vs marzo', '¿estamos mejor o peor que el mes pasado?'. Si no se pasa periodo_b, usa el mes anterior a periodo_a automáticamente.",
@@ -886,6 +956,114 @@ export async function runTool(
             periodo_a: periodoA,
             periodo_b: periodoB,
             comparacion: diff,
+          },
+        };
+      }
+
+      case "create_publication_idea": {
+        const cid = await findClientId(sb, String(input.cliente_nombre));
+        if (!cid) {
+          return {
+            ok: false,
+            error: `No encontré cliente llamado "${input.cliente_nombre}"`,
+          };
+        }
+        const { data, error } = await sb
+          .from("publications")
+          .insert({
+            cliente_id: cid,
+            titulo: String(input.titulo),
+            copy: input.copy ? String(input.copy) : null,
+            red: input.red ? String(input.red) : "instagram",
+            tipo: input.tipo ? String(input.tipo) : "post",
+            fecha_publicacion: input.fecha_publicacion
+              ? String(input.fecha_publicacion)
+              : null,
+            estado: "idea",
+            creado_por_id: currentUserId,
+          })
+          .select("id, titulo, red, tipo, estado")
+          .single();
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data };
+      }
+
+      case "mark_publication_published": {
+        let id = input.publication_id as string | undefined;
+        if (!id && input.publication_titulo) {
+          const { data } = await sb
+            .from("publications")
+            .select("id")
+            .ilike("titulo", `%${input.publication_titulo}%`)
+            .limit(1)
+            .maybeSingle();
+          id = data?.id;
+        }
+        if (!id) return { ok: false, error: "No se pudo identificar la publicación." };
+        const { error } = await sb
+          .from("publications")
+          .update({ estado: "publicado" })
+          .eq("id", id);
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data: { id, nuevo_estado: "publicado" } };
+      }
+
+      case "request_client_approval": {
+        let id = input.publication_id as string | undefined;
+        if (!id && input.publication_titulo) {
+          const { data } = await sb
+            .from("publications")
+            .select("id")
+            .ilike("titulo", `%${input.publication_titulo}%`)
+            .limit(1)
+            .maybeSingle();
+          id = data?.id;
+        }
+        if (!id) return { ok: false, error: "No se pudo identificar la publicación." };
+        const { error } = await sb
+          .from("publications")
+          .update({ estado: "revision_cliente" })
+          .eq("id", id);
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data: { id, nuevo_estado: "revision_cliente" } };
+      }
+
+      case "apply_plan_to_calendar": {
+        const cid = await findClientId(sb, String(input.cliente_nombre));
+        if (!cid) {
+          return {
+            ok: false,
+            error: `No encontré cliente llamado "${input.cliente_nombre}"`,
+          };
+        }
+        const { data: plan } = await sb
+          .from("client_content_plans")
+          .select("id, periodo_label")
+          .eq("cliente_id", cid)
+          .eq("status", "active")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (!plan?.id) {
+          return {
+            ok: false,
+            error: "El cliente no tiene un plan de contenido activo.",
+          };
+        }
+        // Import dinámico para evitar ciclos con la action file.
+        const { applyAllTemasToCalendar } = await import(
+          "@/app/(app)/clientes/[id]/plan-mensual/actions"
+        );
+        const res = await applyAllTemasToCalendar(plan.id as string);
+        if (!res.ok) {
+          return { ok: false, error: res.error ?? "Error aplicando plan" };
+        }
+        return {
+          ok: true,
+          data: {
+            plan_id: plan.id,
+            periodo: plan.periodo_label,
+            creadas: res.data?.created ?? 0,
           },
         };
       }

@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/month-end-reminder",
       "schedule": "0 13 25 * *"
+    },
+    {
+      "path": "/api/cron/director-creativo",
+      "schedule": "0 12 * * 1"
     }
   ]
 }

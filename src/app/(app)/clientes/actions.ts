@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { invalidateClientsCache } from "@/lib/cache";
 import { createClient } from "@/lib/supabase/server";
 
 async function ctx() {
@@ -74,6 +75,7 @@ export async function createClientRow(input: ClientInput) {
     .single();
   if (error) return { error: error.message };
   revalidatePath("/clientes");
+  invalidateClientsCache();
   return { ok: true, id: data.id };
 }
 
@@ -83,6 +85,7 @@ export async function updateClientRow(id: string, input: ClientInput) {
   if (error) return { error: error.message };
   revalidatePath("/clientes");
   revalidatePath(`/clientes/${id}`);
+  invalidateClientsCache();
   return { ok: true };
 }
 
@@ -91,6 +94,7 @@ export async function deleteClientRow(id: string) {
   const { error } = await supabase.from("clients").delete().eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/clientes");
+  invalidateClientsCache();
   return { ok: true };
 }
 

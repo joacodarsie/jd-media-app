@@ -5,10 +5,12 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { FEATURES, type Feature } from "@/lib/permissions";
+import { invalidateUsersCache } from "@/lib/cache";
 
 function invalidate() {
   revalidatePath("/accesos");
   revalidatePath("/equipo/personas");
+  invalidateUsersCache();
 }
 
 /** Cambia el email de un usuario (en auth + en la tabla users). */

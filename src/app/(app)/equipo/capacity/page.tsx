@@ -158,8 +158,20 @@ export default async function CapacityPage() {
         />
       </div>
 
-      {/* Tabla */}
-      <div className="overflow-hidden rounded-lg border bg-card">
+      {/* Cards en mobile */}
+      <div className="space-y-2 md:hidden">
+        {rows.map((r) => (
+          <CapacityCard key={r.user.id} row={r} />
+        ))}
+        {rows.length === 0 && (
+          <p className="rounded-lg border border-dashed bg-muted/20 p-4 text-center text-sm text-muted-foreground">
+            No hay personas activas para mostrar.
+          </p>
+        )}
+      </div>
+
+      {/* Tabla en desktop */}
+      <div className="hidden overflow-hidden rounded-lg border bg-card md:block">
         <table className="w-full">
           <thead className="bg-muted/50 text-[10px] uppercase tracking-wider text-muted-foreground">
             <tr>
@@ -277,6 +289,91 @@ function SummaryCard({
       <div className="mt-1 text-3xl font-bold tabular-nums">{value}</div>
       <div className="text-[11px] opacity-70">{hint}</div>
     </div>
+  );
+}
+
+function CapacityCard({
+  row,
+}: {
+  row: {
+    user: UserLite;
+    activas: number;
+    vencidas: number;
+    proximas7: number;
+    pubsPipeline: number;
+    load: number;
+  };
+}) {
+  const r = row;
+  const tone =
+    r.load >= 80
+      ? "border-l-rose-500"
+      : r.load >= 50
+      ? "border-l-amber-500"
+      : r.load > 0
+      ? "border-l-emerald-500"
+      : "border-l-muted";
+  return (
+    <Link
+      href={`/equipo/persona/${r.user.id}`}
+      className={cn(
+        "block rounded-lg border border-l-4 bg-card p-3 transition hover:shadow-sm",
+        tone
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <Avatar className="h-9 w-9 ring-1 ring-border/60">
+          {r.user.avatar_url && (
+            <AvatarImage src={r.user.avatar_url} alt={r.user.nombre} />
+          )}
+          <AvatarFallback className="text-[11px]">
+            {initials(r.user.nombre)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-semibold">{r.user.nombre}</div>
+          <div className="truncate text-[11px] text-muted-foreground">
+            {r.user.position?.nombre ?? r.user.area ?? "—"}
+          </div>
+        </div>
+      </div>
+      <div className="mt-3">
+        <LoadBar load={r.load} />
+      </div>
+      <div className="mt-2 grid grid-cols-4 gap-1 text-center text-[11px]">
+        <div>
+          <div className="text-sm font-semibold tabular-nums">{r.activas}</div>
+          <div className="text-[9px] uppercase tracking-wider text-muted-foreground">
+            Activas
+          </div>
+        </div>
+        <div>
+          <div
+            className={cn(
+              "text-sm font-semibold tabular-nums",
+              r.vencidas > 0 && "text-rose-600 dark:text-rose-400"
+            )}
+          >
+            {r.vencidas}
+          </div>
+          <div className="text-[9px] uppercase tracking-wider text-muted-foreground">
+            Venc.
+          </div>
+        </div>
+        <div>
+          <div className="text-sm font-semibold tabular-nums">{r.proximas7}</div>
+          <div className="text-[9px] uppercase tracking-wider text-muted-foreground">
+            7 días
+          </div>
+        </div>
+        <div>
+          <div className="text-sm font-semibold tabular-nums">{r.pubsPipeline}</div>
+          <div className="text-[9px] uppercase tracking-wider text-muted-foreground">
+            Pubs
+          </div>
+        </div>
+      </div>
+    </Link>
   );
 }
 

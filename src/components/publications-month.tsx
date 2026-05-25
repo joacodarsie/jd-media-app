@@ -49,7 +49,13 @@ const STATUS_ORDER: PublicationStatus[] = [
 ];
 
 function ymd(d: Date) {
-  return d.toISOString().slice(0, 10);
+  // Usamos componentes locales en lugar de toISOString() porque este
+  // ultimo devuelve UTC. En Argentina (UTC-3) eso adelantaba el dia
+  // marcado como "hoy" a partir de las 21hs locales.
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 export function PublicationsMonth({

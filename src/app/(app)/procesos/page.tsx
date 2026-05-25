@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { AgencyPageDialog } from "@/components/agency-page-dialog";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 const KIND_LABEL: Record<string, string> = {
   proceso: "Procesos / SOPs",

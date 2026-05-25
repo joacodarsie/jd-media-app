@@ -10,7 +10,8 @@ import { QuickLinksManager, type QuickLinkRow } from "@/components/quick-links-m
 import { ServicesManager } from "@/components/services-manager";
 import type { ServiceInit } from "@/components/service-dialog";
 
-export const dynamic = "force-dynamic";
+// Contenido estable de la agencia (SOPs, services). Revalida cada 60s.
+export const revalidate = 60;
 
 export default async function AgenciaPage() {
   const me = await requireUser();

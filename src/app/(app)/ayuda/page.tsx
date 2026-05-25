@@ -8,7 +8,9 @@ import {
 } from "@/lib/help/load";
 import { HelpSearch } from "@/components/help-search";
 
-export const dynamic = "force-dynamic";
+// Revalida cada 5 min. El contenido es markdown estatico del repo, no hay
+// razon para re-renderizar en cada nav.
+export const revalidate = 300;
 
 export default async function AyudaPage() {
   const me = await requireUser();

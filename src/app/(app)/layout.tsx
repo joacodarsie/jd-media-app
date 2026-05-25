@@ -1,6 +1,5 @@
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { ensureDueNotifications } from "@/lib/notifications";
 import type { Notification } from "@/lib/types";
 import { AppShell } from "@/components/app-shell";
 import { NotificationBell } from "@/components/notification-bell";
@@ -17,7 +16,9 @@ export default async function AppLayout({
   const user = await requireUser();
   const supabase = createClient();
 
-  await ensureDueNotifications(supabase, user.id);
+  // Nota: las notificaciones "vencida" / "proxima a vencer" se generan via
+  // cron horario (`/api/cron/due-notifications`), NO aqui — antes corria en
+  // cada nav y aniadia ~400-800ms al render del layout.
 
   const [
     { data: items },

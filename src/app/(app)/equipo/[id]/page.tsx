@@ -11,7 +11,8 @@ import { Markdown } from "@/components/markdown";
 import { PositionFormDialog } from "@/components/position-form-dialog";
 import { AssignPositionSelect } from "@/components/assign-position-select";
 
-export const dynamic = "force-dynamic";
+// Detalle de puesto. Cambia poco — revalida cada 60s.
+export const revalidate = 60;
 
 export default async function PositionDetail({
   params,

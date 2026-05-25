@@ -5,7 +5,8 @@ import remarkGfm from "remark-gfm";
 import { requireUser } from "@/lib/auth";
 import { getChangelogEntries } from "@/lib/help/changelog";
 
-export const dynamic = "force-dynamic";
+// Markdown estatico (changelog.md). Revalida cada 5 min.
+export const revalidate = 300;
 
 function formatDate(iso: string) {
   const d = new Date(iso + "T00:00:00");

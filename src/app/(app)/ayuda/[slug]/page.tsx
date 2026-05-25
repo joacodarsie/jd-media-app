@@ -7,7 +7,8 @@ import { requireUser } from "@/lib/auth";
 import { getHelpPage, getAllHelpPages, filterByRole } from "@/lib/help/load";
 import { Button } from "@/components/ui/button";
 
-export const dynamic = "force-dynamic";
+// Markdown estatico. Revalida cada 5 min.
+export const revalidate = 300;
 
 export default async function HelpDetailPage({
   params,

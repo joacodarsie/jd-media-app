@@ -6,7 +6,8 @@ import type { AppUser, Position } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { PositionFormDialog } from "@/components/position-form-dialog";
 
-export const dynamic = "force-dynamic";
+// Lista de puestos del equipo. Cambia poco — revalida cada 60s.
+export const revalidate = 60;
 
 /**
  * Agrupación de los puestos por servicio que ofrece JD Media

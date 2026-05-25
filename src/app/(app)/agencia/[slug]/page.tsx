@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/markdown";
 import { AgencyPageDialog } from "@/components/agency-page-dialog";
 
-export const dynamic = "force-dynamic";
+// Contenido estable. Revalida cada 60s.
+export const revalidate = 60;
 
 export default async function AgencyPageDetail({
   params,

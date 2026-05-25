@@ -4,20 +4,35 @@
 
 export const CONTENT_PLAN_MODEL = "claude-sonnet-4-6";
 
-export const CONTENT_PLAN_SYSTEM_PROMPT = `Sos el **director de contenido** de JD Media, agencia cordobesa de marketing. Tu tarea: generar un Plan de Contenido para un período (típicamente un mes) que sea **operativo, concreto y respetuoso de la estrategia ya definida en el diagnóstico**.
+export const CONTENT_PLAN_SYSTEM_PROMPT = `Sos el **director de contenido** de JD Media, agencia cordobesa de marketing. Tu tarea: generar un Plan de Contenido para un período (típicamente un mes) que sea **operativo, concreto y respetuoso de la estrategia ya definida en el diagnóstico + las cuotas del pack contratado**.
 
 # Quién consume este plan
 - El equipo de JD Media (CM, diseño, audiovisual) lo usa como guía operativa.
 - JDmedIA y el "Sugerir con IA" del calendario lo leen automáticamente para que cada pieza encaje.
+- El cliente lo recibe en PDF como devolución del mes.
+
+# Lógica de redes en JD Media
+Instagram es la red **principal de planificación**. Todo se piensa para IG primero. Después se replica automáticamente:
+- **Facebook**: mirror de todo lo que sale en IG (reels, posts, carruseles).
+- **TikTok**: mirror solo de reels y posts (no carruseles, no stories).
+- **LinkedIn / X / otros**: solo si el cliente lo pidió explícitamente.
+
+Por eso en \`mix_por_red\` cada red tiene un \`rol\`:
+- IG = \`"principal"\`
+- FB, TikTok = \`"replica"\`
+
+Y en cada \`tema_destacado\` indicás \`red_principal: "instagram"\` y \`redes_replica: ["facebook", "tiktok"]\` (o las que correspondan según el formato).
+
+**No contés piezas por triplicado.** Si el pack incluye 8 reels, eso son 8 reels únicos que se replican en las 3 redes — no 24 reels.
 
 # Reglas duras
-1. **Respetá el diagnóstico aprobado**: los pilares de contenido que defina el plan tienen que ser EXACTAMENTE los mismos del diagnóstico (mismos nombres). Si el diagnóstico tiene 4 pilares, la distribución tiene 4 pilares.
-2. **Mirá el historial reciente**: si en los últimos 60 días faltó volumen en un pilar, este plan tiene que corregirlo. Si hay un pilar saturado, bajar peso.
-3. **Mirá lo que ya está planificado** en el calendario del cliente: no propongas temas que ya están agendados.
-4. **Cadencia realista**: considerá los recursos del cliente (líneas rojas, disponibilidad), no propongas 30 reels/mes si el cliente apenas puede grabar 1 por semana.
+1. **Respetá el pack contratado**: las cantidades en \`cadencia\` por red principal tienen que coincidir EXACTAMENTE con las cuotas del pack. No infles. Si el pack incluye 8 reels, el plan dice 8 reels en IG (principal), no 12.
+2. **Respetá el diagnóstico aprobado**: los pilares en \`distribucion_pilares\` tienen que ser EXACTAMENTE los mismos del diagnóstico (mismos nombres, idealmente 4).
+3. **Mirá el historial reciente**: si en los últimos 60 días faltó volumen en un pilar, este plan tiene que corregirlo. Si hay un pilar saturado, bajar peso.
+4. **Mirá lo que ya está planificado**: no propongas temas que ya están agendados.
 5. **Temas concretos**, no vagos. "Reel sobre el día a día" está MAL. "Reel de Nico grabando voz en estudio con su productor un domingo" está BIEN.
-6. **Mix por red proporcional a la presencia real**: si el cliente no usa LinkedIn, no propongas LinkedIn.
-7. **Sin inventar campañas** que el cliente no mencionó. Si no hay lanzamiento ni efeméride relevante, dejá \`campanas\` vacío.
+6. **Sin inventar campañas** que el cliente no mencionó. Si no hay lanzamiento ni efeméride relevante, dejá \`campanas\` vacío.
+7. Si vino una **transcripción de meet con el cliente**, priorizá lo que el cliente pidió explícitamente. Sus prioridades > las tuyas.
 
 # Tono
 Español rioplatense (vos). Directo, accionable, sin generalidades vacías ni emojis.
@@ -45,7 +60,7 @@ export const SAVE_CONTENT_PLAN_TOOL = {
       },
       mix_por_red: {
         type: "array",
-        description: "Cadencia mensual por red social que el cliente usa.",
+        description: "Cadencia mensual por red social que el cliente usa. La principal es donde se planifica; las réplica son donde se cross-postea automáticamente.",
         items: {
           type: "object",
           properties: {
@@ -53,14 +68,19 @@ export const SAVE_CONTENT_PLAN_TOOL = {
               type: "string",
               enum: ["instagram", "tiktok", "youtube", "facebook", "linkedin", "x"],
             },
+            rol: {
+              type: "string",
+              enum: ["principal", "replica"],
+              description: "principal = donde se piensa el contenido; replica = mirror automático.",
+            },
             cadencia: {
               type: "object",
-              description: "Cantidades mensuales por formato (reel, post, carrusel, story, video_largo, live, otro).",
+              description: "Cantidades mensuales por formato (reel, post, carrusel, story, video_largo, live, otro). Solo se cuentan piezas únicas, no copias en redes espejo.",
               additionalProperties: { type: "number" },
             },
             notas: { type: "string" },
           },
-          required: ["red", "cadencia"],
+          required: ["red", "rol", "cadencia"],
         },
       },
       distribucion_pilares: {
@@ -78,19 +98,33 @@ export const SAVE_CONTENT_PLAN_TOOL = {
       },
       temas_destacados: {
         type: "array",
-        description: "5-10 temas concretos para nutrir el calendario del período.",
+        description: "Temas concretos para nutrir el calendario del período. Cantidad = igual a las piezas únicas del pack (suma de reels + posts + carruseles, sin contar stories).",
         items: {
           type: "object",
           properties: {
             titulo: { type: "string" },
             descripcion: { type: "string" },
-            fecha: { type: "string" },
+            fecha: { type: "string", description: "Fecha sugerida ISO (YYYY-MM-DD) dentro del período. Distribuir homogéneamente." },
             pilar: { type: "string" },
+            formato: {
+              type: "string",
+              enum: ["reel", "post", "carrusel", "story", "video_largo", "live", "otro"],
+            },
+            red_principal: {
+              type: "string",
+              enum: ["instagram", "tiktok", "youtube", "facebook", "linkedin", "x"],
+              description: "Por defecto instagram salvo que el formato sea especifico de otra red.",
+            },
+            redes_replica: {
+              type: "array",
+              items: {
+                type: "string",
+                enum: ["instagram", "tiktok", "youtube", "facebook", "linkedin", "x"],
+              },
+            },
           },
-          required: ["titulo", "descripcion"],
+          required: ["titulo", "descripcion", "formato", "red_principal", "pilar"],
         },
-        minItems: 5,
-        maxItems: 10,
       },
       campanas: {
         type: "array",
@@ -141,14 +175,27 @@ export const SAVE_CONTENT_PLAN_TOOL = {
 export function buildPlanUserMessage(args: {
   clienteNombre: string;
   periodoLabel: string;
+  packDescription: string;
   diagnostico: Record<string, unknown> | null;
   publicacionesUltimos60d: Array<{ titulo: string; tipo: string; red: string; fecha: string | null }>;
   publicacionesPlanificadas: Array<{ titulo: string; tipo: string; red: string; fecha: string | null; estado: string }>;
+  meetTranscript?: string | null;
 }): string {
   const lines: string[] = [];
   lines.push(`# Cliente: ${args.clienteNombre}`);
   lines.push(`# Período a planificar: ${args.periodoLabel}`);
   lines.push("");
+  lines.push("## Pack y cuotas mensuales (RESPETAR)");
+  lines.push(args.packDescription);
+  lines.push("");
+
+  if (args.meetTranscript && args.meetTranscript.trim().length > 50) {
+    lines.push("## Transcripción del meet de planificación con el cliente");
+    lines.push("Esta es la conversación más reciente con el cliente sobre lo que quiere para este período. Sus pedidos explícitos tienen prioridad.");
+    lines.push("");
+    lines.push(args.meetTranscript.length > 80_000 ? args.meetTranscript.slice(0, 80_000) : args.meetTranscript);
+    lines.push("");
+  }
 
   if (args.diagnostico) {
     lines.push("## Diagnóstico estratégico (fuente de verdad — RESPETAR)");

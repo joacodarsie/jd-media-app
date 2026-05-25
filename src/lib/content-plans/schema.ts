@@ -23,6 +23,12 @@ export type Formato =
 
 export type MixRed = {
   red: RedSocial;
+  /**
+   * Si esta red es PRINCIPAL (donde se planifica y produce el contenido)
+   * o REPLICA (mirror de la principal). Por defecto IG es principal en JD Media,
+   * FB y TikTok son réplica.
+   */
+  rol: "principal" | "replica";
   /** Total mensual estimado: ej { reel: 4, post: 2, story: 60 } */
   cadencia: Partial<Record<Formato, number>>;
   /** Notas operativas opcionales para esa red (horarios, particularidades) */
@@ -45,6 +51,12 @@ export type TemaDestacado = {
   fecha?: string;
   /** Pilar al que pertenece este tema */
   pilar?: string;
+  /** Formato principal sugerido para la pieza */
+  formato?: Formato;
+  /** Red donde se produce la pieza original */
+  red_principal?: RedSocial;
+  /** Redes donde se replica */
+  redes_replica?: RedSocial[];
 };
 
 export type Campana = {
@@ -116,6 +128,8 @@ export type ContentPlanRow = {
   generated_at: string | null;
   approved_at: string | null;
   approved_by: string | null;
+  applied_at: string | null;
+  applied_count: number | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

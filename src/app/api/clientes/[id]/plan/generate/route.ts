@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
+import { extractText, getDocumentProxy } from "unpdf";
 import {
   CONTENT_PLAN_MODEL,
   CONTENT_PLAN_SYSTEM_PROMPT,
@@ -9,6 +10,7 @@ import {
 } from "@/lib/content-plans/generate-prompt";
 import { isPlanShape, type MonthlyContentPlan } from "@/lib/content-plans/schema";
 import { normalizeDiagnostic } from "@/lib/diagnostics/schema";
+import { describePack } from "@/lib/content-plans/packs";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -19,10 +21,12 @@ const anthropic = new Anthropic();
 /**
  * POST /api/clientes/[id]/plan/generate
  *
- * SSE — devuelve eventos hasta el plan generado.
- * Body JSON: { periodo_label: string }
+ * Multipart form-data:
+ *   - periodo_label: string (obligatorio)
+ *   - file:          PDF de un meet de planificacion (opcional)
+ *   - transcript:    texto de la transcripcion (opcional, alternativa al PDF)
  *
- * Eventos: starting, progress(chars), saving, done(id, content), error(error)
+ * SSE — emite eventos starting, progress(chars), saving, done(id), error(error).
  */
 export async function POST(
   req: Request,
@@ -35,22 +39,53 @@ export async function POST(
   if (!user) return new Response("unauthorized", { status: 401 });
 
   const cliente_id = params.id;
-  const body = (await req.json().catch(() => null)) as { periodo_label?: string } | null;
-  const periodo_label = (body?.periodo_label ?? "").trim();
+
+  // Aceptamos tanto JSON como form-data.
+  let periodo_label = "";
+  let meetTranscript = "";
+  const contentType = req.headers.get("content-type") ?? "";
+
+  if (contentType.includes("application/json")) {
+    const body = (await req.json().catch(() => null)) as { periodo_label?: string } | null;
+    periodo_label = (body?.periodo_label ?? "").trim();
+  } else {
+    const form = await req.formData();
+    periodo_label = String(form.get("periodo_label") ?? "").trim();
+    meetTranscript = String(form.get("transcript") ?? "").trim();
+
+    const file = form.get("file");
+    if (!meetTranscript && file instanceof File) {
+      if (!file.name.toLowerCase().endsWith(".pdf")) {
+        return new Response("El archivo debe ser un PDF.", { status: 400 });
+      }
+      if (file.size > 20 * 1024 * 1024) {
+        return new Response("PDF supera 20 MB.", { status: 400 });
+      }
+      try {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const pdf = await getDocumentProxy(bytes);
+        const { text } = await extractText(pdf, { mergePages: true });
+        meetTranscript = (Array.isArray(text) ? text.join("\n\n") : text).trim();
+      } catch (err) {
+        console.error("[plan/generate] pdf parse failed", err);
+        return new Response("No se pudo leer el PDF.", { status: 422 });
+      }
+    }
+  }
+
   if (!periodo_label) {
     return new Response("Falta periodo_label (ej: 'Mayo 2026').", { status: 400 });
   }
 
   const { data: client } = await supabase
     .from("clients")
-    .select("id, nombre")
+    .select("id, nombre, pack")
     .eq("id", cliente_id)
     .maybeSingle();
   if (!client) return new Response("Cliente no encontrado.", { status: 403 });
 
   const admin = createAdmin();
 
-  // Cargar contexto en paralelo: diagnostico aprobado, últimas publicadas (60d), planificadas.
   const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
   const [
     { data: diagRow },
@@ -82,7 +117,6 @@ export async function POST(
       .limit(40),
   ]);
 
-  // Subset del diagnóstico que necesita el modelo (pilares, público, marca, diferenciales, etc.)
   let diagnosticoForPrompt: Record<string, unknown> | null = null;
   if (diagRow && diagRow.content && typeof diagRow.content === "object") {
     const c = diagRow.content as Record<string, unknown>;
@@ -100,6 +134,7 @@ export async function POST(
   const userMessage = buildPlanUserMessage({
     clienteNombre: client.nombre,
     periodoLabel: periodo_label,
+    packDescription: describePack((client as { pack?: string | null }).pack),
     diagnostico: diagnosticoForPrompt,
     publicacionesUltimos60d: (publishedPubs ?? []).map(
       (p: { titulo: string; tipo: string; red: string; fecha_publicacion: string | null }) => ({
@@ -124,6 +159,7 @@ export async function POST(
         estado: p.estado,
       })
     ),
+    meetTranscript: meetTranscript || null,
   });
 
   const encoder = new TextEncoder();
@@ -182,7 +218,6 @@ export async function POST(
           return;
         }
 
-        // Reusa el sanitizer del diagnostico: misma logica de "string que deberia ser objeto/array"
         toolInput = normalizeDiagnostic(toolInput);
 
         if (!isPlanShape(toolInput)) {

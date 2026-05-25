@@ -97,7 +97,7 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     supabase
       .from("clients")
-      .select("id, nombre")
+      .select("id, nombre, pack, estado")
       .or(`cm_id.eq.${user.id},disenador_id.eq.${user.id},audiovisual_id.eq.${user.id}`),
     supabase
       .from("tasks")
@@ -148,6 +148,29 @@ export default async function DashboardPage() {
         .order("fecha_publicacion", { ascending: true })
         .limit(10)
     : { data: [] };
+
+  // Para la vista "Por cliente": tareas activas + pubs proximas 7 dias
+  // de TODOS los clientes a mi cargo (no solo asignadas a mi)
+  const [{ data: clientTasksRaw }, { data: clientPubsWeekRaw }] = myClientIds.length > 0
+    ? await Promise.all([
+        supabase
+          .from("tasks")
+          .select(
+            "id, titulo, estado, prioridad, fecha_limite, cliente_id, asignado:users!tasks_asignado_a_id_fkey(id,nombre)"
+          )
+          .in("cliente_id", myClientIds)
+          .neq("estado", "completada"),
+        supabase
+          .from("publications")
+          .select(
+            "id, titulo, fecha_publicacion, estado, red, tipo, cliente_id"
+          )
+          .in("cliente_id", myClientIds)
+          .gte("fecha_publicacion", startOfDay.toISOString())
+          .lte("fecha_publicacion", inAWeek.toISOString())
+          .order("fecha_publicacion", { ascending: true }),
+      ])
+    : [{ data: [] }, { data: [] }];
 
   const tasks = (taskData ?? []) as TaskWithRels[];
   tasks.sort((a, b) => PRIORITY_ORDER[a.prioridad] - PRIORITY_ORDER[b.prioridad]);
@@ -204,6 +227,136 @@ export default async function DashboardPage() {
     created_at: string;
   };
   const recentNotifs = (recentNotifsRaw ?? []) as unknown as NotifLite[];
+
+  // Agrupar por cliente: 1 fila por cliente con la proxima accion mas urgente
+  type ClientLite = { id: string; nombre: string; pack: string | null; estado: string };
+  type ClientTaskLite = {
+    id: string;
+    titulo: string;
+    estado: string;
+    prioridad: string;
+    fecha_limite: string | null;
+    cliente_id: string;
+    asignado: { id: string; nombre: string } | null;
+  };
+  type ClientPubLite = {
+    id: string;
+    titulo: string;
+    fecha_publicacion: string | null;
+    estado: string;
+    red: string;
+    tipo: string;
+    cliente_id: string;
+  };
+  const todayYmd = now.toISOString().slice(0, 10);
+  const myClientsList = (myClients ?? []) as ClientLite[];
+  const allClientTasks = (clientTasksRaw ?? []) as unknown as ClientTaskLite[];
+  const allClientPubsWeek = (clientPubsWeekRaw ?? []) as unknown as ClientPubLite[];
+
+  type PerClientRow = {
+    client: ClientLite;
+    nextAction: {
+      kind: "tarea" | "publicacion";
+      label: string;
+      sublabel: string;
+      urgency: "vencida" | "hoy" | "pronto" | "futuro";
+      href: string;
+    } | null;
+    counts: { tareasActivas: number; tareasVencidas: number; pubsSemana: number };
+  };
+  const perClient: PerClientRow[] = myClientsList.map((c) => {
+    const ts = allClientTasks.filter((t) => t.cliente_id === c.id);
+    const ps = allClientPubsWeek.filter((p) => p.cliente_id === c.id);
+    const tareasVencidas = ts.filter(
+      (t) => t.fecha_limite && t.fecha_limite < todayYmd
+    );
+    // Candidatos para "proxima accion" ordenados por urgencia
+    const tareaUrgente =
+      tareasVencidas[0] ??
+      ts.find((t) => t.fecha_limite === todayYmd) ??
+      ts.find((t) => t.fecha_limite && t.fecha_limite > todayYmd) ??
+      null;
+    const pubHoy = ps.find(
+      (p) =>
+        p.fecha_publicacion &&
+        p.fecha_publicacion >= startOfDay.toISOString() &&
+        p.fecha_publicacion <= endOfDay.toISOString()
+    );
+
+    let nextAction: PerClientRow["nextAction"] = null;
+    // Prioridad: pub que se publica hoy > tarea vencida > tarea hoy > pub semana > tarea futura
+    if (pubHoy) {
+      nextAction = {
+        kind: "publicacion",
+        label: pubHoy.titulo || "Publicación sin título",
+        sublabel: "Se publica hoy",
+        urgency: "hoy",
+        href: `/contenidos`,
+      };
+    } else if (tareasVencidas.length > 0) {
+      nextAction = {
+        kind: "tarea",
+        label: tareaUrgente!.titulo,
+        sublabel: `Vencida · ${tareaUrgente!.asignado?.nombre ?? "sin asignar"}`,
+        urgency: "vencida",
+        href: `/tareas/${tareaUrgente!.id}`,
+      };
+    } else if (tareaUrgente?.fecha_limite === todayYmd) {
+      nextAction = {
+        kind: "tarea",
+        label: tareaUrgente.titulo,
+        sublabel: `Hoy · ${tareaUrgente.asignado?.nombre ?? "sin asignar"}`,
+        urgency: "hoy",
+        href: `/tareas/${tareaUrgente.id}`,
+      };
+    } else if (ps.length > 0) {
+      const p = ps[0];
+      const fp = p.fecha_publicacion ? new Date(p.fecha_publicacion) : null;
+      nextAction = {
+        kind: "publicacion",
+        label: p.titulo || "Publicación sin título",
+        sublabel: fp
+          ? fp.toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" })
+          : "Sin fecha",
+        urgency: "pronto",
+        href: `/contenidos`,
+      };
+    } else if (tareaUrgente) {
+      nextAction = {
+        kind: "tarea",
+        label: tareaUrgente.titulo,
+        sublabel: tareaUrgente.fecha_limite
+          ? `Vence ${new Date(tareaUrgente.fecha_limite).toLocaleDateString("es-AR", { day: "numeric", month: "short" })}`
+          : "Sin fecha",
+        urgency: "futuro",
+        href: `/tareas/${tareaUrgente.id}`,
+      };
+    }
+
+    return {
+      client: c,
+      nextAction,
+      counts: {
+        tareasActivas: ts.length,
+        tareasVencidas: tareasVencidas.length,
+        pubsSemana: ps.length,
+      },
+    };
+  });
+
+  // Ordenar: primero los que tienen alerta vencida, despues hoy, despues pronto, futuro, sin nada
+  const urgencyRank: Record<string, number> = {
+    vencida: 0,
+    hoy: 1,
+    pronto: 2,
+    futuro: 3,
+  };
+  perClient.sort((a, b) => {
+    const ua = a.nextAction ? urgencyRank[a.nextAction.urgency] ?? 4 : 5;
+    const ub = b.nextAction ? urgencyRank[b.nextAction.urgency] ?? 4 : 5;
+    if (ua !== ub) return ua - ub;
+    return a.client.nombre.localeCompare(b.client.nombre);
+  });
 
   const fechaHoy = now.toLocaleDateString("es-AR", {
     weekday: "long",
@@ -334,6 +487,25 @@ export default async function DashboardPage() {
           </div>
         </div>
       </Section>
+
+      {/* Por cliente — vista agrupada con próxima acción urgente */}
+      {perClient.length > 0 && (
+        <Section title="Por cliente" emoji="👥">
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {perClient.slice(0, 9).map((row) => (
+              <ClientRowCard key={row.client.id} row={row} />
+            ))}
+          </div>
+          {perClient.length > 9 && (
+            <Link
+              href="/clientes"
+              className="mt-2 inline-flex text-xs text-muted-foreground hover:text-foreground"
+            >
+              Ver los {perClient.length - 9} restantes →
+            </Link>
+          )}
+        </Section>
+      )}
 
       {/* Esta semana */}
       <Section title="Esta semana" emoji="📅">
@@ -716,6 +888,105 @@ function NotifItem({
       <div className="min-w-0 flex-1">
         <div className="line-clamp-2">{notif.mensaje}</div>
         <div className="mt-0.5 text-[10px] text-muted-foreground">{time}</div>
+      </div>
+    </Link>
+  );
+}
+
+function ClientRowCard({
+  row,
+}: {
+  row: {
+    client: { id: string; nombre: string; pack: string | null; estado: string };
+    nextAction: {
+      kind: "tarea" | "publicacion";
+      label: string;
+      sublabel: string;
+      urgency: "vencida" | "hoy" | "pronto" | "futuro";
+      href: string;
+    } | null;
+    counts: { tareasActivas: number; tareasVencidas: number; pubsSemana: number };
+  };
+}) {
+  const { client, nextAction, counts } = row;
+  const urgencyTone =
+    nextAction?.urgency === "vencida"
+      ? "border-l-rose-500"
+      : nextAction?.urgency === "hoy"
+      ? "border-l-primary"
+      : nextAction?.urgency === "pronto"
+      ? "border-l-amber-500"
+      : "border-l-muted";
+  const urgencyBadge =
+    nextAction?.urgency === "vencida"
+      ? "bg-rose-500/10 text-rose-700 dark:text-rose-400"
+      : nextAction?.urgency === "hoy"
+      ? "bg-primary/15 text-foreground"
+      : nextAction?.urgency === "pronto"
+      ? "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+      : "bg-muted text-muted-foreground";
+
+  return (
+    <Link
+      href={`/clientes/${client.id}`}
+      className={cn(
+        "group flex flex-col gap-2 rounded-lg border border-l-4 bg-card p-3 transition hover:shadow-sm",
+        urgencyTone
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold">{client.nombre}</div>
+          {client.pack && (
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              {client.pack}
+            </div>
+          )}
+        </div>
+        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
+      </div>
+      {nextAction ? (
+        <div className="space-y-1">
+          <div className="flex items-center gap-1.5">
+            <span
+              className={cn(
+                "rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider",
+                urgencyBadge
+              )}
+            >
+              {nextAction.urgency === "vencida"
+                ? "Vencida"
+                : nextAction.urgency === "hoy"
+                ? "Hoy"
+                : nextAction.urgency === "pronto"
+                ? "Esta semana"
+                : "Próximo"}
+            </span>
+            <span className="text-[10px] text-muted-foreground">
+              {nextAction.kind === "tarea" ? "tarea" : "publicación"}
+            </span>
+          </div>
+          <div className="line-clamp-1 text-xs font-medium">{nextAction.label}</div>
+          <div className="text-[10px] text-muted-foreground">{nextAction.sublabel}</div>
+        </div>
+      ) : (
+        <p className="text-[11px] text-muted-foreground">
+          Sin acciones pendientes esta semana.
+        </p>
+      )}
+      <div className="flex items-center gap-3 border-t pt-2 text-[10px] text-muted-foreground">
+        <span>
+          <strong className="text-foreground">{counts.tareasActivas}</strong> tareas
+          {counts.tareasVencidas > 0 && (
+            <span className="ml-1 text-rose-600 dark:text-rose-400">
+              · {counts.tareasVencidas} venc.
+            </span>
+          )}
+        </span>
+        <span>·</span>
+        <span>
+          <strong className="text-foreground">{counts.pubsSemana}</strong> pubs/sem
+        </span>
       </div>
     </Link>
   );

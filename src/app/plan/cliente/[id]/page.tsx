@@ -164,32 +164,29 @@ export default async function PlanPrintPage({
           </div>
         )}
 
-        {/* Mix por red */}
-        {c.mix_por_red?.length > 0 && (
-          <div className="section">
-            <h2 className="section-title">02 · Cadencia mensual por red</h2>
-            <h3 className="section-h">Qué se publica y dónde</h3>
-            <div className="grid2">
-              {c.mix_por_red.map((m, i) => (
-                <div key={i} className="card">
-                  <div className="ct" style={{ textTransform: "capitalize" }}>
-                    {m.red}{" "}
-                    <span className={`tag ${m.rol === "principal" ? "yellow" : ""}`}>{m.rol}</span>
+        {/* Cadencia consolidada (no por red, no redundante) */}
+        {c.mix_por_red?.length > 0 && (() => {
+          const principal = c.mix_por_red.find((m) => m.rol === "principal") ?? c.mix_por_red[0];
+          const cadencia = (principal?.cadencia ?? {}) as Record<string, number>;
+          const redes = c.mix_por_red.map((m) => m.red);
+          return (
+            <div className="section">
+              <h2 className="section-title">02 · Cadencia del mes</h2>
+              <h3 className="section-h">Qué vas a recibir este mes</h3>
+              <div className="cadencia-grid" style={{ gridTemplateColumns: `repeat(${Math.min(4, Object.keys(cadencia).length)}, 1fr)` }}>
+                {Object.entries(cadencia).map(([fmt, qty]) => (
+                  <div key={fmt} className="cadencia-cell">
+                    <div className="label">{FORMATO_LABEL[fmt] ?? fmt}</div>
+                    <div className="val">{qty}</div>
                   </div>
-                  <div className="cadencia-grid">
-                    {Object.entries(m.cadencia).map(([fmt, qty]) => (
-                      <div key={fmt} className="cadencia-cell">
-                        <div className="label">{FORMATO_LABEL[fmt] ?? fmt}</div>
-                        <div className="val">{qty}</div>
-                      </div>
-                    ))}
-                  </div>
-                  {m.notas && <div className="meta">{m.notas}</div>}
-                </div>
-              ))}
+                ))}
+              </div>
+              <p style={{ marginTop: 14, fontSize: 12, color: "#555" }}>
+                Cada pieza se publica en <strong style={{ textTransform: "capitalize" }}>{redes.join(", ")}</strong>.
+              </p>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Pilares */}
         {c.distribucion_pilares?.length > 0 && (
@@ -251,42 +248,17 @@ export default async function PlanPrintPage({
           </div>
         )}
 
-        {/* Reglas + KPIs */}
-        {(c.reglas_operativas?.length > 0 || c.kpis_objetivo?.length > 0) && (
-          <div className="section">
-            <h2 className="section-title">06 · Operativa y métricas</h2>
-            <h3 className="section-h">Cómo se ejecuta y qué medimos</h3>
-            <div className="grid2">
-              {c.reglas_operativas?.length > 0 && (
-                <div className="card">
-                  <div className="ct">Reglas operativas</div>
-                  <ul className="ullist" style={{ marginTop: 8, fontSize: 12 }}>
-                    {c.reglas_operativas.map((r, i) => <li key={i}>{r}</li>)}
-                  </ul>
-                </div>
-              )}
-              {c.kpis_objetivo?.length > 0 && (
-                <div className="card">
-                  <div className="ct">KPIs objetivo</div>
-                  <ul className="ullist" style={{ marginTop: 8, fontSize: 12 }}>
-                    {c.kpis_objetivo.map((k, i) => <li key={i}>{k}</li>)}
-                  </ul>
-                </div>
-              )}
-            </div>
+        {/* Cierre */}
+        <div style={{ marginTop: 60, paddingTop: 30, borderTop: "3px solid #FFD400", textAlign: "center" }}>
+          <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 8 }}>
+            Arrancamos {plan.periodo_label} 💛
           </div>
-        )}
-
-        {/* Notas */}
-        {c.notas && (
-          <div className="section">
-            <h2 className="section-title">07 · Notas</h2>
-            <p style={{ whiteSpace: "pre-wrap", color: "#555", fontSize: 12 }}>{c.notas}</p>
+          <div style={{ fontSize: 13, color: "#555", maxWidth: 480, margin: "0 auto" }}>
+            Cualquier consulta o cambio de planes en el medio del mes, escribinos por WhatsApp y lo ajustamos. Gracias por confiar.
           </div>
-        )}
-
-        <div style={{ marginTop: 60, paddingTop: 20, borderTop: "2px solid #FFD400", fontSize: 11, color: "#707070", textAlign: "center" }}>
-          {AGENCY.brand} · {AGENCY.legal_name} · {fmtDate(fecha)}
+          <div style={{ marginTop: 24, fontSize: 11, color: "#707070" }}>
+            {AGENCY.brand} · {fmtDate(fecha)}
+          </div>
         </div>
       </div>
     </>

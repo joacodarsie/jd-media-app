@@ -176,6 +176,7 @@ export function buildPlanUserMessage(args: {
   clienteNombre: string;
   periodoLabel: string;
   packDescription: string;
+  redesSociales: Array<{ red: string; handle?: string | null; url?: string | null }>;
   diagnostico: Record<string, unknown> | null;
   publicacionesUltimos60d: Array<{ titulo: string; tipo: string; red: string; fecha: string | null }>;
   publicacionesPlanificadas: Array<{ titulo: string; tipo: string; red: string; fecha: string | null; estado: string }>;
@@ -188,6 +189,20 @@ export function buildPlanUserMessage(args: {
   lines.push("## Pack y cuotas mensuales (RESPETAR)");
   lines.push(args.packDescription);
   lines.push("");
+
+  if (args.redesSociales && args.redesSociales.length > 0) {
+    lines.push("## Redes activas del cliente (handles reales)");
+    for (const r of args.redesSociales) {
+      const parts = [r.red];
+      if (r.handle) parts.push(`@${r.handle.replace(/^@/, "")}`);
+      if (r.url) parts.push(`(${r.url})`);
+      lines.push(`- ${parts.join(" ")}`);
+    }
+    lines.push(
+      "Si la red no aparece en esta lista, NO la incluyas en el mix ni propongas piezas para ella."
+    );
+    lines.push("");
+  }
 
   if (args.meetTranscript && args.meetTranscript.trim().length > 50) {
     lines.push("## Transcripción del meet de planificación con el cliente");

@@ -79,10 +79,27 @@ export async function POST(
 
   const { data: client } = await supabase
     .from("clients")
-    .select("id, nombre, pack")
+    .select("id, nombre, pack, redes_sociales")
     .eq("id", cliente_id)
     .maybeSingle();
   if (!client) return new Response("Cliente no encontrado.", { status: 403 });
+
+  const redesSociales: { red: string; handle?: string | null; url?: string | null }[] = [];
+  const r = (client as { redes_sociales?: unknown }).redes_sociales;
+  if (Array.isArray(r)) {
+    for (const item of r) {
+      if (item && typeof item === "object") {
+        const obj = item as Record<string, unknown>;
+        const red = typeof obj.red === "string" ? obj.red : null;
+        if (!red) continue;
+        redesSociales.push({
+          red,
+          handle: typeof obj.handle === "string" ? obj.handle : null,
+          url: typeof obj.url === "string" ? obj.url : null,
+        });
+      }
+    }
+  }
 
   const admin = createAdmin();
 
@@ -135,6 +152,7 @@ export async function POST(
     clienteNombre: client.nombre,
     periodoLabel: periodo_label,
     packDescription: describePack((client as { pack?: string | null }).pack),
+    redesSociales,
     diagnostico: diagnosticoForPrompt,
     publicacionesUltimos60d: (publishedPubs ?? []).map(
       (p: { titulo: string; tipo: string; red: string; fecha_publicacion: string | null }) => ({

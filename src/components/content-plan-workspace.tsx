@@ -20,9 +20,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { approvePlan, archivePlan, applyPlanToCalendar } from "@/app/(app)/clientes/[id]/plan-mensual/actions";
+import {
+  approvePlan,
+  archivePlan,
+  applyTemaToCalendar,
+  applyAllTemasToCalendar,
+} from "@/app/(app)/clientes/[id]/plan-mensual/actions";
 import Link from "next/link";
-import type { ContentPlanRow, MonthlyContentPlan } from "@/lib/content-plans/schema";
+import type { ContentPlanRow, MonthlyContentPlan, TemaDestacado } from "@/lib/content-plans/schema";
 
 interface Props {
   clienteId: string;
@@ -172,15 +177,22 @@ export function ContentPlanWorkspace({
     }
   }
 
-  async function handleApplyToCalendar() {
+  async function handleApplyAll() {
     if (!active) return;
-    if (!confirm(`¿Crear las publicaciones del plan en el calendario? Se van a generar ${active.content?.temas_destacados?.length ?? 0} ideas con estado 'idea' y fecha sugerida.`)) return;
+    const total = active.content?.temas_destacados?.length ?? 0;
+    const ya = active.applied_temas_indices?.length ?? 0;
+    const pendientes = total - ya;
+    if (pendientes <= 0) {
+      toast.error("Todos los temas ya fueron aplicados.");
+      return;
+    }
+    if (!confirm(`¿Aplicar los ${pendientes} temas pendientes al calendario?`)) return;
     setPending(true);
-    const r = await applyPlanToCalendar(active.id);
+    const r = await applyAllTemasToCalendar(active.id);
     setPending(false);
     if (!r.ok) toast.error(r.error);
     else {
-      toast.success(`Se crearon ${r.data?.created ?? 0} publicaciones en el calendario.`);
+      toast.success(`Se crearon ${r.data?.created ?? 0} publicaciones.`);
       window.location.reload();
     }
   }
@@ -334,22 +346,11 @@ export function ContentPlanWorkspace({
                 </Button>
               )}
               {!isDraft && (
-                <>
-                  <Button asChild size="sm" variant="outline">
-                    <Link href={`/plan/cliente/${clienteId}`} target="_blank">
-                      <FileText className="mr-1 h-4 w-4" /> Ver PDF
-                    </Link>
-                  </Button>
-                  {!visible.applied_at ? (
-                    <Button size="sm" onClick={handleApplyToCalendar} disabled={pending}>
-                      <CalendarPlus className="mr-1 h-4 w-4" /> Aplicar al calendario
-                    </Button>
-                  ) : (
-                    <span className="flex items-center gap-1 text-xs text-emerald-600">
-                      <CheckCircle2 className="h-3 w-3" /> {visible.applied_count} publicaciones creadas
-                    </span>
-                  )}
-                </>
+                <Button asChild size="sm" variant="outline">
+                  <Link href={`/plan/cliente/${clienteId}`} target="_blank">
+                    <FileText className="mr-1 h-4 w-4" /> Ver PDF
+                  </Link>
+                </Button>
               )}
               <Button
                 size="sm"
@@ -361,7 +362,15 @@ export function ContentPlanWorkspace({
               </Button>
             </div>
           </div>
-          <PlanViewer plan={visible.content} />
+          <PlanViewer
+            plan={visible.content}
+            planRow={visible}
+            isActive={!isDraft}
+            onApplyAll={handleApplyAll}
+            pending={pending}
+            setPending={setPending}
+            clienteId={clienteId}
+          />
         </div>
       )}
 
@@ -396,7 +405,46 @@ export function ContentPlanWorkspace({
 
 // ────────────────────────────────────────────────────────────────────
 
-function PlanViewer({ plan }: { plan: MonthlyContentPlan }) {
+interface PlanViewerProps {
+  plan: MonthlyContentPlan;
+  planRow: ContentPlanRow;
+  isActive: boolean;
+  clienteId: string;
+  onApplyAll: () => void;
+  pending: boolean;
+  setPending: (b: boolean) => void;
+}
+
+function consolidateCadencia(mix: MonthlyContentPlan["mix_por_red"]): Record<string, number> {
+  // Sumamos las cantidades de la red PRINCIPAL únicamente.
+  // (Las réplicas tienen las mismas cantidades, no se duplican.)
+  const principal = mix?.find((m) => m.rol === "principal") ?? mix?.[0];
+  return (principal?.cadencia ?? {}) as Record<string, number>;
+}
+
+const FORMATO_LABEL: Record<string, string> = {
+  reel: "Reels",
+  post: "Posts",
+  carrusel: "Carruseles",
+  story: "Historias",
+  video_largo: "Videos largos",
+  live: "Lives",
+  otro: "Otros",
+};
+
+function PlanViewer({
+  plan,
+  planRow,
+  isActive,
+  clienteId,
+  onApplyAll,
+  pending,
+  setPending,
+}: PlanViewerProps) {
+  const cadencia = consolidateCadencia(plan.mix_por_red);
+  const redes = plan.mix_por_red?.map((m) => m.red) ?? [];
+  const redesText = redes.length > 0 ? redes.join(" · ") : "—";
+
   return (
     <div className="space-y-5">
       {/* Resumen del mes */}
@@ -418,29 +466,26 @@ function PlanViewer({ plan }: { plan: MonthlyContentPlan }) {
         </Card>
       )}
 
-      {/* Mix por red */}
-      {plan.mix_por_red?.length > 0 && (
+      {/* Cadencia consolidada (NO separada por red) */}
+      {Object.keys(cadencia).length > 0 && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Cadencia mensual por red</CardTitle>
+            <CardTitle className="text-base">Cadencia mensual</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 md:grid-cols-2">
-              {plan.mix_por_red.map((m, i) => (
-                <div key={i} className="rounded border bg-card p-3">
-                  <div className="text-sm font-semibold capitalize">{m.red}</div>
-                  <div className="mt-1 grid grid-cols-3 gap-2 text-xs">
-                    {Object.entries(m.cadencia).map(([formato, qty]) => (
-                      <div key={formato} className="rounded bg-muted px-2 py-1">
-                        <div className="text-[10px] uppercase text-muted-foreground">{formato}</div>
-                        <div className="font-bold">{qty}</div>
-                      </div>
-                    ))}
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+              {Object.entries(cadencia).map(([formato, qty]) => (
+                <div key={formato} className="rounded-lg border bg-card p-3 text-center">
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {FORMATO_LABEL[formato] ?? formato}
                   </div>
-                  {m.notas && <div className="mt-2 text-xs text-muted-foreground">{m.notas}</div>}
+                  <div className="mt-1 text-2xl font-bold">{qty}</div>
                 </div>
               ))}
             </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Cada pieza se publica en <strong>{redesText}</strong>. Las cantidades son piezas únicas (no se duplican por cada red).
+            </p>
           </CardContent>
         </Card>
       )}
@@ -473,33 +518,39 @@ function PlanViewer({ plan }: { plan: MonthlyContentPlan }) {
         </Card>
       )}
 
-      {/* Temas destacados */}
+      {/* Contenidos del mes — accionable */}
       {plan.temas_destacados?.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Temas destacados del período</CardTitle>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle className="text-base">Contenidos del mes</CardTitle>
+              <div className="text-xs text-muted-foreground">
+                {planRow.applied_temas_indices?.length ?? 0} de {plan.temas_destacados.length} aplicados
+              </div>
+            </div>
           </CardHeader>
-          <CardContent>
-            <ol className="space-y-2">
-              {plan.temas_destacados.map((t, i) => (
-                <li key={i} className="rounded border bg-card p-3 text-sm">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="font-medium">{i + 1}. {t.titulo}</span>
-                    {t.pilar && (
-                      <Badge variant="outline" className="text-[10px]">
-                        {t.pilar}
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="mt-1 text-muted-foreground">{t.descripcion}</div>
-                  {t.fecha && (
-                    <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                      <Calendar className="h-3 w-3" /> {t.fecha}
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ol>
+          <CardContent className="space-y-3">
+            {plan.temas_destacados.map((t, i) => (
+              <TemaCard
+                key={i}
+                tema={t}
+                index={i}
+                applied={(planRow.applied_temas_indices ?? []).includes(i)}
+                planId={planRow.id}
+                clienteId={clienteId}
+                canAct={isActive}
+                pending={pending}
+                setPending={setPending}
+              />
+            ))}
+
+            {isActive && (
+              <div className="flex justify-end border-t pt-3">
+                <Button onClick={onApplyAll} disabled={pending}>
+                  <CalendarPlus className="mr-1 h-4 w-4" /> Aplicar todos los pendientes al calendario
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -531,36 +582,31 @@ function PlanViewer({ plan }: { plan: MonthlyContentPlan }) {
         </Card>
       )}
 
-      {/* Reglas operativas */}
-      {plan.reglas_operativas?.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Reglas operativas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="list-inside list-disc space-y-1 text-sm">
-              {plan.reglas_operativas.map((r, i) => (
-                <li key={i}>{r}</li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* KPIs */}
-      {plan.kpis_objetivo?.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">KPIs objetivo</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="list-inside list-disc space-y-1 text-sm">
-              {plan.kpis_objetivo.map((k, i) => (
-                <li key={i}>{k}</li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+      {/* Operativa interna: reglas + KPIs colapsable */}
+      {(plan.reglas_operativas?.length > 0 || plan.kpis_objetivo?.length > 0) && (
+        <details className="rounded-lg border bg-muted/30 p-3 text-sm">
+          <summary className="cursor-pointer font-medium text-muted-foreground">
+            Operativa interna (reglas + KPIs) — no se incluye en el PDF para el cliente
+          </summary>
+          <div className="mt-3 grid gap-4 md:grid-cols-2">
+            {plan.reglas_operativas?.length > 0 && (
+              <div>
+                <div className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Reglas operativas</div>
+                <ul className="list-inside list-disc space-y-1">
+                  {plan.reglas_operativas.map((r, i) => <li key={i}>{r}</li>)}
+                </ul>
+              </div>
+            )}
+            {plan.kpis_objetivo?.length > 0 && (
+              <div>
+                <div className="mb-1 text-xs font-semibold uppercase text-muted-foreground">KPIs objetivo</div>
+                <ul className="list-inside list-disc space-y-1">
+                  {plan.kpis_objetivo.map((k, i) => <li key={i}>{k}</li>)}
+                </ul>
+              </div>
+            )}
+          </div>
+        </details>
       )}
 
       {/* Notas */}
@@ -578,3 +624,130 @@ function PlanViewer({ plan }: { plan: MonthlyContentPlan }) {
   );
 }
 
+
+// ────────────────────────────────────────────────────────────────────
+// TemaCard: cada item de "Contenidos del mes" con acciones individuales
+// ────────────────────────────────────────────────────────────────────
+
+function TemaCard({
+  tema,
+  index,
+  applied,
+  planId,
+  clienteId,
+  canAct,
+  pending,
+  setPending,
+}: {
+  tema: TemaDestacado;
+  index: number;
+  applied: boolean;
+  planId: string;
+  clienteId: string;
+  canAct: boolean;
+  pending: boolean;
+  setPending: (b: boolean) => void;
+}) {
+  async function handleApply() {
+    if (!confirm(`¿Aplicar este tema al calendario como una publicación 'idea'?`)) return;
+    setPending(true);
+    const r = await applyTemaToCalendar(planId, index);
+    setPending(false);
+    if (!r.ok) toast.error(r.error);
+    else {
+      toast.success("Publicación creada en el calendario.");
+      window.location.reload();
+    }
+  }
+
+  async function handleReplace() {
+    const hint = window.prompt(
+      "¿Por qué querés reemplazar este tema? (opcional, ayuda a la IA a entender el cambio)",
+      ""
+    );
+    // Si el usuario cancela con Esc, prompt devuelve null. Si pone vacío, "".
+    if (hint === null) return;
+    setPending(true);
+    try {
+      const res = await fetch(`/api/clientes/${clienteId}/plan/${planId}/regenerate-tema`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ temaIndex: index, hint }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Error");
+      toast.success("Tema reemplazado.");
+      window.location.reload();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Error");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div
+      className={`rounded-lg border p-3 text-sm transition ${
+        applied ? "border-emerald-200 bg-emerald-50/40 dark:border-emerald-900/40 dark:bg-emerald-950/20" : "bg-card"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold">{index + 1}. {tema.titulo}</span>
+            {tema.formato && (
+              <Badge variant="outline" className="text-[10px]">
+                {tema.formato}
+              </Badge>
+            )}
+            {tema.pilar && (
+              <Badge variant="secondary" className="text-[10px]">
+                {tema.pilar}
+              </Badge>
+            )}
+            {tema.fecha && (
+              <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                <Calendar className="h-3 w-3" />
+                {tema.fecha}
+              </span>
+            )}
+            {applied && (
+              <Badge className="bg-emerald-600 text-[10px] hover:bg-emerald-600">
+                <CheckCircle2 className="mr-0.5 h-3 w-3" /> Aplicado
+              </Badge>
+            )}
+          </div>
+          <p className="mt-1 text-muted-foreground">{tema.descripcion}</p>
+        </div>
+        {canAct && (
+          <div className="flex shrink-0 flex-col gap-1">
+            {!applied && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleApply}
+                disabled={pending}
+                title="Crear esta publicación en el calendario"
+              >
+                <CalendarPlus className="mr-1 h-3.5 w-3.5" />
+                Aplicar
+              </Button>
+            )}
+            {!applied && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleReplace}
+                disabled={pending}
+                title="Reemplazar este tema con otra idea de la IA"
+              >
+                <Sparkles className="mr-1 h-3.5 w-3.5" />
+                Reemplazar
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

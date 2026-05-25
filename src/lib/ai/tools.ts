@@ -300,6 +300,38 @@ export const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "search_help",
+    description:
+      "Busca en el centro de ayuda interno (las paginas que explican como usar la app). Usalo cuando el usuario pregunte 'como uso X', 'donde esta Y', 'que es Z dentro de la app', 'como funciona el plan mensual', etc. Devuelve titulos + descripcion + slug + extracto relevante. Despues podes usar get_help_page con el slug para leer la pagina completa si necesitas mas detalle.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description:
+            "Que esta buscando el usuario. Ej: 'diagnostico', 'plan mensual', 'como aprobar publicaciones', 'capacity del equipo'.",
+        },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "get_help_page",
+    description:
+      "Lee una pagina completa del centro de ayuda interno por su slug. Usala despues de search_help cuando necesites el contenido entero para explicar algo a fondo, o cuando el usuario pide 'mostrame la guia de X'.",
+    input_schema: {
+      type: "object",
+      properties: {
+        slug: {
+          type: "string",
+          description:
+            "Slug de la pagina (ej: 'diagnostico', 'plan-mensual', 'mi-dia', 'para-cms').",
+        },
+      },
+      required: ["slug"],
+    },
+  },
+  {
     name: "finance_compare",
     description:
       "Compara dos periodos financieros. Devuelve totales y % de cambio en cobros, pagos al equipo, gastos y balance neto. Usalo para preguntas como 'compará este mes con el anterior', 'cómo veníamos vs marzo', '¿estamos mejor o peor que el mes pasado?'. Si no se pasa periodo_b, usa el mes anterior a periodo_a automáticamente.",
@@ -1064,6 +1096,116 @@ export async function runTool(
             plan_id: plan.id,
             periodo: plan.periodo_label,
             creadas: res.data?.created ?? 0,
+          },
+        };
+      }
+
+      case "search_help": {
+        const q = String(input.query ?? "")
+          .trim()
+          .toLowerCase();
+        if (!q) return { ok: false, error: "Falta query." };
+        const { getAllHelpPages, filterByRole } = await import("@/lib/help/load");
+        // Filtrar por rol del usuario asi no le mostramos paginas restringidas
+        // que no le sirven.
+        const { data: userRow } = await sb
+          .from("users")
+          .select("rol")
+          .eq("id", currentUserId)
+          .maybeSingle();
+        const rol = (userRow?.rol as string | undefined) ?? "all";
+        const pages = filterByRole(getAllHelpPages(), rol);
+
+        // Ranking simple: exact-en-titulo > en-descripcion > en-contenido.
+        type Hit = {
+          slug: string;
+          title: string;
+          description: string;
+          category?: string;
+          score: number;
+          excerpt: string;
+        };
+        const hits: Hit[] = [];
+        for (const p of pages) {
+          const t = (p.title ?? "").toLowerCase();
+          const d = (p.description ?? "").toLowerCase();
+          const c = p.content.toLowerCase();
+          let score = 0;
+          if (t.includes(q)) score += 10;
+          if (d.includes(q)) score += 5;
+          if (c.includes(q)) score += 1;
+          if (score === 0) continue;
+          // Extraer un excerpt corto alrededor de la primera ocurrencia
+          let excerpt = "";
+          const idx = c.indexOf(q);
+          if (idx >= 0) {
+            const start = Math.max(0, idx - 80);
+            const end = Math.min(p.content.length, idx + q.length + 200);
+            excerpt = p.content.slice(start, end).replace(/\n+/g, " ");
+            if (start > 0) excerpt = "…" + excerpt;
+            if (end < p.content.length) excerpt = excerpt + "…";
+          }
+          hits.push({
+            slug: p.slug,
+            title: p.title,
+            description: p.description ?? "",
+            category: p.category,
+            score,
+            excerpt,
+          });
+        }
+        hits.sort((a, b) => b.score - a.score);
+        return {
+          ok: true,
+          data: {
+            query: q,
+            results: hits.slice(0, 6).map((h) => ({
+              slug: h.slug,
+              title: h.title,
+              description: h.description,
+              category: h.category,
+              url: `/ayuda/${h.slug}`,
+              excerpt: h.excerpt,
+            })),
+          },
+        };
+      }
+
+      case "get_help_page": {
+        const slug = String(input.slug ?? "").trim();
+        if (!slug) return { ok: false, error: "Falta slug." };
+        const { getHelpPage } = await import("@/lib/help/load");
+        const page = getHelpPage(slug);
+        if (!page) {
+          return {
+            ok: false,
+            error: `No existe pagina de ayuda con slug "${slug}".`,
+          };
+        }
+        // Validacion de rol
+        const { data: userRow } = await sb
+          .from("users")
+          .select("rol")
+          .eq("id", currentUserId)
+          .maybeSingle();
+        const rol = (userRow?.rol as string | undefined) ?? "all";
+        const roles = page.roles ?? ["all"];
+        if (!roles.includes("all") && !roles.includes(rol)) {
+          return {
+            ok: false,
+            error: "Esta pagina no esta disponible para tu rol.",
+          };
+        }
+        return {
+          ok: true,
+          data: {
+            slug: page.slug,
+            title: page.title,
+            description: page.description,
+            category: page.category,
+            updated: page.updated,
+            url: `/ayuda/${page.slug}`,
+            content: page.content,
           },
         };
       }

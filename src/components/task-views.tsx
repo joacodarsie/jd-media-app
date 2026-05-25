@@ -23,6 +23,7 @@ import {
   STATUS_LABEL,
 } from "@/lib/constants";
 import { fmtDate, dueState } from "@/lib/dates";
+import { HelpTrigger } from "@/components/help-trigger";
 import { cn } from "@/lib/utils";
 import type { AppUser, Client, TaskWithRels } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -190,7 +191,14 @@ export function TaskViews({
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold">Tareas</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            Tareas
+            <HelpTrigger
+              slug="tareas"
+              label="Cómo usar Tareas"
+              size="md"
+            />
+          </h1>
           <p className="text-sm text-muted-foreground">
             {filtered.length} {filtered.length === 1 ? "tarea" : "tareas"} ·{" "}
             {QUICK_LABELS[quick]}

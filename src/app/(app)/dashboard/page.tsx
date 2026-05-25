@@ -22,6 +22,7 @@ import type { PublicationWithRels, TaskWithRels } from "@/lib/types";
 import { dueState } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { TaskList } from "@/components/task-list";
+import { HelpTrigger } from "@/components/help-trigger";
 
 export const dynamic = "force-dynamic";
 
@@ -374,9 +375,10 @@ export default async function DashboardPage() {
             <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
               <Sun className="h-3.5 w-3.5" /> {fechaHoyCap}
             </div>
-            <h1 className="mt-1 text-2xl font-bold">
+            <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold">
               Hola, {user.nombre.split(" ")[0]}{" "}
               <span className="ml-1">👋</span>
+              <HelpTrigger slug="mi-dia" label="¿Qué es Mi día?" size="md" />
             </h1>
             <p className="text-muted-foreground">
               {todayCount === 0

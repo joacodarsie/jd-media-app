@@ -28,6 +28,7 @@ import { WelcomeMessagesDialog } from "@/components/welcome-messages-dialog";
 import { PaymentMessageDialog } from "@/components/payment-message-dialog";
 import { GenerateInitialTasksButton } from "@/components/generate-initial-tasks-button";
 import { AssignContractNumberButton } from "@/components/assign-contract-number-button";
+import { HelpTrigger } from "@/components/help-trigger";
 
 export const dynamic = "force-dynamic";
 
@@ -258,8 +259,9 @@ export default async function OnboardingPage({
       </div>
 
       <div>
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
           Onboarding
+          <HelpTrigger slug="onboarding" label="Cómo funciona el onboarding" />
         </div>
         <h1 className="mt-1 text-2xl font-bold">{client.nombre}</h1>
         <p className="text-muted-foreground">

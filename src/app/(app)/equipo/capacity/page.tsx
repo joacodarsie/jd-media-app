@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { HelpTrigger } from "@/components/help-trigger";
 
 export const dynamic = "force-dynamic";
 
@@ -123,8 +124,9 @@ export default async function CapacityPage() {
           </Link>
         </Button>
         <div className="mt-2">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
             Equipo
+            <HelpTrigger slug="capacity" label="Cómo se calcula la carga" />
           </div>
           <h1 className="text-2xl font-bold">Capacidad</h1>
           <p className="text-sm text-muted-foreground">

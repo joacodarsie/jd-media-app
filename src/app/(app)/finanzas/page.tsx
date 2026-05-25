@@ -8,6 +8,7 @@ import {
   Receipt,
   Plus,
 } from "lucide-react";
+import { HelpTrigger } from "@/components/help-trigger";
 import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getExchangeRates } from "@/lib/exchange";
@@ -149,7 +150,14 @@ export default async function FinanzasPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Finanzas</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            Finanzas
+            <HelpTrigger
+              slug="finanzas"
+              label="Cómo funciona Finanzas"
+              size="md"
+            />
+          </h1>
           <p className="text-muted-foreground">
             Cashflow de {periodLabel(period)} — lo que entró/salió este mes.
           </p>

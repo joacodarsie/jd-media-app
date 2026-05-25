@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { listEventsForUser } from "@/lib/google-calendar";
 import { AgendaView } from "@/components/agenda-view";
+import { HelpTrigger } from "@/components/help-trigger";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +63,10 @@ export default async function AgendaPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Agenda</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-bold">
+          Agenda
+          <HelpTrigger slug="agenda" label="Cómo usar Agenda" size="md" />
+        </h1>
         <p className="text-muted-foreground">
           Tus reuniones de Google Calendar — personales y de JD Media.
         </p>

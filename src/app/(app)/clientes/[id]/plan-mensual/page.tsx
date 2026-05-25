@@ -7,6 +7,7 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { Button } from "@/components/ui/button";
 import { ContentPlanWorkspace } from "@/components/content-plan-workspace";
 import { AIFeedback } from "@/components/ai-feedback";
+import { HelpTrigger } from "@/components/help-trigger";
 import type { ContentPlanRow } from "@/lib/content-plans/schema";
 
 export const dynamic = "force-dynamic";
@@ -69,8 +70,9 @@ export default async function PlanMensualPage({
           </Link>
         </Button>
         <div>
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
             Plan de contenido
+            <HelpTrigger slug="plan-mensual" label="Cómo usar el plan mensual" />
           </div>
           <h1 className="text-2xl font-semibold">{client.nombre}</h1>
         </div>

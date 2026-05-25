@@ -33,39 +33,31 @@ export function getChangelogEntries(): ChangelogEntry[] {
 
   const entries: ChangelogEntry[] = [];
   const re = /^##\s+(\d{4}-\d{2}-\d{2})\s*[—–-]\s*(.+?)$/gm;
-  const matches: { date: string; title: string; start: number; end: number }[] = [];
+  // Recolectar todos los headers con su indice y contenido.
+  const headers: {
+    date: string;
+    title: string;
+    bodyStart: number;
+    headerStart: number;
+  }[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(stripped)) !== null) {
-    matches.push({
+    headers.push({
       date: m[1],
       title: m[2].trim(),
-      start: m.index + m[0].length,
-      end: -1,
+      headerStart: m.index,
+      bodyStart: m.index + m[0].length,
     });
   }
-  for (let i = 0; i < matches.length; i++) {
-    matches[i].end =
-      i + 1 < matches.length ? matches[i + 1].start - matches[i + 1].title.length - 100 : stripped.length;
-    // Mejor enfoque: usar el index del siguiente match directamente
-  }
-  // Re-calc end con el index real del proximo header
-  re.lastIndex = 0;
-  const headerIndexes: number[] = [];
-  while ((m = re.exec(stripped)) !== null) {
-    headerIndexes.push(m.index);
-  }
-  for (let i = 0; i < matches.length; i++) {
-    const next = headerIndexes[i + 1] ?? stripped.length;
-    matches[i].end = next;
-  }
-
-  for (const mt of matches) {
-    const body = stripped.slice(mt.start, mt.end).trim();
-    // Quitar separadores trailing
+  // El cuerpo de cada entry va desde su bodyStart hasta el headerStart del proximo.
+  for (let i = 0; i < headers.length; i++) {
+    const end = headers[i + 1]?.headerStart ?? stripped.length;
+    const body = stripped.slice(headers[i].bodyStart, end).trim();
+    // Quitar bloques --- finales (separadores markdown).
     const cleaned = body.replace(/\n---\s*[\s\S]*$/, "").trim();
     entries.push({
-      date: mt.date,
-      title: mt.title,
+      date: headers[i].date,
+      title: headers[i].title,
       bodyMarkdown: cleaned,
     });
   }

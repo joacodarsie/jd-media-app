@@ -25,6 +25,7 @@ import type { Client, TaskWithRels } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Markdown } from "@/components/markdown";
+import { HelpTrigger } from "@/components/help-trigger";
 import { TaskList } from "@/components/task-list";
 import { ClientFormDialog } from "@/components/client-form-dialog";
 import { DeleteClientButton } from "@/components/delete-client-button";
@@ -211,6 +212,10 @@ export default async function ClientDetail({
               >
                 {CLIENT_STATUS_LABEL[c.estado]}
               </span>
+              <HelpTrigger
+                slug="clientes-ficha"
+                label="¿Cómo funciona la ficha del cliente?"
+              />
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               {c.rubro ?? "Sin rubro"}

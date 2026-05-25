@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { LeadKanban, type LeadRow } from "@/components/lead-kanban";
 import { LeadFormDialog } from "@/components/lead-form-dialog";
+import { HelpTrigger } from "@/components/help-trigger";
 
 export const dynamic = "force-dynamic";
 
@@ -86,7 +87,14 @@ export default async function ComercialPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Pipeline comercial</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            Pipeline comercial
+            <HelpTrigger
+              slug="comercial"
+              label="Cómo usar el pipeline comercial"
+              size="md"
+            />
+          </h1>
           <p className="text-muted-foreground">
             Leads y oportunidades. Arrastrá tarjetas entre columnas para cambiar
             el estado.

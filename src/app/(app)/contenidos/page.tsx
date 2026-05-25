@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { PublicationWithRels } from "@/lib/types";
 import { PublicationsMonth } from "@/components/publications-month";
+import { HelpTrigger } from "@/components/help-trigger";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,14 @@ export default async function ContenidosPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Calendario de contenidos</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-bold">
+          Calendario de contenidos
+          <HelpTrigger
+            slug="contenidos-calendario"
+            label="Cómo usar el calendario"
+            size="md"
+          />
+        </h1>
         <p className="text-muted-foreground">
           Todo el contenido planificado de la agencia, en un mes. Arrastrá una
           publicación a otro día para reprogramarla.

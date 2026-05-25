@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ export function WelcomeTour({
   userName: string;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [idx, setIdx] = useState(0);
   const steps = getTourSteps(userRol);
@@ -37,8 +38,12 @@ export function WelcomeTour({
     } catch {}
   }, []);
 
-  // Auto-open la primera vez
+  // Auto-open la primera vez, pero SOLO si el user esta en el dashboard o root.
+  // Asi evitamos yankearlo desde una URL deep-linkeada (ej: una pub o tarea
+  // especifica que abrio desde una notificacion).
   useEffect(() => {
+    const isHome = pathname === "/dashboard" || pathname === "/";
+    if (!isHome) return;
     try {
       const seen = localStorage.getItem(TOUR_STORAGE_KEY);
       if (!seen) {
@@ -46,7 +51,7 @@ export function WelcomeTour({
         return () => clearTimeout(t);
       }
     } catch {}
-  }, []);
+  }, [pathname]);
 
   // Permitir reabrirlo desde "Hacer el tour de nuevo"
   useEffect(() => {

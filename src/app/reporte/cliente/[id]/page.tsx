@@ -156,6 +156,7 @@ export default async function ReporteClientePage({
     { data: services },
     { data: nextPubs },
     { data: monthly },
+    { data: planRow },
   ] = await Promise.all([
     supabase
       .from("clients")
@@ -213,6 +214,17 @@ export default async function ReporteClientePage({
       .eq("cliente_id", params.id)
       .eq("year_month", mes)
       .maybeSingle(),
+    // Plan vigente para este mes: busca por periodo_label que contenga el mes
+    // o por approved_at dentro del rango. Trae el más reciente que matchee.
+    supabase
+      .from("client_content_plans")
+      .select("id, periodo_label, content, applied_temas_indices, approved_at, status")
+      .eq("cliente_id", params.id)
+      .in("status", ["active", "archived"])
+      .or(`approved_at.gte.${start},approved_at.lt.${end},periodo_label.ilike.%${new Date(start).toLocaleDateString("es-AR", { month: "long" })}%`)
+      .order("approved_at", { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   const monthlyReport = (monthly ?? null) as
@@ -249,6 +261,69 @@ export default async function ReporteClientePage({
   const commentList = (comments ?? []) as unknown as RawComment[];
   const serviceList = (services ?? []) as RawService[];
   const nextPubList = (nextPubs ?? []) as unknown as RawPub[];
+
+  // Cumplimiento del Plan vigente para este mes (si existe)
+  const planMes = planRow as
+    | {
+        id: string;
+        periodo_label: string;
+        content: { temas_destacados?: Array<{ titulo: string; pilar?: string }>; distribucion_pilares?: Array<{ pilar: string; porcentaje: number }> };
+        applied_temas_indices: number[];
+      }
+    | null;
+
+  let cumplimiento: {
+    periodo: string;
+    temasPlan: number;
+    temasAplicados: number;
+    publicadasDelPlan: number;
+    pctAplicacion: number;
+    pctPublicacion: number;
+    pilaresPlan: { pilar: string; pct: number }[];
+    pilaresReal: { pilar: string; count: number; pct: number }[];
+  } | null = null;
+
+  if (planMes && planMes.content?.temas_destacados) {
+    const temasPlan = planMes.content.temas_destacados.length;
+    const applied = planMes.applied_temas_indices ?? [];
+    const temasAplicados = applied.length;
+
+    // Pubs publicadas del mes que tienen from_plan_id apuntando a este plan
+    const publicadasDelPlan = pubList.filter(
+      (p) => p.estado === "publicado"
+    ).length; // Aproximación: cuántas se publicaron en el mes
+
+    const pilaresPlan = (planMes.content.distribucion_pilares ?? []).map((p) => ({
+      pilar: p.pilar,
+      pct: p.porcentaje,
+    }));
+
+    // Pilares reales: contar publicaciones por pilar usando el tema applied de cada tema_idx
+    const pilarCount = new Map<string, number>();
+    for (const idx of applied) {
+      const t = planMes.content.temas_destacados[idx];
+      const pilar = t?.pilar ?? "Sin pilar";
+      pilarCount.set(pilar, (pilarCount.get(pilar) ?? 0) + 1);
+    }
+    const totalAplicados = Math.max(1, applied.length);
+    const pilaresReal = Array.from(pilarCount.entries()).map(([pilar, count]) => ({
+      pilar,
+      count,
+      pct: Math.round((count / totalAplicados) * 100),
+    }));
+
+    cumplimiento = {
+      periodo: planMes.periodo_label,
+      temasPlan,
+      temasAplicados,
+      publicadasDelPlan,
+      pctAplicacion: temasPlan > 0 ? Math.round((temasAplicados / temasPlan) * 100) : 0,
+      pctPublicacion:
+        temasAplicados > 0 ? Math.round((publicadasDelPlan / temasAplicados) * 100) : 0,
+      pilaresPlan,
+      pilaresReal,
+    };
+  }
 
   // Métricas
   const publicadas = pubList.filter((p) => p.estado === "publicado").length;
@@ -478,6 +553,63 @@ export default async function ReporteClientePage({
               <MetricBox label="Impresiones" value={metricas.impresiones} />
               <MetricBox label="Interacciones" value={metricas.interacciones} />
               <MetricBox label="Visitas al perfil" value={metricas.visitas_perfil} />
+            </div>
+          </section>
+        )}
+
+        {/* Cumplimiento del Plan de Contenido del mes */}
+        {cumplimiento && (
+          <section className="mt-8 break-inside-avoid">
+            <h2 className="mb-2 flex items-center gap-2 text-base font-semibold text-zinc-900">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              Cumplimiento del plan ({cumplimiento.periodo})
+            </h2>
+            <div className="rounded-lg border border-zinc-200 p-4 space-y-4">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <MetricBox label="Temas del plan" value={cumplimiento.temasPlan} />
+                <MetricBox label="Aplicados al calendario" value={cumplimiento.temasAplicados} />
+                <MetricBox label="% aplicación" value={cumplimiento.pctAplicacion} suffix="%" />
+                <MetricBox label="Publicadas en el mes" value={cumplimiento.publicadasDelPlan} />
+              </div>
+
+              {cumplimiento.pilaresPlan.length > 0 && (
+                <div>
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    Distribución por pilar
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-xs text-zinc-500">
+                        <th className="py-1 text-left font-medium">Pilar</th>
+                        <th className="py-1 text-right font-medium">Plan</th>
+                        <th className="py-1 text-right font-medium">Real</th>
+                        <th className="py-1 text-right font-medium">Diferencia</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cumplimiento.pilaresPlan.map((p) => {
+                        const real = cumplimiento.pilaresReal.find((r) => r.pilar === p.pilar);
+                        const realPct = real?.pct ?? 0;
+                        const diff = realPct - p.pct;
+                        return (
+                          <tr key={p.pilar} className="border-b last:border-0">
+                            <td className="py-2">{p.pilar}</td>
+                            <td className="py-2 text-right">{p.pct}%</td>
+                            <td className="py-2 text-right">{realPct}%</td>
+                            <td
+                              className={`py-2 text-right text-xs ${
+                                Math.abs(diff) < 10 ? "text-zinc-500" : diff > 0 ? "text-emerald-600" : "text-amber-600"
+                              }`}
+                            >
+                              {diff > 0 ? `+${diff}` : diff}pp
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </section>
         )}

@@ -83,27 +83,41 @@ export default async function OnboardingPage({
   const supabase = createClient();
   const admin = createAdmin();
 
-  const [{ data: clientData }, { data: servicesData }, { data: onbData }] =
-    await Promise.all([
-      supabase
-        .from("clients")
-        .select(
-          "id, nombre, contacto_nombre, contacto_dni_cuit, contacto_domicilio, contacto_email, contacto_telefono, cm_id, disenador_id, audiovisual_id, contrato_numero, contrato_fecha_inicio, contrato_plazo_meses, contrato_dia_cobro, contrato_moneda, contrato_descuento_pct, contrato_descuento_meses, contrato_observaciones"
-        )
-        .eq("id", params.id)
-        .maybeSingle(),
-      supabase
-        .from("client_services")
-        .select("*")
-        .eq("cliente_id", params.id)
-        .eq("activo", true)
-        .order("tipo"),
-      admin
-        .from("client_onboarding")
-        .select("*")
-        .eq("cliente_id", params.id)
-        .maybeSingle(),
-    ]);
+  const [
+    { data: clientData },
+    { data: servicesData },
+    { data: onbData },
+    { count: tasksCount },
+    { count: diagApprovedCount },
+  ] = await Promise.all([
+    supabase
+      .from("clients")
+      .select(
+        "id, nombre, contacto_nombre, contacto_dni_cuit, contacto_domicilio, contacto_email, contacto_telefono, cm_id, disenador_id, audiovisual_id, contrato_numero, contrato_fecha_inicio, contrato_plazo_meses, contrato_dia_cobro, contrato_moneda, contrato_descuento_pct, contrato_descuento_meses, contrato_observaciones"
+      )
+      .eq("id", params.id)
+      .maybeSingle(),
+    supabase
+      .from("client_services")
+      .select("*")
+      .eq("cliente_id", params.id)
+      .eq("activo", true)
+      .order("tipo"),
+    admin
+      .from("client_onboarding")
+      .select("*")
+      .eq("cliente_id", params.id)
+      .maybeSingle(),
+    supabase
+      .from("tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("cliente_id", params.id),
+    supabase
+      .from("client_diagnostics")
+      .select("id", { count: "exact", head: true })
+      .eq("cliente_id", params.id)
+      .eq("status", "approved"),
+  ]);
 
   if (!clientData) notFound();
   const client = clientData as ClientLite;
@@ -127,11 +141,22 @@ export default async function OnboardingPage({
     (acc, s) => acc + (Number(s.monto_mensual) || 0),
     0
   );
+
+  // Señales que el sistema sabe SIN que el usuario tenga que clickear:
+  // - Equipo: si hay al menos un rol asignado
+  // - Carta enviada: si ya tiene número de contrato asignado
+  // - Tareas iniciales: si existen tareas vinculadas al cliente
+  // - Diagnóstico generado: si hay al menos un diagnóstico aprobado
   const teamAssigned =
     !!client.cm_id || !!client.disenador_id || !!client.audiovisual_id;
+  const cartaDerived = !!client.contrato_numero;
+  const tareasDerived = (tasksCount ?? 0) > 0;
+  const diagnosticoDerived = (diagApprovedCount ?? 0) > 0;
 
-  // Si el equipo ya está asignado y el toggle no se marcó, lo "auto-marcamos" visualmente
   const equipoDoneEffective = onb.equipo_asignado_at || teamAssigned;
+  const cartaDoneEffective = onb.carta_enviada_at || cartaDerived;
+  const tareasDoneEffective = onb.tareas_iniciales_at || tareasDerived;
+  const diagDoneEffective = onb.diagnostico_generado_at || diagnosticoDerived;
 
   const steps: Array<{
     key:
@@ -147,11 +172,13 @@ export default async function OnboardingPage({
     done: string | null | undefined;
     icon: typeof FileText;
     description?: string;
+    autoDerived?: boolean;
   }> = [
     {
       key: "carta_enviada_at",
       title: "Carta acuerdo + cobro enviados",
-      done: onb.carta_enviada_at,
+      done: cartaDoneEffective as string | null,
+      autoDerived: !onb.carta_enviada_at && cartaDerived,
       icon: FileText,
       description: "Descargá el PDF de la carta acuerdo y mandá el mensaje de cobro (con proporcional y datos bancarios autocalculados).",
     },
@@ -166,6 +193,7 @@ export default async function OnboardingPage({
       key: "equipo_asignado_at",
       title: "Equipo asignado",
       done: equipoDoneEffective as string | null,
+      autoDerived: !onb.equipo_asignado_at && teamAssigned,
       icon: Users,
       description: "Asigná CM, diseñador y/o audiovisual desde la ficha del cliente.",
     },
@@ -186,14 +214,16 @@ export default async function OnboardingPage({
     {
       key: "diagnostico_generado_at",
       title: "Diagnóstico inicial generado",
-      done: onb.diagnostico_generado_at,
+      done: diagDoneEffective as string | null,
+      autoDerived: !onb.diagnostico_generado_at && diagnosticoDerived,
       icon: FileBarChart,
       description: "Subí la transcripción del meet de onboarding (PDF de Tactiq). La IA arma el informe estratégico que después usamos como brief.",
     },
     {
       key: "tareas_iniciales_at",
       title: "Tareas iniciales creadas",
-      done: onb.tareas_iniciales_at,
+      done: tareasDoneEffective as string | null,
+      autoDerived: !onb.tareas_iniciales_at && tareasDerived,
       icon: ListChecks,
       description: "Genera automáticamente las tareas según los servicios (auditoría, manual, calendario, etc.).",
     },
@@ -383,12 +413,21 @@ export default async function OnboardingPage({
                   clientId={client.id}
                   stepKey={step.key}
                   initialDone={isDone}
+                  autoDerived={!!step.autoDerived}
                 />
                 <div className="flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <Icon className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">{step.title}</span>
+                      {step.autoDerived && (
+                        <span
+                          className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400"
+                          title="Detectado desde los datos del sistema"
+                        >
+                          Auto
+                        </span>
+                      )}
                     </div>
                     {isDone && step.done && typeof step.done === "string" && (
                       <span className="text-[11px] text-muted-foreground">

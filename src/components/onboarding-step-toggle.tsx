@@ -19,15 +19,28 @@ export function OnboardingStepToggle({
   clientId,
   stepKey,
   initialDone,
+  autoDerived = false,
 }: {
   clientId: string;
   stepKey: StepKey;
   initialDone: boolean;
+  /**
+   * Si true, el step se considera hecho a partir de datos reales del sistema
+   * (ej: equipo asignado, tareas creadas, diagnóstico aprobado). El toggle
+   * queda en read-only con tooltip explicativo.
+   */
+  autoDerived?: boolean;
 }) {
   const [done, setDone] = useState(initialDone);
   const [pending, start] = useTransition();
 
   function toggle() {
+    if (autoDerived) {
+      toast.info(
+        "Este paso se marca automáticamente desde los datos del sistema."
+      );
+      return;
+    }
     const next = !done;
     setDone(next);
     start(async () => {
@@ -44,10 +57,19 @@ export function OnboardingStepToggle({
       type="button"
       onClick={toggle}
       disabled={pending}
+      title={
+        autoDerived
+          ? "Se completa automáticamente con los datos del sistema"
+          : done
+          ? "Marcar como pendiente"
+          : "Marcar como hecho"
+      }
       aria-label={done ? "Marcar como pendiente" : "Marcar como hecho"}
       className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition ${
         done
-          ? "border-emerald-500 bg-emerald-500 text-white"
+          ? autoDerived
+            ? "border-emerald-500 bg-emerald-500/90 text-white ring-2 ring-emerald-500/20"
+            : "border-emerald-500 bg-emerald-500 text-white"
           : "border-muted-foreground/40 bg-card hover:border-primary"
       }`}
     >

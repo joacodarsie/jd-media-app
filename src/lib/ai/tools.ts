@@ -168,7 +168,7 @@ export const TOOLS: Anthropic.Tool[] = [
   {
     name: "client_brand_context",
     description:
-      "Devuelve el brief completo de un cliente para redactar copy, planear calendario o sugerir ideas: datos básicos + el **diagnóstico inicial aprobado** (resumen ejecutivo, contexto, público objetivo con insight clave, marca/tono, diferenciales, pilares de contenido). Usalo SIEMPRE antes de escribir copy/guion/calendario para un cliente, así el resultado respeta la estrategia que armó la agencia y la voz real de la marca.",
+      "Devuelve el brief completo de un cliente para redactar copy, planear calendario o sugerir ideas. Trae DOS capas: (1) el **diagnóstico estratégico aprobado** (resumen ejecutivo, contexto, público objetivo con insight clave, marca/tono, diferenciales, pilares de contenido) — estable; (2) el **plan de contenido del período vigente** (resumen del mes, mix por red, distribución por pilar con %, temas destacados, campañas activas) — operativo. Usalo SIEMPRE antes de escribir copy/guion/calendario para un cliente. Si hay plan vigente, respetá su mix y sus temas destacados antes de inventar otros.",
     input_schema: {
       type: "object",
       properties: {
@@ -507,16 +507,31 @@ export async function runTool(
           .limit(1).maybeSingle();
         if (!client) return { ok: false, error: "Cliente no encontrado" };
 
-        // Diagnóstico inicial aprobado más reciente — es el brief estratégico
-        // que armó la agencia. Le pasamos las secciones clave a la IA.
-        const { data: diag } = await sb
-          .from("client_diagnostics")
-          .select("version, content, approved_at")
-          .eq("cliente_id", client.id)
-          .eq("status", "approved")
-          .order("version", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        // Diagnóstico estratégico + Plan mensual vigente: las dos capas que
+        // JDmedIA necesita para razonar sobre un cliente.
+        const [{ data: diag }, { data: plan }, { data: pages }] = await Promise.all([
+          sb
+            .from("client_diagnostics")
+            .select("version, content, approved_at")
+            .eq("cliente_id", client.id)
+            .eq("status", "approved")
+            .order("version", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          sb
+            .from("client_content_plans")
+            .select("periodo_label, content, approved_at")
+            .eq("cliente_id", client.id)
+            .eq("status", "active")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          sb
+            .from("agency_pages")
+            .select("slug, title, content")
+            .or("slug.ilike.%buyer%,slug.ilike.%tono%,slug.ilike.%persona%,title.ilike.%buyer%,title.ilike.%tono%,title.ilike.%persona%")
+            .limit(5),
+        ]);
 
         let diagnostico: Record<string, unknown> | null = null;
         if (diag && diag.content && typeof diag.content === "object") {
@@ -530,22 +545,29 @@ export async function runTool(
             marca: c.marca,
             diferenciales: c.diferenciales,
             pilares_contenido: c.pilares_contenido,
-            // Plan + problemas quedan disponibles si el modelo los pide explícito,
-            // pero los omitimos del default para no inflar tokens.
           };
         }
 
-        // Páginas de agencia relevantes para tono/buyer persona
-        const { data: pages } = await sb.from("agency_pages")
-          .select("slug, title, content")
-          .or("slug.ilike.%buyer%,slug.ilike.%tono%,slug.ilike.%persona%,title.ilike.%buyer%,title.ilike.%tono%,title.ilike.%persona%")
-          .limit(5);
+        let plan_mensual: Record<string, unknown> | null = null;
+        if (plan && plan.content && typeof plan.content === "object") {
+          const p = plan.content as Record<string, unknown>;
+          plan_mensual = {
+            periodo: plan.periodo_label,
+            aprobado_el: plan.approved_at,
+            resumen_mes: p.resumen_mes,
+            mix_por_red: p.mix_por_red,
+            distribucion_pilares: p.distribucion_pilares,
+            temas_destacados: p.temas_destacados,
+            campanas: p.campanas,
+          };
+        }
 
         return {
           ok: true,
           data: {
             cliente: client,
             diagnostico,
+            plan_mensual,
             referencias: (pages ?? []).map((p) => ({
               slug: p.slug,
               title: p.title,

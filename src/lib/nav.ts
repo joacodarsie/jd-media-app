@@ -48,6 +48,12 @@ export const NAV_GROUPS: NavGroup[] = [
       },
       { href: "/equipo", label: "Equipo", icon: "Users2" },
       { href: "/equipo/personas", label: "Personas", icon: "Users" },
+      {
+        href: "/equipo/capacity",
+        label: "Capacidad",
+        icon: "Gauge",
+        roles: ["admin", "coordinador"],
+      },
     ],
   },
   {

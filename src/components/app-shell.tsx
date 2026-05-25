@@ -21,6 +21,7 @@ import {
   Target,
   Wallet,
   KeyRound,
+  Gauge,
   Menu,
   LogOut,
   type LucideIcon,
@@ -67,6 +68,7 @@ const ICONS: Record<string, LucideIcon> = {
   Target,
   Wallet,
   KeyRound,
+  Gauge,
 };
 
 function initials(nombre: string) {

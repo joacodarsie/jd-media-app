@@ -130,6 +130,7 @@ export type ContentPlanRow = {
   approved_by: string | null;
   applied_at: string | null;
   applied_count: number | null;
+  applied_temas_indices: number[];
   created_by: string | null;
   created_at: string;
   updated_at: string;

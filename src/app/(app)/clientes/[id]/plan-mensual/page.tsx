@@ -49,7 +49,7 @@ export default async function PlanMensualPage({
   const { data: rows } = await admin
     .from("client_content_plans")
     .select(
-      "id, cliente_id, periodo_label, status, content, generated_with_model, generated_at, approved_at, approved_by, applied_at, applied_count, created_by, created_at, updated_at"
+      "id, cliente_id, periodo_label, status, content, generated_with_model, generated_at, approved_at, approved_by, applied_at, applied_count, applied_temas_indices, created_by, created_at, updated_at"
     )
     .eq("cliente_id", params.id)
     .order("created_at", { ascending: false });

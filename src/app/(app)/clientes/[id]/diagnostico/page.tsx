@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { Button } from "@/components/ui/button";
 import { DiagnosticWorkspace } from "@/components/diagnostic-workspace";
+import { AIFeedback } from "@/components/ai-feedback";
 import type { DiagnosticRow } from "@/lib/diagnostics/schema";
 
 export const dynamic = "force-dynamic";
@@ -73,6 +74,17 @@ export default async function DiagnosticoPage({
         active={active}
         history={versions}
       />
+
+      {active && active.status === "approved" && (
+        <div className="flex items-center justify-end gap-2 rounded-lg border bg-card/40 p-3">
+          <AIFeedback
+            feature="diagnostic"
+            refId={active.id}
+            clienteId={params.id}
+            model={active.generated_with_model ?? null}
+          />
+        </div>
+      )}
     </div>
   );
 }

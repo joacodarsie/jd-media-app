@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { Button } from "@/components/ui/button";
 import { ContentPlanWorkspace } from "@/components/content-plan-workspace";
+import { AIFeedback } from "@/components/ai-feedback";
 import type { ContentPlanRow } from "@/lib/content-plans/schema";
 
 export const dynamic = "force-dynamic";
@@ -82,6 +83,17 @@ export default async function PlanMensualPage({
         history={history}
         defaultPeriodLabel={defaultPeriodLabel()}
       />
+
+      {active && (
+        <div className="flex items-center justify-end gap-2 rounded-lg border bg-card/40 p-3">
+          <AIFeedback
+            feature="content_plan"
+            refId={active.id}
+            clienteId={params.id}
+            model={active.generated_with_model ?? null}
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { NotificationBell } from "@/components/notification-bell";
 import { AIChatLauncher } from "@/components/ai-chat-launcher";
 import { RealtimeBadgesSync } from "@/components/realtime-badges-sync";
+import { WelcomeTour } from "@/components/welcome-tour";
 import type { QuickLinkRow } from "@/components/quick-links-manager";
 
 export default async function AppLayout({
@@ -79,6 +80,7 @@ export default async function AppLayout({
       <RealtimeBadgesSync userId={user.id} />
       {children}
       <AIChatLauncher />
+      <WelcomeTour userRol={user.rol} userName={user.nombre} />
     </AppShell>
   );
 }

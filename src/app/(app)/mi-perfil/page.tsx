@@ -8,6 +8,7 @@ import { CompensationCard } from "@/components/compensation-card";
 import { WhatsAppOptinCard } from "@/components/whatsapp-optin-card";
 import { GoogleCalendarCard } from "@/components/google-calendar-card";
 import { BrowserNotificationsCard } from "@/components/browser-notifications-card";
+import { ReplayTourButton } from "@/components/replay-tour-button";
 
 export const dynamic = "force-dynamic";
 
@@ -33,12 +34,20 @@ export default async function MiPerfilPage() {
         <CardHeader>
           <CardTitle className="text-base">Datos</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-1 text-sm">
-          <div>
-            <strong>{me.nombre}</strong>
+        <CardContent className="space-y-3 text-sm">
+          <div className="space-y-1">
+            <div>
+              <strong>{me.nombre}</strong>
+            </div>
+            <div className="text-muted-foreground">{me.email}</div>
+            <div className="text-muted-foreground">{me.area}</div>
           </div>
-          <div className="text-muted-foreground">{me.email}</div>
-          <div className="text-muted-foreground">{me.area}</div>
+          <div className="border-t pt-3">
+            <p className="mb-2 text-xs text-muted-foreground">
+              Si querés volver a hacer el recorrido inicial por la app:
+            </p>
+            <ReplayTourButton />
+          </div>
         </CardContent>
       </Card>
 

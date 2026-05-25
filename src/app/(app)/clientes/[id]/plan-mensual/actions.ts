@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import type { MonthlyContentPlan, TemaDestacado } from "@/lib/content-plans/schema";
+import { suggestPublicationContent } from "@/app/(app)/contenidos/ai-actions";
 
 type ActionResult<T = unknown> = { ok: true; data?: T } | { ok: false; error: string };
 
@@ -80,6 +81,53 @@ export async function archivePlan(planId: string): Promise<ActionResult> {
   if (error) return { ok: false, error: error.message };
   revalidatePath(`/clientes/${plan.cliente_id}/plan-mensual`);
   return { ok: true };
+}
+
+/**
+ * Helper: dispara el suggester con el contexto del tema y actualiza la
+ * publication recién creada con copy + hashtags + guion. Best-effort: si falla
+ * la generación, la pub queda con copy null (es lo que pasaba antes).
+ */
+async function autoFillCopyForPub(args: {
+  publicationId: string;
+  cliente_id: string;
+  tema: TemaDestacado;
+}) {
+  try {
+    const tipo = FORMATO_TO_TIPO[args.tema.formato ?? "post"] ?? "post";
+    const red = args.tema.red_principal ? RED_TO_DB[args.tema.red_principal] ?? "instagram" : "instagram";
+    const hint = [
+      `Idea del plan: "${args.tema.titulo}".`,
+      args.tema.descripcion,
+      args.tema.pilar ? `Pilar: ${args.tema.pilar}.` : "",
+      args.tema.fecha ? `Fecha: ${args.tema.fecha}.` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const res = await suggestPublicationContent({
+      cliente_id: args.cliente_id,
+      tipo,
+      red,
+      hint,
+    });
+    if ("error" in res) {
+      console.warn("[autoFillCopyForPub] suggester error", res.error);
+      return;
+    }
+
+    const admin = createAdmin();
+    await admin
+      .from("publications")
+      .update({
+        copy: res.suggestion.copy,
+        hashtags: res.suggestion.hashtags,
+        guion: res.suggestion.guion,
+      })
+      .eq("id", args.publicationId);
+  } catch (err) {
+    console.error("[autoFillCopyForPub]", err);
+  }
 }
 
 /**
@@ -191,6 +239,14 @@ export async function applyTemaToCalendar(
     .update({ applied_temas_indices: [...applied, temaIdx] })
     .eq("id", planId);
 
+  // Auto-completar copy/hashtags/guion con IA usando el tema como hint.
+  // Best-effort: si falla, la pub queda como antes (sin copy).
+  await autoFillCopyForPub({
+    publicationId: inserted.id,
+    cliente_id: plan.cliente_id,
+    tema,
+  });
+
   revalidatePath(`/clientes/${plan.cliente_id}/plan-mensual`);
   revalidatePath(`/contenidos`);
   return { ok: true, data: { publicationId: inserted.id } };
@@ -262,6 +318,20 @@ export async function applyAllTemasToCalendar(
       applied_count: (plan.applied_temas_indices?.length ?? 0) + pendingIdxs.length,
     })
     .eq("id", planId);
+
+  // Auto-completar copy en paralelo para todas las pubs creadas.
+  // Promise.allSettled: si alguna falla, las otras siguen.
+  if (inserted && inserted.length > 0) {
+    await Promise.allSettled(
+      inserted.map((row, i) =>
+        autoFillCopyForPub({
+          publicationId: row.id,
+          cliente_id: plan.cliente_id,
+          tema: temas[pendingIdxs[i]],
+        })
+      )
+    );
+  }
 
   revalidatePath(`/clientes/${plan.cliente_id}/plan-mensual`);
   revalidatePath(`/contenidos`);

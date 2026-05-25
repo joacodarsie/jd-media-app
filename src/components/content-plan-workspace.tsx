@@ -186,7 +186,7 @@ export function ContentPlanWorkspace({
       toast.error("Todos los temas ya fueron aplicados.");
       return;
     }
-    if (!confirm(`¿Aplicar los ${pendientes} temas pendientes al calendario?`)) return;
+    if (!confirm(`¿Aplicar los ${pendientes} temas pendientes al calendario? La IA va a auto-generar copy + hashtags para cada uno (puede tardar 30-60s).`)) return;
     setPending(true);
     const r = await applyAllTemasToCalendar(active.id);
     setPending(false);
@@ -649,13 +649,13 @@ function TemaCard({
   setPending: (b: boolean) => void;
 }) {
   async function handleApply() {
-    if (!confirm(`¿Aplicar este tema al calendario como una publicación 'idea'?`)) return;
+    if (!confirm(`¿Aplicar este tema? La IA va a auto-generar copy + hashtags + guion (tarda ~10s).`)) return;
     setPending(true);
     const r = await applyTemaToCalendar(planId, index);
     setPending(false);
     if (!r.ok) toast.error(r.error);
     else {
-      toast.success("Publicación creada en el calendario.");
+      toast.success("Publicación creada con copy generado.");
       window.location.reload();
     }
   }

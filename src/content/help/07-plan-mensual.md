@@ -57,3 +57,28 @@ Al final del mes, el reporte mensual del cliente muestra **plan vs real** por pi
 ## PDF para el cliente
 
 Botón **Ver PDF** → versión sin reglas operativas ni KPIs, lista para compartir.
+
+## Tips
+
+> **Generá entre el 25 y el 31 del mes anterior.** Si esperás al día 1 ya estás atrasado. Si lo hacés a mitad del mes anterior, te falta data fresca.
+
+> **Si un tema no convence, regeneralo con hint específico.** "Que sea más emocional", "que apunte a otra etapa del funnel", "que sea más corto". La IA mejora con instrucciones concretas.
+
+> **El periodo_label tiene que incluir el mes + año.** Ej: "Junio 2026". Si lo escribís raro ("Q2", "el del cumple"), el sistema no detecta que es el plan de junio y el recordatorio del día 25 te va a notificar igual.
+
+## Preguntas frecuentes
+
+**Apliqué todos los temas al calendario y quedaron sin fecha.**
+Las publicaciones se crean en estado `idea` y sin fecha. Las distribuís manualmente en el [calendario](/ayuda/contenidos-calendario) según la cadencia que tenga sentido para el cliente.
+
+**Generé el plan pero no se ve en JDmedIA.**
+Tiene que estar en estado `active`, no `draft`. Aprobalo desde el botón "Aprobar plan" en la cabecera.
+
+**Quiero un plan para una campaña específica, no para todo el mes.**
+Usá `periodo_label` con el nombre de la campaña (ej: "Lanzamiento álbum — septiembre 2026"). Sigue funcionando como plan vigente.
+
+## Páginas relacionadas
+
+- [Diagnóstico inicial](/ayuda/diagnostico) — la capa estratégica que da contexto.
+- [Calendario de contenidos](/ayuda/contenidos-calendario) — donde aplicás los temas.
+- [Portal del cliente](/ayuda/portal-cliente) — el cliente ve este plan en su link mágico.

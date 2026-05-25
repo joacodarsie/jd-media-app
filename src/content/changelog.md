@@ -2,6 +2,13 @@
 title: Novedades
 ---
 
+## 2026-05-25 — Ayuda enriquecida + guías por rol
+
+- 📘 Cada página de **Ayuda** suma sección **Preguntas frecuentes** y **Tips** con casos reales.
+- 👥 Tres nuevas guías por rol: **Para CMs**, **Para Diseñadores**, **Para Audiovisual** con flujo del día típico.
+- ❓ Botón `(?)` ahora visible en: Mi día, ficha de cliente, onboarding, diagnóstico, plan mensual, calendario, capacity, comercial, finanzas y agenda. Cada uno linkea directo a su guía.
+- 🛡 El tour interactivo solo se auto-abre desde `/dashboard` — no interrumpe deep links.
+
 ## 2026-05-25 — Centro de ayuda + Tour interactivo
 
 - 📖 Nueva sección **Ayuda** en el sidebar con guías cortas de cada herramienta. Buscador integrado, agrupadas por categoría.

@@ -41,3 +41,25 @@ Click en **Nueva tarea** desde la vista de Tareas, o pedíselo directamente a JD
 ## Asociadas con publicaciones
 
 Cuando creás una publicación, puede generar tareas automáticas (ej: una para edición, otra para diseño). Las verás vinculadas con un ícono especial.
+
+## Tips
+
+> **No uses "completada" como "olvidé que existía".** Si la tarea ya no aplica, marcala "rechazada" o borrala. Completada queda en métricas como trabajo hecho.
+
+> **Las menciones en comentarios crean notificación.** Si querés que alguien específico vea tu mensaje, mencionalo con `@nombre`.
+
+## Preguntas frecuentes
+
+**¿Qué pasa si vence una tarea?**
+Aparece en rojo en tu Mi día como "vencida". El sistema te manda notificación in-app y al chat interno (si lo tenés activado).
+
+**Asigné una tarea y la persona no la ve.**
+Verificá que su user esté activo (`/equipo/personas` → debe figurar en verde). Si está pausada, no le aparece nada hasta reactivarla.
+
+**¿Se puede asignar la misma tarea a varias personas?**
+No. Una tarea = una persona responsable. Si necesitás coordinación entre varias, creá tareas separadas con el mismo cliente y vinculá en la descripción.
+
+## Páginas relacionadas
+
+- [Mi día](/ayuda/mi-dia) — ahí ves las tuyas urgentes.
+- [JDmedIA](/ayuda/jdmedia-ia) — para crear tareas hablando: "creá una tarea para X que vence Y".

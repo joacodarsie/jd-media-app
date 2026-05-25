@@ -58,3 +58,27 @@ JDmedIA tiene **tools** disponibles que puede invocar:
 - No manda mails ni mensajes de WhatsApp.
 - No paga ni cobra.
 - No edita el diagnóstico ni el plan mensual (esos van por su flujo).
+
+## Tips
+
+> **Hablale en castellano natural.** No hace falta sintaxis especial: "armame una tarea para Bri" funciona igual que "create task assigned to Bri".
+
+> **Si la respuesta es lenta es porque está haciendo varias queries.** Las acciones que tocan muchos datos (resumen del día, finanzas del mes) pueden tardar 10-15 seg. Es normal.
+
+> **Te confirma antes de ejecutar acciones que cambian datos.** Si pedís "borrá la tarea X", primero te muestra qué va a hacer. Releé antes de confirmar.
+
+## Preguntas frecuentes
+
+**Le pedí algo y me respondió texto en vez de hacerlo.**
+A veces decide que falta info. Ejemplo: si pedís "creá una tarea" sin título, te pregunta cuál. Respondé con el dato y va a continuar.
+
+**No encuentra a un usuario que sé que existe.**
+Probá con el nombre exacto o un nombre parcial más corto. Ejemplo: "Luz" en vez de "Luz Maria". Está usando ILIKE %nombre%.
+
+**Lo cerré sin querer en /jdmedia y perdí la conversación.**
+No la perdiste — las conversaciones quedan guardadas en el sidebar izquierdo. Las podés retomar cuando quieras.
+
+## Páginas relacionadas
+
+- [Tareas](/ayuda/tareas) — todo lo que la IA puede crear/modificar en tareas.
+- [Calendario de contenidos](/ayuda/contenidos-calendario) — cómo aplica el plan al calendario.

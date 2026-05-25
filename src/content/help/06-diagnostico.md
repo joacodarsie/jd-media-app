@@ -61,3 +61,26 @@ Botón **Ver PDF** abre la versión print-friendly con branding JD Media (`/diag
 ## Feedback de la IA
 
 Abajo del diagnóstico aprobado tenés los botones 👍 / 👎. Si la salida fue floja, votá negativo + comentá qué falló. Esa data la usamos para ajustar los prompts.
+
+## Tips
+
+> **Editá antes de aprobar.** El diagnóstico generado es un buen primer borrador, no la versión final. Tomate 15-30 min para leerlo entero y ajustar lo que esté flojo. Eso te ahorra trabajo después.
+
+> **Más contexto, mejor output.** Si en el PDF del meet hay solo 10 minutos transcriptos, la IA va a inventar mucho. Conviene meetings de 45+ minutos, con preguntas abiertas.
+
+## Preguntas frecuentes
+
+**El diagnóstico tiene errores fácticos sobre el cliente.**
+Es esperable cuando el meet fue corto. Editá las secciones afectadas a mano y aprobá la v1 con los datos corregidos. La próxima versión partirá de esa base.
+
+**¿Cuándo genero una v2?**
+Cuando cambia algo de fondo del cliente: rebrand, nuevo público objetivo, nuevo servicio principal. El diagnóstico no se actualiza mes a mes — para eso está el [plan mensual](/ayuda/plan-mensual).
+
+**Subí el PDF y no arrancó la generación.**
+Refrescá la página y reintentá. Si persiste: avisá en `#general` con el nombre del cliente.
+
+## Páginas relacionadas
+
+- [Onboarding](/ayuda/onboarding) — el paso anterior (meet de onboarding).
+- [Plan mensual](/ayuda/plan-mensual) — la capa operativa que se apoya en este.
+- [JDmedIA](/ayuda/jdmedia-ia) — el asistente usa este diagnóstico como contexto del cliente.

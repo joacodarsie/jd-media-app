@@ -57,3 +57,20 @@ Cambiá el estado a **revision_cliente**. La pub aparece automáticamente en el 
 - **Click + arrastrar** en la vista mensual para mover una publicación a otra fecha.
 - **Auto-replicar** entre redes: cuando creás una pub con red "Instagram" y marcás Facebook/TikTok como réplica, se crean las copias.
 - **Tareas vinculadas**: la pub puede generar tareas (diseño, edición). Las ves en su detalle.
+
+## Preguntas frecuentes
+
+**Creé una pub y no aparece en el calendario del mes.**
+Probablemente no tiene `fecha_publicacion` cargada todavía. Las pubs sin fecha aparecen en vista Kanban o Lista, pero no en Mes. Asignale fecha desde el detalle de la pub.
+
+**El cliente aprobó la pub pero sigue en "revisión cliente".**
+Refrescá la página. Si persiste, verificá en el [portal del cliente](/ayuda/portal-cliente) que efectivamente haya apretado "Aprobar".
+
+**¿Cómo veo solo lo que tengo que diseñar yo?**
+Filtros → Responsable → tu nombre, Estado → `en_diseno`. Eso te deja solo lo que está esperando tu trabajo de diseño.
+
+## Páginas relacionadas
+
+- [Plan mensual](/ayuda/plan-mensual) — los temas que aplicás vienen de acá.
+- [Portal del cliente](/ayuda/portal-cliente) — donde el cliente ve y aprueba.
+- [JDmedIA](/ayuda/jdmedia-ia) — "agregá un reel sobre X para Y" o "marcá como publicada".

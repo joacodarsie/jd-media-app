@@ -42,3 +42,26 @@ Los pasos del proceso operativo, con acciones contextuales en cada uno:
 7. Calendario de contenidos del primer mes.
 
 Si seguís este flujo en orden, el cliente queda **operando en menos de una semana**.
+
+## Tips
+
+> **No te saltees el "Pago recibido".** Es el único paso que no se auto-marca y es el que separa "cliente que firmó pero no pagó" de "cliente activo". Si avanzás sin esto, te estás comiendo el riesgo.
+
+> **El badge "Auto"** significa que el sistema ya detectó que el paso está hecho a partir de datos reales (ej: hay tareas creadas → "Tareas iniciales" se marca solo). No vas a poder destildarlo manualmente.
+
+## Preguntas frecuentes
+
+**Subí el PDF del meet pero la guía no se generó.**
+Verificá que el PDF tenga texto (Tactiq exporta texto). Si es solo imágenes, el sistema no puede leerlo. Probá pegar el texto a mano.
+
+**¿Puedo cambiar los servicios después de generar la carta acuerdo?**
+Sí, pero vas a tener que regenerar el PDF de la carta acuerdo. El monto mensual y el cronograma cambian.
+
+**Falta data del contrato y no me deja generar la carta.**
+La app muestra un warning ámbar con qué falta exactamente: nombre del contacto, DNI/CUIT, fecha de inicio o plazo. Completá esos campos en "Datos del contrato" y reintentá.
+
+## Páginas relacionadas
+
+- [Diagnóstico inicial](/ayuda/diagnostico) — el próximo paso después de los meets.
+- [Plan mensual](/ayuda/plan-mensual) — qué generar después del diagnóstico.
+- [Ficha del cliente](/ayuda/clientes-ficha) — datos generales del cliente.

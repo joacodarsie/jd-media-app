@@ -52,3 +52,19 @@ Vista calendario simplificada de lo que viene.
 - **No mandes el link por WhatsApp público**. Mandalo por chat privado o por mail.
 - **Regenerá el link** si sospechás que se filtró (cliente reenvió a alguien que no debía).
 - Si el cliente perdió el link, regenerá uno nuevo en lugar de buscar el viejo.
+
+## Preguntas frecuentes
+
+**El cliente dice "no me funciona el link".**
+Probable causa: lo revocaste o regeneraste por error → el link viejo dejó de funcionar. Mirá en la ficha del cliente que el último token sea el que le mandaste.
+
+**¿Puedo darle el link a varias personas del cliente?**
+Sí, es el mismo link. Pero todos los aprobados van a quedar registrados como "aprobado desde el portal", sin distinguir cuál persona específicamente clickeó.
+
+**¿El cliente puede editar el plan o pubs?**
+No. Solo puede ver, aprobar, pedir cambios y comentar. La edición sigue siendo nuestra.
+
+## Páginas relacionadas
+
+- [Calendario de contenidos](/ayuda/contenidos-calendario) — pasás pubs a estado "revisión cliente" para que aparezcan en el portal.
+- [Plan mensual](/ayuda/plan-mensual) — lo que ve el cliente arriba del portal.

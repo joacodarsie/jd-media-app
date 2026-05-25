@@ -37,3 +37,24 @@ Una vista agrupada con los clientes a tu cargo (CM/diseñador/audiovisual) orden
 ## Conectá tu Google Calendar
 
 Si todavía no lo hiciste, andá a **Mi perfil → Conexiones** y conectá tu Calendar. Sin esto no vas a ver tus reuniones acá.
+
+## Cómo leerlo en 30 segundos
+
+> **El orden importa.** Mirá de arriba hacia abajo: 1) alertas rojas, 2) próxima reunión, 3) Hoy, 4) Por cliente, 5) Esta semana. Si paraste en algún punto y sentís que ya entendiste qué hacer, andá a ejecutar.
+
+## Preguntas frecuentes
+
+**No veo un cliente que llevo en "Por cliente".**
+Andá a la ficha del cliente y revisá que tu user esté como CM, diseñador o audiovisual en la sección "Equipo asignado".
+
+**Aparezco con tareas vencidas que no son mías.**
+Probablemente las creaste vos y se las delegaste a otra persona. Mirá la sección "Delegadas" — esas siguen pendientes pero las hace otro.
+
+**¿Cuándo se reinicia el contador "Hoy"?**
+A las 00:00 horario Argentina. Las tareas que vencen hoy aparecen todo el día.
+
+## Páginas relacionadas
+
+- [Tareas](/ayuda/tareas) — cómo crear y gestionar las tuyas.
+- [Calendario de contenidos](/ayuda/contenidos-calendario) — para ver "se publica hoy" en contexto.
+- [JDmedIA](/ayuda/jdmedia-ia) — si querés un resumen rápido del día, pedíselo al asistente.

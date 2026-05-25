@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createAdmin } from "@/lib/supabase/admin";
 import { AGENCY } from "@/lib/agency";
 import type { MonthlyContentPlan } from "@/lib/content-plans/schema";
+import { PortalReviewCard } from "@/components/portal-review-card";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +57,7 @@ export default async function PortalPage({ params }: { params: { token: string }
   const now = new Date();
   const in8Weeks = new Date(now.getTime() + 56 * 24 * 60 * 60 * 1000);
 
-  const [{ data: client }, { data: plan }, { data: pubs }] = await Promise.all([
+  const [{ data: client }, { data: plan }, { data: pubs }, { data: reviewPubs }] = await Promise.all([
     admin.from("clients").select("id, nombre, rubro, pack").eq("id", cliente_id).maybeSingle(),
     admin
       .from("client_content_plans")
@@ -75,6 +76,13 @@ export default async function PortalPage({ params }: { params: { token: string }
       .not("estado", "eq", "rechazado")
       .order("fecha_publicacion", { ascending: true })
       .limit(20),
+    admin
+      .from("publications")
+      .select("id, titulo, copy, red, tipo, fecha_publicacion, asset_url")
+      .eq("cliente_id", cliente_id)
+      .eq("estado", "revision_cliente")
+      .order("fecha_publicacion", { ascending: true, nullsFirst: false })
+      .limit(20),
   ]);
 
   if (!client) return notFound();
@@ -83,6 +91,15 @@ export default async function PortalPage({ params }: { params: { token: string }
     ? (plan.content as MonthlyContentPlan)
     : null;
   const upcoming = (pubs ?? []) as UpcomingPub[];
+  const toReview = (reviewPubs ?? []) as Array<{
+    id: string;
+    titulo: string;
+    copy: string | null;
+    red: string;
+    tipo: string;
+    fecha_publicacion: string | null;
+    asset_url: string | null;
+  }>;
 
   // Cadencia consolidada (red principal)
   const principal = planContent?.mix_por_red?.find((m) => m.rol === "principal") ?? planContent?.mix_por_red?.[0];
@@ -170,6 +187,29 @@ export default async function PortalPage({ params }: { params: { token: string }
             {client.pack && <span className="hero-pack">Pack {client.pack}</span>}
           </div>
         </div>
+
+        {/* Pendientes de revisión — se muestra primero porque es lo urgente */}
+        {toReview.length > 0 && (
+          <div className="card" style={{ borderColor: "#fde68a", background: "linear-gradient(180deg, #fffbeb 0%, #fff 100%)" }}>
+            <div className="card-label" style={{ color: "#92400e" }}>
+              Necesitamos tu mirada
+            </div>
+            <h2 className="card-title">
+              {toReview.length === 1
+                ? "Una pieza para revisar"
+                : `${toReview.length} piezas para revisar`}
+            </h2>
+            <p style={{ fontSize: 13, color: "#555", margin: "0 0 16px", lineHeight: 1.5 }}>
+              Aprobá si todo va bien, o pedinos cambios con un click. Lo que respondas acá
+              llega directo al equipo.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {toReview.map((p) => (
+                <PortalReviewCard key={p.id} pub={p} token={params.token} />
+              ))}
+            </div>
+          </div>
+        )}
 
         {planContent ? (
           <>

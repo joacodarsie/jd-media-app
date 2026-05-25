@@ -1,0 +1,303 @@
+import { notFound } from "next/navigation";
+import { createAdmin } from "@/lib/supabase/admin";
+import { AGENCY } from "@/lib/agency";
+import type { MonthlyContentPlan } from "@/lib/content-plans/schema";
+
+export const dynamic = "force-dynamic";
+
+const FORMATO_LABEL: Record<string, string> = {
+  reel: "Reels",
+  post: "Posts",
+  carrusel: "Carruseles",
+  story: "Historias",
+  video_largo: "Videos",
+  live: "Lives",
+  otro: "Otros",
+};
+
+function fmtDate(iso?: string | null) {
+  if (!iso) return "";
+  return new Date(iso).toLocaleDateString("es-AR", {
+    day: "2-digit",
+    month: "long",
+  });
+}
+
+interface UpcomingPub {
+  id: string;
+  titulo: string;
+  fecha_publicacion: string | null;
+  red: string;
+  tipo: string;
+  estado: string;
+}
+
+export default async function PortalPage({ params }: { params: { token: string } }) {
+  const admin = createAdmin();
+
+  const { data: tokenRow } = await admin
+    .from("client_portal_tokens")
+    .select("id, cliente_id, revoked_at, expires_at")
+    .eq("token", params.token)
+    .maybeSingle();
+
+  if (!tokenRow || tokenRow.revoked_at) return notFound();
+  if (tokenRow.expires_at && new Date(tokenRow.expires_at) < new Date()) return notFound();
+
+  // Touch last_seen (no bloqueante si falla)
+  await admin
+    .from("client_portal_tokens")
+    .update({ last_seen_at: new Date().toISOString() })
+    .eq("id", tokenRow.id);
+
+  const cliente_id = tokenRow.cliente_id;
+
+  // Cargar plan vigente + próximas pubs
+  const now = new Date();
+  const in8Weeks = new Date(now.getTime() + 56 * 24 * 60 * 60 * 1000);
+
+  const [{ data: client }, { data: plan }, { data: pubs }] = await Promise.all([
+    admin.from("clients").select("id, nombre, rubro, pack").eq("id", cliente_id).maybeSingle(),
+    admin
+      .from("client_content_plans")
+      .select("periodo_label, content, approved_at")
+      .eq("cliente_id", cliente_id)
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    admin
+      .from("publications")
+      .select("id, titulo, fecha_publicacion, red, tipo, estado")
+      .eq("cliente_id", cliente_id)
+      .gte("fecha_publicacion", now.toISOString())
+      .lte("fecha_publicacion", in8Weeks.toISOString())
+      .not("estado", "eq", "rechazado")
+      .order("fecha_publicacion", { ascending: true })
+      .limit(20),
+  ]);
+
+  if (!client) return notFound();
+
+  const planContent: MonthlyContentPlan | null = plan?.content
+    ? (plan.content as MonthlyContentPlan)
+    : null;
+  const upcoming = (pubs ?? []) as UpcomingPub[];
+
+  // Cadencia consolidada (red principal)
+  const principal = planContent?.mix_por_red?.find((m) => m.rol === "principal") ?? planContent?.mix_por_red?.[0];
+  const cadencia = (principal?.cadencia ?? {}) as Record<string, number>;
+  const redes = planContent?.mix_por_red?.map((m) => m.red) ?? [];
+
+  return (
+    <>
+      <style>{`
+        * { box-sizing: border-box; }
+        body {
+          margin: 0;
+          background: linear-gradient(180deg, #fefefe 0%, #f7f7f5 100%);
+          font-family: 'Inter', system-ui, -apple-system, sans-serif;
+          color: #1a1a1a;
+          -webkit-font-smoothing: antialiased;
+        }
+        .wrap {
+          max-width: 760px;
+          margin: 0 auto;
+          padding: 24px 20px 80px;
+        }
+        .hero {
+          padding: 40px 24px;
+          background: #1a1a1a;
+          color: #fff;
+          border-radius: 16px;
+          margin-bottom: 24px;
+          position: relative;
+          overflow: hidden;
+        }
+        .hero:before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(ellipse at top right, rgba(255,212,0,.15), transparent 60%);
+        }
+        .hero-brand { font-size: 11px; letter-spacing: 0.2em; color: #FFD400; text-transform: uppercase; margin-bottom: 8px; }
+        .hero-title { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; margin: 0; }
+        .hero-rubro { margin-top: 6px; font-size: 14px; color: #aaa; }
+        .hero-pack { margin-top: 16px; display: inline-block; padding: 4px 10px; background: #FFD400; color: #1a1a1a; font-weight: 700; font-size: 11px; border-radius: 999px; }
+
+        .card { background: #fff; border: 1px solid #ececec; border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+        .card-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; color: #888; margin-bottom: 6px; }
+        .card-title { font-size: 20px; font-weight: 700; margin: 0 0 12px; }
+
+        .cadencia { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        @media (min-width: 600px) { .cadencia { grid-template-columns: repeat(4, 1fr); } }
+        .cadencia-cell { padding: 12px; background: #fafafa; border-radius: 10px; text-align: center; }
+        .cadencia-cell .lbl { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.1em; }
+        .cadencia-cell .val { font-size: 24px; font-weight: 800; margin-top: 4px; }
+
+        .pilar { margin-bottom: 12px; }
+        .pilar-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+        .pilar-name { font-weight: 600; font-size: 14px; }
+        .pilar-pct { font-weight: 800; font-size: 16px; }
+        .pilar-bar { height: 8px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
+        .pilar-bar-fill { height: 100%; background: #FFD400; }
+
+        .tema { padding: 14px; border: 1px solid #eee; border-radius: 10px; margin-bottom: 10px; background: #fff; }
+        .tema-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+        .tema-title { font-weight: 700; font-size: 15px; }
+        .tema-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+        .tag { padding: 2px 8px; background: #f3f3f3; color: #555; font-size: 10px; font-weight: 600; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .tag.yellow { background: #fffbe6; color: #92400e; }
+        .tema-desc { margin-top: 6px; font-size: 13px; color: #555; line-height: 1.5; }
+
+        .pub-list { list-style: none; margin: 0; padding: 0; }
+        .pub { padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+        .pub:last-child { border-bottom: none; }
+        .pub-date { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+        .pub-title { font-weight: 600; margin-top: 4px; }
+        .pub-meta { font-size: 11px; color: #777; margin-top: 2px; }
+
+        .empty { text-align: center; padding: 40px 20px; color: #999; font-size: 14px; }
+        .footer { margin-top: 40px; text-align: center; padding: 24px 0; color: #888; font-size: 12px; border-top: 1px solid #ececec; }
+      `}</style>
+
+      <div className="wrap">
+        <div className="hero">
+          <div style={{ position: "relative" }}>
+            <div className="hero-brand">{AGENCY.brand}</div>
+            <h1 className="hero-title">{client.nombre}</h1>
+            {client.rubro && <div className="hero-rubro">{client.rubro}</div>}
+            {client.pack && <span className="hero-pack">Pack {client.pack}</span>}
+          </div>
+        </div>
+
+        {planContent ? (
+          <>
+            {/* Resumen del mes */}
+            {planContent.resumen_mes && planContent.resumen_mes.length > 0 && (
+              <div className="card">
+                <div className="card-label">{plan?.periodo_label ?? "Plan vigente"}</div>
+                <h2 className="card-title">Lo importante de este mes</h2>
+                <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+                  {planContent.resumen_mes.map((b, i) => (
+                    <li key={i} style={{ padding: "8px 0 8px 18px", position: "relative", fontSize: 14, lineHeight: 1.5 }}>
+                      <span style={{ position: "absolute", left: 0, top: 14, width: 6, height: 6, background: "#FFD400", borderRadius: 2 }} />
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Cadencia */}
+            {Object.keys(cadencia).length > 0 && (
+              <div className="card">
+                <div className="card-label">Cadencia del mes</div>
+                <h2 className="card-title">Lo que vas a recibir</h2>
+                <div className="cadencia">
+                  {Object.entries(cadencia).map(([fmt, qty]) => (
+                    <div key={fmt} className="cadencia-cell">
+                      <div className="lbl">{FORMATO_LABEL[fmt] ?? fmt}</div>
+                      <div className="val">{qty}</div>
+                    </div>
+                  ))}
+                </div>
+                {redes.length > 0 && (
+                  <p style={{ marginTop: 14, marginBottom: 0, fontSize: 12, color: "#666" }}>
+                    Se publica en <strong style={{ textTransform: "capitalize" }}>{redes.join(", ")}</strong>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Distribución por pilar */}
+            {planContent.distribucion_pilares && planContent.distribucion_pilares.length > 0 && (
+              <div className="card">
+                <div className="card-label">De qué vamos a hablar</div>
+                <h2 className="card-title">Pilares del mes</h2>
+                {planContent.distribucion_pilares.map((p, i) => (
+                  <div key={i} className="pilar">
+                    <div className="pilar-row">
+                      <span className="pilar-name">{p.pilar}</span>
+                      <span className="pilar-pct">{p.porcentaje}%</span>
+                    </div>
+                    <div className="pilar-bar">
+                      <div className="pilar-bar-fill" style={{ width: `${Math.min(100, Math.max(0, p.porcentaje))}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Temas destacados */}
+            {planContent.temas_destacados && planContent.temas_destacados.length > 0 && (
+              <div className="card">
+                <div className="card-label">Ideas concretas</div>
+                <h2 className="card-title">Las piezas del mes</h2>
+                {planContent.temas_destacados.map((t, i) => (
+                  <div key={i} className="tema">
+                    <div className="tema-head">
+                      <div className="tema-title">{i + 1}. {t.titulo}</div>
+                      <div className="tema-tags">
+                        {t.formato && <span className="tag">{t.formato}</span>}
+                        {t.pilar && <span className="tag yellow">{t.pilar}</span>}
+                        {t.fecha && <span className="tag">{t.fecha}</span>}
+                      </div>
+                    </div>
+                    <div className="tema-desc">{t.descripcion}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Campañas */}
+            {planContent.campanas && planContent.campanas.length > 0 && (
+              <div className="card">
+                <div className="card-label">Momentos clave</div>
+                <h2 className="card-title">Campañas del mes</h2>
+                {planContent.campanas.map((c, i) => (
+                  <div key={i} style={{ paddingBottom: 12, marginBottom: 12, borderBottom: i < planContent.campanas.length - 1 ? "1px solid #f0f0f0" : "none" }}>
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>{c.nombre}</div>
+                    <div style={{ fontSize: 12, color: "#777", marginTop: 2 }}>{c.fechas}</div>
+                    <div style={{ fontSize: 13, color: "#555", marginTop: 6, lineHeight: 1.5 }}>{c.detalle}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="card">
+            <div className="empty">
+              Todavía no hay un plan de contenido activo para este período. En cuanto lo aprobemos, va a aparecer acá.
+            </div>
+          </div>
+        )}
+
+        {/* Próximas publicaciones */}
+        {upcoming.length > 0 && (
+          <div className="card">
+            <div className="card-label">Próximas semanas</div>
+            <h2 className="card-title">Lo que viene</h2>
+            <ul className="pub-list">
+              {upcoming.map((p) => (
+                <li key={p.id} className="pub">
+                  <div className="pub-date">{fmtDate(p.fecha_publicacion)}</div>
+                  <div className="pub-title">{p.titulo}</div>
+                  <div className="pub-meta" style={{ textTransform: "capitalize" }}>
+                    {p.tipo} · {p.red}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="footer">
+          {AGENCY.brand} · {AGENCY.legal_name}
+          <br />
+          ¿Querés cambiar algo? Hablanos por WhatsApp.
+        </div>
+      </div>
+    </>
+  );
+}

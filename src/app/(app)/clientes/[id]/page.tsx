@@ -33,6 +33,7 @@ import { ApprovalLink } from "@/components/approval-link";
 import { ClientStatusToggle } from "@/components/client-status-toggle";
 import { ClientListEditor } from "@/components/client-list-editor";
 import { DocumentsManager, type DocumentRow } from "@/components/documents-manager";
+import { ClientPortalLink } from "@/components/client-portal-link";
 import { ClientMeetingsCard } from "@/components/client-meetings-card";
 import type { ClientService } from "@/lib/types";
 
@@ -70,6 +71,7 @@ export default async function ClientDetail({
     { data: services },
     { data: clientDocs },
     { data: calConns },
+    { data: portalToken },
   ] = await Promise.all([
     supabase
       .from("clients")
@@ -97,6 +99,14 @@ export default async function ClientDetail({
       .select("id")
       .or(`owner_user_id.eq.${me.id},visibility.eq.shared`)
       .limit(1),
+    admin
+      .from("client_portal_tokens")
+      .select("token, last_seen_at")
+      .eq("cliente_id", params.id)
+      .is("revoked_at", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   if (!client) notFound();
@@ -230,6 +240,13 @@ export default async function ClientDetail({
           <ClientServicesEditor clienteId={c.id} services={(services ?? []) as ClientService[]} />
         </CardContent>
       </Card>
+
+      {/* Portal del cliente (link público) */}
+      <ClientPortalLink
+        clienteId={c.id}
+        initialToken={(portalToken as { token?: string } | null)?.token ?? null}
+        initialLastSeen={(portalToken as { last_seen_at?: string | null } | null)?.last_seen_at ?? null}
+      />
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="md:col-span-2">

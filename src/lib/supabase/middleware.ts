@@ -1,7 +1,25 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/auth", "/aprobacion"];
+/**
+ * Rutas que NO requieren sesion de Supabase.
+ * Incluye:
+ *  - Login / auth / aprobacion (publico para que el cliente apruebe sin login)
+ *  - /c/<token> y /api/c/<token>/* → portal magico del cliente (token propio)
+ *  - /contrato/cliente, /diagnostico/cliente, /plan/cliente → PDFs publicos por id
+ *  - /api/cron/* → endpoints de Vercel Cron, autenticados via Bearer CRON_SECRET
+ */
+const PUBLIC_PATHS = [
+  "/login",
+  "/auth",
+  "/aprobacion",
+  "/c/",
+  "/api/c/",
+  "/contrato/cliente/",
+  "/diagnostico/cliente/",
+  "/plan/cliente/",
+  "/api/cron/",
+];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });

@@ -12,7 +12,7 @@
     },
     {
       "path": "/api/cron/due-notifications",
-      "schedule": "0 12,16,20 * * 1-5"
+      "schedule": "0 12 * * *"
     }
   ]
 }

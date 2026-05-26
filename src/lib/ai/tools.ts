@@ -95,6 +95,67 @@ export const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "update_task_due_date",
+    description:
+      "Cambia la fecha límite de una tarea. Usalo cuando el usuario pida 'movéme la fecha de X al Y', 'reprogramá esa tarea', 'pasala para el miércoles', etc. Necesitás el ID o el título de la tarea.",
+    input_schema: {
+      type: "object",
+      properties: {
+        task_id: { type: "string", description: "UUID de la tarea." },
+        task_titulo: {
+          type: "string",
+          description: "Si no tenés el ID, pasá el título exacto o búsqueda parcial.",
+        },
+        nueva_fecha: {
+          type: "string",
+          description:
+            "Nueva fecha límite en formato YYYY-MM-DD (ej '2026-06-15'). Pasá una cadena vacía o null para quitar la fecha límite.",
+        },
+      },
+      required: ["nueva_fecha"],
+    },
+  },
+  {
+    name: "update_task_priority",
+    description:
+      "Cambia la prioridad de una tarea. Útil para 'marcá esa tarea como urgente', 'bajá la prioridad de X'.",
+    input_schema: {
+      type: "object",
+      properties: {
+        task_id: { type: "string", description: "UUID de la tarea." },
+        task_titulo: {
+          type: "string",
+          description: "Si no tenés el ID, pasá el título exacto o búsqueda parcial.",
+        },
+        nueva_prioridad: {
+          type: "string",
+          enum: ["baja", "media", "alta", "urgente"],
+        },
+      },
+      required: ["nueva_prioridad"],
+    },
+  },
+  {
+    name: "reassign_task",
+    description:
+      "Reasigna una tarea a otra persona del equipo. Útil para 'pasáselo a X', 'que lo haga Y'. Necesitás el ID o título de la tarea y el nombre del nuevo responsable.",
+    input_schema: {
+      type: "object",
+      properties: {
+        task_id: { type: "string", description: "UUID de la tarea." },
+        task_titulo: {
+          type: "string",
+          description: "Si no tenés el ID, pasá el título exacto o búsqueda parcial.",
+        },
+        nuevo_responsable_nombre: {
+          type: "string",
+          description: "Nombre del nuevo responsable (búsqueda parcial). Ej: 'Luz'.",
+        },
+      },
+      required: ["nuevo_responsable_nombre"],
+    },
+  },
+  {
     name: "list_clients",
     description: "Lista clientes con info básica (nombre, pack, estado, responsable).",
     input_schema: {
@@ -451,6 +512,75 @@ export async function runTool(
         const { error } = await sb.from("tasks").update({ estado: input.nuevo_estado }).eq("id", id);
         if (error) return { ok: false, error: error.message };
         return { ok: true, data: { id, nuevo_estado: input.nuevo_estado } };
+      }
+
+      case "update_task_due_date": {
+        let id = input.task_id as string | undefined;
+        if (!id && input.task_titulo) {
+          const { data } = await sb
+            .from("tasks")
+            .select("id")
+            .ilike("titulo", `%${input.task_titulo}%`)
+            .limit(1)
+            .maybeSingle();
+          id = data?.id;
+        }
+        if (!id) return { ok: false, error: "No se pudo identificar la tarea." };
+        const raw = input.nueva_fecha as string | null | undefined;
+        const value = raw && String(raw).trim() !== "" ? String(raw) : null;
+        const { error } = await sb
+          .from("tasks")
+          .update({ fecha_limite: value })
+          .eq("id", id);
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data: { id, nueva_fecha: value } };
+      }
+
+      case "update_task_priority": {
+        let id = input.task_id as string | undefined;
+        if (!id && input.task_titulo) {
+          const { data } = await sb
+            .from("tasks")
+            .select("id")
+            .ilike("titulo", `%${input.task_titulo}%`)
+            .limit(1)
+            .maybeSingle();
+          id = data?.id;
+        }
+        if (!id) return { ok: false, error: "No se pudo identificar la tarea." };
+        const { error } = await sb
+          .from("tasks")
+          .update({ prioridad: String(input.nueva_prioridad) })
+          .eq("id", id);
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data: { id, nueva_prioridad: input.nueva_prioridad } };
+      }
+
+      case "reassign_task": {
+        let id = input.task_id as string | undefined;
+        if (!id && input.task_titulo) {
+          const { data } = await sb
+            .from("tasks")
+            .select("id")
+            .ilike("titulo", `%${input.task_titulo}%`)
+            .limit(1)
+            .maybeSingle();
+          id = data?.id;
+        }
+        if (!id) return { ok: false, error: "No se pudo identificar la tarea." };
+        const uid = await findUserId(sb, String(input.nuevo_responsable_nombre));
+        if (!uid) {
+          return {
+            ok: false,
+            error: `No encontré usuario llamado "${input.nuevo_responsable_nombre}"`,
+          };
+        }
+        const { error } = await sb
+          .from("tasks")
+          .update({ asignado_a_id: uid })
+          .eq("id", id);
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data: { id, nuevo_responsable_id: uid } };
       }
 
       case "list_clients": {

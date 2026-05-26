@@ -3,7 +3,8 @@ import { Megaphone, BookOpen } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { requireUser } from "@/lib/auth";
-import { getChangelogEntries } from "@/lib/help/changelog";
+import { getChangelogEntries, latestEntryDate } from "@/lib/help/changelog";
+import { NovedadesSeenMarker } from "@/components/novedades-seen-marker";
 
 // Markdown estatico (changelog.md). Revalida cada 5 min.
 export const revalidate = 300;
@@ -20,9 +21,11 @@ function formatDate(iso: string) {
 export default async function NovedadesPage() {
   await requireUser();
   const entries = getChangelogEntries();
+  const latest = latestEntryDate();
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      <NovedadesSeenMarker latestDate={latest} />
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-start gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/15 text-primary">

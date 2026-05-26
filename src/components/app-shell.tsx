@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -87,14 +87,37 @@ function initials(nombre: string) {
 function SidebarContent({
   user,
   badges = {},
+  novedadesLatestDate,
   onNavigate,
 }: {
   user: AppUser;
   badges?: Record<string, number>;
+  novedadesLatestDate?: string | null;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   const groups = visibleNavGroups(user);
+
+  // Sobreescribe el badge de novedades si el usuario ya las vio.
+  // El marker en /novedades guarda la ultima fecha vista en localStorage; aca
+  // comparamos para apagar el badge hasta que aparezca una entry nueva.
+  const [novedadesSeen, setNovedadesSeen] = useState<string | null>(null);
+  useEffect(() => {
+    function read() {
+      try {
+        setNovedadesSeen(localStorage.getItem("jd:novedades-last-seen"));
+      } catch {}
+    }
+    read();
+    window.addEventListener("jd:novedades-seen", read);
+    window.addEventListener("storage", read);
+    return () => {
+      window.removeEventListener("jd:novedades-seen", read);
+      window.removeEventListener("storage", read);
+    };
+  }, []);
+  const novedadesAlreadySeen =
+    novedadesLatestDate && novedadesSeen && novedadesSeen >= novedadesLatestDate;
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex items-center gap-2 px-5 py-5">
@@ -115,7 +138,9 @@ function SidebarContent({
               const Icon = ICONS[item.icon] ?? ListChecks;
               const active =
                 pathname === item.href || pathname.startsWith(item.href + "/");
-              const badge = badges[item.href] ?? 0;
+              const rawBadge = badges[item.href] ?? 0;
+              const badge =
+                item.href === "/novedades" && novedadesAlreadySeen ? 0 : rawBadge;
               return (
                 <Link
                   key={item.href}
@@ -166,12 +191,14 @@ export function AppShell({
   bell,
   quickLinks,
   badges,
+  novedadesLatestDate,
   children,
 }: {
   user: AppUser;
   bell?: React.ReactNode;
   quickLinks?: QuickLinkRow[];
   badges?: Record<string, number>;
+  novedadesLatestDate?: string | null;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -180,14 +207,23 @@ export function AppShell({
     <div className="flex min-h-screen">
       <aside className="hidden w-60 shrink-0 md:block">
         <div className="fixed h-screen w-60">
-          <SidebarContent user={user} badges={badges} />
+          <SidebarContent
+            user={user}
+            badges={badges}
+            novedadesLatestDate={novedadesLatestDate}
+          />
         </div>
       </aside>
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="left" className="w-64 p-0">
           <SheetTitle className="sr-only">Menú</SheetTitle>
-          <SidebarContent user={user} badges={badges} onNavigate={() => setOpen(false)} />
+          <SidebarContent
+            user={user}
+            badges={badges}
+            novedadesLatestDate={novedadesLatestDate}
+            onNavigate={() => setOpen(false)}
+          />
         </SheetContent>
       </Sheet>
 

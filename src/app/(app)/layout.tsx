@@ -64,8 +64,9 @@ export default async function AppLayout({
   const chatUnreadNum =
     typeof chatUnread === "number" ? chatUnread : Number(chatUnread ?? 0);
 
-  const { hasRecentChanges } = await import("@/lib/help/changelog");
+  const { hasRecentChanges, latestEntryDate } = await import("@/lib/help/changelog");
   const showNovedadesBadge = hasRecentChanges(14);
+  const novedadesLatestDate = latestEntryDate();
 
   const badges: Record<string, number> = {
     "/chat": chatUnreadNum,
@@ -79,6 +80,7 @@ export default async function AppLayout({
       bell={bell}
       quickLinks={(links ?? []) as QuickLinkRow[]}
       badges={badges}
+      novedadesLatestDate={novedadesLatestDate}
     >
       <RealtimeBadgesSync userId={user.id} />
       {children}

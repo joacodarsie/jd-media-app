@@ -1320,7 +1320,10 @@ function MessageRow({
         "group relative flex gap-3 rounded-lg px-2.5 transition-colors hover:bg-muted/40",
         compact ? "py-0.5" : "pb-1.5 pt-2.5",
         mentionsMe &&
-          "bg-primary/5 hover:bg-primary/10 before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[2px] before:rounded-full before:bg-primary/60"
+          "bg-primary/5 hover:bg-primary/10 before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[2px] before:rounded-full before:bg-primary/60",
+        isMe &&
+          !mentionsMe &&
+          "bg-accent/40 hover:bg-accent/55 before:absolute before:right-0 before:top-1.5 before:bottom-1.5 before:w-[2px] before:rounded-full before:bg-accent-foreground/35"
       )}
     >
       {!compact ? (

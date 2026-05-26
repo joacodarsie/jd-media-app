@@ -12,7 +12,7 @@ export const AGENCY = {
   jurisdiccion: "tribunales de Córdoba, Argentina",
   bank: {
     nombre: "Naranja X",
-    alias: "joacodarsie.nx",
+    alias: "jdmedia",
     titular: "Franco Joaquín Darsie",
     cuil: "20-44607986-8",
   },

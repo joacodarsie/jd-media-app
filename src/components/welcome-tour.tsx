@@ -124,12 +124,12 @@ export function WelcomeTour({
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-2 border-t bg-muted/30 px-5 py-3">
-          <div className="flex gap-1">
+        <div className="flex flex-col gap-3 border-t bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2 sm:px-5">
+          <div className="flex flex-wrap items-center gap-1">
             {steps.map((_, i) => (
               <span
                 key={i}
-                className={`h-1.5 w-5 rounded-full transition ${
+                className={`h-1.5 w-4 rounded-full transition sm:w-5 ${
                   i === idx
                     ? "bg-primary"
                     : i < idx
@@ -139,7 +139,7 @@ export function WelcomeTour({
               />
             ))}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
             {!isFirst && (
               <Button
                 variant="ghost"

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Plus, Sparkles } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -5,9 +6,6 @@ import { Button } from "@/components/ui/button";
 import { LeadKanban, type LeadRow } from "@/components/lead-kanban";
 import { LeadFormDialog } from "@/components/lead-form-dialog";
 import { HelpTrigger } from "@/components/help-trigger";
-
-const POST_MEET_GPT_URL =
-  "https://chatgpt.com/g/g-69f0cf3520608191b675561231872228-jd-closer-mensajes-post-meet";
 
 export const dynamic = "force-dynamic";
 
@@ -105,16 +103,14 @@ export default async function ComercialPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button asChild variant="outline" className="gap-1.5">
-            <a
-              href={POST_MEET_GPT_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Abre el GPT JD Closer para generar mensaje post-meet"
+            <Link
+              href="/comercial/post-meet"
+              title="Generar mensaje post-meet con IA"
             >
               <Sparkles className="h-4 w-4 text-primary" />
               <span className="hidden sm:inline">Mensaje post-meet</span>
-              <span className="sm:hidden">Post-meet IA</span>
-            </a>
+              <span className="sm:hidden">Post-meet</span>
+            </Link>
           </Button>
           <LeadFormDialog
             mode="create"
@@ -133,17 +129,15 @@ export default async function ComercialPage() {
         <div className="flex items-start gap-2">
           <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
           <p>
-            <b>Mensaje post-meet</b>: después de cada primera reunión, abrí el{" "}
-            <a
-              href={POST_MEET_GPT_URL}
-              target="_blank"
-              rel="noopener noreferrer"
+            <b>Mensaje post-meet</b>: después de cada primera reunión,{" "}
+            <Link
+              href="/comercial/post-meet"
               className="font-semibold text-primary underline-offset-2 hover:underline"
             >
-              GPT &quot;JD Closer&quot;
-            </a>
-            , pegale la transcripción (o tu resumen) y te devuelve el mensaje
-            listo para mandarle al cliente.
+              andá al workspace
+            </Link>
+            , pegá la transcripción (o un resumen) y la IA te devuelve el
+            mensaje de follow-up listo, con el tono y el contexto de JD Media.
           </p>
         </div>
       </div>

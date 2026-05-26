@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdmin } from "@/lib/supabase/admin";
 
 async function ctx() {
   const supabase = createClient();
@@ -153,7 +154,11 @@ export async function sendMessage(
       tipo: "mencion" as const,
       mensaje,
     }));
-    await supabase.from("notifications").insert(notifs);
+    // Usar admin client: RLS de notifications restringe INSERT a auth.uid(),
+    // entonces el cliente normal del sender no puede crear notifs para
+    // otros usuarios. Service role bypassa esa restriccion.
+    const admin = createAdmin();
+    await admin.from("notifications").insert(notifs);
   }
 
   revalidatePath("/chat");

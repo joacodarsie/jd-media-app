@@ -49,12 +49,16 @@ Cada lead debería tener **próxima acción + fecha**. Si la fecha venció, apar
 - **Loguea cada contacto** en los comentarios del lead.
 - **Cerrá los perdidos**: si el lead te dijo que no, registralo como perdido + motivo. No los dejes en limbo.
 
-## Mensaje post-meet (GPT JD Closer)
+## Mensaje post-meet (workspace IA integrado)
 
-Después de cada **primera reunión** con un posible cliente, usá el GPT personalizado **"JD Closer"** para generar el mensaje de follow-up listo para enviar.
+Después de cada **primera reunión** con un posible cliente, usá el workspace **"Mensaje post-meet"** para generar el follow-up listo para enviar.
 
-- Botón **"Mensaje post-meet"** arriba a la derecha en `/comercial`, o link directo: <https://chatgpt.com/g/g-69f0cf3520608191b675561231872228-jd-closer-mensajes-post-meet>
-- Pegale **la transcripción** de la meet (Google Meet → "Notas de IA" o Otter) o tu **resumen escrito** con los puntos clave y dolores que detectaste
-- Te devuelve el mensaje redactado con el tono de JD Media, listo para copiar y mandar por WhatsApp / mail.
+- Botón **"Mensaje post-meet"** arriba a la derecha en `/comercial`, o link directo: `/comercial/post-meet`
+- Pegá **la transcripción** de la meet (Google Meet → "Notas de IA" o Otter) o tu **resumen escrito** con los puntos clave y dolores que detectaste
+- Opcional: nombre del contacto para que el mensaje sea más personalizado
+- Tocá **"Generar mensaje"** y la IA devuelve el mensaje listo, con el tono y el contexto de JD Media
+- Botón de **copiar** para pegar directo al WhatsApp del cliente
+
+La IA usa un system prompt entrenado con la voz de JD Media: recap, refleja objetivos, propone próximo paso, sin emojis ni formalismos pesados.
 
 Después actualizá el lead: mové a **Contactado** o **Propuesta** según corresponda, y dejale los **comentarios** con los puntos que salieron en la meet.

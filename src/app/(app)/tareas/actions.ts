@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdmin } from "@/lib/supabase/admin";
 import type { TaskLink } from "@/lib/types";
 
 async function uid() {
@@ -220,8 +221,12 @@ export async function addComment(taskId: string, contenido: string) {
     });
   }
 
-  if (notifs.length)
-    await supabase.from("notifications").insert(notifs);
+  // RLS de notifications restringe INSERT a auth.uid(). Para crear notifs
+  // dirigidas a OTROS usuarios necesitamos service role.
+  if (notifs.length) {
+    const admin = createAdmin();
+    await admin.from("notifications").insert(notifs);
+  }
 
   revalidatePath(`/tareas/${taskId}`);
   return { ok: true };

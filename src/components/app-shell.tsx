@@ -126,7 +126,7 @@ function SidebarContent({
         </div>
         <span className="text-lg font-bold">JD Media</span>
       </div>
-      <nav className="flex-1 space-y-4 overflow-y-auto px-3 pb-4">
+      <nav className="sidebar-scroll flex-1 space-y-4 overflow-y-auto px-3 pb-4">
         {groups.map((group, gi) => (
           <div key={group.label ?? `g-${gi}`} className="space-y-0.5">
             {group.label && (

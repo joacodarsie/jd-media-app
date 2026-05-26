@@ -36,13 +36,31 @@ export default async function PersonaDetail({
 
   const supabase = createClient();
   const [{ data: user }, { data: comp }] = await Promise.all([
-    supabase.from("users").select("*").eq("id", params.id).maybeSingle(),
-    supabase.from("compensation").select("*").eq("user_id", params.id).maybeSingle(),
+    supabase
+      .from("users")
+      .select(
+        "id, nombre, email, avatar_url, area, rol, position_id, secondary_position_ids, activo, telefono, fecha_ingreso"
+      )
+      .eq("id", params.id)
+      .maybeSingle(),
+    supabase
+      .from("compensation")
+      .select("user_id, monto, moneda, frecuencia, forma_pago, notas, updated_at")
+      .eq("user_id", params.id)
+      .maybeSingle(),
   ]);
   if (!user) notFound();
   const u = user as AppUser;
   const position = u.position_id
-    ? ((await supabase.from("positions").select("*").eq("id", u.position_id).maybeSingle()).data as Position | null)
+    ? ((
+        await supabase
+          .from("positions")
+          .select(
+            "id, nombre, area, descripcion, services, pago_default_monto, pago_default_moneda, pago_default_frecuencia, pago_default_forma, pago_default_notas"
+          )
+          .eq("id", u.position_id)
+          .maybeSingle()
+      ).data as Position | null)
     : null;
   const c = comp as Compensation | null;
 

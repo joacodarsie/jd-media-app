@@ -19,7 +19,7 @@ export default async function AgencyPageDetail({
   const supabase = createClient();
   const { data: page } = await supabase
     .from("agency_pages")
-    .select("*")
+    .select("slug, title, kind, content, notion_url, updated_at")
     .eq("slug", params.slug)
     .maybeSingle();
 

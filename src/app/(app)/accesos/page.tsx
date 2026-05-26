@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, KeyRound, Plus, ShieldAlert } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getNotificationQueueStats } from "@/lib/cache";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AgencyPageDialog } from "@/components/agency-page-dialog";
@@ -37,10 +38,7 @@ export default async function AccesosPage() {
     { data: pages },
     { data: usersData },
     { data: secret },
-    pendCount,
-    sentCount,
-    failedCount,
-    { count: optinCount },
+    waStats,
   ] = await Promise.all([
     supabase
       .from("agency_pages")
@@ -54,34 +52,13 @@ export default async function AccesosPage() {
       .select("valor")
       .eq("clave", "wa_queue_secret")
       .maybeSingle(),
-    supabase
-      .from("notification_queue")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "pendiente"),
-    supabase
-      .from("notification_queue")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "enviado"),
-    supabase
-      .from("notification_queue")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "fallido"),
-    supabase
-      .from("users")
-      .select("id", { count: "exact", head: true })
-      .eq("whatsapp_optin", true)
-      .not("whatsapp_phone", "is", null),
+    // Cache de 60s: antes eran 4 COUNT(*) exact por nav (~80ms cada uno).
+    getNotificationQueueStats(),
   ]);
 
   const list = pages ?? [];
   const users = (usersData ?? []) as TeamRow[];
   const hasSecret = !!secret?.valor;
-  const waStats = {
-    pendiente: pendCount.count ?? 0,
-    enviado: sentCount.count ?? 0,
-    fallido: failedCount.count ?? 0,
-    optinUsers: optinCount ?? 0,
-  };
   const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 
   return (

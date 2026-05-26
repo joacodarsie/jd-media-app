@@ -79,3 +79,41 @@ export function invalidateClientsCache() {
 export function invalidatePositionsCache() {
   revalidateTag(CACHE_TAGS.positions);
 }
+
+/**
+ * Conteos de notification_queue para el panel de /accesos. Se actualizan
+ * lentamente y un COUNT(*) exacto por estado era ~80ms x 3 estados.
+ * Cache de 60s elimina ese hit en navegaciones repetidas.
+ */
+export const getNotificationQueueStats = unstable_cache(
+  async () => {
+    const admin = createAdmin();
+    const [pend, sent, failed, optin] = await Promise.all([
+      admin
+        .from("notification_queue")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pendiente"),
+      admin
+        .from("notification_queue")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "enviado"),
+      admin
+        .from("notification_queue")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "fallido"),
+      admin
+        .from("users")
+        .select("id", { count: "exact", head: true })
+        .eq("whatsapp_optin", true)
+        .not("whatsapp_phone", "is", null),
+    ]);
+    return {
+      pendiente: pend.count ?? 0,
+      enviado: sent.count ?? 0,
+      fallido: failed.count ?? 0,
+      optinUsers: optin.count ?? 0,
+    };
+  },
+  ["notification-queue-stats"],
+  { revalidate: 60 }
+);

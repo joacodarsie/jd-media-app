@@ -1,6 +1,5 @@
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { ensureDueNotifications } from "@/lib/notifications";
 import type { Notification } from "@/lib/types";
 import { AppShell } from "@/components/app-shell";
 import { NotificationBell } from "@/components/notification-bell";
@@ -17,10 +16,9 @@ export default async function AppLayout({
   const user = await requireUser();
   const supabase = createClient();
 
-  // Genera notificaciones "vencida" / "proxima a vencer" en cada nav.
-  // El cron diario (`/api/cron/due-notifications`) es el respaldo. Con region gru1
-  // (misma que Supabase) esto agrega ~5-10ms, despreciable.
-  await ensureDueNotifications(supabase, user.id);
+  // Las notificaciones "vencida" / "proxima a vencer" se generan ahora SOLO en
+  // dashboard/page.tsx (la primera pantalla que mira el usuario al loguearse)
+  // y en cron diario. Antes corria aca en cada nav y agregaba ~10ms a TODO.
 
   const [
     { data: items },

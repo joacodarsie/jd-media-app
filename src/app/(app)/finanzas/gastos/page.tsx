@@ -32,7 +32,9 @@ export default async function GastosPage({
   const [{ data }, { data: clientsData }] = await Promise.all([
     supabase
       .from("expenses")
-      .select("*")
+      .select(
+        "id, concepto, categoria, proveedor, monto, moneda, fecha_pago, fecha_programada, periodo, recurrente, recurrente_dia, cliente_id, notas, created_at"
+      )
       .order("fecha_pago", { ascending: false, nullsFirst: false })
       .order("fecha_programada", { ascending: false, nullsFirst: false }),
     supabase

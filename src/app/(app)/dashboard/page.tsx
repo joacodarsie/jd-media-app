@@ -16,6 +16,7 @@ import {
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
+import { ensureDueNotifications } from "@/lib/notifications";
 import { listEventsForUser } from "@/lib/google-calendar";
 import { PRIORITY_ORDER } from "@/lib/constants";
 import type { PublicationWithRels, TaskWithRels } from "@/lib/types";
@@ -90,12 +91,16 @@ export default async function DashboardPage() {
 
   const admin = createAdmin();
   const [
+    ,
     { data: myClients },
     { data: taskData },
     { data: calConns },
     { data: delegatedRaw },
     { data: recentNotifsRaw },
   ] = await Promise.all([
+    // Genera notifs "vencida"/"proxima a vencer" en paralelo. Antes corria en
+    // el layout en CADA nav (~10ms x nav). Ahora solo al entrar al dashboard.
+    ensureDueNotifications(supabase, user.id).catch(() => undefined),
     supabase
       .from("clients")
       .select("id, nombre, pack, estado")

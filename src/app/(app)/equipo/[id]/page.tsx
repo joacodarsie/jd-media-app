@@ -28,7 +28,13 @@ export default async function PositionDetail({
     { data: allPositions },
     { data: servicesData },
   ] = await Promise.all([
-    supabase.from("positions").select("*").eq("id", params.id).maybeSingle(),
+    supabase
+      .from("positions")
+      .select(
+        "id, nombre, area, descripcion, services, pago_default_monto, pago_default_moneda, pago_default_frecuencia, pago_default_forma, pago_default_notas"
+      )
+      .eq("id", params.id)
+      .maybeSingle(),
     supabase
       .from("users")
       .select("id, nombre, avatar_url, position_id, area")

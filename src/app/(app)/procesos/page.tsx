@@ -18,7 +18,7 @@ export default async function ProcesosPage() {
   const supabase = createClient();
   const { data: pages } = await supabase
     .from("agency_pages")
-    .select("*")
+    .select("slug, title, kind, orden, content, notion_url, updated_at")
     .in("kind", ["proceso", "plantilla", "otro"])
     .order("kind")
     .order("orden");

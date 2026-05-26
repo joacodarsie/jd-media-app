@@ -20,7 +20,7 @@ export default async function AgenciaPage() {
   const [pagesRes, linksRes, servicesRes] = await Promise.all([
     supabase
       .from("agency_pages")
-      .select("*")
+      .select("slug, title, kind, orden, content, notion_url, updated_at")
       .in("kind", ["fundamentos", "buyer_persona"])
       .order("kind")
       .order("orden"),

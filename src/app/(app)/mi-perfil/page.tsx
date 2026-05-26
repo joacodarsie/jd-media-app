@@ -18,9 +18,17 @@ export default async function MiPerfilPage() {
 
   const [{ data: position }, { data: comp }] = await Promise.all([
     me.position_id
-      ? supabase.from("positions").select("*").eq("id", me.position_id).maybeSingle()
+      ? supabase
+          .from("positions")
+          .select("id, nombre, area, descripcion, services, pago_default_monto, pago_default_moneda, pago_default_frecuencia")
+          .eq("id", me.position_id)
+          .maybeSingle()
       : Promise.resolve({ data: null }),
-    supabase.from("compensation").select("*").eq("user_id", me.id).maybeSingle(),
+    supabase
+      .from("compensation")
+      .select("user_id, monto, moneda, frecuencia, notas, updated_at")
+      .eq("user_id", me.id)
+      .maybeSingle(),
   ]);
 
   return (

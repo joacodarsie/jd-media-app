@@ -1,26 +1,36 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   AlertCircle,
   CalendarDays,
   Filter,
   Kanban,
   List,
+  Loader2,
   Pencil,
   Plus,
   Search,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react";
+import {
+  bulkUpdateTaskStatus,
+  bulkDeleteTasks,
+  bulkReassignTasks,
+} from "@/app/(app)/tareas/actions";
 import {
   AREAS,
   PRIORITY_LABEL,
   PRIORITY_ORDER,
   PRIORITY_BADGE,
   STATUS_LABEL,
+  STATUS_ORDER,
 } from "@/lib/constants";
 import { fmtDate, dueState } from "@/lib/dates";
 import { HelpTrigger } from "@/components/help-trigger";
@@ -83,6 +93,7 @@ export function TaskViews({
   clients: Pick<Client, "id" | "nombre">[];
   currentUserId: string;
 }) {
+  const router = useRouter();
   const [view, setView] = useState<ViewMode>("lista");
   const [quick, setQuick] = useState<QuickFilter>("mias");
   const [q, setQ] = useState("");
@@ -92,6 +103,22 @@ export function TaskViews({
   const [cliente, setCliente] = useState(ALL);
   const [area, setArea] = useState(ALL);
   const [orden, setOrden] = useState("limite");
+
+  // Bulk selection (solo en vista lista)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkPending, startBulk] = useTransition();
+
+  function toggleSelect(id: string) {
+    setSelectedIds((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
 
   // Persistir vista preferida
   useEffect(() => {
@@ -342,18 +369,76 @@ export function TaskViews({
 
       {/* Content */}
       {view === "lista" && (
-        <div className="space-y-2">
+        <div className="space-y-2 pb-20">
           {filtered.length === 0 ? (
             <EmptyState filter={quick} />
           ) : (
             filtered.map((t) => (
-              <TaskRow key={t.id} task={t} users={users} clients={clients} />
+              <TaskRow
+                key={t.id}
+                task={t}
+                users={users}
+                clients={clients}
+                selected={selectedIds.has(t.id)}
+                onToggleSelect={() => toggleSelect(t.id)}
+              />
             ))
           )}
         </div>
       )}
       {view === "kanban" && <KanbanBoard tasks={filtered} />}
       {view === "calendario" && <TaskCalendar tasks={filtered} />}
+
+      {view === "lista" && selectedIds.size > 0 && (
+        <BulkActionsBar
+          count={selectedIds.size}
+          pending={bulkPending}
+          users={users}
+          onClear={clearSelection}
+          onChangeStatus={(estado) =>
+            startBulk(async () => {
+              const ids = Array.from(selectedIds);
+              const res = await bulkUpdateTaskStatus(ids, estado);
+              if (res?.error) toast.error(res.error);
+              else {
+                toast.success(`${res.count} tareas actualizadas`);
+                clearSelection();
+                router.refresh();
+              }
+            })
+          }
+          onReassign={(uid) =>
+            startBulk(async () => {
+              const ids = Array.from(selectedIds);
+              const res = await bulkReassignTasks(ids, uid);
+              if (res?.error) toast.error(res.error);
+              else {
+                toast.success(`${res.count} tareas reasignadas`);
+                clearSelection();
+                router.refresh();
+              }
+            })
+          }
+          onDelete={() => {
+            if (
+              !confirm(
+                `¿Eliminar ${selectedIds.size} tareas? Esta acción no se puede deshacer.`
+              )
+            )
+              return;
+            startBulk(async () => {
+              const ids = Array.from(selectedIds);
+              const res = await bulkDeleteTasks(ids);
+              if (res?.error) toast.error(res.error);
+              else {
+                toast.success(`${res.count} tareas eliminadas`);
+                clearSelection();
+                router.refresh();
+              }
+            });
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -462,6 +547,80 @@ function FilterRow({
   );
 }
 
+function BulkActionsBar({
+  count,
+  pending,
+  users,
+  onClear,
+  onChangeStatus,
+  onReassign,
+  onDelete,
+}: {
+  count: number;
+  pending: boolean;
+  users: Pick<AppUser, "id" | "nombre">[];
+  onClear: () => void;
+  onChangeStatus: (estado: string) => void;
+  onReassign: (uid: string) => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="fixed inset-x-0 bottom-3 z-30 flex justify-center px-3 sm:bottom-5">
+      <div className="flex w-full max-w-2xl flex-wrap items-center gap-2 rounded-xl border bg-card px-3 py-2 shadow-xl ring-1 ring-primary/10">
+        <button
+          onClick={onClear}
+          className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+          title="Deseleccionar"
+        >
+          <X className="h-4 w-4" />
+        </button>
+        <span className="text-sm font-semibold">
+          {count} seleccionada{count !== 1 && "s"}
+        </span>
+        {pending && (
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+        )}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Select onValueChange={onChangeStatus} disabled={pending}>
+            <SelectTrigger className="h-8 w-[150px] text-xs">
+              <SelectValue placeholder="Cambiar estado…" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_ORDER.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {STATUS_LABEL[s]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select onValueChange={onReassign} disabled={pending}>
+            <SelectTrigger className="h-8 w-[150px] text-xs">
+              <SelectValue placeholder="Reasignar a…" />
+            </SelectTrigger>
+            <SelectContent>
+              {users.map((u) => (
+                <SelectItem key={u.id} value={u.id}>
+                  {u.nombre}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onDelete}
+            disabled={pending}
+            className="h-8 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            title="Eliminar todas"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function EmptyState({ filter }: { filter: QuickFilter }) {
   const content: Record<
     QuickFilter,
@@ -508,14 +667,35 @@ function TaskRow({
   task: t,
   users,
   clients,
+  selected,
+  onToggleSelect,
 }: {
   task: TaskWithRels;
   users: Pick<AppUser, "id" | "nombre">[];
   clients: Pick<Client, "id" | "nombre">[];
+  selected: boolean;
+  onToggleSelect: () => void;
 }) {
   const due = dueState(t.fecha_limite, t.estado);
   return (
-    <div className="flex flex-col gap-3 rounded-lg border bg-card p-3 transition-colors hover:border-primary/40 sm:flex-row sm:items-center">
+    <div
+      className={cn(
+        "flex flex-col gap-3 rounded-lg border bg-card p-3 transition-colors hover:border-primary/40 sm:flex-row sm:items-center",
+        selected && "border-primary/60 bg-primary/5 hover:border-primary"
+      )}
+    >
+      <label
+        className="flex shrink-0 cursor-pointer items-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggleSelect}
+          aria-label={`Seleccionar ${t.titulo}`}
+          className="h-4 w-4 cursor-pointer rounded border-muted-foreground/40 accent-primary"
+        />
+      </label>
       <div className="min-w-0 flex-1">
         <Link href={`/tareas/${t.id}`} className="font-medium hover:underline">
           {t.titulo}

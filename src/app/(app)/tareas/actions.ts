@@ -103,6 +103,45 @@ export async function deleteTask(id: string) {
   return { ok: true };
 }
 
+/** Actualiza el estado de varias tareas a la vez (bulk action). */
+export async function bulkUpdateTaskStatus(ids: string[], estado: string) {
+  const { supabase } = await uid();
+  if (!ids.length) return { error: "Sin selección." };
+  const { error } = await supabase
+    .from("tasks")
+    .update({ estado })
+    .in("id", ids);
+  if (error) return { error: error.message };
+  revalidatePath("/tareas");
+  revalidatePath("/dashboard");
+  return { ok: true, count: ids.length };
+}
+
+/** Elimina varias tareas a la vez (bulk action). */
+export async function bulkDeleteTasks(ids: string[]) {
+  const { supabase } = await uid();
+  if (!ids.length) return { error: "Sin selección." };
+  const { error } = await supabase.from("tasks").delete().in("id", ids);
+  if (error) return { error: error.message };
+  revalidatePath("/tareas");
+  revalidatePath("/dashboard");
+  return { ok: true, count: ids.length };
+}
+
+/** Reasigna varias tareas al mismo usuario (bulk action). */
+export async function bulkReassignTasks(ids: string[], newUserId: string) {
+  const { supabase } = await uid();
+  if (!ids.length) return { error: "Sin selección." };
+  const { error } = await supabase
+    .from("tasks")
+    .update({ asignado_a_id: newUserId })
+    .in("id", ids);
+  if (error) return { error: error.message };
+  revalidatePath("/tareas");
+  revalidatePath("/dashboard");
+  return { ok: true, count: ids.length };
+}
+
 export async function saveLinks(id: string, links: TaskLink[]) {
   const { supabase } = await uid();
   const { error } = await supabase

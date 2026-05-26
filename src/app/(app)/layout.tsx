@@ -20,7 +20,7 @@ export default async function AppLayout({
   // Genera notificaciones "vencida" / "proxima a vencer" en cada nav.
   // El cron diario (`/api/cron/due-notifications`) es el respaldo. Con region gru1
   // (misma que Supabase) esto agrega ~5-10ms, despreciable.
-  await ensureDueNotifications(user.id);
+  await ensureDueNotifications(supabase, user.id);
 
   const [
     { data: items },

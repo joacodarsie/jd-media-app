@@ -1,10 +1,13 @@
-import { Plus } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { LeadKanban, type LeadRow } from "@/components/lead-kanban";
 import { LeadFormDialog } from "@/components/lead-form-dialog";
 import { HelpTrigger } from "@/components/help-trigger";
+
+const POST_MEET_GPT_URL =
+  "https://chatgpt.com/g/g-69f0cf3520608191b675561231872228-jd-closer-mensajes-post-meet";
 
 export const dynamic = "force-dynamic";
 
@@ -100,16 +103,49 @@ export default async function ComercialPage() {
             el estado.
           </p>
         </div>
-        <LeadFormDialog
-          mode="create"
-          services={services ?? []}
-          users={users ?? []}
-          trigger={
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> Nuevo lead
-            </Button>
-          }
-        />
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" className="gap-1.5">
+            <a
+              href={POST_MEET_GPT_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Abre el GPT JD Closer para generar mensaje post-meet"
+            >
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span className="hidden sm:inline">Mensaje post-meet</span>
+              <span className="sm:hidden">Post-meet IA</span>
+            </a>
+          </Button>
+          <LeadFormDialog
+            mode="create"
+            services={services ?? []}
+            users={users ?? []}
+            trigger={
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> Nuevo lead
+              </Button>
+            }
+          />
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-xs text-foreground/80">
+        <div className="flex items-start gap-2">
+          <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+          <p>
+            <b>Mensaje post-meet</b>: después de cada primera reunión, abrí el{" "}
+            <a
+              href={POST_MEET_GPT_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-primary underline-offset-2 hover:underline"
+            >
+              GPT &quot;JD Closer&quot;
+            </a>
+            , pegale la transcripción (o tu resumen) y te devuelve el mensaje
+            listo para mandarle al cliente.
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">

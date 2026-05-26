@@ -4,7 +4,7 @@ description: Pipeline de ventas — desde lead nuevo hasta cliente firmado.
 category: Operación
 order: 30
 roles: [admin, coordinador, comercial, prospecting]
-updated: 2026-05-25
+updated: 2026-05-26
 ---
 
 `/comercial` es el pipeline comercial. Acá vivís el día a día de prospección y cierre.
@@ -48,3 +48,13 @@ Cada lead debería tener **próxima acción + fecha**. Si la fecha venció, apar
 - **No dejes leads sin próxima acción**. Si no sabés qué hacer, programá un follow-up de 7 días.
 - **Loguea cada contacto** en los comentarios del lead.
 - **Cerrá los perdidos**: si el lead te dijo que no, registralo como perdido + motivo. No los dejes en limbo.
+
+## Mensaje post-meet (GPT JD Closer)
+
+Después de cada **primera reunión** con un posible cliente, usá el GPT personalizado **"JD Closer"** para generar el mensaje de follow-up listo para enviar.
+
+- Botón **"Mensaje post-meet"** arriba a la derecha en `/comercial`, o link directo: <https://chatgpt.com/g/g-69f0cf3520608191b675561231872228-jd-closer-mensajes-post-meet>
+- Pegale **la transcripción** de la meet (Google Meet → "Notas de IA" o Otter) o tu **resumen escrito** con los puntos clave y dolores que detectaste
+- Te devuelve el mensaje redactado con el tono de JD Media, listo para copiar y mandar por WhatsApp / mail.
+
+Después actualizá el lead: mové a **Contactado** o **Propuesta** según corresponda, y dejale los **comentarios** con los puntos que salieron en la meet.

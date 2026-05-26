@@ -2,6 +2,19 @@
 title: Novedades
 ---
 
+## 2026-05-26 — Bloque de mejoras y fixes
+
+- ✨ **Comercial — Mensaje post-meet**: botón directo al GPT "JD Closer" en `/comercial` para generar el mensaje de follow-up listo después de cada primera reunión.
+- 🔒 **Auditoría de roles**: cerramos fugas — `/comercial`, `/equipo/capacity` y `/clientes/[id]` ahora chequean rol/asignación en el servidor (antes solo en el menú).
+- 🔑 **Accesos — Contraseñas visibles**: ahora podés ver y copiar la contraseña de cada usuario que crees desde el admin.
+- 👥 **Nuevo usuario más simple**: al crear un usuario, los permisos por sección se asignan automáticamente según el rol elegido. Preview en el form.
+- 💬 **Chat equipo**: cuando alguien te manda un DM, te llega notificación en la campana (antes solo si te mencionaba con @).
+- 🎤 **JDmedIA con dictado**: agregamos botón de micrófono en `/jdmedia` para dictar mensajes por voz (igual que el flotante).
+- 🛠 **JDmedIA con más poder**: ahora puede mover la fecha de una tarea, cambiar su prioridad y reasignarla.
+- 🎨 **Chat equipo**: mensajes propios se distinguen visualmente con fondo de color.
+- 🐛 **Tour**: el botón "Siguiente" ya no se sale del cuadro en mobile.
+- 🔔 **Novedades**: el badge del sidebar desaparece al entrar a la sección.
+
 ## 2026-05-25 — Ayuda enriquecida + guías por rol
 
 - 📘 Cada página de **Ayuda** suma sección **Preguntas frecuentes** y **Tips** con casos reales.

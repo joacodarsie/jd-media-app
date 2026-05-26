@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/markdown";
+import { useDictation } from "@/hooks/use-dictation";
 
 type AttachmentKind = "image" | "pdf" | "csv";
 
@@ -115,10 +116,12 @@ export function AIChat({
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [sending, setSending] = useState(false);
-  const [recording, setRecording] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const recogRef = useRef<{ stop: () => void } | null>(null);
+  const { recording, toggle: toggleDictation } = useDictation({
+    initialText: () => input,
+    onText: setInput,
+  });
 
   useEffect(() => {
     if (open) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -228,55 +231,6 @@ export function AIChat({
     return blocks;
   }
 
-  function toggleDictation() {
-    if (recording) {
-      recogRef.current?.stop();
-      return;
-    }
-    const win = window as unknown as {
-      SpeechRecognition?: new () => SpeechRecognitionLike;
-      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
-    };
-    const Ctor = win.SpeechRecognition ?? win.webkitSpeechRecognition;
-    if (!Ctor) {
-      toast.error(
-        "Tu navegador no soporta dictado por voz. Usá Chrome o Edge."
-      );
-      return;
-    }
-    const r = new Ctor();
-    r.lang = "es-AR";
-    r.continuous = true;
-    r.interimResults = true;
-    let baseline = input;
-    r.onresult = (ev: SpeechRecognitionEventLike) => {
-      let interim = "";
-      let finalText = "";
-      for (let i = ev.resultIndex; i < ev.results.length; i++) {
-        const res = ev.results[i];
-        if (res.isFinal) finalText += res[0].transcript;
-        else interim += res[0].transcript;
-      }
-      if (finalText) {
-        baseline = (baseline ? baseline + " " : "") + finalText.trim();
-        setInput(baseline);
-      } else {
-        setInput((baseline ? baseline + " " : "") + interim);
-      }
-    };
-    r.onend = () => {
-      setRecording(false);
-      recogRef.current = null;
-    };
-    r.onerror = () => {
-      setRecording(false);
-      recogRef.current = null;
-    };
-    recogRef.current = r;
-    setRecording(true);
-    r.start();
-  }
-
   async function send() {
     const text = input.trim();
     if ((!text && attachments.length === 0) || sending) return;
@@ -303,8 +257,17 @@ export function AIChat({
           messages: next.map((m) => ({ role: m.role, content: m.content })),
         }),
       });
-      const data = await res.json();
-      if (!res.ok) {
+      // Si el server cortó/timeoutea, res.json() puede fallar.
+      let data: { reply?: string; error?: string } = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = {
+          error:
+            "El asistente tardó demasiado. Probá un mensaje más corto o usá /jdmedia.",
+        };
+      }
+      if (!res.ok || data.error) {
         toast.error(data.error ?? "Error en el chat");
       } else {
         setMessages([
@@ -318,8 +281,11 @@ export function AIChat({
         ]);
         router.refresh();
       }
-    } catch {
-      toast.error("No se pudo conectar con el asistente.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      toast.error(
+        "No se pudo conectar con el asistente." + (msg ? ` (${msg})` : "")
+      );
     } finally {
       setSending(false);
     }
@@ -537,21 +503,3 @@ export function AIChat({
   );
 }
 
-// Tipos mínimos para SpeechRecognition (no están en lib.dom estándar)
-interface SpeechRecognitionLike {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  onresult: (ev: SpeechRecognitionEventLike) => void;
-  onend: () => void;
-  onerror: () => void;
-  start: () => void;
-  stop: () => void;
-}
-interface SpeechRecognitionEventLike {
-  resultIndex: number;
-  results: ArrayLike<{
-    isFinal: boolean;
-    [k: number]: { transcript: string };
-  }> & { length: number };
-}

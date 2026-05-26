@@ -112,27 +112,48 @@ export async function sendMessage(
     .update({ updated_at: new Date().toISOString() })
     .eq("id", channelId);
 
-  // Notificaciones para mencionados (no a uno mismo)
-  if (mentions.length > 0) {
-    const [{ data: me }, { data: channel }] = await Promise.all([
-      supabase.from("users").select("nombre").eq("id", userId).maybeSingle(),
-      supabase
-        .from("team_channels")
-        .select("name")
-        .eq("id", channelId)
-        .maybeSingle(),
-    ]);
-    const mensaje = `${me?.nombre ?? "Alguien"} te mencionó en #${channel?.name ?? "un canal"}`;
-    const notifs = mentions
-      .filter((m) => m !== userId)
-      .map((m) => ({
-        user_id: m,
-        tipo: "mencion" as const,
-        mensaje,
-      }));
-    if (notifs.length) {
-      await supabase.from("notifications").insert(notifs);
+  // Notificaciones:
+  //  - DM (1-a-1): siempre al destinatario, aunque no haya @mencion
+  //  - Canal publico: solo a los @mencionados
+  const [{ data: me }, { data: channel }] = await Promise.all([
+    supabase.from("users").select("nombre").eq("id", userId).maybeSingle(),
+    supabase
+      .from("team_channels")
+      .select("kind, name")
+      .eq("id", channelId)
+      .maybeSingle(),
+  ]);
+
+  const nombreEmisor = me?.nombre ?? "Alguien";
+  const targets = new Set<string>();
+
+  // DM: el otro miembro recibe siempre.
+  if (channel?.kind === "dm") {
+    const { data: members } = await supabase
+      .from("team_channel_members")
+      .select("user_id")
+      .eq("channel_id", channelId);
+    for (const m of (members ?? []) as { user_id: string }[]) {
+      if (m.user_id !== userId) targets.add(m.user_id);
     }
+  }
+
+  // Menciones @ explicitas (en cualquier tipo de canal).
+  for (const m of mentions) {
+    if (m !== userId) targets.add(m);
+  }
+
+  if (targets.size > 0) {
+    const mensaje =
+      channel?.kind === "dm"
+        ? `${nombreEmisor} te escribió`
+        : `${nombreEmisor} te mencionó en #${channel?.name ?? "un canal"}`;
+    const notifs = Array.from(targets).map((uid) => ({
+      user_id: uid,
+      tipo: "mencion" as const,
+      mensaje,
+    }));
+    await supabase.from("notifications").insert(notifs);
   }
 
   revalidatePath("/chat");

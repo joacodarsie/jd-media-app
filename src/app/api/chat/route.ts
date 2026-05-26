@@ -6,6 +6,8 @@ import { fetchAllUrls } from "@/lib/url-fetch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Hobby plan max es 60s. Con thinking adaptive + tools puede acercarse al limite.
+export const maxDuration = 60;
 
 const client = new Anthropic();
 

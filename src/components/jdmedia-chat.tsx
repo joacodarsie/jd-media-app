@@ -6,6 +6,8 @@ import {
   FileText,
   Image as ImageIcon,
   Loader2,
+  Mic,
+  MicOff,
   Paperclip,
   Send,
   Sparkles,
@@ -16,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/markdown";
+import { useDictation } from "@/hooks/use-dictation";
 
 export interface ChatAttachment {
   name: string;
@@ -100,6 +103,10 @@ export function JdmediaChat({
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { recording, toggle: toggleDictation } = useDictation({
+    initialText: () => input,
+    onText: setInput,
+  });
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -438,13 +445,32 @@ export function JdmediaChat({
             >
               <Paperclip className="h-4 w-4" />
             </Button>
+            <Button
+              type="button"
+              variant={recording ? "default" : "outline"}
+              size="icon"
+              className={cn("h-11 w-11 shrink-0", recording && "animate-pulse")}
+              onClick={toggleDictation}
+              disabled={sending}
+              title={recording ? "Detener dictado" : "Dictar por voz"}
+            >
+              {recording ? (
+                <MicOff className="h-4 w-4" />
+              ) : (
+                <Mic className="h-4 w-4" />
+              )}
+            </Button>
             <textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKey}
               onPaste={onPaste}
-              placeholder="Escribí tu mensaje… (Enter para enviar)"
+              placeholder={
+                recording
+                  ? "Hablá… (escuchando)"
+                  : "Escribí tu mensaje… (Enter para enviar)"
+              }
               rows={1}
               disabled={sending}
               className="max-h-40 min-h-[44px] flex-1 resize-none rounded-md border bg-card px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"

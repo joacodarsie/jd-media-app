@@ -50,12 +50,34 @@ export function NotificationBell({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [, start] = useTransition();
+  // Tracking optimistico de las leidas. El servidor revalida al final,
+  // pero la UI no espera el round-trip para tachar el item.
+  const [optReadIds, setOptReadIds] = useState<Set<string>>(new Set());
+  const [optAllRead, setOptAllRead] = useState(false);
+
+  function isRead(n: Notification) {
+    return n.leida || optReadIds.has(n.id) || optAllRead;
+  }
+  const displayUnreadCount = optAllRead
+    ? 0
+    : Math.max(0, unreadCount - optReadIds.size);
 
   function onClickItem(n: Notification) {
+    if (!isRead(n)) {
+      setOptReadIds((s) => new Set(s).add(n.id));
+    }
     start(async () => {
       if (!n.leida) await markRead(n.id);
       setOpen(false);
       if (n.task_id) router.push(`/tareas/${n.task_id}`);
+      router.refresh();
+    });
+  }
+
+  function onMarkAll() {
+    setOptAllRead(true);
+    start(async () => {
+      await markAllRead();
       router.refresh();
     });
   }
@@ -70,9 +92,9 @@ export function NotificationBell({
           className="relative"
         >
           <Bell className="h-5 w-5" />
-          {unreadCount > 0 && (
+          {displayUnreadCount > 0 && (
             <span className="absolute right-1 top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
-              {unreadCount > 9 ? "9+" : unreadCount}
+              {displayUnreadCount > 9 ? "9+" : displayUnreadCount}
             </span>
           )}
         </Button>
@@ -80,14 +102,9 @@ export function NotificationBell({
       <PopoverContent align="end" className="w-80 p-0">
         <div className="flex items-center justify-between border-b px-3 py-2">
           <span className="text-sm font-semibold">Notificaciones</span>
-          {unreadCount > 0 && (
+          {displayUnreadCount > 0 && (
             <button
-              onClick={() =>
-                start(async () => {
-                  await markAllRead();
-                  router.refresh();
-                })
-              }
+              onClick={onMarkAll}
               className="text-xs text-primary hover:underline"
             >
               Marcar todas como leídas
@@ -103,13 +120,14 @@ export function NotificationBell({
             <ul className="divide-y">
               {items.map((n) => {
                 const Icon = ICONS[n.tipo] ?? Bell;
+                const read = isRead(n);
                 return (
                   <li key={n.id}>
                     <button
                       onClick={() => onClickItem(n)}
                       className={cn(
                         "flex w-full gap-3 px-3 py-2.5 text-left hover:bg-accent",
-                        !n.leida && "bg-primary/5"
+                        !read && "bg-primary/5"
                       )}
                     >
                       <Icon
@@ -122,7 +140,7 @@ export function NotificationBell({
                         <p
                           className={cn(
                             "text-sm leading-snug",
-                            !n.leida && "font-medium"
+                            !read && "font-medium"
                           )}
                         >
                           {n.mensaje}
@@ -131,7 +149,7 @@ export function NotificationBell({
                           {fmtDateTime(n.created_at)}
                         </p>
                       </div>
-                      {!n.leida && (
+                      {!read && (
                         <span className="mt-1.5 inline-block h-2 w-2 shrink-0 rounded-full bg-primary" />
                       )}
                     </button>

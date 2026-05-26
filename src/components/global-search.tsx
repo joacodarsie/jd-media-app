@@ -142,13 +142,49 @@ export function GlobalSearch() {
 
             <div className="max-h-[60vh] overflow-y-auto">
               {q.trim().length < 2 ? (
-                <p className="px-4 py-6 text-center text-xs text-muted-foreground">
-                  Escribí al menos 2 letras para buscar.
-                </p>
+                <div className="space-y-3 px-4 py-5 text-xs">
+                  <div className="text-muted-foreground">
+                    Buscá por nombre o palabra clave. Ejemplos:
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {["Boxescar", "reel", "diseño", "factura"].map((sug) => (
+                      <button
+                        key={sug}
+                        onClick={() => setQ(sug)}
+                        className="rounded-md border bg-muted/40 px-2 py-1 hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                      >
+                        {sug}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="space-y-1 border-t pt-3 text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <ListChecks className="h-3 w-3" />
+                      <span>Tareas — por título o cliente</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Users className="h-3 w-3" />
+                      <span>Clientes — por nombre o rubro</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CalendarDays className="h-3 w-3" />
+                      <span>Publicaciones — por título o cliente</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-3 w-3" />
+                      <span>Documentos — por nombre o categoría</span>
+                    </div>
+                  </div>
+                </div>
               ) : results.length === 0 && !pending ? (
-                <p className="px-4 py-6 text-center text-xs text-muted-foreground">
-                  Sin resultados para &quot;{q}&quot;.
-                </p>
+                <div className="px-4 py-8 text-center text-xs">
+                  <div className="mb-1 text-muted-foreground">
+                    Sin resultados para &quot;{q}&quot;.
+                  </div>
+                  <div className="text-muted-foreground/70">
+                    Probá con menos palabras o revisá la ortografía.
+                  </div>
+                </div>
               ) : (
                 <ul className="py-1">
                   {results.map((r, i) => {
@@ -172,6 +208,9 @@ export function GlobalSearch() {
                               {r.subtitle}
                             </div>
                           </div>
+                          <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-muted-foreground">
+                            {r.kind === "publicacion" ? "pub" : r.kind}
+                          </span>
                         </button>
                       </li>
                     );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { updateTaskStatus } from "@/app/(app)/tareas/actions";
@@ -24,22 +24,30 @@ export function TaskStatusSelect({
   className?: string;
 }) {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [, start] = useTransition();
+  // Optimistic state: actualizamos la UI antes del round-trip al server.
+  // Si falla, revertimos al valor previo y mostramos error.
+  const [current, setCurrent] = useState<TaskStatus>(estado);
 
   return (
     <Select
-      value={estado}
-      disabled={pending}
-      onValueChange={(v) =>
+      value={current}
+      onValueChange={(v) => {
+        const previous = current;
+        const next = v as TaskStatus;
+        if (next === previous) return;
+        setCurrent(next);
         start(async () => {
-          const res = await updateTaskStatus(id, v);
-          if (res?.error) toast.error("Error: " + res.error);
-          else {
+          const res = await updateTaskStatus(id, next);
+          if (res?.error) {
+            setCurrent(previous);
+            toast.error("Error: " + res.error);
+          } else {
             toast.success("Estado actualizado");
             router.refresh();
           }
-        })
-      }
+        });
+      }}
     >
       <SelectTrigger className={className} onClick={(e) => e.stopPropagation()}>
         <SelectValue />

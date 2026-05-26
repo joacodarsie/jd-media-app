@@ -463,16 +463,43 @@ function FilterRow({
 }
 
 function EmptyState({ filter }: { filter: QuickFilter }) {
-  const msg: Record<QuickFilter, string> = {
-    mias: "No tenés tareas asignadas con estos filtros.",
-    vencidas: "Sin tareas vencidas. 🎉",
-    hoy: "Nada vence hoy.",
-    semana: "No hay tareas para esta semana.",
-    todas: "No hay tareas que coincidan.",
+  const content: Record<
+    QuickFilter,
+    { title: string; description: string; emoji: string }
+  > = {
+    mias: {
+      title: "No tenés tareas asignadas",
+      description:
+        "Cuando alguien te asigne una tarea va a aparecer acá. Mientras tanto podés crear una propia.",
+      emoji: "✨",
+    },
+    vencidas: {
+      title: "Sin tareas vencidas",
+      description: "Perfecto, vas al día. Seguí así.",
+      emoji: "🎉",
+    },
+    hoy: {
+      title: "Nada vence hoy",
+      description: "Aprovechá para adelantar pendientes de la semana.",
+      emoji: "☀️",
+    },
+    semana: {
+      title: "Sin tareas para esta semana",
+      description: "Buen momento para planificar lo del mes que viene.",
+      emoji: "📅",
+    },
+    todas: {
+      title: "No hay tareas",
+      description: "Creá la primera con el botón “Nueva tarea” arriba.",
+      emoji: "📋",
+    },
   };
+  const c = content[filter];
   return (
-    <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center text-sm text-muted-foreground">
-      {msg[filter]}
+    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/20 px-6 py-10 text-center">
+      <div className="text-3xl">{c.emoji}</div>
+      <h3 className="text-sm font-semibold tracking-tight">{c.title}</h3>
+      <p className="max-w-sm text-xs text-muted-foreground">{c.description}</p>
     </div>
   );
 }

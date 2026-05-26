@@ -14,7 +14,7 @@ import {
   Sparkles,
   User as UserIcon,
 } from "lucide-react";
-import { requireUser, requireClientAccess, isStaff } from "@/lib/auth";
+import { requireClientAccess, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { listEventsForUser } from "@/lib/google-calendar";

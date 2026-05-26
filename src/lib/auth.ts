@@ -45,3 +45,47 @@ export async function requireFeature(feature: Feature): Promise<AppUser> {
   if (!userHas(user, feature)) redirect("/dashboard");
   return user;
 }
+
+/**
+ * Devuelve true si el usuario puede ver la ficha de un cliente especifico.
+ * Reglas:
+ *  - admin y coordinador ven todo
+ *  - creativa, cm, audiovisual y disenador ven solo los clientes donde estan
+ *    asignados (creativa_asignada_id, cm_id, audiovisual_id, disenador_id)
+ *  - el resto no accede salvo si esta asignado en alguno de esos campos
+ */
+export async function canAccessClient(
+  userId: string,
+  userRol: string,
+  clientId: string
+): Promise<boolean> {
+  if (isStaff(userRol)) return true;
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("clients")
+    .select("creativa_asignada_id, cm_id, audiovisual_id, disenador_id")
+    .eq("id", clientId)
+    .maybeSingle();
+  if (!data) return false;
+  type Row = {
+    creativa_asignada_id: string | null;
+    cm_id: string | null;
+    audiovisual_id: string | null;
+    disenador_id: string | null;
+  };
+  const c = data as Row;
+  return (
+    c.creativa_asignada_id === userId ||
+    c.cm_id === userId ||
+    c.audiovisual_id === userId ||
+    c.disenador_id === userId
+  );
+}
+
+/** Redirige al dashboard si el usuario no puede acceder al cliente. */
+export async function requireClientAccess(clientId: string): Promise<AppUser> {
+  const user = await requireUser();
+  const ok = await canAccessClient(user.id, user.rol, clientId);
+  if (!ok) redirect("/dashboard");
+  return user;
+}

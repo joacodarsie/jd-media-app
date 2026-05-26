@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import { requireUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { LeadKanban, type LeadRow } from "@/components/lead-kanban";
@@ -9,7 +9,7 @@ import { HelpTrigger } from "@/components/help-trigger";
 export const dynamic = "force-dynamic";
 
 export default async function ComercialPage() {
-  await requireUser();
+  await requireRole(["admin", "coordinador", "comercial", "prospecting"]);
   const supabase = createClient();
 
   const [{ data: leads }, { data: services }, { data: users }] =

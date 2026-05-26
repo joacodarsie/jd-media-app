@@ -13,7 +13,7 @@ import {
   Phone,
   AlertTriangle,
 } from "lucide-react";
-import { requireUser } from "@/lib/auth";
+import { requireClientAccess } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { SERVICE_TYPE_LABEL } from "@/lib/constants";
@@ -80,7 +80,7 @@ export default async function OnboardingPage({
 }: {
   params: { id: string };
 }) {
-  await requireUser();
+  await requireClientAccess(params.id);
   const supabase = createClient();
   const admin = createAdmin();
 

@@ -14,7 +14,7 @@ import {
   Sparkles,
   User as UserIcon,
 } from "lucide-react";
-import { requireUser, isStaff } from "@/lib/auth";
+import { requireUser, requireClientAccess, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { listEventsForUser } from "@/lib/google-calendar";
@@ -61,7 +61,7 @@ export default async function ClientDetail({
 }: {
   params: { id: string };
 }) {
-  const me = await requireUser();
+  const me = await requireClientAccess(params.id);
   const supabase = createClient();
 
   const admin = createAdmin();

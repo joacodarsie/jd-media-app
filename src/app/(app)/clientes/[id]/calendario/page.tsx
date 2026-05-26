@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { requireUser } from "@/lib/auth";
+import { requireClientAccess } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { PublicationWithRels } from "@/lib/types";
 import { PublicationsMonth } from "@/components/publications-month";
@@ -13,7 +13,7 @@ export default async function ClientCalendarPage({
 }: {
   params: { id: string };
 }) {
-  await requireUser();
+  await requireClientAccess(params.id);
   const supabase = createClient();
 
   const [{ data: client }, { data: pubs }, { data: users }, { data: clients }] =

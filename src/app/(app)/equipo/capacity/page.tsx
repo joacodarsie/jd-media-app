@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, AlertTriangle, CheckCircle2 } from "lucide-react";
-import { requireUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -52,7 +52,7 @@ function initials(nombre: string) {
 }
 
 export default async function CapacityPage() {
-  await requireUser();
+  await requireRole(["admin", "coordinador"]);
   const supabase = createClient();
 
   const todayYmd = new Date().toISOString().slice(0, 10);

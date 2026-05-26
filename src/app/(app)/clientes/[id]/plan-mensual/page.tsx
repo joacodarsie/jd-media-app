@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { requireUser } from "@/lib/auth";
+import { requireClientAccess } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,7 @@ export default async function PlanMensualPage({
 }: {
   params: { id: string };
 }) {
-  await requireUser();
+  await requireClientAccess(params.id);
   const supabase = createClient();
   const admin = createAdmin();
 

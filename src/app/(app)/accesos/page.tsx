@@ -17,6 +17,22 @@ export default async function AccesosPage() {
   // Restringido a admin SOLAMENTE (no coordinación)
   await requireRole(["admin"]);
   const supabase = createClient();
+
+  // Tolerar que la migration 0050 (password_visible) aun no este aplicada.
+  async function fetchUsers() {
+    const withPass = await supabase
+      .from("users")
+      .select("id, nombre, email, rol, area, activo, permisos, password_visible")
+      .order("activo", { ascending: false })
+      .order("nombre");
+    if (!withPass.error) return withPass;
+    return supabase
+      .from("users")
+      .select("id, nombre, email, rol, area, activo, permisos")
+      .order("activo", { ascending: false })
+      .order("nombre");
+  }
+
   const [
     { data: pages },
     { data: usersData },
@@ -32,11 +48,7 @@ export default async function AccesosPage() {
       .eq("kind", "accesos")
       .order("orden")
       .order("title"),
-    supabase
-      .from("users")
-      .select("id, nombre, email, rol, area, activo, permisos")
-      .order("activo", { ascending: false })
-      .order("nombre"),
+    fetchUsers(),
     supabase
       .from("app_secrets")
       .select("valor")

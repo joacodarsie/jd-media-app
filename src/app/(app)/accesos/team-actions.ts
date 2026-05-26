@@ -5,6 +5,8 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { FEATURES, type Feature } from "@/lib/permissions";
+import { defaultPermisosForRole } from "@/lib/role-defaults";
+import type { UserRole } from "@/lib/types";
 import { invalidateUsersCache } from "@/lib/cache";
 
 function invalidate() {
@@ -45,6 +47,17 @@ export async function setUserPassword(userId: string, newPassword: string) {
     password: newPassword,
   });
   if (error) return { error: error.message };
+  // Guardar tambien en plaintext para que el admin pueda recuperarla despues.
+  // Si la columna no existe (migration 0050 no aplicada), ignoramos silencio.
+  const sb = createClient();
+  await sb
+    .from("users")
+    .update({ password_visible: newPassword })
+    .eq("id", userId)
+    .then(
+      () => undefined,
+      () => undefined
+    );
   invalidate();
   return { ok: true };
 }
@@ -127,14 +140,38 @@ export async function inviteNewUser(input: {
   if (cErr || !created.user) return { error: cErr?.message ?? "No se pudo crear" };
 
   const sb = createClient();
-  const { error: uErr } = await sb.from("users").insert({
-    id: created.user.id,
-    nombre: input.nombre.trim(),
-    email,
-    rol: input.rol,
-    area: input.area,
-    activo: true,
-  });
+  // Auto-asignar features default segun rol (admin siempre tiene todas via codigo).
+  const permisos = defaultPermisosForRole(input.rol as UserRole);
+  // Guardar pass en plaintext para que el admin la pueda ver despues.
+  // Si la columna password_visible no existe (migration 0050), reintentamos
+  // sin ese campo asi no se rompe el alta del usuario.
+  let uErr;
+  {
+    const res = await sb.from("users").insert({
+      id: created.user.id,
+      nombre: input.nombre.trim(),
+      email,
+      rol: input.rol,
+      area: input.area,
+      activo: true,
+      permisos,
+      password_visible: input.password,
+    });
+    uErr = res.error;
+    if (uErr && /password_visible/i.test(uErr.message)) {
+      // Reintentar sin password_visible
+      const res2 = await sb.from("users").insert({
+        id: created.user.id,
+        nombre: input.nombre.trim(),
+        email,
+        rol: input.rol,
+        area: input.area,
+        activo: true,
+        permisos,
+      });
+      uErr = res2.error;
+    }
+  }
   if (uErr) {
     // rollback en auth si falla la fila de profile
     await admin.auth.admin.deleteUser(created.user.id);

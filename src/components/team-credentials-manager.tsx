@@ -10,6 +10,9 @@ import {
   Power,
   UserPlus,
   Loader2,
+  Eye,
+  EyeOff,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +53,7 @@ import {
   FEATURE_DESCRIPTION,
   type Feature,
 } from "@/lib/permissions";
+import { ROLE_DEFAULT_FEATURES } from "@/lib/role-defaults";
 import { Shield } from "lucide-react";
 
 export interface TeamRow {
@@ -60,6 +64,7 @@ export interface TeamRow {
   area: string;
   activo: boolean;
   permisos?: Record<string, boolean> | null;
+  password_visible?: string | null;
 }
 
 const ROLES: UserRole[] = [
@@ -109,6 +114,7 @@ export function TeamCredentialsManager({ users }: { users: TeamRow[] }) {
             <tr>
               <th className="px-3 py-2">Nombre</th>
               <th className="px-3 py-2">Email</th>
+              <th className="px-3 py-2">Contraseña</th>
               <th className="px-3 py-2">Rol</th>
               <th className="px-3 py-2">Estado</th>
               <th className="px-3 py-2 text-right">Acciones</th>
@@ -159,6 +165,9 @@ function UserRow({ user }: { user: TeamRow }) {
       <td className="px-3 py-2 font-medium">{user.nombre}</td>
       <td className="px-3 py-2">
         <ChangeEmailPopover user={user} />
+      </td>
+      <td className="px-3 py-2">
+        <PasswordCell pass={user.password_visible ?? null} />
       </td>
       <td className="px-3 py-2 text-xs text-muted-foreground">
         {ROLE_LABEL[user.rol] ?? user.rol}
@@ -412,6 +421,85 @@ function PermissionsDialog({ user }: { user: TeamRow }) {
   );
 }
 
+function PasswordCell({ pass }: { pass: string | null }) {
+  const [shown, setShown] = useState(false);
+  if (!pass) {
+    return (
+      <span className="text-[11px] italic text-muted-foreground">
+        — sin registro
+      </span>
+    );
+  }
+  function copy() {
+    navigator.clipboard.writeText(pass!).then(
+      () => toast.success("Contraseña copiada"),
+      () => toast.error("No se pudo copiar")
+    );
+  }
+  return (
+    <div className="inline-flex items-center gap-1 text-xs">
+      <code className="rounded bg-muted px-1.5 py-0.5 font-mono">
+        {shown ? pass : "•".repeat(Math.min(pass.length, 10))}
+      </code>
+      <button
+        type="button"
+        onClick={() => setShown((v) => !v)}
+        className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+        title={shown ? "Ocultar" : "Mostrar"}
+      >
+        {shown ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+      </button>
+      <button
+        type="button"
+        onClick={copy}
+        className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+        title="Copiar"
+      >
+        <Copy className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
+function RoleDefaultsPreview({ rol }: { rol: UserRole }) {
+  const features = ROLE_DEFAULT_FEATURES[rol] ?? [];
+  if (rol === "admin") {
+    return (
+      <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-[11px]">
+        <div className="flex items-center gap-1.5 font-semibold text-primary">
+          <Shield className="h-3 w-3" /> Admin
+        </div>
+        <p className="mt-0.5 text-foreground/70">
+          Acceso total: todas las secciones (Finanzas, Global, Credenciales,
+          Documentos, etc.).
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-md border bg-muted/30 px-3 py-2 text-[11px]">
+      <div className="font-semibold text-foreground">
+        Permisos que se asignan por defecto
+      </div>
+      {features.length === 0 ? (
+        <p className="mt-1 text-foreground/70">
+          Solo acceso a lo básico (Mi día, Tareas, Contenidos, Agenda, Chat,
+          JDmedIA). Podés sumarle más después desde el botón <b>Permisos</b>.
+        </p>
+      ) : (
+        <ul className="mt-1 space-y-0.5">
+          {features.map((f) => (
+            <li key={f} className="flex items-center gap-1.5">
+              <span className="h-1 w-1 rounded-full bg-primary" />
+              {FEATURE_LABEL[f]}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function InviteDialog() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -520,6 +608,8 @@ function InviteDialog() {
               Compartila por un canal seguro. La persona la puede cambiar después.
             </p>
           </div>
+
+          <RoleDefaultsPreview rol={rol} />
         </div>
         <DialogFooter>
           <Button onClick={submit} disabled={pending}>

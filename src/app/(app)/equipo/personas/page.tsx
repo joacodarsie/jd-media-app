@@ -76,10 +76,13 @@ export default async function EquipoPersonasPage() {
                 frecuencia: pos?.pago_default_frecuencia ?? null,
               };
               return (
-                <div key={u.id} className="flex items-center justify-between gap-3 py-3">
+                <div
+                  key={u.id}
+                  className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+                >
                   <Link
                     href={`/equipo/persona/${u.id}`}
-                    className="flex flex-1 items-center gap-3 hover:bg-muted/30 -mx-2 px-2 -my-1 py-1 rounded-md"
+                    className="-mx-2 -my-1 flex flex-1 items-center gap-3 rounded-md px-2 py-1 hover:bg-muted/30"
                   >
                     <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-xs font-semibold">
                       {u.nombre.charAt(0)}
@@ -115,32 +118,32 @@ export default async function EquipoPersonasPage() {
                     </div>
                   </Link>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:justify-end">
                     {isAdmin && (
                       <>
-                        <div className="hidden text-right text-xs sm:block">
+                        <div className="order-3 w-full text-xs sm:order-none sm:w-auto sm:text-right">
                           {eff.monto == null ? (
-                            <span className="text-muted-foreground">—</span>
+                            <span className="text-muted-foreground">— sin pago</span>
                           ) : (
-                            <>
-                              <div className="font-medium tabular-nums">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 sm:block">
+                              <span className="font-medium tabular-nums">
                                 {eff.moneda}{" "}
                                 {Number(eff.monto).toLocaleString("es-AR")}
-                              </div>
-                              <div className="text-muted-foreground">
+                              </span>
+                              <span className="text-muted-foreground">
                                 {PAY_FREQUENCY_LABEL[eff.frecuencia ?? "mensual"] ??
                                   eff.frecuencia}
-                                {ov && (
-                                  <span className="ml-1 rounded bg-amber-100 px-1 text-[9px] text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                                    override
-                                  </span>
-                                )}
-                              </div>
-                            </>
+                              </span>
+                              {ov && (
+                                <span className="rounded bg-amber-100 px-1 text-[9px] text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                  override
+                                </span>
+                              )}
+                            </div>
                           )}
                         </div>
-                        <div className="flex flex-col items-end gap-1">
-                          <div className="w-44">
+                        <div className="flex flex-1 flex-col items-stretch gap-1 sm:flex-initial sm:items-end">
+                          <div className="w-full sm:w-44">
                             <AssignPositionSelect
                               userId={u.id}
                               current={u.position_id}

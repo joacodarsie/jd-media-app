@@ -10,12 +10,16 @@ import {
   MessageCircle,
   Clock,
   AlertCircle,
+  Check,
+  CheckCircle2,
   type LucideIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 import { fmtDateTime } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { Notification } from "@/lib/types";
 import { markRead, markAllRead } from "@/app/(app)/notificaciones/actions";
+import { updateTaskStatus } from "@/app/(app)/tareas/actions";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -82,6 +86,42 @@ export function NotificationBell({
     });
   }
 
+  // Quick action: marcar la tarea como completada SIN abrirla. Tambien marca
+  // la notif como leida en el camino.
+  const [completedTaskIds, setCompletedTaskIds] = useState<Set<string>>(
+    new Set()
+  );
+  function onCompleteTask(n: Notification) {
+    if (!n.task_id) return;
+    const tid = n.task_id;
+    setOptReadIds((s) => new Set(s).add(n.id));
+    setCompletedTaskIds((s) => new Set(s).add(tid));
+    start(async () => {
+      const res = await updateTaskStatus(tid, "completada");
+      if (res?.error) {
+        // Revertir si fallo
+        setCompletedTaskIds((s) => {
+          const next = new Set(s);
+          next.delete(tid);
+          return next;
+        });
+        toast.error("No se pudo completar: " + res.error);
+      } else {
+        toast.success("Tarea completada");
+        if (!n.leida) await markRead(n.id);
+        router.refresh();
+      }
+    });
+  }
+  function onMarkReadOnly(n: Notification) {
+    if (n.leida || optReadIds.has(n.id)) return;
+    setOptReadIds((s) => new Set(s).add(n.id));
+    start(async () => {
+      await markRead(n.id);
+      router.refresh();
+    });
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -121,8 +161,17 @@ export function NotificationBell({
               {items.map((n) => {
                 const Icon = ICONS[n.tipo] ?? Bell;
                 const read = isRead(n);
+                const completed = n.task_id
+                  ? completedTaskIds.has(n.task_id)
+                  : false;
+                const showCompleteBtn =
+                  !!n.task_id &&
+                  !completed &&
+                  (n.tipo === "asignacion" ||
+                    n.tipo === "proxima_a_vencer" ||
+                    n.tipo === "vencida");
                 return (
-                  <li key={n.id}>
+                  <li key={n.id} className="group relative">
                     <button
                       onClick={() => onClickItem(n)}
                       className={cn(
@@ -140,7 +189,8 @@ export function NotificationBell({
                         <p
                           className={cn(
                             "text-sm leading-snug",
-                            !read && "font-medium"
+                            !read && "font-medium",
+                            completed && "line-through opacity-60"
                           )}
                         >
                           {n.mensaje}
@@ -149,10 +199,41 @@ export function NotificationBell({
                           {fmtDateTime(n.created_at)}
                         </p>
                       </div>
-                      {!read && (
+                      {!read && !completed && (
                         <span className="mt-1.5 inline-block h-2 w-2 shrink-0 rounded-full bg-primary" />
                       )}
                     </button>
+                    {/* Quick actions inline: aparecen al hover (desktop) o siempre (mobile) */}
+                    <div className="absolute right-2 top-2.5 flex items-center gap-0.5 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+                      <div className="flex items-center gap-0.5 rounded-md border bg-card/95 p-0.5 shadow-sm backdrop-blur">
+                        {showCompleteBtn && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onCompleteTask(n);
+                            }}
+                            className="rounded p-1 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+                            title="Marcar tarea como completada"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        {!read && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onMarkReadOnly(n);
+                            }}
+                            className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                            title="Marcar como leída (sin abrir)"
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </li>
                 );
               })}

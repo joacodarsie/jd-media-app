@@ -29,7 +29,7 @@ export default async function AppLayout({
   ] = await Promise.all([
     supabase
       .from("notifications")
-      .select("id, user_id, task_id, tipo, mensaje, leida, created_at")
+      .select("id, user_id, task_id, tipo, mensaje, leida, created_at, link")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20),

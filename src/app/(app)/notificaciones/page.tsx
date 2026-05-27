@@ -38,7 +38,7 @@ export default async function NotificacionesPage() {
   const supabase = createClient();
   const { data } = await supabase
     .from("notifications")
-    .select("id, user_id, task_id, tipo, mensaje, leida, created_at")
+    .select("id, user_id, task_id, tipo, mensaje, leida, created_at, link")
     .eq("user_id", me.id)
     .order("created_at", { ascending: false })
     .limit(200);
@@ -66,7 +66,11 @@ export default async function NotificacionesPage() {
         <ul className="divide-y rounded-lg border bg-card">
           {items.map((n) => {
             const Icon = ICONS[n.tipo] ?? Bell;
-            const href = n.task_id ? `/tareas/${n.task_id}` : "#";
+            const href = n.task_id
+              ? `/tareas/${n.task_id}`
+              : n.link
+              ? n.link
+              : "#";
             return (
               <li key={n.id}>
                 <Link

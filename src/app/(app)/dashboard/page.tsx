@@ -137,9 +137,51 @@ export default async function DashboardPage() {
   ]);
 
   const hasCalendarConnections = (calConns ?? []).length > 0;
-  const calendarEvents: CalEvent[] = hasCalendarConnections
+  const googleCalendarEvents: CalEvent[] = hasCalendarConnections
     ? await listEventsForUser(user.id, startOfDay.toISOString(), inAWeek.toISOString()).catch(() => [])
     : [];
+
+  // Reuniones internas (donde el user es asistente o creador) en la ventana
+  // semanal del dashboard. Como creator se agrega automaticamente como asistente,
+  // el inner join cubre ambos casos.
+  const { data: myMeetingsRaw } = await supabase
+    .from("internal_meetings")
+    .select(
+      "id, titulo, starts_at, ends_at, ubicacion, meet_link, attendee:internal_meeting_attendees!inner(user_id)"
+    )
+    .eq("attendee.user_id", user.id)
+    .gte("starts_at", startOfDay.toISOString())
+    .lte("starts_at", inAWeek.toISOString())
+    .order("starts_at", { ascending: true });
+
+  type InternalMeetingLite = {
+    id: string;
+    titulo: string;
+    starts_at: string;
+    ends_at: string;
+    ubicacion: string | null;
+    meet_link: string | null;
+  };
+  const internalAsCal: CalEvent[] = (
+    (myMeetingsRaw ?? []) as unknown as InternalMeetingLite[]
+  ).map((m) => ({
+    id: `internal-${m.id}`,
+    summary: m.titulo,
+    start: m.starts_at,
+    end: m.ends_at,
+    isAllDay: false,
+    hangoutLink: m.meet_link ?? undefined,
+    location: m.ubicacion ?? undefined,
+    source_label: "Equipo JD Media",
+    source_email: "",
+    source_id: "__internal_jd__",
+  }));
+
+  const calendarEvents: CalEvent[] = [
+    ...googleCalendarEvents,
+    ...internalAsCal,
+  ].sort((a, b) => a.start.localeCompare(b.start));
+  const hasAnyMeetings = calendarEvents.length > 0 || hasCalendarConnections;
 
   const myClientIds = (myClients ?? []).map((c) => c.id);
   const { data: clientPubsToday } = myClientIds.length > 0
@@ -459,13 +501,15 @@ export default async function DashboardPage() {
                 </Link>
               }
             >
-              {!hasCalendarConnections ? (
-                <EmptyMini
-                  icon={CalendarClock}
-                  text="Conectá tu Calendar desde Mi perfil."
-                />
-              ) : eventsHoy.length === 0 ? (
-                <EmptyMini icon={CalendarClock} text="Sin reuniones hoy." />
+              {eventsHoy.length === 0 ? (
+                !hasCalendarConnections ? (
+                  <EmptyMini
+                    icon={CalendarClock}
+                    text="Conectá tu Calendar desde Mi perfil o agendá una reunión interna desde Agenda."
+                  />
+                ) : (
+                  <EmptyMini icon={CalendarClock} text="Sin reuniones hoy." />
+                )
               ) : (
                 <div className="space-y-2">
                   {eventsHoy.map((e) => (
@@ -545,7 +589,7 @@ export default async function DashboardPage() {
                 </Link>
               }
             >
-              {!hasCalendarConnections ? null : eventsSemana.length === 0 ? (
+              {!hasAnyMeetings ? null : eventsSemana.length === 0 ? (
                 <EmptyMini icon={CalendarClock} text="Sin más reuniones esta semana." />
               ) : (
                 <div className="space-y-2">

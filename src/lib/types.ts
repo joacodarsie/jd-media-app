@@ -51,7 +51,8 @@ export type NotificationType =
   | "mencion"
   | "comentario"
   | "proxima_a_vencer"
-  | "vencida";
+  | "vencida"
+  | "recordatorio";
 
 export interface AppUser {
   id: string;
@@ -247,4 +248,25 @@ export interface Notification {
   mensaje: string;
   leida: boolean;
   created_at: string;
+  link?: string | null;
+}
+
+export interface InternalMeeting {
+  id: string;
+  titulo: string;
+  descripcion: string | null;
+  starts_at: string;
+  ends_at: string;
+  ubicacion: string | null;
+  meet_link: string | null;
+  client_id: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InternalMeetingWithRels extends InternalMeeting {
+  cliente?: { id: string; nombre: string } | null;
+  creador?: { id: string; nombre: string; avatar_url: string | null } | null;
+  attendees: { id: string; nombre: string; avatar_url: string | null }[];
 }

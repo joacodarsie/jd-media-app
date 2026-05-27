@@ -4,6 +4,7 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { listEventsForUser } from "@/lib/google-calendar";
 import { AgendaView } from "@/components/agenda-view";
 import { HelpTrigger } from "@/components/help-trigger";
+import type { InternalMeetingWithRels } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,13 @@ export default async function AgendaPage() {
   const supabase = createClient();
 
   const admin = createAdmin();
-  const [{ data: conns }, { data: clientsRaw }] = await Promise.all([
+  const sixMonthsAgo = new Date(Date.now() - 180 * 86400000).toISOString();
+  const [
+    { data: conns },
+    { data: clientsRaw },
+    { data: usersRaw },
+    { data: meetingsRaw },
+  ] = await Promise.all([
     admin
       .from("google_calendar_connections")
       .select("id, label, google_email, visibility, owner_user_id")
@@ -22,6 +29,18 @@ export default async function AgendaPage() {
       .from("clients")
       .select("id, nombre, contacto_email")
       .order("nombre"),
+    supabase
+      .from("users")
+      .select("id, nombre, avatar_url")
+      .eq("activo", true)
+      .order("nombre"),
+    supabase
+      .from("internal_meetings")
+      .select(
+        "id, titulo, descripcion, starts_at, ends_at, ubicacion, meet_link, client_id, created_by, created_at, updated_at, cliente:clients(id,nombre), creador:users!internal_meetings_created_by_fkey(id,nombre,avatar_url), asistentes:internal_meeting_attendees(user:users(id,nombre,avatar_url))"
+      )
+      .gte("starts_at", sixMonthsAgo)
+      .order("starts_at", { ascending: true }),
   ]);
 
   const connections = (conns ?? []).map((c) => ({
@@ -37,6 +56,30 @@ export default async function AgendaPage() {
     nombre: c.nombre as string,
     contacto_email: (c.contacto_email as string | null) ?? null,
   }));
+
+  type MeetingRow = Omit<InternalMeetingWithRels, "attendees"> & {
+    asistentes: { user: { id: string; nombre: string; avatar_url: string | null } | null }[];
+  };
+  const internalMeetings: InternalMeetingWithRels[] = (
+    (meetingsRaw ?? []) as unknown as MeetingRow[]
+  ).map((m) => {
+    const { asistentes, ...rest } = m;
+    return {
+      ...rest,
+      attendees: (asistentes ?? [])
+        .map((a) => a.user)
+        .filter(
+          (u): u is { id: string; nombre: string; avatar_url: string | null } =>
+            u !== null
+        ),
+    };
+  });
+
+  const users = (usersRaw ?? []).map((u) => ({
+    id: u.id as string,
+    nombre: u.nombre as string,
+  }));
+  const isAdmin = me.rol === "admin" || me.rol === "coordinador";
 
   // Initial fetch SSR: grilla del mes actual (≈42 días) — cubre Mes default + Lista + Semana.
   const now = new Date();
@@ -68,13 +111,18 @@ export default async function AgendaPage() {
           <HelpTrigger slug="agenda" label="Cómo usar Agenda" size="md" />
         </h1>
         <p className="text-muted-foreground">
-          Tus reuniones de Google Calendar — personales y de JD Media.
+          Tus reuniones de Google Calendar y las reuniones internas del equipo
+          JD Media.
         </p>
       </div>
 
       <AgendaView
         connections={connections}
         clients={clients}
+        users={users}
+        currentUserId={me.id}
+        internalMeetings={internalMeetings}
+        isAdmin={isAdmin}
         initialEvents={initialEvents}
         initialFrom={from.toISOString()}
         initialTo={to.toISOString()}

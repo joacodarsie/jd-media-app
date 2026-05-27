@@ -9,6 +9,8 @@ import { WhatsAppOptinCard } from "@/components/whatsapp-optin-card";
 import { GoogleCalendarCard } from "@/components/google-calendar-card";
 import { BrowserNotificationsCard } from "@/components/browser-notifications-card";
 import { ReplayTourButton } from "@/components/replay-tour-button";
+import { PushToggle } from "@/components/push-toggle";
+import { Bell } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -90,6 +92,17 @@ export default async function MiPerfilPage() {
       <GoogleCalendarCard userId={me.id} isAdmin={me.rol === "admin"} />
 
       <BrowserNotificationsCard />
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Bell className="h-4 w-4" /> Notificaciones push (móvil + escritorio)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PushToggle />
+        </CardContent>
+      </Card>
 
       <WhatsAppOptinCard
         initialPhone={

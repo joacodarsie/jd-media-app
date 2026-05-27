@@ -54,6 +54,12 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "Gauge",
         roles: ["admin", "coordinador"],
       },
+      {
+        href: "/contratos",
+        label: "Contratos",
+        icon: "FileText",
+        roles: ["admin", "coordinador"],
+      },
     ],
   },
   {

@@ -28,10 +28,15 @@ import {
   AlertTriangle,
   Keyboard,
   Briefcase,
+  Plus,
+  Pencil,
+  Sparkles,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { MeetingFormDialog } from "@/components/meeting-form-dialog";
+import type { InternalMeetingWithRels } from "@/lib/types";
 
 interface Connection {
   id: string;
@@ -81,6 +86,43 @@ interface CalendarEvent {
   source_label: string;
   source_email: string;
   source_visibility: "private" | "shared";
+  /** Marca eventos de la tabla internal_meetings (no de Google Calendar). */
+  _internal?: boolean;
+  /** id de internal_meetings para edicion. */
+  _meetingId?: string;
+  /** UUID del creador, para chequear permisos de edicion. */
+  _createdBy?: string;
+  /** Datos crudos de la reunion interna para precargar el form al editar. */
+  _meetingRaw?: InternalMeetingWithRels;
+}
+
+const INTERNAL_SOURCE_ID = "__internal_jd__";
+
+function internalToEvent(m: InternalMeetingWithRels): CalendarEvent {
+  return {
+    id: `internal-${m.id}`,
+    summary: m.titulo,
+    description: m.descripcion ?? undefined,
+    start: m.starts_at,
+    end: m.ends_at,
+    isAllDay: false,
+    hangoutLink: m.meet_link ?? undefined,
+    location: m.ubicacion ?? undefined,
+    status: "confirmed",
+    attendees: m.attendees.map((a) => ({
+      email: a.id,
+      displayName: a.nombre,
+      responseStatus: "accepted",
+    })),
+    source_id: INTERNAL_SOURCE_ID,
+    source_label: "Equipo JD Media",
+    source_email: "",
+    source_visibility: "shared",
+    _internal: true,
+    _meetingId: m.id,
+    _createdBy: m.created_by,
+    _meetingRaw: m,
+  };
 }
 
 type ViewMode = "list" | "week" | "month";
@@ -94,7 +136,13 @@ const SOURCE_PALETTE = [
   { soft: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300", dot: "bg-cyan-500" },
 ];
 
+const INTERNAL_COLOR = {
+  soft: "bg-primary/15 text-primary",
+  dot: "bg-primary",
+};
+
 function colorFor(connections: Connection[], sourceId: string) {
+  if (sourceId === INTERNAL_SOURCE_ID) return INTERNAL_COLOR;
   const idx = connections.findIndex((c) => c.id === sourceId);
   return SOURCE_PALETTE[(idx >= 0 ? idx : 0) % SOURCE_PALETTE.length];
 }
@@ -215,19 +263,27 @@ const LS_VIEW_KEY = "agenda:view";
 export function AgendaView({
   connections,
   clients = [],
+  users = [],
+  currentUserId = "",
+  internalMeetings = [],
+  isAdmin = false,
   initialEvents,
   initialFrom,
   initialTo,
 }: {
   connections: Connection[];
   clients?: ClientLite[];
+  users?: { id: string; nombre: string }[];
+  currentUserId?: string;
+  internalMeetings?: InternalMeetingWithRels[];
+  isAdmin?: boolean;
   initialEvents: CalendarEvent[];
   initialFrom: string;
   initialTo: string;
 }) {
   const [view, setView] = useState<ViewMode>("month");
   const [cursor, setCursor] = useState<Date>(() => new Date());
-  // Cache de fetches: rangeKey -> events
+  // Cache de fetches: rangeKey -> events (solo Google)
   const cacheRef = useRef<Map<string, CalendarEvent[]>>(new Map());
   // Seed con el initial
   if (cacheRef.current.size === 0 && initialFrom && initialTo) {
@@ -237,13 +293,21 @@ export function AgendaView({
     );
   }
 
-  const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
+  const [googleEvents, setGoogleEvents] = useState<CalendarEvent[]>(
+    initialEvents
+  );
+  // Mergeamos siempre los internos (vienen del servidor todos, filtramos por rango client-side).
+  const events = useMemo(() => {
+    const internal = internalMeetings.map(internalToEvent);
+    return [...googleEvents, ...internal];
+  }, [googleEvents, internalMeetings]);
+
   const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [activeSources, setActiveSources] = useState<Set<string>>(
-    new Set(connections.map((c) => c.id))
+    new Set([...connections.map((c) => c.id), INTERNAL_SOURCE_ID])
   );
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
@@ -272,13 +336,13 @@ export function AgendaView({
   const fetchRange = useCallback(
     async (from: Date, to: Date) => {
       if (connections.length === 0) {
-        setEvents([]);
+        setGoogleEvents([]);
         return;
       }
       const k = rangeKey(from, to);
       const cached = cacheRef.current.get(k);
       if (cached) {
-        setEvents(cached);
+        setGoogleEvents(cached);
         return;
       }
       setIsFetching(true);
@@ -293,7 +357,7 @@ export function AgendaView({
         } else {
           const evs = (json.events ?? []) as CalendarEvent[];
           cacheRef.current.set(k, evs);
-          setEvents(evs);
+          setGoogleEvents(evs);
         }
       } catch (e) {
         setError(String(e));
@@ -420,20 +484,40 @@ export function AgendaView({
     return () => window.removeEventListener("keydown", onKey);
   }, [goPrev, goNext, goToday]);
 
-  if (connections.length === 0) {
+  const hasGoogle = connections.length > 0;
+  const hasInternal = internalMeetings.length > 0;
+
+  if (!hasGoogle && !hasInternal) {
     return (
-      <div className="rounded-lg border bg-card p-8 text-center">
-        <Calendar className="mx-auto h-10 w-10 text-muted-foreground" />
-        <h3 className="mt-3 font-semibold">Sin Calendars conectados</h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Conectá tu Google Calendar para ver tus reuniones acá.
-        </p>
-        <Link
-          href="/mi-perfil"
-          className="mt-4 inline-block rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          Conectar Google Calendar →
-        </Link>
+      <div className="space-y-4">
+        <div className="rounded-lg border bg-card p-8 text-center">
+          <Calendar className="mx-auto h-10 w-10 text-muted-foreground" />
+          <h3 className="mt-3 font-semibold">Tu agenda está vacía</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Conectá tu Google Calendar o agendá una reunión interna del equipo.
+          </p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <Link
+              href="/mi-perfil"
+              className="inline-block rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Conectar Google Calendar →
+            </Link>
+            {currentUserId && (
+              <MeetingFormDialog
+                mode="create"
+                users={users}
+                clients={clients.map((c) => ({ id: c.id, nombre: c.nombre }))}
+                currentUserId={currentUserId}
+                trigger={
+                  <Button variant="outline" size="sm">
+                    <Sparkles className="mr-1 h-4 w-4" /> Nueva reunión interna
+                  </Button>
+                }
+              />
+            )}
+          </div>
+        </div>
       </div>
     );
   }
@@ -478,6 +562,19 @@ export function AgendaView({
               aria-label="Buscar reuniones por título"
             />
           </div>
+          {currentUserId && (
+            <MeetingFormDialog
+              mode="create"
+              users={users}
+              clients={clients.map((c) => ({ id: c.id, nombre: c.nombre }))}
+              currentUserId={currentUserId}
+              trigger={
+                <Button size="sm" className="shrink-0">
+                  <Plus className="mr-1 h-4 w-4" /> Nueva
+                </Button>
+              }
+            />
+          )}
           <div
             className="inline-flex rounded-md border bg-card p-0.5"
             role="tablist"
@@ -522,6 +619,22 @@ export function AgendaView({
             </button>
           );
         })}
+        {hasInternal && (
+          <button
+            onClick={() => toggleSource(INTERNAL_SOURCE_ID)}
+            aria-pressed={activeSources.has(INTERNAL_SOURCE_ID)}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition ${
+              activeSources.has(INTERNAL_SOURCE_ID)
+                ? "border-primary/30 bg-primary/5"
+                : "border-border bg-muted/40 text-muted-foreground hover:bg-muted"
+            }`}
+            title="Reuniones agendadas por el equipo desde la app"
+          >
+            <span className={`inline-block h-2 w-2 rounded-full ${INTERNAL_COLOR.dot}`} />
+            <Sparkles className="h-3 w-3" />
+            Equipo JD
+          </button>
+        )}
         <span className="ml-auto text-xs text-muted-foreground">
           {filtered.length} reunión{filtered.length !== 1 ? "es" : ""}
           {hasConflicts && (
@@ -552,6 +665,9 @@ export function AgendaView({
           conflictDays={conflictDays}
           expanded={expanded}
           toggleExpanded={toggleExpanded}
+          users={users}
+          currentUserId={currentUserId}
+          isAdmin={isAdmin}
         />
       ) : view === "week" ? (
         <WeekView
@@ -585,6 +701,9 @@ export function AgendaView({
           onClose={() => setSelectedDay(null)}
           expanded={expanded}
           toggleExpanded={toggleExpanded}
+          users={users}
+          currentUserId={currentUserId}
+          isAdmin={isAdmin}
         />
       )}
 
@@ -638,6 +757,9 @@ function ListView({
   conflictDays,
   expanded,
   toggleExpanded,
+  users,
+  currentUserId,
+  isAdmin,
 }: {
   events: CalendarEvent[];
   connections: Connection[];
@@ -645,6 +767,9 @@ function ListView({
   conflictDays: Set<string>;
   expanded: Set<string>;
   toggleExpanded: (k: string) => void;
+  users: { id: string; nombre: string }[];
+  currentUserId: string;
+  isAdmin: boolean;
 }) {
   const grouped = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
@@ -695,6 +820,11 @@ function ListView({
                   client={matchClient(e, clients)}
                   expanded={expanded}
                   toggleExpanded={toggleExpanded}
+                  users={users}
+                  clients={clients}
+                  currentUserId={currentUserId}
+                  isAdmin={isAdmin}
+                  compact={false}
                 />
               ))}
             </div>
@@ -929,6 +1059,9 @@ function DayDetail({
   onClose,
   expanded,
   toggleExpanded,
+  users,
+  currentUserId,
+  isAdmin,
 }: {
   day: Date;
   events: CalendarEvent[];
@@ -937,6 +1070,9 @@ function DayDetail({
   onClose: () => void;
   expanded: Set<string>;
   toggleExpanded: (k: string) => void;
+  users: { id: string; nombre: string }[];
+  currentUserId: string;
+  isAdmin: boolean;
 }) {
   const k = dayKey(day);
   const evs = events
@@ -972,6 +1108,10 @@ function DayDetail({
               expanded={expanded}
               toggleExpanded={toggleExpanded}
               compact
+              users={users}
+              clients={clients}
+              currentUserId={currentUserId}
+              isAdmin={isAdmin}
             />
           ))}
         </div>
@@ -989,6 +1129,10 @@ function EventCard({
   expanded,
   toggleExpanded,
   compact = false,
+  users,
+  clients,
+  currentUserId,
+  isAdmin,
 }: {
   event: CalendarEvent;
   connections: Connection[];
@@ -996,11 +1140,17 @@ function EventCard({
   expanded: Set<string>;
   toggleExpanded: (k: string) => void;
   compact?: boolean;
+  users: { id: string; nombre: string }[];
+  clients: ClientLite[];
+  currentUserId: string;
+  isAdmin: boolean;
 }) {
   const key = `${e.source_id}-${e.id}`;
   const isExpanded = expanded.has(key);
   const attendeesCount = e.attendees?.length ?? 0;
   const color = colorFor(connections, e.source_id);
+  const canEditInternal =
+    e._internal && (isAdmin || e._createdBy === currentUserId);
 
   return (
     <article
@@ -1045,6 +1195,11 @@ function EventCard({
             )}
           </div>
           <div className="mt-2 flex flex-wrap gap-2 text-xs">
+            {e._internal && (
+              <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                <Sparkles className="h-3 w-3" /> Equipo JD
+              </span>
+            )}
             {e.hangoutLink && (
               <a
                 href={e.hangoutLink}
@@ -1052,7 +1207,7 @@ function EventCard({
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-primary hover:bg-primary/20"
               >
-                <Video className="h-3 w-3" /> Meet
+                <Video className="h-3 w-3" /> {e._internal ? "Link" : "Meet"}
               </a>
             )}
             {e.location && !e.hangoutLink && (
@@ -1086,6 +1241,34 @@ function EventCard({
                   </>
                 )}
               </button>
+            )}
+            {canEditInternal && e._meetingRaw && (
+              <MeetingFormDialog
+                mode="edit"
+                users={users}
+                clients={clients.map((c) => ({ id: c.id, nombre: c.nombre }))}
+                currentUserId={currentUserId}
+                initial={{
+                  id: e._meetingRaw.id,
+                  titulo: e._meetingRaw.titulo,
+                  descripcion: e._meetingRaw.descripcion,
+                  starts_at: e._meetingRaw.starts_at,
+                  ends_at: e._meetingRaw.ends_at,
+                  ubicacion: e._meetingRaw.ubicacion,
+                  meet_link: e._meetingRaw.meet_link,
+                  client_id: e._meetingRaw.client_id,
+                  attendee_ids: e._meetingRaw.attendees.map((a) => a.id),
+                  created_by: e._meetingRaw.created_by,
+                }}
+                trigger={
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded bg-muted/60 px-1.5 py-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <Pencil className="h-3 w-3" /> Editar
+                  </button>
+                }
+              />
             )}
           </div>
           {isExpanded && (

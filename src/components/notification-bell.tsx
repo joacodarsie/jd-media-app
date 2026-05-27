@@ -74,6 +74,7 @@ export function NotificationBell({
       if (!n.leida) await markRead(n.id);
       setOpen(false);
       if (n.task_id) router.push(`/tareas/${n.task_id}`);
+      else if (n.link) router.push(n.link);
       router.refresh();
     });
   }
@@ -171,13 +172,16 @@ export function NotificationBell({
                     n.tipo === "proxima_a_vencer" ||
                     n.tipo === "vencida");
                 return (
-                  <li key={n.id} className="group relative">
+                  <li
+                    key={n.id}
+                    className={cn(
+                      "flex items-stretch gap-1 hover:bg-accent/50",
+                      !read && "bg-primary/5"
+                    )}
+                  >
                     <button
                       onClick={() => onClickItem(n)}
-                      className={cn(
-                        "flex w-full gap-3 px-3 py-2.5 text-left hover:bg-accent",
-                        !read && "bg-primary/5"
-                      )}
+                      className="flex min-w-0 flex-1 gap-3 px-3 py-2.5 text-left"
                     >
                       <Icon
                         className={cn(
@@ -203,36 +207,36 @@ export function NotificationBell({
                         <span className="mt-1.5 inline-block h-2 w-2 shrink-0 rounded-full bg-primary" />
                       )}
                     </button>
-                    {/* Quick actions inline: aparecen al hover (desktop) o siempre (mobile) */}
-                    <div className="absolute right-2 top-2.5 flex items-center gap-0.5 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-                      <div className="flex items-center gap-0.5 rounded-md border bg-card/95 p-0.5 shadow-sm backdrop-blur">
-                        {showCompleteBtn && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onCompleteTask(n);
-                            }}
-                            className="rounded p-1 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950"
-                            title="Marcar tarea como completada"
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                          </button>
-                        )}
-                        {!read && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onMarkReadOnly(n);
-                            }}
-                            className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                            title="Marcar como leída (sin abrir)"
-                          >
-                            <Check className="h-3.5 w-3.5" />
-                          </button>
-                        )}
-                      </div>
+                    {/* Quick actions inline: siempre visibles, separadas del click principal */}
+                    <div className="flex shrink-0 items-center gap-0.5 pr-2">
+                      {showCompleteBtn && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCompleteTask(n);
+                          }}
+                          className="rounded-md p-1.5 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-950"
+                          title="Marcar tarea como completada"
+                          aria-label="Marcar tarea como completada"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                        </button>
+                      )}
+                      {!read && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onMarkReadOnly(n);
+                          }}
+                          className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                          title="Marcar como leída"
+                          aria-label="Marcar como leída"
+                        >
+                          <Check className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   </li>
                 );

@@ -1,12 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { Check, Copy, Loader2, Send, Sparkles, Trash2 } from "lucide-react";
+import { useRef, useState } from "react";
+import {
+  Check,
+  Copy,
+  FileText,
+  Loader2,
+  Send,
+  Sparkles,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 const SUGERENCIAS = [
   "Reunión con Juan de ferretería tipo. Tienen IG pero suben poco. Buscan más clientes locales. Mencionó tener presupuesto entre 100k y 150k mensuales. Acordamos mandarle propuesta esta semana.",
@@ -19,6 +29,58 @@ export function PostMeetWorkspace() {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [lastPdfName, setLastPdfName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handlePdfFile(file: File) {
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      toast.error("Tiene que ser un archivo .pdf");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error("El PDF es muy grande (máx 15 MB)");
+      return;
+    }
+    setExtracting(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/post-meet/extract-pdf", {
+        method: "POST",
+        body: form,
+      });
+      const data = (await res.json()) as { text?: string; error?: string };
+      if (!res.ok || data.error) {
+        toast.error(data.error ?? "No se pudo leer el PDF");
+        return;
+      }
+      setContext(data.text ?? "");
+      setLastPdfName(file.name);
+      toast.success("Transcripción cargada");
+    } catch (e) {
+      toast.error(
+        "No se pudo subir el PDF: " + (e instanceof Error ? e.message : "")
+      );
+    } finally {
+      setExtracting(false);
+    }
+  }
+
+  function onDrop(ev: React.DragEvent<HTMLDivElement>) {
+    ev.preventDefault();
+    setDragOver(false);
+    const file = ev.dataTransfer.files?.[0];
+    if (file) void handlePdfFile(file);
+  }
+
+  function onPickFile(ev: React.ChangeEvent<HTMLInputElement>) {
+    const file = ev.target.files?.[0];
+    if (file) void handlePdfFile(file);
+    // Permitir re-seleccionar el mismo archivo
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
 
   async function generate() {
     const text = context.trim();
@@ -87,20 +149,78 @@ export function PostMeetWorkspace() {
           </div>
 
           <div>
-            <Label htmlFor="context" className="text-xs">
-              Transcripción o resumen de la reunión
-            </Label>
-            <textarea
-              id="context"
-              value={context}
-              onChange={(e) => setContext(e.target.value)}
-              rows={10}
-              placeholder="Pegá la transcripción completa de la meet, o escribí un resumen con los puntos clave: qué hace el cliente, su dolor, sus objetivos, qué te pidió, próximos pasos…"
-              className="min-h-[180px] w-full resize-y rounded-md border bg-card p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Cuanto más contexto, mejor el mensaje. La IA usa la voz de JD
-              Media.
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <Label htmlFor="context" className="text-xs">
+                Transcripción o resumen de la reunión
+              </Label>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={extracting}
+                className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline disabled:opacity-50"
+              >
+                <Upload className="h-3 w-3" />
+                Subir PDF
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf,.pdf"
+                onChange={onPickFile}
+                className="hidden"
+              />
+            </div>
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (!extracting) setDragOver(true);
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={onDrop}
+              className={cn(
+                "relative rounded-md border transition",
+                dragOver
+                  ? "border-primary bg-primary/10 ring-2 ring-primary/30"
+                  : "border-input bg-card"
+              )}
+            >
+              <textarea
+                id="context"
+                value={context}
+                onChange={(e) => setContext(e.target.value)}
+                rows={10}
+                placeholder="Pegá la transcripción completa de la meet, o arrastrá el PDF acá. También podés escribir un resumen con los puntos clave: qué hace el cliente, su dolor, sus objetivos, qué te pidió, próximos pasos…"
+                className="min-h-[180px] w-full resize-y rounded-md bg-transparent p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              {(extracting || dragOver) && (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-md bg-card/80 backdrop-blur-sm">
+                  <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                    {extracting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Leyendo PDF…
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="h-4 w-4" />
+                        Soltá el PDF acá
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            <p className="mt-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+              <span>
+                Cuanto más contexto, mejor el mensaje. La IA usa la voz de JD
+                Media.
+              </span>
+              {lastPdfName && (
+                <span className="inline-flex items-center gap-1 truncate text-primary/80">
+                  <FileText className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{lastPdfName}</span>
+                </span>
+              )}
             </p>
           </div>
 

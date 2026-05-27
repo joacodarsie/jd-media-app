@@ -291,7 +291,6 @@ function TemplateCard({
 function TemplateFormDialog({
   mode,
   template,
-  isAdmin,
   trigger,
 }: {
   mode: "create" | "edit";

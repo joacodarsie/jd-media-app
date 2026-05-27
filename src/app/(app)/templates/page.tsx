@@ -17,16 +17,38 @@ export default async function TemplatesPage() {
   const { data } = await supabase
     .from("message_templates")
     .select(
-      "id, titulo, contenido, categoria, tags, scope, creado_por_id, use_count, last_used_at, created_at, updated_at, creador:users!message_templates_creado_por_id_fkey(id,nombre)"
+      "id, titulo, contenido, categoria, tags, scope, creado_por_id, use_count, last_used_at, created_at, updated_at"
     )
     .order("use_count", { ascending: false })
     .order("updated_at", { ascending: false });
 
-  type Raw = TemplateRow & { creador?: { id: string; nombre: string } | null };
-  const templates: TemplateRow[] = ((data ?? []) as unknown as Raw[]).map(
+  // Resolvemos el nombre del creador en una query aparte: el FK auto-named de
+  // Postgres no siempre matchea la sintaxis ambient de Supabase, asi que mejor
+  // hacemos un map manual.
+  const creadorIds = Array.from(
+    new Set(((data ?? []) as { creado_por_id: string | null }[])
+      .map((d) => d.creado_por_id)
+      .filter((id): id is string => !!id))
+  );
+  const { data: creadores } = creadorIds.length
+    ? await supabase
+        .from("users")
+        .select("id, nombre")
+        .in("id", creadorIds)
+    : { data: [] as { id: string; nombre: string }[] };
+  const nombreById = new Map<string, string>(
+    ((creadores ?? []) as { id: string; nombre: string }[]).map((u) => [
+      u.id,
+      u.nombre,
+    ])
+  );
+
+  const templates: TemplateRow[] = ((data ?? []) as TemplateRow[]).map(
     (t) => ({
       ...t,
-      creador_nombre: t.creador?.nombre ?? null,
+      creador_nombre: t.creado_por_id
+        ? nombreById.get(t.creado_por_id) ?? null
+        : null,
     })
   );
 

@@ -75,21 +75,25 @@ export function TemplatesManager({
   const [categoria, setCategoria] = useState(ALL);
   const [scope, setScope] = useState(ALL);
 
+  // Defensiva: si initial llega no-array (caso raro), tratamos como vacio.
+  const safeInitial: TemplateRow[] = Array.isArray(initial) ? initial : [];
+
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
-    return initial.filter((t) => {
+    return safeInitial.filter((t) => {
       if (categoria !== ALL && t.categoria !== categoria) return false;
       if (scope !== ALL && t.scope !== scope) return false;
+      const tags = Array.isArray(t.tags) ? t.tags : [];
       if (
         qq &&
         !t.titulo.toLowerCase().includes(qq) &&
         !t.contenido.toLowerCase().includes(qq) &&
-        !t.tags.some((tag) => tag.toLowerCase().includes(qq))
+        !tags.some((tag) => tag.toLowerCase().includes(qq))
       )
         return false;
       return true;
     });
-  }, [initial, q, categoria, scope]);
+  }, [safeInitial, q, categoria, scope]);
 
   return (
     <div className="space-y-4">
@@ -140,9 +144,11 @@ export function TemplatesManager({
       {filtered.length === 0 ? (
         <EmptyState
           icon={FileText}
-          title={initial.length === 0 ? "Sin templates" : "Sin coincidencias"}
+          title={
+            safeInitial.length === 0 ? "Sin templates" : "Sin coincidencias"
+          }
           description={
-            initial.length === 0
+            safeInitial.length === 0
               ? "Creá tu primer template para reutilizarlo en chat, comercial o copy."
               : "Probá con otros filtros o palabras."
           }
@@ -226,7 +232,7 @@ function TemplateCard({
           <span className="rounded bg-muted px-1.5 py-0.5">
             {TEMPLATE_CATEGORY_LABEL[t.categoria as TemplateCategory] ?? t.categoria}
           </span>
-          {t.tags.slice(0, 3).map((tag) => (
+          {(Array.isArray(t.tags) ? t.tags : []).slice(0, 3).map((tag) => (
             <span
               key={tag}
               className="rounded bg-muted px-1.5 py-0.5 font-mono"
@@ -308,7 +314,9 @@ function TemplateFormDialog({
   const [scope, setScope] = useState<"propio" | "global">(
     template?.scope ?? "propio"
   );
-  const [tagsRaw, setTagsRaw] = useState(template?.tags.join(", ") ?? "");
+  const [tagsRaw, setTagsRaw] = useState(
+    Array.isArray(template?.tags) ? template!.tags.join(", ") : ""
+  );
   const [pending, start] = useTransition();
 
   function save() {

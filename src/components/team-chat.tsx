@@ -31,6 +31,7 @@ import {
 } from "@/app/(app)/chat/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TemplatePicker } from "@/components/template-picker";
 import {
   Dialog,
   DialogContent,
@@ -1215,6 +1216,24 @@ function ChannelView({
               >
                 <Mic className="h-[18px] w-[18px]" />
               </Button>
+              <TemplatePicker
+                filterCategoria="chat"
+                onSelect={(text) => {
+                  setInput((curr) => (curr ? curr + "\n" + text : text));
+                  setTimeout(() => inputRef.current?.focus(), 0);
+                }}
+                trigger={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 shrink-0 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+                    title="Insertar template"
+                  >
+                    <FileText className="h-[18px] w-[18px]" />
+                  </Button>
+                }
+              />
             </>
           )}
           {recording ? (

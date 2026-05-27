@@ -2,6 +2,15 @@
 title: Novedades
 ---
 
+## 2026-05-27 — Templates de mensajes + más UX
+
+- 📄 **Templates**: snippets reusables de texto. Crealos en `/templates` y usalos directo desde el chat interno con el botón 📄 al lado del clip. Soporta scope **propio** (solo vos) y **global** (toda la agencia).
+- ✅ **Quick actions en la campana**: hover sobre una notif y aparece "Completar tarea" + "Marcar leída" — sin abrir la tarea.
+- 📱 **Mobile mejorado en `/equipo/personas`**: cards apiladas en pantallas chicas. Los selects de puesto y compensación ya no se desbordan.
+- 🤖 **Post-meet integrado**: el botón "Mensaje post-meet" ahora abre un workspace dentro de la app (no más GPT externo). Pegás transcripción, IA genera mensaje con voz JD Media, copiás y mandás.
+- 🔔 **Notificaciones de DM funcionando**: arreglamos un bug de RLS que silenciaba los avisos en la campana cuando alguien te escribía por DM o te mencionaba en comentarios.
+- 🎨 **Scrollbar del sidebar**: ya no se ve gris claro contra el fondo oscuro.
+
 ## 2026-05-26 — Bloque de mejoras y fixes
 
 - ✨ **Comercial — Mensaje post-meet**: botón directo al GPT "JD Closer" en `/comercial` para generar el mensaje de follow-up listo después de cada primera reunión.

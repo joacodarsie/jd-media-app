@@ -10,11 +10,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { bumpTemplateUse } from "@/app/(app)/templates/actions";
 import {
-  bumpTemplateUse,
   TEMPLATE_CATEGORY_LABEL,
   type TemplateCategory,
-} from "@/app/(app)/templates/actions";
+} from "@/lib/templates";
 
 interface TemplateLite {
   id: string;

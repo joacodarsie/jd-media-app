@@ -39,10 +39,12 @@ import {
   createTemplate,
   updateTemplate,
   deleteTemplate,
+} from "@/app/(app)/templates/actions";
+import {
   TEMPLATE_CATEGORIES,
   TEMPLATE_CATEGORY_LABEL,
   type TemplateCategory,
-} from "@/app/(app)/templates/actions";
+} from "@/lib/templates";
 import { EmptyState } from "@/components/empty-state";
 
 export interface TemplateRow {

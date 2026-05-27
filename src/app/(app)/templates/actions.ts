@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import {
+  TEMPLATE_CATEGORIES,
+  type TemplateCategory,
+} from "@/lib/templates";
 
 async function ctx() {
   const supabase = createClient();
@@ -11,23 +15,6 @@ async function ctx() {
   if (!user) throw new Error("No autenticado");
   return { supabase, userId: user.id };
 }
-
-export const TEMPLATE_CATEGORIES = [
-  "chat",
-  "comercial",
-  "onboarding",
-  "copy",
-  "otro",
-] as const;
-export type TemplateCategory = (typeof TEMPLATE_CATEGORIES)[number];
-
-export const TEMPLATE_CATEGORY_LABEL: Record<TemplateCategory, string> = {
-  chat: "Chat interno",
-  comercial: "Comercial / Leads",
-  onboarding: "Onboarding cliente",
-  copy: "Copy / Redes",
-  otro: "Otro",
-};
 
 export interface TemplateInput {
   titulo: string;

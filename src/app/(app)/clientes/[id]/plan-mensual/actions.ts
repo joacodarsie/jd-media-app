@@ -76,7 +76,10 @@ export async function updateContentPlanTema(
       updates.red_principal !== undefined
         ? (updates.red_principal as TemaDestacado["red_principal"])
         : current.red_principal,
-    fecha: updates.fecha !== undefined ? updates.fecha : current.fecha,
+    fecha:
+      updates.fecha !== undefined
+        ? (updates.fecha ?? undefined)
+        : current.fecha,
   };
   temas[index] = next;
 

@@ -6,12 +6,12 @@ import { toast } from "sonner";
 import {
   CalendarClock,
   CalendarDays,
+  CheckSquare,
   ChevronLeft,
   ChevronRight,
   KanbanSquare,
   List,
   Loader2,
-  MousePointerSquare,
   Plus,
   Trash2,
   X,
@@ -345,7 +345,7 @@ export function PublicationsMonth({
               {selectMode ? (
                 <><X className="mr-1.5 h-4 w-4" /> Cancelar</>
               ) : (
-                <><MousePointerSquare className="mr-1.5 h-4 w-4" /> Seleccionar</>
+                <><CheckSquare className="mr-1.5 h-4 w-4" /> Seleccionar</>
               )}
             </Button>
           )}

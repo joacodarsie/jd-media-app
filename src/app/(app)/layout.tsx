@@ -72,6 +72,10 @@ export default async function AppLayout({
     "/novedades": showNovedadesBadge ? 1 : 0,
   };
 
+  const isLiveOwner =
+    !!process.env.JDMEDIA_LIVE_OWNER_EMAIL &&
+    user.email === process.env.JDMEDIA_LIVE_OWNER_EMAIL;
+
   return (
     <AppShell
       user={user}
@@ -79,6 +83,7 @@ export default async function AppLayout({
       quickLinks={(links ?? []) as QuickLinkRow[]}
       badges={badges}
       novedadesLatestDate={novedadesLatestDate}
+      isLiveOwner={isLiveOwner}
     >
       <RealtimeBadgesSync userId={user.id} />
       {children}

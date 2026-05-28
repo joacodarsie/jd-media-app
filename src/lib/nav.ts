@@ -10,6 +10,8 @@ export interface NavItem {
   roles?: UserRole[];
   /** Si se define, además requiere esta feature (admin la tiene siempre). */
   feature?: Feature;
+  /** Si es true, sólo lo ve la cuenta dueña de JDmedIA en vivo (gate por env). */
+  liveOwnerOnly?: boolean;
 }
 
 export interface NavGroup {
@@ -27,6 +29,12 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/contenidos", label: "Contenidos", icon: "Calendar" },
       { href: "/agenda", label: "Agenda", icon: "CalendarClock" },
       { href: "/jdmedia", label: "JDmedIA", icon: "MessageCircle" },
+      {
+        href: "/jdmedia/live",
+        label: "JDmedIA en vivo",
+        icon: "Radio",
+        liveOwnerOnly: true,
+      },
       { href: "/chat", label: "Chat equipo", icon: "Hash" },
     ],
   },
@@ -104,19 +112,20 @@ function userHasFeature(user: AppUser, feature: Feature): boolean {
   return p?.[feature] === true;
 }
 
-function itemVisible(user: AppUser, i: NavItem) {
+function itemVisible(user: AppUser, i: NavItem, isLiveOwner = false) {
   if (i.roles && !i.roles.includes(user.rol)) return false;
   if (i.feature && !userHasFeature(user, i.feature)) return false;
+  if (i.liveOwnerOnly && !isLiveOwner) return false;
   return true;
 }
 
-export function visibleNav(user: AppUser) {
-  return NAV.filter((i) => itemVisible(user, i));
+export function visibleNav(user: AppUser, isLiveOwner = false) {
+  return NAV.filter((i) => itemVisible(user, i, isLiveOwner));
 }
 
-export function visibleNavGroups(user: AppUser): NavGroup[] {
+export function visibleNavGroups(user: AppUser, isLiveOwner = false): NavGroup[] {
   return NAV_GROUPS.map((g) => ({
     label: g.label,
-    items: g.items.filter((i) => itemVisible(user, i)),
+    items: g.items.filter((i) => itemVisible(user, i, isLiveOwner)),
   })).filter((g) => g.items.length > 0);
 }

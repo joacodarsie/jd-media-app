@@ -1,13 +1,15 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Check,
   Copy,
   FileText,
   Loader2,
+  Mic,
   Send,
   Sparkles,
+  Square,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -17,6 +19,44 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+
+// ── Tipos mínimos de la Web Speech API (no están en lib.dom estándar) ──
+interface SRAlternative {
+  transcript: string;
+}
+interface SRResult {
+  isFinal: boolean;
+  0: SRAlternative;
+}
+interface SRResultList {
+  length: number;
+  [index: number]: SRResult;
+}
+interface SRecognitionEvent {
+  resultIndex: number;
+  results: SRResultList;
+}
+interface SRecognition {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+  onresult: ((e: SRecognitionEvent) => void) | null;
+  onend: (() => void) | null;
+  onerror: ((e: { error?: string }) => void) | null;
+}
+type SRConstructor = new () => SRecognition;
+
+function getSpeechRecognition(): SRConstructor | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as {
+    SpeechRecognition?: SRConstructor;
+    webkitSpeechRecognition?: SRConstructor;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
 
 const SUGERENCIAS = [
   "Reunión con Juan de ferretería tipo. Tienen IG pero suben poco. Buscan más clientes locales. Mencionó tener presupuesto entre 100k y 150k mensuales. Acordamos mandarle propuesta esta semana.",
@@ -51,6 +91,83 @@ export function PostMeetWorkspace() {
   const [dragOver, setDragOver] = useState(false);
   const [lastPdfName, setLastPdfName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [dictating, setDictating] = useState(false);
+  const [srSupported, setSrSupported] = useState(false);
+  const recognitionRef = useRef<SRecognition | null>(null);
+  const dictatingRef = useRef(false);
+
+  useEffect(() => {
+    setSrSupported(!!getSpeechRecognition());
+    return () => {
+      dictatingRef.current = false;
+      try {
+        recognitionRef.current?.abort();
+      } catch {}
+    };
+  }, []);
+
+  function startDictation() {
+    const SR = getSpeechRecognition();
+    if (!SR) {
+      toast.error("Tu navegador no soporta dictado por voz. Probá con Chrome.");
+      return;
+    }
+    const rec = new SR();
+    rec.lang = "es-AR";
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.onresult = (e) => {
+      let finalChunk = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) finalChunk += r[0].transcript;
+      }
+      if (finalChunk.trim()) {
+        setContext((prev) =>
+          (prev ? prev.replace(/\s*$/, "") + " " : "") + finalChunk.trim()
+        );
+      }
+    };
+    rec.onerror = (ev) => {
+      if (ev?.error === "no-speech" || ev?.error === "aborted") return;
+      if (ev?.error === "not-allowed" || ev?.error === "service-not-allowed") {
+        toast.error("Permití el acceso al micrófono para dictar.");
+        dictatingRef.current = false;
+        setDictating(false);
+      }
+    };
+    rec.onend = () => {
+      // Chrome corta el reconocimiento tras un silencio; si el usuario sigue
+      // dictando, lo reiniciamos para que sea continuo.
+      if (dictatingRef.current) {
+        try {
+          rec.start();
+        } catch {}
+      } else {
+        setDictating(false);
+      }
+    };
+    recognitionRef.current = rec;
+    dictatingRef.current = true;
+    setDictating(true);
+    try {
+      rec.start();
+    } catch {}
+  }
+
+  function stopDictation() {
+    dictatingRef.current = false;
+    setDictating(false);
+    try {
+      recognitionRef.current?.stop();
+    } catch {}
+  }
+
+  function toggleDictation() {
+    if (dictating) stopDictation();
+    else startDictation();
+  }
 
   async function handlePdfFile(file: File) {
     if (!file.name.toLowerCase().endsWith(".pdf")) {
@@ -227,15 +344,44 @@ export function PostMeetWorkspace() {
               <Label htmlFor="context" className="text-xs">
                 Transcripción o resumen de la reunión
               </Label>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={extracting}
-                className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline disabled:opacity-50"
-              >
-                <Upload className="h-3 w-3" />
-                Subir PDF
-              </button>
+              <div className="flex items-center gap-3">
+                {srSupported && (
+                  <button
+                    type="button"
+                    onClick={toggleDictation}
+                    className={cn(
+                      "inline-flex items-center gap-1 text-[11px] hover:underline",
+                      dictating
+                        ? "font-medium text-red-600"
+                        : "text-primary"
+                    )}
+                  >
+                    {dictating ? (
+                      <>
+                        <span className="relative flex h-3 w-3 items-center justify-center">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/60" />
+                          <Square className="h-2.5 w-2.5 fill-current" />
+                        </span>
+                        Detener
+                      </>
+                    ) : (
+                      <>
+                        <Mic className="h-3 w-3" />
+                        Dictar
+                      </>
+                    )}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={extracting}
+                  className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline disabled:opacity-50"
+                >
+                  <Upload className="h-3 w-3" />
+                  Subir PDF
+                </button>
+              </div>
               <input
                 ref={fileInputRef}
                 type="file"

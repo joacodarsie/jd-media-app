@@ -24,6 +24,7 @@ import {
   Gauge,
   BookOpen,
   Megaphone,
+  Radio,
   Menu,
   LogOut,
   type LucideIcon,
@@ -73,6 +74,7 @@ const ICONS: Record<string, LucideIcon> = {
   Gauge,
   BookOpen,
   Megaphone,
+  Radio,
 };
 
 function initials(nombre: string) {
@@ -88,15 +90,17 @@ function SidebarContent({
   user,
   badges = {},
   novedadesLatestDate,
+  isLiveOwner = false,
   onNavigate,
 }: {
   user: AppUser;
   badges?: Record<string, number>;
   novedadesLatestDate?: string | null;
+  isLiveOwner?: boolean;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const groups = visibleNavGroups(user);
+  const groups = visibleNavGroups(user, isLiveOwner);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const prevPathname = useRef(pathname);
   useEffect(() => {
@@ -224,6 +228,7 @@ export function AppShell({
   quickLinks,
   badges,
   novedadesLatestDate,
+  isLiveOwner = false,
   children,
 }: {
   user: AppUser;
@@ -231,6 +236,7 @@ export function AppShell({
   quickLinks?: QuickLinkRow[];
   badges?: Record<string, number>;
   novedadesLatestDate?: string | null;
+  isLiveOwner?: boolean;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -245,6 +251,7 @@ export function AppShell({
             user={user}
             badges={badges}
             novedadesLatestDate={novedadesLatestDate}
+            isLiveOwner={isLiveOwner}
           />
         </div>
       </aside>
@@ -256,6 +263,7 @@ export function AppShell({
             user={user}
             badges={badges}
             novedadesLatestDate={novedadesLatestDate}
+            isLiveOwner={isLiveOwner}
             onNavigate={() => setOpen(false)}
           />
         </SheetContent>

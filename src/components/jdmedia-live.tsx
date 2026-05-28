@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
+  ArrowLeft,
   Loader2,
   Mic,
   MicOff,
@@ -379,6 +381,22 @@ export function JdmediaLive({ userName }: { userName: string }) {
   return (
     <div className="mx-auto flex h-full w-full max-w-4xl flex-col gap-4 p-4">
       <div className="flex items-center gap-2">
+        <Link
+          href="/jdmedia"
+          onClick={(e) => {
+            // Si hay sesión activa, cortamos limpio antes de navegar.
+            if (status === "live" || isConnecting) {
+              e.preventDefault();
+              hangUp();
+              window.location.href = "/jdmedia";
+            }
+          }}
+          className="mr-1 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          aria-label="Volver a JDmedIA"
+          title="Volver a JDmedIA"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Link>
         <Radio
           className={cn(
             "h-5 w-5",

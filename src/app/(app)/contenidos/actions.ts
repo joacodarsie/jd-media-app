@@ -204,3 +204,30 @@ export async function deletePublication(id: string) {
   invalidate(data?.cliente_id);
   return { ok: true };
 }
+
+export async function bulkDeletePublications(ids: string[]) {
+  if (!ids.length) return { ok: true, deleted: 0 };
+  const { supabase } = await ctx();
+  const { error, count } = await supabase
+    .from("publications")
+    .delete()
+    .in("id", ids)
+    .select("id", { count: "exact", head: true });
+  if (error) return { error: error.message };
+  revalidatePath("/contenidos");
+  revalidatePath("/clientes/[id]/calendario", "page");
+  return { ok: true, deleted: count ?? ids.length };
+}
+
+export async function bulkChangePublicationStatus(ids: string[], estado: string) {
+  if (!ids.length) return { ok: true };
+  const { supabase } = await ctx();
+  const { error } = await supabase
+    .from("publications")
+    .update({ estado })
+    .in("id", ids);
+  if (error) return { error: error.message };
+  revalidatePath("/contenidos");
+  revalidatePath("/clientes/[id]/calendario", "page");
+  return { ok: true };
+}

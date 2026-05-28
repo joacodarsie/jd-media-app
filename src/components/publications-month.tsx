@@ -10,7 +10,11 @@ import {
   ChevronRight,
   KanbanSquare,
   List,
+  Loader2,
+  MousePointerSquare,
   Plus,
+  Trash2,
+  X,
 } from "lucide-react";
 import {
   PUBLICATION_NETWORK_LABEL,
@@ -31,7 +35,19 @@ import {
   type ClientForPub,
 } from "@/components/publication-form-dialog";
 import { PublicationDetailDialog } from "@/components/publication-detail-dialog";
-import { updatePublicationDate, changePublicationStatus } from "@/app/(app)/contenidos/actions";
+import {
+  updatePublicationDate,
+  changePublicationStatus,
+  bulkDeletePublications,
+  bulkChangePublicationStatus,
+} from "@/app/(app)/contenidos/actions";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const DAY_NAMES = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 type Mode = "mes" | "lista" | "kanban" | "agenda";
@@ -73,8 +89,46 @@ export function PublicationsMonth({
 }) {
   const router = useRouter();
   const [, startMove] = useTransition();
+  const [bulkPending, startBulk] = useTransition();
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [hoverKey, setHoverKey] = useState<string | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  function toggleSelect(id: string) {
+    setSelectedIds((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  }
+  function clearSelection() {
+    setSelectedIds(new Set());
+    setSelectMode(false);
+  }
+
+  function handleBulkDelete() {
+    const ids = Array.from(selectedIds);
+    startBulk(async () => {
+      const res = await bulkDeletePublications(ids);
+      if (res?.error) { toast.error("Error al eliminar: " + res.error); return; }
+      toast.success(`Se eliminaron ${(res as { deleted?: number }).deleted ?? ids.length} publicaciones`);
+      clearSelection();
+      router.refresh();
+    });
+  }
+
+  function handleBulkStatus(estado: string) {
+    const ids = Array.from(selectedIds);
+    startBulk(async () => {
+      const res = await bulkChangePublicationStatus(ids, estado);
+      if (res?.error) { toast.error("Error al cambiar estado: " + res.error); return; }
+      toast.success(`Estado actualizado para ${ids.length} publicaciones`);
+      clearSelection();
+      router.refresh();
+    });
+  }
 
   function moveTo(id: string, date: string | null) {
     setHoverKey(null);
@@ -279,6 +333,22 @@ export function PublicationsMonth({
             <ModeBtn icon={KanbanSquare} label="Kanban" active={mode === "kanban"} onClick={() => setMode("kanban")} />
             <ModeBtn icon={List} label="Lista" active={mode === "lista"} onClick={() => setMode("lista")} />
           </div>
+          {(mode === "lista" || mode === "agenda") && (
+            <Button
+              variant={selectMode ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => {
+                if (selectMode) clearSelection();
+                else setSelectMode(true);
+              }}
+            >
+              {selectMode ? (
+                <><X className="mr-1.5 h-4 w-4" /> Cancelar</>
+              ) : (
+                <><MousePointerSquare className="mr-1.5 h-4 w-4" /> Seleccionar</>
+              )}
+            </Button>
+          )}
           <PublicationFormDialog
             mode="create"
             clients={clients}
@@ -641,6 +711,9 @@ export function PublicationsMonth({
           unscheduled={unscheduled}
           clients={clients}
           users={users}
+          selectMode={selectMode}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelect}
         />
       ) : (
         // Modo lista — agrupado por estado del flujo
@@ -660,12 +733,58 @@ export function PublicationsMonth({
                 </h3>
                 <div className="space-y-1.5">
                   {arr.map((p) => (
-                    <PubRow key={p.id} pub={p} clients={clients} users={users} />
+                    <PubRow
+                      key={p.id}
+                      pub={p}
+                      clients={clients}
+                      users={users}
+                      selectMode={selectMode}
+                      selected={selectedIds.has(p.id)}
+                      onToggleSelect={toggleSelect}
+                    />
                   ))}
                 </div>
               </section>
             );
           })}
+        </div>
+      )}
+
+      {/* Barra de bulk actions — fixed bottom cuando hay selección */}
+      {selectMode && selectedIds.size > 0 && (
+        <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-xl border bg-card px-4 py-2.5 shadow-lg">
+          <span className="text-sm font-medium">
+            {selectedIds.size} seleccionada{selectedIds.size === 1 ? "" : "s"}
+          </span>
+          <div className="h-4 w-px bg-border" />
+          <Select onValueChange={handleBulkStatus} disabled={bulkPending}>
+            <SelectTrigger className="h-8 w-40 text-xs">
+              <SelectValue placeholder="Cambiar estado" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_ORDER.map((s) => (
+                <SelectItem key={s} value={s} className="text-xs">
+                  {PUBLICATION_STATUS_LABEL[s]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleBulkDelete}
+            disabled={bulkPending}
+          >
+            {bulkPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="mr-1.5 h-4 w-4" />
+            )}
+            Eliminar
+          </Button>
+          <Button variant="ghost" size="sm" onClick={clearSelection} disabled={bulkPending}>
+            <X className="h-4 w-4" />
+          </Button>
         </div>
       )}
     </div>
@@ -677,11 +796,17 @@ function AgendaView({
   unscheduled,
   clients,
   users,
+  selectMode,
+  selectedIds,
+  onToggleSelect,
 }: {
   byDay: Map<string, PublicationWithRels[]>;
   unscheduled: PublicationWithRels[];
   clients: ClientForPub[];
   users: Pick<AppUser, "id" | "nombre">[];
+  selectMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
 }) {
   const sortedDays = Array.from(byDay.keys()).sort();
   const todayStr = ymd(new Date());
@@ -740,7 +865,15 @@ function AgendaView({
             </div>
             <div className="space-y-1.5">
               {arr.map((p) => (
-                <PubRow key={p.id} pub={p} clients={clients} users={users} />
+                <PubRow
+                  key={p.id}
+                  pub={p}
+                  clients={clients}
+                  users={users}
+                  selectMode={selectMode}
+                  selected={selectedIds?.has(p.id)}
+                  onToggleSelect={onToggleSelect}
+                />
               ))}
             </div>
           </section>
@@ -755,7 +888,15 @@ function AgendaView({
           </div>
           <div className="space-y-1.5">
             {unscheduled.map((p) => (
-              <PubRow key={p.id} pub={p} clients={clients} users={users} />
+              <PubRow
+                key={p.id}
+                pub={p}
+                clients={clients}
+                users={users}
+                selectMode={selectMode}
+                selected={selectedIds?.has(p.id)}
+                onToggleSelect={onToggleSelect}
+              />
             ))}
           </div>
         </section>
@@ -908,6 +1049,9 @@ function PubRow({
   onDragStart,
   onDragEnd,
   dragging,
+  selectMode,
+  selected,
+  onToggleSelect,
 }: {
   pub: PublicationWithRels;
   clients: ClientForPub[];
@@ -915,6 +1059,9 @@ function PubRow({
   onDragStart?: (id: string) => void;
   onDragEnd?: () => void;
   dragging?: boolean;
+  selectMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }) {
   const fecha = pub.fecha_publicacion
     ? new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", {
@@ -922,6 +1069,54 @@ function PubRow({
         month: "short",
       })
     : "Sin fecha";
+
+  const rowContent = (
+    <div className="flex min-w-0 flex-1 items-center gap-2">
+      {selectMode && (
+        <input
+          type="checkbox"
+          checked={!!selected}
+          onChange={() => onToggleSelect?.(pub.id)}
+          onClick={(e) => e.stopPropagation()}
+          className="h-4 w-4 shrink-0 accent-primary"
+        />
+      )}
+      <span
+        className={cn(
+          "rounded-full px-2 py-0.5 text-[10px] font-medium",
+          PUBLICATION_STATUS_BADGE[pub.estado]
+        )}
+      >
+        {PUBLICATION_STATUS_LABEL[pub.estado]}
+      </span>
+      <span className="truncate">{pub.titulo}</span>
+    </div>
+  );
+
+  const rowMeta = (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      {pub.cliente && <span className="hidden sm:inline">{pub.cliente.nombre}</span>}
+      <span>{PUBLICATION_NETWORK_LABEL[pub.red]}</span>
+      <span>· {fecha}</span>
+    </div>
+  );
+
+  if (selectMode) {
+    return (
+      <div
+        onClick={() => onToggleSelect?.(pub.id)}
+        className={cn(
+          "flex w-full cursor-pointer items-center justify-between gap-3 rounded-md border bg-card px-3 py-2 text-left text-sm transition-colors",
+          selected ? "border-primary bg-primary/5" : "hover:border-primary/40",
+          dragging && "opacity-40"
+        )}
+      >
+        {rowContent}
+        {rowMeta}
+      </div>
+    );
+  }
+
   return (
     <PublicationDetailDialog
       publication={pub}
@@ -942,22 +1137,8 @@ function PubRow({
             onDragStart && "cursor-grab active:cursor-grabbing",
             dragging && "opacity-40"
           )}>
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <span
-              className={cn(
-                "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                PUBLICATION_STATUS_BADGE[pub.estado]
-              )}
-            >
-              {PUBLICATION_STATUS_LABEL[pub.estado]}
-            </span>
-            <span className="truncate">{pub.titulo}</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            {pub.cliente && <span className="hidden sm:inline">{pub.cliente.nombre}</span>}
-            <span>{PUBLICATION_NETWORK_LABEL[pub.red]}</span>
-            <span>· {fecha}</span>
-          </div>
+          {rowContent}
+          {rowMeta}
         </button>
       }
     />

@@ -125,7 +125,7 @@ function internalToEvent(m: InternalMeetingWithRels): CalendarEvent {
   };
 }
 
-type ViewMode = "list" | "week" | "month";
+type ViewMode = "today" | "list" | "week" | "month";
 
 const SOURCE_PALETTE = [
   { soft: "bg-blue-500/15 text-blue-700 dark:text-blue-300", dot: "bg-blue-500" },
@@ -221,6 +221,12 @@ function formatDayHeading(date: Date) {
 }
 
 function rangeFor(view: ViewMode, cursor: Date): { from: Date; to: Date } {
+  if (view === "today") {
+    const base = startOfDay(cursor);
+    const end = new Date(base);
+    end.setHours(23, 59, 59, 999);
+    return { from: base, to: end };
+  }
   if (view === "month") {
     const monthStart = startOfMonth(cursor);
     const monthEnd = endOfMonth(cursor);
@@ -242,6 +248,14 @@ function rangeKey(from: Date, to: Date) {
 }
 
 function titleFor(view: ViewMode, cursor: Date): string {
+  if (view === "today") {
+    const s = cursor.toLocaleDateString("es-AR", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
   if (view === "month") {
     const s = cursor.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
     return s.charAt(0).toUpperCase() + s.slice(1);
@@ -318,7 +332,8 @@ export function AgendaView({
   useEffect(() => {
     try {
       const v = localStorage.getItem(LS_VIEW_KEY);
-      if (v === "list" || v === "week" || v === "month") setView(v);
+      if (v === "today" || v === "list" || v === "week" || v === "month")
+        setView(v);
     } catch {
       /* ignore */
     }
@@ -467,6 +482,9 @@ export function AgendaView({
       } else if (ev.key === "t" || ev.key === "T") {
         ev.preventDefault();
         goToday();
+      } else if (ev.key === "h" || ev.key === "H") {
+        setView("today");
+        setCursor(new Date());
       } else if (ev.key === "l" || ev.key === "L") {
         setView("list");
       } else if (ev.key === "w" || ev.key === "W") {
@@ -511,7 +529,7 @@ export function AgendaView({
                 currentUserId={currentUserId}
                 trigger={
                   <Button variant="outline" size="sm">
-                    <Sparkles className="mr-1 h-4 w-4" /> Nueva reunión interna
+                    <Sparkles className="mr-1 h-4 w-4" /> Nueva reunión
                   </Button>
                 }
               />
@@ -580,6 +598,7 @@ export function AgendaView({
             role="tablist"
             aria-label="Vista de agenda"
           >
+            <ViewTab current={view} value="today" onClick={() => { setView("today"); setCursor(new Date()); }} icon={<Sparkles className="h-3.5 w-3.5" />} label="Hoy" hint="H" />
             <ViewTab current={view} value="list" onClick={() => setView("list")} icon={<List className="h-3.5 w-3.5" />} label="Lista" hint="L" />
             <ViewTab current={view} value="week" onClick={() => setView("week")} icon={<CalendarDays className="h-3.5 w-3.5" />} label="Semana" hint="W" />
             <ViewTab current={view} value="month" onClick={() => setView("month")} icon={<LayoutGrid className="h-3.5 w-3.5" />} label="Mes" hint="M" />
@@ -657,6 +676,18 @@ export function AgendaView({
 
       {events.length === 0 && isFetching ? (
         <ViewSkeleton view={view} />
+      ) : view === "today" ? (
+        <TodayView
+          cursor={cursor}
+          events={filtered}
+          connections={connections}
+          clients={clients}
+          expanded={expanded}
+          toggleExpanded={toggleExpanded}
+          users={users}
+          currentUserId={currentUserId}
+          isAdmin={isAdmin}
+        />
       ) : view === "list" ? (
         <ListView
           events={filtered}
@@ -689,6 +720,9 @@ export function AgendaView({
           conflictDays={conflictDays}
           selectedDay={selectedDay}
           onSelectDay={(d) => setSelectedDay(d)}
+          users={users}
+          clients={clients}
+          currentUserId={currentUserId}
         />
       )}
 
@@ -941,6 +975,9 @@ function MonthView({
   conflictDays,
   selectedDay,
   onSelectDay,
+  users,
+  clients,
+  currentUserId,
 }: {
   cursor: Date;
   events: CalendarEvent[];
@@ -948,6 +985,9 @@ function MonthView({
   conflictDays: Set<string>;
   selectedDay: Date | null;
   onSelectDay: (d: Date) => void;
+  users: { id: string; nombre: string }[];
+  clients: ClientLite[];
+  currentUserId: string;
 }) {
   const monthStart = startOfMonth(cursor);
   const gridStart = startOfWeek(monthStart);
@@ -987,12 +1027,12 @@ function MonthView({
           const isSelected = selectedDay && isSameDay(day, selectedDay);
           const hasConflict = conflictDays.has(k);
           return (
-            <button
+            <div
               key={i}
               role="gridcell"
               aria-current={isToday ? "date" : undefined}
               onClick={() => onSelectDay(day)}
-              className={`group min-h-[88px] border-b border-r p-1.5 text-left transition hover:bg-muted/30 sm:min-h-[100px] ${
+              className={`group relative min-h-[88px] cursor-pointer border-b border-r p-1.5 text-left transition hover:bg-muted/30 sm:min-h-[100px] ${
                 i % 7 === 6 ? "border-r-0" : ""
               } ${i >= 35 ? "border-b-0" : ""} ${
                 !isCurMonth ? "bg-muted/20 text-muted-foreground/60" : ""
@@ -1015,6 +1055,27 @@ function MonthView({
                   )}
                   {evs.length > 0 && !isToday && (
                     <span className="text-[10px] text-muted-foreground">{evs.length}</span>
+                  )}
+                  {currentUserId && (
+                    <span onClick={(e) => e.stopPropagation()}>
+                      <MeetingFormDialog
+                        mode="create"
+                        users={users}
+                        clients={clients.map((c) => ({ id: c.id, nombre: c.nombre }))}
+                        currentUserId={currentUserId}
+                        initialDate={day}
+                        trigger={
+                          <button
+                            type="button"
+                            aria-label="Agregar reunión este día"
+                            title="Agregar reunión"
+                            className="ml-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground opacity-0 transition hover:bg-primary hover:text-primary-foreground group-hover:opacity-100 sm:opacity-0"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </button>
+                        }
+                      />
+                    </span>
                   )}
                 </div>
               </div>
@@ -1041,7 +1102,7 @@ function MonthView({
                   <div className="text-[10px] text-muted-foreground">+{evs.length - 3} más</div>
                 )}
               </div>
-            </button>
+            </div>
           );
         })}
       </div>
@@ -1323,6 +1384,136 @@ function EventCard({
         </div>
       </div>
     </article>
+  );
+}
+
+/* ---------- ViewSkeleton ---------- */
+
+/* ---------- TodayView ---------- */
+
+function TodayView({
+  cursor,
+  events,
+  connections,
+  clients,
+  expanded,
+  toggleExpanded,
+  users,
+  currentUserId,
+  isAdmin,
+}: {
+  cursor: Date;
+  events: CalendarEvent[];
+  connections: Connection[];
+  clients: ClientLite[];
+  expanded: Set<string>;
+  toggleExpanded: (k: string) => void;
+  users: { id: string; nombre: string }[];
+  currentUserId: string;
+  isAdmin: boolean;
+}) {
+  const todayKey = dayKey(cursor);
+  const evs = useMemo(
+    () =>
+      events
+        .filter((e) => dayKey(new Date(e.start)) === todayKey)
+        .sort((a, b) => a.start.localeCompare(b.start)),
+    [events, todayKey]
+  );
+
+  const now = new Date();
+  const inCurso = (e: CalendarEvent) =>
+    new Date(e.start) <= now && new Date(e.end) > now && !e.isAllDay;
+  const ya = evs.filter((e) => new Date(e.end) <= now && !e.isAllDay);
+  const ahora = evs.filter(inCurso);
+  const proximos = evs.filter(
+    (e) => new Date(e.start) > now || e.isAllDay
+  );
+
+  return (
+    <div className="space-y-5">
+      {evs.length === 0 ? (
+        <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
+          Sin reuniones este día. Tocá <strong>+ Nueva</strong> para agendar
+          una.
+        </div>
+      ) : (
+        <>
+          {ahora.length > 0 && (
+            <section className="space-y-2">
+              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+                <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                En curso ({ahora.length})
+              </h2>
+              <div className="space-y-2">
+                {ahora.map((e) => (
+                  <EventCard
+                    key={`${e.source_id}-${e.id}`}
+                    event={e}
+                    connections={connections}
+                    client={matchClient(e, clients)}
+                    expanded={expanded}
+                    toggleExpanded={toggleExpanded}
+                    users={users}
+                    clients={clients}
+                    currentUserId={currentUserId}
+                    isAdmin={isAdmin}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {proximos.length > 0 && (
+            <section className="space-y-2">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">
+                Próximas ({proximos.length})
+              </h2>
+              <div className="space-y-2">
+                {proximos.map((e) => (
+                  <EventCard
+                    key={`${e.source_id}-${e.id}`}
+                    event={e}
+                    connections={connections}
+                    client={matchClient(e, clients)}
+                    expanded={expanded}
+                    toggleExpanded={toggleExpanded}
+                    users={users}
+                    clients={clients}
+                    currentUserId={currentUserId}
+                    isAdmin={isAdmin}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {ya.length > 0 && (
+            <section className="space-y-2 opacity-70">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Ya pasaron ({ya.length})
+              </h2>
+              <div className="space-y-2">
+                {ya.map((e) => (
+                  <EventCard
+                    key={`${e.source_id}-${e.id}`}
+                    event={e}
+                    connections={connections}
+                    client={matchClient(e, clients)}
+                    expanded={expanded}
+                    toggleExpanded={toggleExpanded}
+                    users={users}
+                    clients={clients}
+                    currentUserId={currentUserId}
+                    isAdmin={isAdmin}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 

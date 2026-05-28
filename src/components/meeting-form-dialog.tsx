@@ -216,7 +216,7 @@ export function MeetingFormDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {mode === "create" ? "Nueva reunión interna" : "Editar reunión"}
+            {mode === "create" ? "Nueva reunión" : "Editar reunión"}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">

@@ -27,7 +27,8 @@ export default async function AgendaPage() {
       .order("created_at", { ascending: true }),
     supabase
       .from("clients")
-      .select("id, nombre, contacto_email")
+      .select("id, nombre, contacto_email, estado")
+      .eq("estado", "activo")
       .order("nombre"),
     supabase
       .from("users")

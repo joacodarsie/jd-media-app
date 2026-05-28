@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Radio } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { JdmediaChat, type ChatAttachment } from "@/components/jdmedia-chat";
@@ -98,10 +100,25 @@ export default async function JdmediaPage({
     }));
   }
 
+  const isLiveOwner =
+    !!process.env.JDMEDIA_LIVE_OWNER_EMAIL &&
+    me.email === process.env.JDMEDIA_LIVE_OWNER_EMAIL;
+
   return (
     <div className="-m-4 flex h-[calc(100vh-3.5rem)] md:-m-6">
       <ConversationsSidebar conversations={convList} activeId={activeId} />
       <div className="flex min-w-0 flex-1 flex-col">
+        {isLiveOwner && (
+          <div className="flex items-center justify-end border-b px-3 py-1.5">
+            <Link
+              href="/jdmedia/live"
+              className="inline-flex items-center gap-1.5 rounded-full bg-red-500/10 px-3 py-1 text-xs font-medium text-red-600 transition hover:bg-red-500/20"
+            >
+              <Radio className="h-3.5 w-3.5" />
+              Sesión en vivo
+            </Link>
+          </div>
+        )}
         <JdmediaChat
           key={activeId ?? "new"}
           conversationId={activeId}

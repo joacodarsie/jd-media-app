@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveUsers, getActiveClients } from "@/lib/cache";
 import type { PublicationWithRels } from "@/lib/types";
 import { PublicationsMonth } from "@/components/publications-month";
 import { HelpTrigger } from "@/components/help-trigger";
@@ -12,9 +13,9 @@ export default async function ContenidosPage() {
 
   const [
     { data: pubs },
-    { data: users },
-    { data: clients },
     { data: unseenComments },
+    users,
+    clients,
   ] = await Promise.all([
     supabase
       .from("publications")
@@ -22,15 +23,12 @@ export default async function ContenidosPage() {
         "*, cliente:clients(id,nombre), creador:users!publications_creado_por_id_fkey(id,nombre,avatar_url), audiovisual:users!publications_audiovisual_id_fkey(id,nombre,avatar_url)"
       )
       .order("fecha_publicacion", { ascending: true, nullsFirst: false }),
-    supabase.from("users").select("id, nombre").eq("activo", true).order("nombre"),
-    supabase
-      .from("clients")
-      .select("id, nombre, estado, cm_id, disenador_id, audiovisual_id")
-      .order("nombre"),
     supabase
       .from("client_pub_comments")
       .select("publication_id")
       .is("visto_at", null),
+    getActiveUsers(),
+    getActiveClients(),
   ]);
 
   // Map: publication_id → cantidad de comentarios sin ver del cliente
@@ -64,8 +62,8 @@ export default async function ContenidosPage() {
       </div>
       <PublicationsMonth
         publications={(pubs ?? []) as PublicationWithRels[]}
-        clients={clients ?? []}
-        users={users ?? []}
+        clients={clients}
+        users={users}
         unseenByPub={unseenByPub}
       />
     </div>

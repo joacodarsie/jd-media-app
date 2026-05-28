@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { invalidateUsersCache, invalidatePositionsCache } from "@/lib/cache";
 import type { PositionTool } from "@/lib/types";
 
 async function ctx() {
@@ -58,6 +59,7 @@ export async function createPosition(input: PositionInput) {
     .single();
   if (error) return { error: error.message };
   revalidatePath("/equipo");
+  invalidatePositionsCache();
   return { ok: true, id: data.id };
 }
 
@@ -67,6 +69,7 @@ export async function updatePosition(id: string, input: PositionInput) {
   if (error) return { error: error.message };
   revalidatePath("/equipo");
   revalidatePath(`/equipo/${id}`);
+  invalidatePositionsCache();
   return { ok: true };
 }
 
@@ -75,6 +78,7 @@ export async function deletePosition(id: string) {
   const { error } = await supabase.from("positions").delete().eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/equipo");
+  invalidatePositionsCache();
   return { ok: true };
 }
 
@@ -86,6 +90,7 @@ export async function assignUserPosition(userId: string, positionId: string | nu
     .eq("id", userId);
   if (error) return { error: error.message };
   revalidatePath("/equipo");
+  invalidateUsersCache();
   return { ok: true };
 }
 
@@ -102,6 +107,7 @@ export async function assignUserSecondaryPositions(
   if (error) return { error: error.message };
   revalidatePath("/equipo");
   revalidatePath("/equipo/personas");
+  invalidateUsersCache();
   return { ok: true };
 }
 

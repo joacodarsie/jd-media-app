@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveUsers, getActiveClients } from "@/lib/cache";
 import { getExchangeRates } from "@/lib/exchange";
 import { toARS, fmtARS } from "@/lib/finanzas";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,7 +31,7 @@ export default async function PagosPage({
   const monthFilter =
     searchParams.m && /^\d{4}-\d{2}$/.test(searchParams.m) ? searchParams.m : null;
 
-  const [{ data: paymentsData }, { data: usersData }, { data: compsData }, { data: clientsData }] = await Promise.all([
+  const [{ data: paymentsData }, { data: compsData }, usersWithPos, clients] = await Promise.all([
     supabase
       .from("team_payments")
       .select(
@@ -38,22 +39,13 @@ export default async function PagosPage({
       )
       .order("fecha_programada", { ascending: true }),
     supabase
-      .from("users")
-      .select("id, nombre, position_id")
-      .eq("activo", true)
-      .order("nombre"),
-    supabase
       .from("compensation")
       .select("user_id, monto"),
-    supabase
-      .from("clients")
-      .select("id, nombre")
-      .order("nombre"),
+    getActiveUsers(),
+    getActiveClients(),
   ]);
-  const clients = (clientsData ?? []) as { id: string; nombre: string }[];
 
   const all = (paymentsData ?? []) as unknown as PaymentTableRow[];
-  const usersWithPos = (usersData ?? []) as { id: string; nombre: string; position_id: string | null }[];
   const users = usersWithPos.map((u) => ({ id: u.id, nombre: u.nombre }));
   const comps = (compsData ?? []) as { user_id: string; monto: number | null }[];
   const today = new Date().toISOString().slice(0, 10);

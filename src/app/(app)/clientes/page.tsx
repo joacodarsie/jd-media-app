@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveUsers } from "@/lib/cache";
 import type { TaskWithRels } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { ClientsDashboard } from "@/components/clients-dashboard";
@@ -15,7 +16,7 @@ export default async function ClientesPage() {
 
   const todayISO = new Date().toISOString();
 
-  const [{ data: clients }, { data: tasks }, { data: users }, { data: pubs }] =
+  const [{ data: clients }, { data: tasks }, users, { data: pubs }] =
     await Promise.all([
       supabase
         .from("clients")
@@ -29,11 +30,7 @@ export default async function ClientesPage() {
           "*, cliente:clients(id,nombre), asignado:users!tasks_asignado_a_id_fkey(id,nombre,avatar_url)"
         )
         .order("fecha_limite", { ascending: true, nullsFirst: false }),
-      supabase
-        .from("users")
-        .select("id, nombre")
-        .eq("activo", true)
-        .order("nombre"),
+      getActiveUsers(),
       supabase
         .from("publications")
         .select("id, cliente_id, titulo, fecha_publicacion, red, estado")
@@ -55,7 +52,7 @@ export default async function ClientesPage() {
         {isAdmin && (
           <ClientFormDialog
             mode="create"
-            users={users ?? []}
+            users={users}
             trigger={
               <Button>
                 <Plus className="mr-2 h-4 w-4" /> Nuevo cliente

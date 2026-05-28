@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveClients } from "@/lib/cache";
 import { getExchangeRates } from "@/lib/exchange";
 import { isOverdue } from "@/lib/finanzas";
 import { GenerateMonthButton } from "@/components/generate-month-button";
@@ -30,7 +31,7 @@ export default async function CobrosPage({
   const monthFilter =
     searchParams.m && /^\d{4}-\d{2}$/.test(searchParams.m) ? searchParams.m : null;
 
-  const [{ data: invoicesData }, { data: clientsData }] = await Promise.all([
+  const [{ data: invoicesData }, clients] = await Promise.all([
     supabase
       .from("client_invoices")
       .select(
@@ -38,15 +39,10 @@ export default async function CobrosPage({
       )
       .order("fecha_vencimiento", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false }),
-    supabase
-      .from("clients")
-      .select("id, nombre")
-      .eq("estado", "activo")
-      .order("nombre"),
+    getActiveClients(),
   ]);
 
   const all = (invoicesData ?? []) as unknown as InvoiceTableRow[];
-  const clients = (clientsData ?? []) as { id: string; nombre: string }[];
 
   let rows = all.filter((i) => {
     if (filter === "pendientes") return !i.fecha_cobro;

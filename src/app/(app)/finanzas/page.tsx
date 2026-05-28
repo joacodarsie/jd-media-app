@@ -11,6 +11,7 @@ import {
 import { HelpTrigger } from "@/components/help-trigger";
 import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getActiveUsers, getActiveClients } from "@/lib/cache";
 import { getExchangeRates } from "@/lib/exchange";
 import {
   currentPeriod,
@@ -74,8 +75,8 @@ export default async function FinanzasPage() {
     { data: invoicesRaw },
     { data: paymentsRaw },
     { data: expensesRaw },
-    { data: clientsData },
-    { data: usersData },
+    clientsData,
+    usersData,
   ] = await Promise.all([
     supabase
       .from("client_invoices")
@@ -92,15 +93,15 @@ export default async function FinanzasPage() {
       .select(
         "id, categoria, proveedor, concepto, monto, moneda, periodo, fecha_programada, fecha_pago"
       ),
-    supabase.from("clients").select("id, nombre").eq("estado", "activo").order("nombre"),
-    supabase.from("users").select("id, nombre").eq("activo", true).order("nombre"),
+    getActiveClients(),
+    getActiveUsers(),
   ]);
 
   const invoices = (invoicesRaw ?? []) as unknown as InvoiceRow[];
   const payments = (paymentsRaw ?? []) as unknown as PaymentRow[];
   const expenses = (expensesRaw ?? []) as unknown as ExpenseRow[];
-  const clients = (clientsData ?? []) as { id: string; nombre: string }[];
-  const users = (usersData ?? []) as { id: string; nombre: string }[];
+  const clients = clientsData as { id: string; nombre: string }[];
+  const users = usersData as { id: string; nombre: string }[];
 
   // ===== Cashflow real del mes (fecha_cobro / fecha_pago) =====
   const cobradoMes = invoices

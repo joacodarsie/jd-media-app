@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { ensureDueNotifications } from "@/lib/notifications";
+import {
+  runMonthEndCompliance,
+  runMonthStartReports,
+} from "@/lib/director/monthly";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -62,11 +66,38 @@ export async function GET(req: NextRequest) {
     .lt("fecha_completada", cutoff)
     .select("id");
 
+  // Director Creativo — chequeos de fecha (van acá para no sumar crons en Hobby).
+  // Envueltos en try/catch para que un fallo nunca corte las notificaciones.
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(now.getDate() + 1);
+  const esUltimoDiaDeMes = tomorrow.getMonth() !== now.getMonth();
+  const esPrimerDiaDeMes = now.getDate() === 1;
+
+  let monthEnd: unknown = null;
+  let monthStart: unknown = null;
+  if (esUltimoDiaDeMes) {
+    try {
+      monthEnd = await runMonthEndCompliance(admin, now);
+    } catch (e) {
+      monthEnd = { error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+  if (esPrimerDiaDeMes) {
+    try {
+      monthStart = await runMonthStartReports(admin, now);
+    } catch (e) {
+      monthStart = { error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     users: ids.length,
     processed_ok: ok,
     processed_failed: failed,
     tasks_archived: archivedRows?.length ?? 0,
+    month_end: monthEnd,
+    month_start: monthStart,
   });
 }

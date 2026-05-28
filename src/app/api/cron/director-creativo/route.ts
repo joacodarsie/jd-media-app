@@ -13,15 +13,14 @@ export const maxDuration = 60;
 /**
  * Director Creativo IA — corre semanalmente (viernes).
  *
- * Para cada cliente activo:
- *  1. Calcula cuota mensual segun pack vs piezas ya cargadas este mes (brechas).
- *  2. Mira el pipeline de las proximas 2 semanas.
- *  3. Para clientes con brechas/calendario flojo: la IA lee diagnostico + plan
- *     y genera un resumen accionable + 2-4 ideas concretas de contenido.
- *  4. Guarda un director_report por cliente (upsert por semana).
- *  5. Notifica:
- *     - al CM de cada cliente: el parte de SU cliente.
- *     - a la cuenta duena + DIRECTOR_DIGEST_EMAILS (Brisa): digest de TODO.
+ * Para cada cliente activo distingue, en el mes en curso:
+ *  - PLANEADO en el calendario (proy_*) = pubs con fecha en el mes, estado != rechazado
+ *  - PUBLICADO efectivamente (pub_*)     = pubs en estado 'publicado'
+ * vs la cuota del pack. Para los que tienen brechas, la IA genera un resumen
+ * accionable + ideas concretas (leyendo diagnóstico + plan).
+ *
+ * Notifica al CM de cada cliente (su cuenta) y un digest consolidado al owner
+ * + DIRECTOR_DIGEST_EMAILS.
  *
  * Auth: header Authorization: Bearer <CRON_SECRET>
  */
@@ -50,6 +49,9 @@ function endOfMonthISO(d: Date) {
   return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59).toISOString();
 }
 
+const isReel = (tipo: string) => tipo === "reel" || tipo === "video";
+const isPost = (tipo: string) => tipo === "post" || tipo === "carrusel";
+
 /** JSON compacto y truncado de campos relevantes, para inyectar en el prompt. */
 function compact(obj: unknown, keys: string[], max = 2000): string {
   if (!obj || typeof obj !== "object") return "";
@@ -68,8 +70,12 @@ interface ReportRow {
   semana: string;
   pack: string | null;
   status: "al_dia" | "brechas";
-  faltan_reels: number;
-  faltan_posts: number;
+  quota_reels: number;
+  quota_posts: number;
+  proy_reels: number;
+  proy_posts: number;
+  pub_reels: number;
+  pub_posts: number;
   pipeline_next: number;
   resumen: string;
   ideas: DirectorIdea[];
@@ -98,7 +104,7 @@ export async function GET(req: NextRequest) {
   }
   const clientIds = clients.map((c) => c.id);
 
-  // 2) Pubs del mes + pipeline proximas 2 semanas + diagnosticos + planes
+  // 2) Pubs del mes (con estado) + pipeline 2 semanas + diagnósticos + planes
   const [
     { data: monthPubsRaw },
     { data: nextPubsRaw },
@@ -107,7 +113,7 @@ export async function GET(req: NextRequest) {
   ] = await Promise.all([
     admin
       .from("publications")
-      .select("cliente_id, tipo")
+      .select("cliente_id, tipo, estado")
       .in("cliente_id", clientIds)
       .gte("fecha_publicacion", monthStart)
       .lte("fecha_publicacion", monthEnd),
@@ -132,10 +138,13 @@ export async function GET(req: NextRequest) {
       .order("created_at", { ascending: false }),
   ]);
 
-  const monthPubs = (monthPubsRaw ?? []) as { cliente_id: string; tipo: string }[];
+  const monthPubs = (monthPubsRaw ?? []) as {
+    cliente_id: string;
+    tipo: string;
+    estado: string;
+  }[];
   const nextPubs = (nextPubsRaw ?? []) as { cliente_id: string }[];
 
-  // Mapas: el primero por cliente es el mas reciente (vienen ordenados desc).
   const diagByClient = new Map<string, unknown>();
   for (const d of (diagsRaw ?? []) as { cliente_id: string; content: unknown }[]) {
     if (!diagByClient.has(d.cliente_id)) diagByClient.set(d.cliente_id, d.content);
@@ -145,11 +154,16 @@ export async function GET(req: NextRequest) {
     if (!planByClient.has(p.cliente_id)) planByClient.set(p.cliente_id, p.content);
   }
 
-  // 3) Calcular estado por cliente
+  // 3) Estado por cliente: planeado (calendario) vs publicado vs cuota
   const computed = clients.map((c) => {
     const mine = monthPubs.filter((p) => p.cliente_id === c.id);
-    const reelsMes = mine.filter((p) => p.tipo === "reel" || p.tipo === "video").length;
-    const postsMes = mine.filter((p) => p.tipo === "post" || p.tipo === "carrusel").length;
+    const planeado = mine.filter((p) => p.estado !== "rechazado");
+    const publicado = mine.filter((p) => p.estado === "publicado");
+
+    const proyReels = planeado.filter((p) => isReel(p.tipo)).length;
+    const proyPosts = planeado.filter((p) => isPost(p.tipo)).length;
+    const pubReels = publicado.filter((p) => isReel(p.tipo)).length;
+    const pubPosts = publicado.filter((p) => isPost(p.tipo)).length;
 
     let quotaReels = 0;
     let quotaPosts = 0;
@@ -161,8 +175,10 @@ export async function GET(req: NextRequest) {
         quotaPosts = q.posts;
       }
     }
-    const faltanReels = Math.max(0, quotaReels - reelsMes);
-    const faltanPosts = Math.max(0, quotaPosts - postsMes);
+
+    // "faltan" = lo que falta PLANEAR para llenar el calendario a la cuota
+    const faltanReels = Math.max(0, quotaReels - proyReels);
+    const faltanPosts = Math.max(0, quotaPosts - proyPosts);
     const pipelineNext = nextPubs.filter((p) => p.cliente_id === c.id).length;
     const calendarioFlojo = pipelineNext < 3;
     const hasGap = faltanReels + faltanPosts > 0;
@@ -170,10 +186,12 @@ export async function GET(req: NextRequest) {
 
     return {
       c,
-      reelsMes,
-      postsMes,
       quotaReels,
       quotaPosts,
+      proyReels,
+      proyPosts,
+      pubReels,
+      pubPosts,
       faltanReels,
       faltanPosts,
       pipelineNext,
@@ -181,7 +199,7 @@ export async function GET(req: NextRequest) {
     };
   });
 
-  // 4) IA solo para los que tienen brechas (los al-dia llevan resumen templated)
+  // 4) IA solo para los que tienen brechas
   const reports: ReportRow[] = await Promise.all(
     computed.map(async (x): Promise<ReportRow> => {
       let resumen: string;
@@ -192,12 +210,12 @@ export async function GET(req: NextRequest) {
           nombre: x.c.nombre,
           rubro: x.c.rubro,
           packDesc: describePack(x.c.pack),
-          reelsMes: x.reelsMes,
-          postsMes: x.postsMes,
           quotaReels: x.quotaReels,
           quotaPosts: x.quotaPosts,
-          faltanReels: x.faltanReels,
-          faltanPosts: x.faltanPosts,
+          proyReels: x.proyReels,
+          proyPosts: x.proyPosts,
+          pubReels: x.pubReels,
+          pubPosts: x.pubPosts,
           pipelineNext: x.pipelineNext,
           diagSummary: compact(diagByClient.get(x.c.id), [
             "publico_objetivo",
@@ -217,16 +235,15 @@ export async function GET(req: NextRequest) {
           resumen = insight.resumen;
           ideas = insight.ideas;
         } else {
-          // Fallback templated si la IA falla
           const partes: string[] = [];
           if (x.faltanReels > 0) partes.push(`${x.faltanReels} reel(s)`);
           if (x.faltanPosts > 0) partes.push(`${x.faltanPosts} post(s)`);
           if (x.pipelineNext < 3)
             partes.push(`pipeline flojo (${x.pipelineNext} en 2 semanas)`);
-          resumen = `Atención: faltan ${partes.join(", ")}.`;
+          resumen = `Atención: faltan planear ${partes.join(", ")}.`;
         }
       } else {
-        resumen = `Al día: ${x.reelsMes} reels y ${x.postsMes} posts cargados este mes, ${x.pipelineNext} pubs en las próximas 2 semanas.`;
+        resumen = `Al día: ${x.proyReels} reels y ${x.proyPosts} posts planeados (publicados ${x.pubReels} y ${x.pubPosts}), ${x.pipelineNext} pubs en las próximas 2 semanas.`;
       }
 
       return {
@@ -237,8 +254,12 @@ export async function GET(req: NextRequest) {
         semana,
         pack: x.c.pack,
         status: x.status,
-        faltan_reels: x.faltanReels,
-        faltan_posts: x.faltanPosts,
+        quota_reels: x.quotaReels,
+        quota_posts: x.quotaPosts,
+        proy_reels: x.proyReels,
+        proy_posts: x.proyPosts,
+        pub_reels: x.pubReels,
+        pub_posts: x.pubPosts,
         pipeline_next: x.pipelineNext,
         resumen,
         ideas,
@@ -253,8 +274,12 @@ export async function GET(req: NextRequest) {
       semana: r.semana,
       pack: r.pack,
       status: r.status,
-      faltan_reels: r.faltan_reels,
-      faltan_posts: r.faltan_posts,
+      quota_reels: r.quota_reels,
+      quota_posts: r.quota_posts,
+      proy_reels: r.proy_reels,
+      proy_posts: r.proy_posts,
+      pub_reels: r.pub_reels,
+      pub_posts: r.pub_posts,
       pipeline_next: r.pipeline_next,
       resumen: r.resumen,
       ideas: r.ideas,
@@ -319,16 +344,16 @@ export async function GET(req: NextRequest) {
   };
 
   // 7a) Notif por cliente al CM (fallback: creativa)
-  for (const r of reports) {
-    if (r.status !== "brechas") continue;
-    const recipient = r.cm_id ?? r.creativa_asignada_id;
+  for (const x of computed) {
+    if (x.status !== "brechas") continue;
+    const recipient = x.c.cm_id ?? x.c.creativa_asignada_id;
     if (!recipient) continue;
     const partes: string[] = [];
-    if (r.faltan_reels > 0) partes.push(`${r.faltan_reels} reel(s)`);
-    if (r.faltan_posts > 0) partes.push(`${r.faltan_posts} post(s)`);
-    if (r.pipeline_next < 3) partes.push(`pipeline flojo`);
+    if (x.faltanReels > 0) partes.push(`${x.faltanReels} reel(s)`);
+    if (x.faltanPosts > 0) partes.push(`${x.faltanPosts} post(s)`);
+    if (x.pipelineNext < 3) partes.push(`pipeline flojo`);
     const corto = partes.length ? partes.join(", ") : "revisar calendario";
-    push(recipient, `${prefix}: ${r.nombre} — faltan ${corto}. Ver ideas →`);
+    push(recipient, `${prefix}: ${x.c.nombre} — faltan planear ${corto}. Ver ideas →`);
   }
 
   // 7b) Digest consolidado al owner + Brisa

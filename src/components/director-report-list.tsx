@@ -15,8 +15,12 @@ export interface DirectorReportView {
   cliente_nombre: string;
   pack: string | null;
   status: "al_dia" | "brechas";
-  faltan_reels: number;
-  faltan_posts: number;
+  quota_reels: number;
+  quota_posts: number;
+  proy_reels: number;
+  proy_posts: number;
+  pub_reels: number;
+  pub_posts: number;
   pipeline_next: number;
   resumen: string;
   ideas: DirectorIdea[];
@@ -119,13 +123,17 @@ function ReportCard({ r }: { r: DirectorReportView }) {
 
         <p className="text-sm leading-relaxed">{r.resumen}</p>
 
-        {(r.faltan_reels > 0 || r.faltan_posts > 0 || r.pipeline_next < 3) && (
-          <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-            {r.faltan_reels > 0 && <span>Faltan {r.faltan_reels} reels</span>}
-            {r.faltan_posts > 0 && <span>· Faltan {r.faltan_posts} posts</span>}
-            <span>· {r.pipeline_next} pubs en 2 semanas</span>
-          </div>
-        )}
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+          <span>
+            Reels: <b className="text-foreground">{r.pub_reels}</b> publicados ·{" "}
+            {r.proy_reels} planeados / {r.quota_reels} cuota
+          </span>
+          <span>
+            Posts: <b className="text-foreground">{r.pub_posts}</b> publicados ·{" "}
+            {r.proy_posts} planeados / {r.quota_posts} cuota
+          </span>
+          <span>· {r.pipeline_next} pubs en 2 semanas</span>
+        </div>
 
         {r.ideas.length > 0 && (
           <div className="space-y-1.5 border-t pt-2">

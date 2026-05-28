@@ -28,7 +28,7 @@ export default async function DirectorPage() {
     const { data } = await supabase
       .from("director_reports")
       .select(
-        "id, status, pack, faltan_reels, faltan_posts, pipeline_next, resumen, ideas, cliente:clients(nombre)"
+        "id, status, pack, quota_reels, quota_posts, proy_reels, proy_posts, pub_reels, pub_posts, pipeline_next, resumen, ideas, cliente:clients(nombre)"
       )
       .eq("semana", semana)
       .order("status", { ascending: false }); // 'brechas' antes que 'al_dia'
@@ -37,8 +37,12 @@ export default async function DirectorPage() {
       id: string;
       status: "al_dia" | "brechas";
       pack: string | null;
-      faltan_reels: number;
-      faltan_posts: number;
+      quota_reels: number;
+      quota_posts: number;
+      proy_reels: number;
+      proy_posts: number;
+      pub_reels: number;
+      pub_posts: number;
       pipeline_next: number;
       resumen: string;
       ideas: unknown;
@@ -50,8 +54,12 @@ export default async function DirectorPage() {
       cliente_nombre: r.cliente?.nombre ?? "—",
       pack: r.pack,
       status: r.status,
-      faltan_reels: r.faltan_reels,
-      faltan_posts: r.faltan_posts,
+      quota_reels: r.quota_reels,
+      quota_posts: r.quota_posts,
+      proy_reels: r.proy_reels,
+      proy_posts: r.proy_posts,
+      pub_reels: r.pub_reels,
+      pub_posts: r.pub_posts,
       pipeline_next: r.pipeline_next,
       resumen: r.resumen,
       ideas: (Array.isArray(r.ideas) ? r.ideas : []) as DirectorIdea[],

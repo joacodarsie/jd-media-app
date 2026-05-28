@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -97,6 +97,14 @@ function SidebarContent({
 }) {
   const pathname = usePathname();
   const groups = visibleNavGroups(user);
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const prevPathname = useRef(pathname);
+  useEffect(() => {
+    if (prevPathname.current !== pathname) {
+      prevPathname.current = pathname;
+      setPendingHref(null);
+    }
+  }, [pathname]);
 
   // Sobreescribe el badge de novedades si el usuario ya las vio.
   // El marker en /novedades guarda la ultima fecha vista en localStorage; aca
@@ -138,6 +146,7 @@ function SidebarContent({
               const Icon = ICONS[item.icon] ?? ListChecks;
               const active =
                 pathname === item.href || pathname.startsWith(item.href + "/");
+              const isPending = pendingHref === item.href && !active;
               const rawBadge = badges[item.href] ?? 0;
               const badge =
                 item.href === "/novedades" && novedadesAlreadySeen ? 0 : rawBadge;
@@ -145,15 +154,24 @@ function SidebarContent({
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={onNavigate}
+                  onClick={() => {
+                    if (!active) setPendingHref(item.href);
+                    onNavigate?.();
+                  }}
                   className={cn(
                     "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                     active
                       ? "bg-[#FFD400] text-black"
+                      : isPending
+                      ? "bg-sidebar-accent/70 text-sidebar-accent-foreground"
                       : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   )}
                 >
-                  <Icon className="h-[18px] w-[18px]" />
+                  {isPending ? (
+                    <span className="h-[18px] w-[18px] animate-spin rounded-full border-2 border-sidebar-foreground/30 border-t-sidebar-foreground/80" />
+                  ) : (
+                    <Icon className="h-[18px] w-[18px]" />
+                  )}
                   <span className="flex-1 truncate">{item.label}</span>
                   {badge > 0 && (
                     <span

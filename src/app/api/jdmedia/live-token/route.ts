@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 // Modelo Live de Gemini con audio nativo (conversación fluida audio-a-audio).
 // Si Google lo deprecara, cambiar acá. Ver ai.google.dev/gemini-api/docs/pricing
-export const LIVE_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025";
+const LIVE_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025";
 const VOICE = "Aoede"; // voz cálida; alternativas: Puck, Charon, Kore, Fenrir
 const LANGUAGE_CODE = "es-US"; // español (lo más cercano a rioplatense disponible)
 

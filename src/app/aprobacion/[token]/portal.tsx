@@ -449,8 +449,12 @@ function PubCard({
       p_decision: decision,
       p_comentario: decisionNote || null,
     });
-    if (error || !(data as { ok: boolean })?.ok) {
-      alert("No se pudo guardar. Probá de nuevo.");
+    const result = data as { ok: boolean; error?: string } | null;
+    if (error || !result?.ok) {
+      alert(
+        "No se pudo guardar: " +
+          (result?.error ?? error?.message ?? "intentá de nuevo")
+      );
       return;
     }
     onClose?.();
@@ -468,8 +472,12 @@ function PubCard({
       p_pub_id: pub.id,
       p_contenido: comentario,
     });
-    if (error || !(data as { ok: boolean })?.ok) {
-      alert("No se pudo enviar el comentario.");
+    const result = data as { ok: boolean; error?: string } | null;
+    if (error || !result?.ok) {
+      alert(
+        "No se pudo enviar el comentario: " +
+          (result?.error ?? error?.message ?? "intentá de nuevo")
+      );
       return;
     }
     setComentario("");

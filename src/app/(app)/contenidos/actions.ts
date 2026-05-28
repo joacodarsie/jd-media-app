@@ -208,15 +208,14 @@ export async function deletePublication(id: string) {
 export async function bulkDeletePublications(ids: string[]) {
   if (!ids.length) return { ok: true, deleted: 0 };
   const { supabase } = await ctx();
-  const { error, count } = await supabase
+  const { error } = await supabase
     .from("publications")
     .delete()
-    .in("id", ids)
-    .select("id", { count: "exact", head: true });
+    .in("id", ids);
   if (error) return { error: error.message };
   revalidatePath("/contenidos");
   revalidatePath("/clientes/[id]/calendario", "page");
-  return { ok: true, deleted: count ?? ids.length };
+  return { ok: true, deleted: ids.length };
 }
 
 export async function bulkChangePublicationStatus(ids: string[], estado: string) {

@@ -113,7 +113,7 @@ export function PublicationsMonth({
     startBulk(async () => {
       const res = await bulkDeletePublications(ids);
       if (res?.error) { toast.error("Error al eliminar: " + res.error); return; }
-      toast.success(`Se eliminaron ${(res as { deleted?: number }).deleted ?? ids.length} publicaciones`);
+      toast.success(`Se eliminaron ${res.deleted ?? ids.length} publicaciones`);
       clearSelection();
       router.refresh();
     });

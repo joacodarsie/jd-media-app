@@ -15,7 +15,8 @@ export type TaskStatus =
   | "en_progreso"
   | "en_revision"
   | "completada"
-  | "bloqueada";
+  | "bloqueada"
+  | "archivada";
 
 export type TaskPriority = "baja" | "media" | "alta" | "urgente";
 export type ClientPack = "Presencia" | "Crecimiento" | "Escala" | "Personalizado";

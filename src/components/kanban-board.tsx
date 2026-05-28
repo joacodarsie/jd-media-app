@@ -145,7 +145,7 @@ export function KanbanBoard({ tasks }: { tasks: TaskWithRels[] }) {
       onDragCancel={() => setActive(null)}
     >
       <div className="flex gap-3 overflow-x-auto pb-4">
-        {STATUS_ORDER.map((s) => (
+        {STATUS_ORDER.filter((s) => s !== "archivada").map((s) => (
           <Column
             key={s}
             status={s}

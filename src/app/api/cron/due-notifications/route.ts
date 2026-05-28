@@ -53,10 +53,20 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Auto-archive: tareas completadas hace más de 30 días.
+  const cutoff = new Date(Date.now() - 30 * 86400_000).toISOString();
+  const { count: archived } = await admin
+    .from("tasks")
+    .update({ estado: "archivada" })
+    .eq("estado", "completada")
+    .lt("fecha_completada", cutoff)
+    .select("id", { count: "exact", head: true });
+
   return NextResponse.json({
     ok: true,
     users: ids.length,
     processed_ok: ok,
     processed_failed: failed,
+    tasks_archived: archived ?? 0,
   });
 }

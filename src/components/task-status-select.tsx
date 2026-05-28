@@ -53,7 +53,7 @@ export function TaskStatusSelect({
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {STATUS_ORDER.map((s) => (
+        {STATUS_ORDER.filter((s) => s !== "archivada").map((s) => (
           <SelectItem key={s} value={s}>
             {STATUS_LABEL[s]}
           </SelectItem>

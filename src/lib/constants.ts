@@ -54,6 +54,7 @@ export const STATUS_LABEL: Record<TaskStatus, string> = {
   en_revision: "En revisión",
   completada: "Completada",
   bloqueada: "Bloqueada",
+  archivada: "Archivada",
 };
 
 export const STATUS_ORDER: TaskStatus[] = [
@@ -62,6 +63,7 @@ export const STATUS_ORDER: TaskStatus[] = [
   "en_revision",
   "completada",
   "bloqueada",
+  "archivada",
 ];
 
 export const STATUS_BADGE: Record<TaskStatus, string> = {
@@ -75,6 +77,8 @@ export const STATUS_BADGE: Record<TaskStatus, string> = {
     "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
   bloqueada:
     "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
+  archivada:
+    "bg-zinc-100 text-zinc-400 dark:bg-zinc-800/60 dark:text-zinc-500",
 };
 
 export const PRIORITY_LABEL: Record<TaskPriority, string> = {

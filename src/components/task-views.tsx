@@ -141,6 +141,8 @@ export function TaskViews({
     const weekEndStr = ymd(weekEnd);
 
     let r = tasks.filter((t) => {
+      // Archivadas se ocultan por defecto; solo aparecen si se filtra explícitamente.
+      if (estado === ALL && t.estado === "archivada") return false;
       // Quick filter
       if (quick === "mias" && t.asignado_a_id !== currentUserId) return false;
       if (quick === "vencidas") {

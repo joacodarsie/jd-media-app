@@ -29,7 +29,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { visibleNavGroups } from "@/lib/nav";
+import { visibleNavGroups, NAV } from "@/lib/nav";
 import { ROLE_LABEL } from "@/lib/constants";
 import type { AppUser } from "@/lib/types";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -186,6 +186,20 @@ function SidebarContent({
   );
 }
 
+/** Etiqueta de la sección actual según el pathname, para orientar al usuario. */
+function currentSectionLabel(pathname: string): string {
+  // Buscamos el item de nav cuyo href matchea mejor (el más largo que prefija).
+  let best: { href: string; label: string } | null = null;
+  for (const item of NAV) {
+    if (pathname === item.href || pathname.startsWith(item.href + "/")) {
+      if (!best || item.href.length > best.href.length) {
+        best = { href: item.href, label: item.label };
+      }
+    }
+  }
+  return best?.label ?? "";
+}
+
 export function AppShell({
   user,
   bell,
@@ -202,6 +216,8 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+  const sectionLabel = currentSectionLabel(pathname);
 
   return (
     <div className="flex min-h-screen">
@@ -238,6 +254,11 @@ export function AppShell({
           >
             <Menu className="h-5 w-5" />
           </Button>
+          {sectionLabel && (
+            <span className="hidden shrink-0 text-sm font-semibold text-foreground/80 md:inline">
+              {sectionLabel}
+            </span>
+          )}
           <GlobalSearch />
           <div className="flex-1" />
           {quickLinks && quickLinks.length > 0 && (

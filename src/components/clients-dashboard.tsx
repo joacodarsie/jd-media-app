@@ -51,12 +51,11 @@ export function ClientsDashboard({
   clients,
   tasks,
   upcomingPubs = [],
-  canSeeFinancials: _canSeeFinancials = true,
 }: {
   clients: ClientRow[];
   tasks: TaskWithRels[];
   upcomingPubs?: UpcomingPub[];
-  /** Reservado para ocultar montos/finanzas a no-admin. */
+  /** Reservado: la pagina de clientes pasa este flag pero todavia no hay UI sensible aca. */
   canSeeFinancials?: boolean;
 }) {
   const [q, setQ] = useState("");

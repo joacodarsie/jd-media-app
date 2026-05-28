@@ -21,8 +21,7 @@ const MAX_MESSAGE = 4000;
  */
 async function parseMentions(
   supabase: ReturnType<typeof createClient>,
-  text: string,
-  _channelId: string
+  text: string
 ): Promise<string[]> {
   const matches = Array.from(text.matchAll(/@([\p{L}][\p{L}\p{N}_.-]{1,30})/giu));
   if (matches.length === 0) return [];
@@ -66,10 +65,8 @@ export async function sendMessage(
   const text = (content ?? "").toString().trim().slice(0, MAX_MESSAGE);
   if (!text && attachments.length === 0) return { error: "Mensaje vacío." };
 
-  // Resolver menciones (sólo entre miembros del canal)
-  const mentions = text
-    ? await parseMentions(supabase, text, channelId)
-    : [];
+  // Resolver menciones (cualquier user activo, no solo miembros del canal)
+  const mentions = text ? await parseMentions(supabase, text) : [];
 
   // Insertar mensaje
   const { data: msg, error } = await supabase

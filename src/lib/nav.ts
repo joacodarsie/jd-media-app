@@ -35,6 +35,12 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "Radio",
         liveOwnerOnly: true,
       },
+      {
+        href: "/director",
+        label: "Director IA",
+        icon: "Sparkles",
+        roles: ["admin", "coordinador", "community_manager", "creativa"],
+      },
       { href: "/chat", label: "Chat equipo", icon: "Hash" },
     ],
   },

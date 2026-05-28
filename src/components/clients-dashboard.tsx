@@ -51,10 +51,13 @@ export function ClientsDashboard({
   clients,
   tasks,
   upcomingPubs = [],
+  canSeeFinancials: _canSeeFinancials = true,
 }: {
   clients: ClientRow[];
   tasks: TaskWithRels[];
   upcomingPubs?: UpcomingPub[];
+  /** Reservado para ocultar montos/finanzas a no-admin. */
+  canSeeFinancials?: boolean;
 }) {
   const [q, setQ] = useState("");
   const [quick, setQuick] = useState<Quick>("activos");

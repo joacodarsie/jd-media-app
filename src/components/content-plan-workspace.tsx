@@ -14,6 +14,8 @@ import {
   ChevronDown,
   ChevronUp,
   CalendarPlus,
+  Pencil,
+  Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +26,7 @@ import {
   approvePlan,
   archivePlan,
   applyTemaToCalendar,
+  updateContentPlanTema,
   applyAllTemasToCalendar,
 } from "@/app/(app)/clientes/[id]/plan-mensual/actions";
 import Link from "next/link";
@@ -660,6 +663,34 @@ function TemaCard({
     }
   }
 
+  const [editing, setEditing] = useState(false);
+  const [editTitulo, setEditTitulo] = useState(tema.titulo);
+  const [editDesc, setEditDesc] = useState(tema.descripcion);
+  const [editPilar, setEditPilar] = useState(tema.pilar ?? "");
+  const [editFormato, setEditFormato] = useState<string>(tema.formato ?? "");
+  const [editRed, setEditRed] = useState<string>(tema.red_principal ?? "");
+  const [editFecha, setEditFecha] = useState<string>(tema.fecha ?? "");
+
+  async function handleSaveEdit() {
+    setPending(true);
+    const r = await updateContentPlanTema(planId, index, {
+      titulo: editTitulo,
+      descripcion: editDesc,
+      pilar: editPilar || undefined,
+      formato: editFormato || undefined,
+      red_principal: editRed || undefined,
+      fecha: editFecha || null,
+    });
+    setPending(false);
+    if (!r.ok) {
+      toast.error(r.error);
+      return;
+    }
+    toast.success("Tema actualizado");
+    setEditing(false);
+    window.location.reload();
+  }
+
   async function handleReplace() {
     const hint = window.prompt(
       "¿Por qué querés reemplazar este tema? (opcional, ayuda a la IA a entender el cambio)",
@@ -737,6 +768,18 @@ function TemaCard({
               <Button
                 size="sm"
                 variant="ghost"
+                onClick={() => setEditing((v) => !v)}
+                disabled={pending}
+                title="Editar manualmente este tema"
+              >
+                <Pencil className="mr-1 h-3.5 w-3.5" />
+                Editar
+              </Button>
+            )}
+            {!applied && (
+              <Button
+                size="sm"
+                variant="ghost"
                 onClick={handleReplace}
                 disabled={pending}
                 title="Reemplazar este tema con otra idea de la IA"
@@ -748,6 +791,111 @@ function TemaCard({
           </div>
         )}
       </div>
+
+      {editing && !applied && (
+        <div className="mt-3 space-y-2 rounded-md border bg-muted/30 p-3">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
+                Título
+              </label>
+              <Input
+                value={editTitulo}
+                onChange={(e) => setEditTitulo(e.target.value)}
+                className="h-8 text-xs"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
+                Pilar
+              </label>
+              <Input
+                value={editPilar}
+                onChange={(e) => setEditPilar(e.target.value)}
+                className="h-8 text-xs"
+                placeholder="Ej: Educativo, Marca, Servicio…"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
+                Formato
+              </label>
+              <select
+                value={editFormato}
+                onChange={(e) => setEditFormato(e.target.value)}
+                className="h-8 w-full rounded-md border bg-background px-2 text-xs"
+              >
+                <option value="">— Sin definir —</option>
+                <option value="reel">Reel</option>
+                <option value="post">Post</option>
+                <option value="carrusel">Carrusel</option>
+                <option value="story">Historia</option>
+                <option value="video_largo">Video largo</option>
+                <option value="live">Live</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
+                Red principal
+              </label>
+              <select
+                value={editRed}
+                onChange={(e) => setEditRed(e.target.value)}
+                className="h-8 w-full rounded-md border bg-background px-2 text-xs"
+              >
+                <option value="">— Sin definir —</option>
+                <option value="instagram">Instagram</option>
+                <option value="tiktok">TikTok</option>
+                <option value="facebook">Facebook</option>
+                <option value="youtube">YouTube</option>
+                <option value="linkedin">LinkedIn</option>
+                <option value="x">X / Twitter</option>
+              </select>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
+                Descripción / brief
+              </label>
+              <Textarea
+                rows={3}
+                value={editDesc}
+                onChange={(e) => setEditDesc(e.target.value)}
+                className="text-xs"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
+                Fecha sugerida (opcional)
+              </label>
+              <Input
+                type="date"
+                value={editFecha}
+                onChange={(e) => setEditFecha(e.target.value)}
+                className="h-8 text-xs"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setEditing(false)}
+              disabled={pending}
+            >
+              Cancelar
+            </Button>
+            <Button size="sm" onClick={handleSaveEdit} disabled={pending}>
+              {pending ? (
+                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Save className="mr-1 h-3.5 w-3.5" />
+              )}
+              Guardar
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

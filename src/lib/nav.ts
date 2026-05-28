@@ -38,7 +38,8 @@ export const NAV_GROUPS: NavGroup[] = [
         href: "/clientes",
         label: "Clientes",
         icon: "Briefcase",
-        roles: ["admin", "coordinador"],
+        // Visible para todo el equipo. La pagina internamente oculta datos
+        // sensibles (monto, pagos, contacto privado) a no-admin/coord.
       },
       {
         href: "/comercial",
@@ -47,7 +48,12 @@ export const NAV_GROUPS: NavGroup[] = [
         roles: ["admin", "coordinador", "comercial", "prospecting"],
       },
       { href: "/equipo", label: "Equipo", icon: "Users2" },
-      { href: "/equipo/personas", label: "Personas", icon: "Users" },
+      {
+        href: "/equipo/personas",
+        label: "Personas",
+        icon: "Users",
+        roles: ["admin", "coordinador"],
+      },
       {
         href: "/equipo/capacity",
         label: "Capacidad",

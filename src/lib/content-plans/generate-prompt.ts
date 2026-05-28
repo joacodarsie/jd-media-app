@@ -227,13 +227,15 @@ export function buildPlanUserMessage(args: {
   }
 
   if (args.publicacionesUltimos60d.length > 0) {
-    lines.push(`## Historial — últimas ${args.publicacionesUltimos60d.length} publicaciones publicadas (60 días)`);
+    lines.push(`## Historial — últimas ${args.publicacionesUltimos60d.length} publicaciones publicadas (120 días)`);
     for (const p of args.publicacionesUltimos60d) {
       const fecha = p.fecha ? p.fecha.slice(0, 10) : "—";
       lines.push(`- [${fecha}] ${p.tipo}/${p.red}: ${p.titulo}`);
     }
     lines.push("");
-    lines.push("Usá este historial para detectar pilares saturados o desbalanceados. Corregí en el plan.");
+    lines.push(
+      "Usá este historial para: 1) detectar pilares saturados o desbalanceados, 2) repetir estilos que funcionaron, 3) NO duplicar temas ya tratados recientemente, 4) mantener coherencia con la voz del cliente."
+    );
     lines.push("");
   }
 

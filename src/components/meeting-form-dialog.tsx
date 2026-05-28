@@ -67,8 +67,13 @@ function fromLocalInput(local: string): string {
   return new Date(local).toISOString();
 }
 
-function defaultStart(): string {
-  // Próxima media hora redonda
+function defaultStart(seed?: Date): string {
+  // Próxima media hora redonda. Si pasan seed, lo anclan a ese día a las 10:00.
+  if (seed) {
+    const d = new Date(seed);
+    d.setHours(10, 0, 0, 0);
+    return toLocalInput(d.toISOString());
+  }
   const d = new Date();
   d.setMinutes(d.getMinutes() < 30 ? 30 : 60, 0, 0);
   return toLocalInput(d.toISOString());
@@ -81,6 +86,7 @@ export function MeetingFormDialog({
   clients,
   currentUserId,
   trigger,
+  initialDate,
 }: {
   mode: "create" | "edit";
   initial?: MeetingFormInitial;
@@ -88,6 +94,8 @@ export function MeetingFormDialog({
   clients: MeetingFormClient[];
   currentUserId: string;
   trigger: React.ReactNode;
+  /** Si se pasa, precarga la fecha del form en create (default 10:00). */
+  initialDate?: Date;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -96,7 +104,7 @@ export function MeetingFormDialog({
   const [titulo, setTitulo] = useState(initial?.titulo ?? "");
   const [descripcion, setDescripcion] = useState(initial?.descripcion ?? "");
   const [startsLocal, setStartsLocal] = useState(
-    initial ? toLocalInput(initial.starts_at) : defaultStart()
+    initial ? toLocalInput(initial.starts_at) : defaultStart(initialDate)
   );
   const [durationMin, setDurationMin] = useState<number>(() => {
     if (initial) {
@@ -124,14 +132,14 @@ export function MeetingFormDialog({
     if (mode === "create" && !initial) {
       setTitulo("");
       setDescripcion("");
-      setStartsLocal(defaultStart());
+      setStartsLocal(defaultStart(initialDate));
       setDurationMin(30);
       setUbicacion("");
       setMeetLink("");
       setClienteId(NONE);
       setAttendees(new Set([currentUserId]));
     }
-  }, [open, mode, initial, currentUserId]);
+  }, [open, mode, initial, currentUserId, initialDate]);
 
   function toggleAttendee(uid: string) {
     setAttendees((s) => {

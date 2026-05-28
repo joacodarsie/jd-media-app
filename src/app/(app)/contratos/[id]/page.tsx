@@ -20,7 +20,7 @@ export default async function ContractDetailPage({
       supabase
         .from("freelance_contracts")
         .select(
-          "*, persona:users!freelance_contracts_user_id_fkey(id,nombre), puesto:positions(id,nombre)"
+          "*, persona:users!freelance_contracts_user_id_fkey(id,nombre,dni_cuit,telefono), puesto:positions(id,nombre)"
         )
         .eq("id", params.id)
         .maybeSingle(),
@@ -29,6 +29,20 @@ export default async function ContractDetailPage({
     ]);
 
   if (!contractRaw) notFound();
+
+  // Para tipo 'por_cliente': contamos clientes donde la persona figura como
+  // CM, disenador o audiovisual, para mostrar el calculo del monto total.
+  const userId = (contractRaw as { user_id: string }).user_id;
+  const { data: assignedClientsRaw } = await supabase
+    .from("clients")
+    .select("id, nombre, cm_id, disenador_id, audiovisual_id")
+    .or(
+      `cm_id.eq.${userId},disenador_id.eq.${userId},audiovisual_id.eq.${userId}`
+    );
+  const assignedClients = (assignedClientsRaw ?? []).map((c) => ({
+    id: c.id as string,
+    nombre: c.nombre as string,
+  }));
 
   return (
     <div className="space-y-5">
@@ -42,6 +56,7 @@ export default async function ContractDetailPage({
         contract={contractRaw}
         users={users ?? []}
         positions={positions ?? []}
+        assignedClients={assignedClients}
       />
     </div>
   );

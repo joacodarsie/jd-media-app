@@ -20,6 +20,7 @@ import {
   saveContractContent,
   updateContract,
 } from "@/app/(app)/contratos/actions";
+import { JD_MEDIA_OWNER } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,7 +35,12 @@ import {
 
 const NONE = "__none__";
 
-type CompType = "comision" | "fee_fijo" | "por_entrega" | "mixto";
+type CompType =
+  | "comision"
+  | "fee_fijo"
+  | "por_entrega"
+  | "por_cliente"
+  | "mixto";
 type Estado = "borrador" | "activo" | "pausado" | "finalizado";
 
 interface ContractRow {
@@ -54,18 +60,30 @@ interface ContractRow {
   estado: Estado;
   content_md: string | null;
   notas: string | null;
-  persona: { id: string; nombre: string } | null;
+  persona: {
+    id: string;
+    nombre: string;
+    dni_cuit?: string | null;
+    telefono?: string | null;
+  } | null;
   puesto: { id: string; nombre: string } | null;
+}
+
+interface AssignedClient {
+  id: string;
+  nombre: string;
 }
 
 export function ContractEditor({
   contract,
   users,
   positions,
+  assignedClients = [],
 }: {
   contract: ContractRow;
   users: { id: string; nombre: string }[];
   positions: { id: string; nombre: string }[];
+  assignedClients?: AssignedClient[];
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -91,6 +109,20 @@ export function ContractEditor({
   const [estado, setEstado] = useState<Estado>(contract.estado);
   const [contentMd, setContentMd] = useState(contract.content_md ?? "");
   const [notas, setNotas] = useState(contract.notas ?? "");
+
+  // Datos del prestador (precargados desde users.dni_cuit/telefono si existen).
+  const [prestadorCuit, setPrestadorCuit] = useState(
+    contract.persona?.dni_cuit ?? ""
+  );
+  const [prestadorDni, setPrestadorDni] = useState("");
+  const [prestadorAddress, setPrestadorAddress] = useState("");
+
+  // Calculo en vivo para tipo "por_cliente"
+  const clientsCount = assignedClients.length;
+  const totalMensual =
+    compType === "por_cliente" && monto
+      ? Number(monto) * clientsCount
+      : null;
 
   const personName =
     users.find((u) => u.id === userId)?.nombre ??
@@ -160,6 +192,19 @@ export function ContractEditor({
           no_competencia: noComp,
           fecha_inicio: fechaInicio,
           fecha_fin: fechaFin || null,
+          agency_name: JD_MEDIA_OWNER.agency_name,
+          agency_representative_name: JD_MEDIA_OWNER.representative_name,
+          agency_representative_cuit: JD_MEDIA_OWNER.representative_cuit,
+          agency_address: JD_MEDIA_OWNER.agency_address,
+          prestador_cuit: prestadorCuit || null,
+          prestador_dni: prestadorDni || null,
+          prestador_address: prestadorAddress || null,
+          clients_assigned_count:
+            compType === "por_cliente" ? clientsCount : null,
+          clients_assigned_names:
+            compType === "por_cliente"
+              ? assignedClients.map((c) => c.nombre)
+              : null,
           notas: notas || null,
         }),
       });
@@ -293,6 +338,7 @@ export function ContractEditor({
               <SelectContent>
                 <SelectItem value="comision">Comisión (%)</SelectItem>
                 <SelectItem value="fee_fijo">Fee fijo mensual</SelectItem>
+                <SelectItem value="por_cliente">Por cliente asignado</SelectItem>
                 <SelectItem value="por_entrega">Por entrega</SelectItem>
                 <SelectItem value="mixto">Mixto</SelectItem>
               </SelectContent>
@@ -396,6 +442,96 @@ export function ContractEditor({
               onChange={(e) => setNotas(e.target.value)}
               placeholder="Cualquier nota del coordinador para esta persona."
             />
+          </div>
+        </div>
+
+        {compType === "por_cliente" && (
+          <div className="mt-4 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
+            <div className="font-semibold">Cálculo de compensación</div>
+            <div className="mt-1 text-muted-foreground">
+              {clientsCount === 0 ? (
+                <>
+                  Esta persona aún no figura como CM, diseñador o audiovisual
+                  en ningún cliente. Asignala desde la ficha del cliente para
+                  que se contabilice.
+                </>
+              ) : monto ? (
+                <>
+                  <strong className="text-foreground">
+                    {Number(monto).toLocaleString("es-AR")} {moneda}
+                  </strong>{" "}
+                  × <strong className="text-foreground">{clientsCount}</strong>{" "}
+                  cliente{clientsCount === 1 ? "" : "s"} ={" "}
+                  <strong className="text-foreground">
+                    {totalMensual?.toLocaleString("es-AR")} {moneda}
+                  </strong>{" "}
+                  por mes.
+                  <div className="mt-1 text-xs">
+                    Clientes:{" "}
+                    {assignedClients.map((c) => c.nombre).join(", ")}
+                  </div>
+                </>
+              ) : (
+                <>Cargá el monto por cliente para ver el cálculo.</>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Datos legales para el contrato */}
+      <div className="rounded-lg border bg-card p-4">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Datos para el contrato
+        </h2>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <div className="text-xs font-semibold text-muted-foreground">
+              LA AGENCIA (ya cargado)
+            </div>
+            <div className="rounded-md border bg-muted/20 p-3 text-xs">
+              <div>
+                <strong>{JD_MEDIA_OWNER.agency_name}</strong>
+              </div>
+              <div className="mt-1">
+                Representante: {JD_MEDIA_OWNER.representative_name}
+              </div>
+              <div>CUIT: {JD_MEDIA_OWNER.representative_cuit}</div>
+              <div>Domicilio: {JD_MEDIA_OWNER.agency_address}</div>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="text-xs font-semibold text-muted-foreground">
+              EL PRESTADOR
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">CUIT</Label>
+              <Input
+                value={prestadorCuit}
+                onChange={(e) => setPrestadorCuit(e.target.value)}
+                placeholder="20-XXXXXXXX-X"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">DNI</Label>
+              <Input
+                value={prestadorDni}
+                onChange={(e) => setPrestadorDni(e.target.value)}
+                placeholder="XX.XXX.XXX"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Domicilio</Label>
+              <Input
+                value={prestadorAddress}
+                onChange={(e) => setPrestadorAddress(e.target.value)}
+                placeholder="Calle 1234, Ciudad, Provincia"
+              />
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Si dejás campos vacíos, la IA los reemplaza por [PLACEHOLDERS]
+              para que los completes a mano al imprimir.
+            </p>
           </div>
         </div>
       </div>

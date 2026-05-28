@@ -4,7 +4,15 @@ import { TIMEZONE } from "./constants";
 
 export function fmtDate(value?: string | null, pattern = "dd/MM/yyyy") {
   if (!value) return "—";
-  return formatInTimeZone(new Date(value), TIMEZONE, pattern, { locale: es });
+  // Date-only ("YYYY-MM-DD") debe interpretarse como dia local — no como UTC
+  // midnight, que se renderiza un dia menos en TZ negativas (ej Cordoba UTC-3).
+  // Si es date-only, anclamos a las 12:00 UTC para que cualquier TZ entre
+  // UTC-11 y UTC+11 caiga el mismo dia calendario.
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const date = m
+    ? new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0))
+    : new Date(value);
+  return formatInTimeZone(date, TIMEZONE, pattern, { locale: es });
 }
 
 export function fmtDateTime(value?: string | null) {

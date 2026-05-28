@@ -176,6 +176,22 @@ export async function updatePublicationFinalFields(
   return { ok: true };
 }
 
+export async function setPublicationTiktokSubido(
+  id: string,
+  subido: boolean
+) {
+  const { supabase } = await ctx();
+  const { data, error } = await supabase
+    .from("publications")
+    .update({ tiktok_subido: subido })
+    .eq("id", id)
+    .select("cliente_id")
+    .single();
+  if (error) return { error: error.message };
+  invalidate(data?.cliente_id);
+  return { ok: true };
+}
+
 export async function deletePublication(id: string) {
   const { supabase } = await ctx();
   const { data, error } = await supabase

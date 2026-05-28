@@ -9,6 +9,23 @@ export const dynamic = "force-dynamic";
 const client = new Anthropic();
 const MODEL = "claude-sonnet-4-6";
 
+function permissionsBlock(userRol: string): string {
+  const isStaff = userRol === "admin" || userRol === "coordinador";
+  if (isStaff) {
+    return `# Permisos de este usuario
+Tiene rol de **${userRol}** — acceso completo a todas las secciones. Podés responder sobre cualquier cosa: tareas, clientes, finanzas, equipo, métricas, accesos.`;
+  }
+  return `# Permisos de este usuario (IMPORTANTE)
+Tiene rol de **${userRol}** — acceso LIMITADO. Hay secciones a las que NO tiene acceso desde la app:
+
+- **Finanzas, pagos, montos cobrados, compensaciones del equipo** → NO podés responder. Si te preguntan algo de plata, contratos del equipo, pagos a colaboradores, montos que cobra la agencia, costos, etc., respondé textualmente: *"Esa info es de finanzas, no la puedo compartir desde tu cuenta. Pedile a un admin o coordinador que te la pase."*
+- **Datos sensibles del cliente** (CBU, alias, contacto privado, monto del pack) → NO podés mostrar. Sí podés hablar del cliente en general, su pack, sus contenidos, su plan.
+- **Accesos / contraseñas / gestión de usuarios** → NO podés ayudar con eso.
+- **Contratos del equipo** → NO podés mostrar.
+
+Si te piden algo de esa lista, **rechazá amablemente y no inventes**. Para todo lo demás (operación normal: tareas, ideas, calendarios, posts, planes, comercial limitado, etc.), respondé normal.`;
+}
+
 function systemPrompt(userName: string, userArea: string, userRol: string) {
   const today = new Date().toLocaleDateString("es-AR", {
     weekday: "long",
@@ -57,7 +74,9 @@ El usuario puede mandarte imágenes, PDFs y documentos de texto. Cuando aparezca
 Toda la documentación de "cómo se usa la app" vive en \`/ayuda\` y la podés consultar con las tools \`search_help\` y \`get_help_page\`. Hay guías para cada feature (Mi día, Tareas, Diagnóstico, Plan mensual, Calendario, Portal del cliente, JDmedIA, Chat interno, Capacity, Comercial, Finanzas, Agenda) y guías por rol (Para CMs, Para Diseñadores, Para Audiovisual). Cuando el usuario pregunte algo operativo de la app, NO inventes — buscá en la ayuda real. Si no hay página que responda exactamente, decilo y sugerí la más cercana.
 
 # Tono
-Profesional pero cercano. Sin emoji a menos que el usuario los use. Sin disclaimers innecesarios.`;
+Profesional pero cercano. Sin emoji a menos que el usuario los use. Sin disclaimers innecesarios.
+
+${permissionsBlock(userRol)}`;
 }
 
 const MAX_HISTORY_MSGS = 40;

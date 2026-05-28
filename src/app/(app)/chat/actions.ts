@@ -22,23 +22,18 @@ const MAX_MESSAGE = 4000;
 async function parseMentions(
   supabase: ReturnType<typeof createClient>,
   text: string,
-  channelId: string
+  _channelId: string
 ): Promise<string[]> {
   const matches = Array.from(text.matchAll(/@([\p{L}][\p{L}\p{N}_.-]{1,30})/giu));
   if (matches.length === 0) return [];
   const handles = Array.from(new Set(matches.map((m) => m[1].toLowerCase())));
-  // Solo se pueden mencionar miembros del canal.
-  const { data: rows } = await supabase
-    .from("team_channel_members")
-    .select("user_id, user:users!team_channel_members_user_id_fkey(id, nombre, activo)")
-    .eq("channel_id", channelId);
-  type Row = {
-    user_id: string;
-    user: { id: string; nombre: string; activo: boolean } | null;
-  };
-  const list = ((rows ?? []) as unknown as Row[])
-    .map((r) => r.user)
-    .filter((u): u is { id: string; nombre: string; activo: boolean } => !!u && u.activo);
+  // Aceptamos mencionar a cualquier usuario activo del equipo, sin restringir
+  // a miembros del canal — la notificacion se envia via admin client.
+  const { data: usersRaw } = await supabase
+    .from("users")
+    .select("id, nombre, activo")
+    .eq("activo", true);
+  const list = ((usersRaw ?? []) as { id: string; nombre: string; activo: boolean }[]);
   if (list.length === 0) return [];
   const out: string[] = [];
   for (const h of handles) {

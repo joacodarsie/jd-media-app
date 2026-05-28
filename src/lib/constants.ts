@@ -10,6 +10,17 @@ import type {
 
 export const TIMEZONE = "America/Argentina/Cordoba";
 
+/**
+ * Datos del titular de JD Media — se usan para precargar contratos y otros
+ * documentos legales. Cambiar acá si el negocio cambia de titularidad.
+ */
+export const JD_MEDIA_OWNER = {
+  agency_name: "JD Media",
+  representative_name: "Franco Joaquín Darsie",
+  representative_cuit: "20-44607986-8",
+  agency_address: "Azor Grimaut 2963, Córdoba, Argentina",
+} as const;
+
 export const AREAS = [
   "Estrategia/Dirección",
   "Coordinación",

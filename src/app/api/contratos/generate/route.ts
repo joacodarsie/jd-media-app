@@ -44,7 +44,12 @@ interface Body {
   nombre_persona: string;
   rol_descripcion?: string | null;
   position_label?: string | null;
-  compensation_type: "comision" | "fee_fijo" | "por_entrega" | "mixto";
+  compensation_type:
+    | "comision"
+    | "fee_fijo"
+    | "por_entrega"
+    | "por_cliente"
+    | "mixto";
   compensation_detail?: string | null;
   monto_referencia?: number | null;
   moneda?: string;
@@ -54,6 +59,17 @@ interface Body {
   fecha_inicio?: string | null;
   fecha_fin?: string | null;
   agency_name?: string | null;
+  /** Datos de la agencia (representante legal). */
+  agency_representative_name?: string | null;
+  agency_representative_cuit?: string | null;
+  agency_address?: string | null;
+  /** Datos del prestador. */
+  prestador_cuit?: string | null;
+  prestador_address?: string | null;
+  prestador_dni?: string | null;
+  /** Para tipo 'por_cliente': cantidad y nombres de clientes asignados. */
+  clients_assigned_count?: number | null;
+  clients_assigned_names?: string[] | null;
   notas?: string | null;
 }
 
@@ -61,6 +77,7 @@ const TYPE_LABEL: Record<Body["compensation_type"], string> = {
   comision: "Comision (% sobre facturacion del cliente / cobro)",
   fee_fijo: "Fee fijo mensual",
   por_entrega: "Pago por entrega / produccion",
+  por_cliente: "Monto fijo por cada cliente que tenga asignado",
   mixto: "Esquema mixto (fee + comision o variable)",
 };
 
@@ -104,6 +121,33 @@ export async function POST(req: Request) {
       ? `Fecha de fin: ${body.fecha_fin}`
       : "Vigencia: indefinida",
     `Nombre de la agencia: ${body.agency_name?.trim() || "JD Media"}`,
+    body.agency_representative_name
+      ? `Representante legal de la agencia: ${body.agency_representative_name}${
+          body.agency_representative_cuit
+            ? ` (CUIT ${body.agency_representative_cuit})`
+            : ""
+        }`
+      : null,
+    body.agency_address
+      ? `Domicilio de la agencia: ${body.agency_address}`
+      : null,
+    body.prestador_cuit
+      ? `CUIT del prestador: ${body.prestador_cuit}`
+      : null,
+    body.prestador_dni ? `DNI del prestador: ${body.prestador_dni}` : null,
+    body.prestador_address
+      ? `Domicilio del prestador: ${body.prestador_address}`
+      : null,
+    body.compensation_type === "por_cliente" && body.clients_assigned_count
+      ? `Clientes actualmente asignados al prestador: ${body.clients_assigned_count}${
+          body.clients_assigned_names?.length
+            ? ` (${body.clients_assigned_names.join(", ")})`
+            : ""
+        }`
+      : null,
+    body.compensation_type === "por_cliente" && body.monto_referencia
+      ? `IMPORTANTE: el monto por cliente es ${body.monto_referencia} ${body.moneda ?? "ARS"}. La compensacion total mensual es el monto x la cantidad de clientes asignados. Esta cantidad puede variar mes a mes — el contrato debe contemplarlo y explicar la formula claramente.`
+      : null,
     body.notas ? `Notas adicionales: ${body.notas}` : null,
   ]
     .filter(Boolean)

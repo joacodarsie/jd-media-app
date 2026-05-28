@@ -29,6 +29,69 @@ const RED_TO_DB: Record<string, string> = {
 };
 
 /**
+ * Edita los campos manualmente editables de un tema del plan
+ * (titulo, descripcion, pilar, formato, red_principal, fecha).
+ * No genera con IA — solo guarda los cambios del usuario sobre el JSON.
+ */
+export async function updateContentPlanTema(
+  planId: string,
+  index: number,
+  updates: Partial<{
+    titulo: string;
+    descripcion: string;
+    pilar: string;
+    formato: string;
+    red_principal: string;
+    fecha: string | null;
+  }>
+): Promise<ActionResult> {
+  await requireUser();
+  const admin = createAdmin();
+  const { data: plan } = await admin
+    .from("client_content_plans")
+    .select("id, cliente_id, content")
+    .eq("id", planId)
+    .maybeSingle();
+  if (!plan) return { ok: false, error: "Plan no encontrado." };
+
+  const content = (plan.content ?? {}) as MonthlyContentPlan;
+  const temas = (content.temas_destacados ?? []) as TemaDestacado[];
+  if (index < 0 || index >= temas.length) {
+    return { ok: false, error: "Índice de tema inválido." };
+  }
+  const current = temas[index];
+  const next: TemaDestacado = {
+    ...current,
+    titulo: updates.titulo?.trim() || current.titulo,
+    descripcion:
+      updates.descripcion !== undefined
+        ? updates.descripcion.trim()
+        : current.descripcion,
+    pilar: updates.pilar !== undefined ? updates.pilar : current.pilar,
+    formato:
+      updates.formato !== undefined
+        ? (updates.formato as TemaDestacado["formato"])
+        : current.formato,
+    red_principal:
+      updates.red_principal !== undefined
+        ? (updates.red_principal as TemaDestacado["red_principal"])
+        : current.red_principal,
+    fecha: updates.fecha !== undefined ? updates.fecha : current.fecha,
+  };
+  temas[index] = next;
+
+  const newContent = { ...content, temas_destacados: temas };
+  const { error } = await admin
+    .from("client_content_plans")
+    .update({ content: newContent })
+    .eq("id", planId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/clientes/${plan.cliente_id}/plan-mensual`);
+  return { ok: true };
+}
+
+/**
  * Aprueba el draft -> active. Archiva el active anterior.
  */
 export async function approvePlan(planId: string): Promise<ActionResult> {

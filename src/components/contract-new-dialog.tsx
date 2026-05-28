@@ -42,9 +42,10 @@ export function ContractNewDialog({
   const [positionId, setPositionId] = useState(NONE);
   const [rol, setRol] = useState("");
   const [compType, setCompType] = useState<
-    "comision" | "fee_fijo" | "por_entrega" | "mixto"
+    "comision" | "fee_fijo" | "por_entrega" | "por_cliente" | "mixto"
   >("comision");
   const [compDetail, setCompDetail] = useState("");
+  const [montoRef, setMontoRef] = useState<string>("");
   const [fechaInicio, setFechaInicio] = useState(
     new Date().toISOString().slice(0, 10)
   );
@@ -61,6 +62,7 @@ export function ContractNewDialog({
         rol_descripcion: rol || null,
         compensation_type: compType,
         compensation_detail: compDetail || null,
+        monto_referencia: montoRef ? Number(montoRef) : null,
         fecha_inicio: fechaInicio,
         estado: "borrador",
       });
@@ -146,18 +148,41 @@ export function ContractNewDialog({
               <SelectContent>
                 <SelectItem value="comision">Comisión (%)</SelectItem>
                 <SelectItem value="fee_fijo">Fee fijo mensual</SelectItem>
+                <SelectItem value="por_cliente">Por cliente asignado</SelectItem>
                 <SelectItem value="por_entrega">Por entrega / producción</SelectItem>
                 <SelectItem value="mixto">Mixto</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
+          {compType === "por_cliente" && (
+            <div className="space-y-1.5">
+              <Label>Monto por cada cliente que lleve (ARS)</Label>
+              <Input
+                type="number"
+                min={0}
+                step={1000}
+                value={montoRef}
+                onChange={(e) => setMontoRef(e.target.value)}
+                placeholder="Ej: 50000"
+              />
+              <p className="text-xs text-muted-foreground">
+                Se multiplica por la cantidad de clientes donde esta persona
+                figura como CM, diseñador o audiovisual.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label>Detalle de compensación</Label>
             <Input
               value={compDetail}
               onChange={(e) => setCompDetail(e.target.value)}
-              placeholder="Ej: 30% del cobro del cliente Nico Liberto"
+              placeholder={
+                compType === "por_cliente"
+                  ? "Ej: $50.000 por cuenta + extra por reels"
+                  : "Ej: 30% del cobro del cliente Nico Liberto"
+              }
             />
           </div>
         </div>

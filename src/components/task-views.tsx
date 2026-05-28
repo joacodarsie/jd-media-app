@@ -146,6 +146,8 @@ export function TaskViews({
       if (quick === "vencidas") {
         if (t.estado === "completada") return false;
         if (!t.fecha_limite || t.fecha_limite.slice(0, 10) >= today) return false;
+        // Solo las vencidas asignadas al usuario actual — cada uno ve las suyas.
+        if (t.asignado_a_id !== currentUserId) return false;
       }
       if (quick === "hoy") {
         if (!t.fecha_limite || t.fecha_limite.slice(0, 10) !== today) return false;
@@ -189,7 +191,8 @@ export function TaskViews({
         (t) =>
           t.estado !== "completada" &&
           t.fecha_limite &&
-          t.fecha_limite.slice(0, 10) < today
+          t.fecha_limite.slice(0, 10) < today &&
+          t.asignado_a_id === currentUserId
       ).length,
       hoy: tasks.filter(
         (t) => t.fecha_limite && t.fecha_limite.slice(0, 10) === today

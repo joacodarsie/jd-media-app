@@ -14,7 +14,7 @@ import {
   Sparkles,
   User as UserIcon,
 } from "lucide-react";
-import { requireClientAccess, isStaff } from "@/lib/auth";
+import { requireUser, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { listEventsForUser } from "@/lib/google-calendar";
@@ -61,7 +61,7 @@ export default async function ClientDetail({
 }: {
   params: { id: string };
 }) {
-  const me = await requireClientAccess(params.id);
+  const me = await requireUser();
   const supabase = createClient();
 
   const admin = createAdmin();
@@ -137,6 +137,16 @@ export default async function ClientDetail({
   const activas = allTasks.filter((t) => t.estado !== "completada");
   const completadas = allTasks.filter((t) => t.estado === "completada");
   const canEdit = isStaff(me.rol) || c.creativa_asignada_id === me.id;
+  // canSeeFinancials = staff o cualquier persona asignada a la cuenta.
+  // Las chicas que no esten asignadas pueden ver la ficha pero no datos privados
+  // (contacto, monto, CBU, finanzas).
+  const canSeeFinancials =
+    isStaff(me.rol) ||
+    c.creativa_asignada_id === me.id ||
+    (c as unknown as { cm_id?: string | null }).cm_id === me.id ||
+    (c as unknown as { disenador_id?: string | null }).disenador_id === me.id ||
+    (c as unknown as { audiovisual_id?: string | null }).audiovisual_id ===
+      me.id;
 
   return (
     <div className="space-y-5">
@@ -416,7 +426,8 @@ export default async function ClientDetail({
 
           <ClientMeetingsCard events={clientEvents} />
 
-          {(c.contacto_nombre || c.contacto_email || c.contacto_telefono) && (
+          {canSeeFinancials &&
+            (c.contacto_nombre || c.contacto_email || c.contacto_telefono) && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Contacto</CardTitle>

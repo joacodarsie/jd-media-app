@@ -23,10 +23,28 @@ const SUGERENCIAS = [
   "Llamada con Marta. Tiene un emprendimiento de cosmética natural. No tiene marca fuerte, vende por WhatsApp. Quiere profesionalizar. No tiene urgencia, quiere arrancar el mes que viene. Pidió tiempo para pensarlo.",
 ];
 
+interface HistoryTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+const QUICK_TWEAKS = [
+  "Hacelo más corto",
+  "Cambialo a Pack Crecimiento",
+  "Cambialo a Pack Escala",
+  "Más informal",
+  "Más formal",
+  "Sin emojis",
+  "Agregale que arrancamos esta semana",
+];
+
 export function PostMeetWorkspace() {
   const [clientName, setClientName] = useState("");
   const [context, setContext] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryTurn[]>([]);
+  const [tweakPrompt, setTweakPrompt] = useState("");
+  const [tweaking, setTweaking] = useState(false);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [extracting, setExtracting] = useState(false);
@@ -92,6 +110,7 @@ export function PostMeetWorkspace() {
     }
     setLoading(true);
     setMessage(null);
+    setHistory([]);
     setCopied(false);
     try {
       const res = await fetch("/api/post-meet-message", {
@@ -104,11 +123,64 @@ export function PostMeetWorkspace() {
         toast.error(data.error ?? "Error generando mensaje");
         return;
       }
-      setMessage(data.message ?? "");
+      const reply = data.message ?? "";
+      setMessage(reply);
+      // Inicializamos el history conversacional para iterar despues.
+      const userText = clientName.trim()
+        ? `Cliente / contacto: ${clientName.trim()}\n\nTranscripcion / notas de la reunion:\n\n${text}`
+        : `Transcripcion / notas de la reunion:\n\n${text}`;
+      setHistory([
+        { role: "user", content: userText },
+        { role: "assistant", content: reply },
+      ]);
     } catch (e) {
       toast.error("No se pudo generar: " + (e instanceof Error ? e.message : ""));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function tweak(promptText?: string) {
+    const prompt = (promptText ?? tweakPrompt).trim();
+    if (!prompt) {
+      toast.error("Decile a la IA qué querés cambiar.");
+      return;
+    }
+    if (history.length === 0) {
+      toast.error("Primero generá un mensaje base.");
+      return;
+    }
+    setTweaking(true);
+    try {
+      const res = await fetch("/api/post-meet-message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          history,
+          userMessage: prompt,
+        }),
+      });
+      const data = (await res.json()) as { message?: string; error?: string };
+      if (!res.ok || data.error) {
+        toast.error(data.error ?? "Error ajustando mensaje");
+        return;
+      }
+      const reply = data.message ?? "";
+      setMessage(reply);
+      setHistory((h) => [
+        ...h,
+        { role: "user", content: prompt },
+        { role: "assistant", content: reply },
+      ]);
+      setTweakPrompt("");
+      setCopied(false);
+      toast.success("Mensaje actualizado");
+    } catch (e) {
+      toast.error(
+        "No se pudo ajustar: " + (e instanceof Error ? e.message : "")
+      );
+    } finally {
+      setTweaking(false);
     }
   }
 
@@ -128,6 +200,8 @@ export function PostMeetWorkspace() {
     setClientName("");
     setContext("");
     setMessage(null);
+    setHistory([]);
+    setTweakPrompt("");
     setCopied(false);
   }
 
@@ -299,14 +373,62 @@ export function PostMeetWorkspace() {
                 )}
               </Button>
             </div>
-            <div className="whitespace-pre-wrap rounded-lg border bg-card p-3 text-sm leading-relaxed">
-              {message}
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              rows={Math.min(20, message.split("\n").length + 2)}
+              className="w-full resize-y rounded-lg border bg-card p-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+
+            {/* Tweaks rápidos */}
+            <div className="border-t pt-3">
+              <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <Sparkles className="h-3 w-3" />
+                Pedile cambios a la IA
+              </div>
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {QUICK_TWEAKS.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => void tweak(t)}
+                    disabled={tweaking || loading}
+                    className="rounded-full border bg-card px-2.5 py-1 text-[11px] hover:border-primary/40 hover:bg-primary/5 disabled:opacity-50"
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={tweakPrompt}
+                  onChange={(e) => setTweakPrompt(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey && !tweaking) {
+                      e.preventDefault();
+                      void tweak();
+                    }
+                  }}
+                  placeholder="Ej: agregale que arrancamos el lunes, sacale los emojis…"
+                  disabled={tweaking}
+                  className="h-9 text-sm"
+                />
+                <Button
+                  onClick={() => void tweak()}
+                  disabled={tweaking || !tweakPrompt.trim()}
+                  className="shrink-0"
+                  size="sm"
+                >
+                  {tweaking ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <p className="mt-1.5 text-[11px] text-muted-foreground">
+                También podés editar el mensaje a mano arriba antes de copiarlo.
+              </p>
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Si querés ajustar el tono o agregar/quitar algo, editá la
-              transcripción y volvé a generar. O tocá el mensaje arriba para
-              editarlo manualmente antes de pegarlo.
-            </p>
           </CardContent>
         </Card>
       )}

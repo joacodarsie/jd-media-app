@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import { requireRole } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { TaskWithRels } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,8 @@ import { ClientFormDialog } from "@/components/client-form-dialog";
 export const dynamic = "force-dynamic";
 
 export default async function ClientesPage() {
-  await requireRole(["admin", "coordinador"]);
+  const me = await requireUser();
+  const isAdmin = me.rol === "admin" || me.rol === "coordinador";
   const supabase = createClient();
 
   const todayISO = new Date().toISOString();
@@ -51,20 +52,23 @@ export default async function ClientesPage() {
             Qué se está haciendo en cada cuenta.
           </p>
         </div>
-        <ClientFormDialog
-          mode="create"
-          users={users ?? []}
-          trigger={
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> Nuevo cliente
-            </Button>
-          }
-        />
+        {isAdmin && (
+          <ClientFormDialog
+            mode="create"
+            users={users ?? []}
+            trigger={
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> Nuevo cliente
+              </Button>
+            }
+          />
+        )}
       </div>
       <ClientsDashboard
         clients={(clients ?? []) as never}
         tasks={(tasks ?? []) as TaskWithRels[]}
         upcomingPubs={(pubs ?? []) as never}
+        canSeeFinancials={isAdmin}
       />
     </div>
   );

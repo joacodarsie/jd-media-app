@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Mail, Pencil } from "lucide-react";
-import { requireUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PAY_FREQUENCY_LABEL } from "@/lib/constants";
 import type { AppUser, Compensation, Position } from "@/lib/types";
@@ -13,7 +13,7 @@ import { SecondaryPositionsEditor } from "@/components/secondary-positions-edito
 export const dynamic = "force-dynamic";
 
 export default async function EquipoPersonasPage() {
-  const me = await requireUser();
+  const me = await requireRole(["admin", "coordinador"]);
   const supabase = createClient();
   const isAdmin = me.rol === "admin";
 

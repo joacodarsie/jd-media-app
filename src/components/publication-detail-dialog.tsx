@@ -27,6 +27,7 @@ import {
 import { Markdown } from "@/components/markdown";
 import { PublicationStatusSelect } from "@/components/publication-status-select";
 import { PublicationFinalFields } from "@/components/publication-final-fields";
+import { PublicationTiktokToggle } from "@/components/publication-tiktok-toggle";
 import { ClientPubComments } from "@/components/client-pub-comments";
 import {
   PublicationFormDialog,
@@ -158,6 +159,17 @@ export function PublicationDetailDialog({
               </a>
             )}
           </div>
+
+          {/* Recordatorio TikTok: visible en TikTok o cuando es un reel
+              (los reels de IG normalmente se replican en TikTok). */}
+          {(p.red === "tiktok" || p.tipo === "reel") && (
+            <PublicationTiktokToggle
+              id={p.id}
+              initialSubido={
+                (p as unknown as { tiktok_subido?: boolean }).tiktok_subido ?? false
+              }
+            />
+          )}
 
           {p.estado === "publicado" && (
             <PublicationFinalFields

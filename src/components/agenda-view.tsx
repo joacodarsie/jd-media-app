@@ -1085,15 +1085,31 @@ function DayDetail({
       aria-label={`Reuniones de ${day.toLocaleDateString("es-AR", { day: "numeric", month: "long" })}`}
       className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-3xl rounded-t-xl border bg-card p-4 shadow-2xl md:bottom-4 md:right-4 md:left-auto md:max-w-md md:rounded-xl"
     >
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between gap-2">
         <h3 className="font-semibold">{formatDayHeading(day)}</h3>
-        <button
-          onClick={onClose}
-          className="text-sm text-muted-foreground hover:text-foreground"
-          aria-label="Cerrar (Esc)"
-        >
-          Cerrar
-        </button>
+        <div className="flex items-center gap-1">
+          {currentUserId && (
+            <MeetingFormDialog
+              mode="create"
+              users={users}
+              clients={clients.map((c) => ({ id: c.id, nombre: c.nombre }))}
+              currentUserId={currentUserId}
+              initialDate={day}
+              trigger={
+                <Button size="sm" variant="outline" className="h-7 px-2 text-xs">
+                  <Plus className="mr-1 h-3 w-3" /> Reunión
+                </Button>
+              }
+            />
+          )}
+          <button
+            onClick={onClose}
+            className="text-sm text-muted-foreground hover:text-foreground"
+            aria-label="Cerrar (Esc)"
+          >
+            Cerrar
+          </button>
+        </div>
       </div>
       {evs.length === 0 ? (
         <p className="text-sm text-muted-foreground">Sin reuniones este día.</p>

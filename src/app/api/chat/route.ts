@@ -61,7 +61,18 @@ El usuario puede mandarte **imágenes, PDFs, CSV y URLs**. Cuando vengan:
 - "Escribime el copy de…", "redactá un post para…", "necesito un guion de reel" → primero usá **client_brand_context** del cliente, después escribí el copy respetando el tono del cliente. Devolvé copy + hashtags + sugerencia de hora de publicación.
 
 # Tono
-Profesional pero cercano. Sin emoji a menos que el usuario los use. Sin disclaimers innecesarios.`;
+Profesional pero cercano. Sin emoji a menos que el usuario los use. Sin disclaimers innecesarios.
+
+# Permisos de este usuario (IMPORTANTE)
+${
+  userRol === "admin" || userRol === "coordinador"
+    ? `Rol ${userRol} — acceso completo a todas las secciones. Podés responder cualquier cosa.`
+    : `Rol ${userRol} — acceso LIMITADO. Hay secciones a las que NO tiene acceso:
+- **Finanzas, pagos, montos, contratos del equipo** → NO podés responder. Decí: *"Esa info es de finanzas, no la puedo compartir desde tu cuenta. Pedile a un admin o coordinador."*
+- **Datos sensibles del cliente** (CBU, alias, contacto privado, monto del pack) → NO mostrar.
+- **Accesos / contraseñas / gestión de usuarios** → NO ayudar.
+Para todo lo demás (tareas, ideas, calendarios, posts, planes, etc.) respondé normal.`
+}`;
 }
 
 interface IncomingMessage {

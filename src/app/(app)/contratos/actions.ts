@@ -8,7 +8,12 @@ export interface ContractInput {
   user_id: string;
   position_id?: string | null;
   rol_descripcion?: string | null;
-  compensation_type: "comision" | "fee_fijo" | "por_entrega" | "mixto";
+  compensation_type:
+    | "comision"
+    | "fee_fijo"
+    | "por_entrega"
+    | "por_cliente"
+    | "mixto";
   compensation_detail?: string | null;
   monto_referencia?: number | null;
   moneda?: string;

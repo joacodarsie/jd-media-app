@@ -679,11 +679,10 @@ function ChannelView({
     return m;
   }, [users]);
 
-  // Solo los miembros del canal son candidatos a @-mención
-  const channelMembers = useMemo(() => {
-    const set = new Set(initialMembers);
-    return users.filter((u) => set.has(u.id));
-  }, [users, initialMembers]);
+  // Mostramos a TODO el equipo en el autocomplete de @-menciones, no solo a
+  // los miembros del canal. Si se menciona a un no-miembro, igual lo
+  // notificamos via createAdmin desde el server action.
+  const channelMembers = useMemo(() => users, [users]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

@@ -25,6 +25,7 @@ const COMP_LABEL: Record<string, string> = {
   comision: "Comisión",
   fee_fijo: "Fee fijo",
   por_entrega: "Por entrega",
+  por_cliente: "Por cliente asignado",
   mixto: "Mixto",
 };
 

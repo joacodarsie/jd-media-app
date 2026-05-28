@@ -103,7 +103,10 @@ export async function POST(
 
   const admin = createAdmin();
 
-  const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
+  // Ampliamos a 120d para que la IA tenga MAS contexto historico al armar
+  // el plan (antes era 60d). Util para detectar patrones de pilares y estilos
+  // que vinieron rindiendo en la cuenta.
+  const cutoff = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString();
   const [
     { data: diagRow },
     { data: publishedPubs },
@@ -119,12 +122,12 @@ export async function POST(
       .maybeSingle(),
     admin
       .from("publications")
-      .select("titulo, tipo, red, fecha_publicacion")
+      .select("titulo, tipo, red, fecha_publicacion, descripcion")
       .eq("cliente_id", cliente_id)
       .eq("estado", "publicado")
-      .gte("fecha_publicacion", sixtyDaysAgo)
+      .gte("fecha_publicacion", cutoff)
       .order("fecha_publicacion", { ascending: false })
-      .limit(40),
+      .limit(80),
     admin
       .from("publications")
       .select("titulo, tipo, red, fecha_publicacion, estado")

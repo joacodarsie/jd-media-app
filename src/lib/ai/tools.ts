@@ -409,6 +409,11 @@ export const TOOLS: Anthropic.Tool[] = [
         },
       },
     },
+    // Breakpoint de prompt caching: cachea TODA la definición de tools (este es
+    // el último tool). Las tools son estáticas, así que en cada turno del loop
+    // y en cada request de la conversación se reusan desde cache (TTL 5 min),
+    // ahorrando tokens de input y latencia. Aplica a ambas rutas de chat.
+    cache_control: { type: "ephemeral" },
   },
 ];
 

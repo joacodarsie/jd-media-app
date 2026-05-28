@@ -125,7 +125,15 @@ export async function POST(req: Request) {
     }
   }
 
-  const system = systemPrompt(me.nombre, me.area, me.rol);
+  // System prompt cacheable (prompt caching): estable durante la conversación,
+  // se reusa desde cache en cada iteración del loop de tools y request siguiente.
+  const system: Anthropic.TextBlockParam[] = [
+    {
+      type: "text",
+      text: systemPrompt(me.nombre, me.area, me.rol),
+      cache_control: { type: "ephemeral" },
+    },
+  ];
 
   // Tool-use loop. Max 6 iterations to avoid runaway.
   let iter = 0;

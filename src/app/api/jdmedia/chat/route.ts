@@ -248,7 +248,16 @@ export async function POST(req: Request) {
     };
   });
 
-  const system = systemPrompt(me.nombre, me.area, me.rol);
+  // System prompt como bloque cacheable: es largo y estable dentro de la
+  // conversación, así que lo marcamos con cache_control para reusarlo desde
+  // cache en cada turno del loop de tools y en cada mensaje siguiente.
+  const system: Anthropic.TextBlockParam[] = [
+    {
+      type: "text",
+      text: systemPrompt(me.nombre, me.area, me.rol),
+      cache_control: { type: "ephemeral" },
+    },
+  ];
   const finalConversationId = conversationId;
 
   // 5) Stream SSE
@@ -335,7 +344,7 @@ async function streamOneTurn({
   onDelta,
 }: {
   messages: Anthropic.MessageParam[];
-  system: string;
+  system: Anthropic.TextBlockParam[];
   onDelta: (delta: string) => void;
 }): Promise<{
   content: Anthropic.ContentBlock[];

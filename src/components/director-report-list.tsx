@@ -250,7 +250,10 @@ export function DirectorDashboard({
   function genWeekly() {
     startWeekly(async () => {
       const res = await runWeeklyNow();
-      if (res?.error) return toast.error(res.error);
+      if (res?.error) {
+        toast.error(res.error);
+        return;
+      }
       toast.success("Parte semanal regenerado");
       router.refresh();
     });
@@ -258,7 +261,10 @@ export function DirectorDashboard({
   function genMonthly() {
     startMonthly(async () => {
       const res = await runMonthlyNow();
-      if (res?.error) return toast.error(res.error);
+      if (res?.error) {
+        toast.error(res.error);
+        return;
+      }
       toast.success(
         `Reportes del mes pasado preparados (${(res as { prepared?: number }).prepared ?? 0})`
       );

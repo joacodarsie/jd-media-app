@@ -1,37 +1,45 @@
-import { requireUser } from "@/lib/auth";
+import { requireUser, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
-  DirectorReportList,
+  DirectorDashboard,
   type DirectorReportView,
 } from "@/components/director-report-list";
 import type { DirectorIdea } from "@/lib/director/insight";
 
 export const dynamic = "force-dynamic";
 
-export default async function DirectorPage() {
-  await requireUser();
+export default async function DirectorPage({
+  searchParams,
+}: {
+  searchParams: { semana?: string };
+}) {
+  const me = await requireUser();
   const supabase = createClient();
 
-  // Semana más reciente con reportes.
-  const { data: latest } = await supabase
+  // Semanas disponibles (distintas), para el selector histórico.
+  const { data: semanasRaw } = await supabase
     .from("director_reports")
     .select("semana")
     .order("semana", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(400);
+  const semanas = Array.from(
+    new Set(((semanasRaw ?? []) as { semana: string }[]).map((r) => r.semana))
+  );
 
-  const semana = (latest?.semana as string | undefined) ?? null;
+  const selectedSemana =
+    searchParams.semana && semanas.includes(searchParams.semana)
+      ? searchParams.semana
+      : semanas[0] ?? null;
 
   let reports: DirectorReportView[] = [];
-  if (semana) {
-    // RLS: staff ve todo; CM/creativa ven solo sus clientes.
+  if (selectedSemana) {
     const { data } = await supabase
       .from("director_reports")
       .select(
-        "id, status, pack, quota_reels, quota_posts, proy_reels, proy_posts, pub_reels, pub_posts, pipeline_next, resumen, ideas, cliente:clients(nombre)"
+        "id, status, pack, quota_reels, quota_posts, proy_reels, proy_posts, pub_reels, pub_posts, pub_reels_week, pub_posts_week, pipeline_next, resumen, ideas, cliente:clients(nombre)"
       )
-      .eq("semana", semana)
-      .order("status", { ascending: false }); // 'brechas' antes que 'al_dia'
+      .eq("semana", selectedSemana)
+      .order("status", { ascending: false });
 
     type Row = {
       id: string;
@@ -43,6 +51,8 @@ export default async function DirectorPage() {
       proy_posts: number;
       pub_reels: number;
       pub_posts: number;
+      pub_reels_week: number;
+      pub_posts_week: number;
       pipeline_next: number;
       resumen: string;
       ideas: unknown;
@@ -60,29 +70,28 @@ export default async function DirectorPage() {
       proy_posts: r.proy_posts,
       pub_reels: r.pub_reels,
       pub_posts: r.pub_posts,
+      pub_reels_week: r.pub_reels_week ?? 0,
+      pub_posts_week: r.pub_posts_week ?? 0,
       pipeline_next: r.pipeline_next,
       resumen: r.resumen,
       ideas: (Array.isArray(r.ideas) ? r.ideas : []) as DirectorIdea[],
     }));
   }
 
-  const fecha = semana
-    ? new Date(semana + "T12:00:00").toLocaleDateString("es-AR", {
-        day: "2-digit",
-        month: "long",
-      })
-    : null;
-
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-xl font-semibold">Director Creativo</h1>
         <p className="text-sm text-muted-foreground">
-          Cómo viene cada cliente respecto a su pack.
-          {fecha && ` Último parte: ${fecha}.`}
+          Cómo viene cada cliente respecto a su pack — contratado vs subido.
         </p>
       </div>
-      <DirectorReportList reports={reports} />
+      <DirectorDashboard
+        reports={reports}
+        semanas={semanas}
+        selectedSemana={selectedSemana}
+        isStaff={isStaff(me.rol)}
+      />
     </div>
   );
 }

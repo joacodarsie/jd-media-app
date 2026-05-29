@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdmin } from "@/lib/supabase/admin";
+import { requireUser, isStaff } from "@/lib/auth";
+import { runDirectorWeekly } from "@/lib/director/run";
+import { runMonthStartReports } from "@/lib/director/monthly";
 import type { DirectorIdea } from "@/lib/director/insight";
 
 async function ctx() {
@@ -11,6 +15,31 @@ async function ctx() {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("No autenticado");
   return { supabase, userId: user.id };
+}
+
+/** Dispara el parte semanal del Director ahora (solo staff). Sin notificaciones. */
+export async function runWeeklyNow() {
+  const me = await requireUser();
+  if (!isStaff(me.rol)) return { error: "Solo admin/coordinación puede generarlo." };
+  const admin = createAdmin();
+  const res = await runDirectorWeekly(admin, new Date(), false);
+  revalidatePath("/director");
+  if (!res.ok) return { error: (res as { error?: string }).error ?? "Error generando" };
+  return { ok: true, analyzed: (res as { analyzed?: number }).analyzed ?? 0 };
+}
+
+/** Genera/prepara los reportes mensuales del mes anterior ahora (solo staff). */
+export async function runMonthlyNow() {
+  const me = await requireUser();
+  if (!isStaff(me.rol)) return { error: "Solo admin/coordinación puede generarlo." };
+  const admin = createAdmin();
+  try {
+    const res = await runMonthStartReports(admin, new Date());
+    revalidatePath("/director");
+    return { ok: true, prepared: (res as { prepared?: number }).prepared ?? 0 };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Error generando reportes" };
+  }
 }
 
 /**

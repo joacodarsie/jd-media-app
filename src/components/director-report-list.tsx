@@ -3,11 +3,23 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, Loader2, Plus, Sparkles } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Loader2,
+  Plus,
+  RotateCw,
+  Sparkles,
+  Video,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { applyDirectorIdea } from "@/app/(app)/director/actions";
+import {
+  applyDirectorIdea,
+  runWeeklyNow,
+  runMonthlyNow,
+} from "@/app/(app)/director/actions";
 import type { DirectorIdea } from "@/lib/director/insight";
 
 export interface DirectorReportView {
@@ -21,6 +33,8 @@ export interface DirectorReportView {
   proy_posts: number;
   pub_reels: number;
   pub_posts: number;
+  pub_reels_week: number;
+  pub_posts_week: number;
   pipeline_next: number;
   resumen: string;
   ideas: DirectorIdea[];
@@ -70,9 +84,7 @@ function IdeaRow({
             </span>
           )}
         </div>
-        {idea.copy && (
-          <p className="mt-1 text-xs text-muted-foreground">{idea.copy}</p>
-        )}
+        {idea.copy && <p className="mt-1 text-xs text-muted-foreground">{idea.copy}</p>}
       </div>
       <Button
         size="sm"
@@ -97,78 +109,222 @@ function IdeaRow({
   );
 }
 
+/** Mini-barra contratado vs subido. */
+function MetricPill({
+  label,
+  reels,
+  posts,
+  quotaR,
+  quotaP,
+}: {
+  label: string;
+  reels: number;
+  posts: number;
+  quotaR?: number;
+  quotaP?: number;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-md bg-muted/60 px-2 py-1 text-[11px]">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium">
+        {reels}
+        {quotaR !== undefined && <span className="text-muted-foreground">/{quotaR}</span>} reels
+      </span>
+      <span className="font-medium">
+        {posts}
+        {quotaP !== undefined && <span className="text-muted-foreground">/{quotaP}</span>} posts
+      </span>
+    </span>
+  );
+}
+
 function ReportCard({ r }: { r: DirectorReportView }) {
+  const [open, setOpen] = useState(false);
   const brechas = r.status === "brechas";
+
   return (
     <Card className={cn(brechas && "border-orange-400/40")}>
-      <CardContent className="space-y-2 p-4">
-        <div className="flex items-center justify-between gap-2">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-2 p-3 text-left"
+      >
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-semibold">{r.cliente_nombre}</span>
+            <span className="truncate font-semibold">{r.cliente_nombre}</span>
             {r.pack && (
-              <span className="text-[11px] text-muted-foreground">{r.pack}</span>
+              <span className="shrink-0 text-[11px] text-muted-foreground">{r.pack}</span>
             )}
+            <span
+              className={cn(
+                "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium",
+                brechas
+                  ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300"
+                  : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+              )}
+            >
+              {brechas ? "Con brechas" : "Al día"}
+            </span>
           </div>
-          <span
-            className={cn(
-              "rounded-full px-2 py-0.5 text-[11px] font-medium",
-              brechas
-                ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300"
-                : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-            )}
-          >
-            {brechas ? "Con brechas" : "Al día"}
-          </span>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            <MetricPill
+              label="Mes"
+              reels={r.pub_reels}
+              posts={r.pub_posts}
+              quotaR={r.quota_reels}
+              quotaP={r.quota_posts}
+            />
+            <MetricPill label="Semana" reels={r.pub_reels_week} posts={r.pub_posts_week} />
+          </div>
         </div>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+            open && "rotate-180"
+          )}
+        />
+      </button>
 
-        <p className="text-sm leading-relaxed">{r.resumen}</p>
+      {open && (
+        <CardContent className="space-y-3 border-t p-4 pt-3">
+          <p className="text-sm leading-relaxed">{r.resumen}</p>
 
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-          <span>
-            Reels: <b className="text-foreground">{r.pub_reels}</b> publicados ·{" "}
-            {r.proy_reels} planeados / {r.quota_reels} cuota
-          </span>
-          <span>
-            Posts: <b className="text-foreground">{r.pub_posts}</b> publicados ·{" "}
-            {r.proy_posts} planeados / {r.quota_posts} cuota
-          </span>
-          <span>· {r.pipeline_next} pubs en 2 semanas</span>
-        </div>
-
-        {r.ideas.length > 0 && (
-          <div className="space-y-1.5 border-t pt-2">
-            <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              <Sparkles className="h-3 w-3" />
-              Ideas sugeridas
+          <div className="grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
+            <div className="rounded-md bg-muted/50 p-2">
+              <div className="text-muted-foreground">Contratado</div>
+              <div className="font-medium">
+                {r.quota_reels} reels · {r.quota_posts} posts
+              </div>
             </div>
-            {r.ideas.map((idea, i) => (
-              <IdeaRow key={i} reportId={r.id} index={i} idea={idea} />
-            ))}
+            <div className="rounded-md bg-muted/50 p-2">
+              <div className="text-muted-foreground">Subido esta semana</div>
+              <div className="font-medium">
+                {r.pub_reels_week} reels · {r.pub_posts_week} posts
+              </div>
+            </div>
+            <div className="rounded-md bg-muted/50 p-2">
+              <div className="text-muted-foreground">Subido este mes</div>
+              <div className="font-medium">
+                {r.pub_reels} reels · {r.pub_posts} posts
+              </div>
+            </div>
+            <div className="rounded-md bg-muted/50 p-2">
+              <div className="text-muted-foreground">Planeado / pipeline</div>
+              <div className="font-medium">
+                {r.proy_reels}r · {r.proy_posts}p · {r.pipeline_next} en 2 sem
+              </div>
+            </div>
           </div>
-        )}
-      </CardContent>
+
+          {r.ideas.length > 0 && (
+            <div className="space-y-1.5 border-t pt-2">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <Sparkles className="h-3 w-3" />
+                Ideas sugeridas
+              </div>
+              {r.ideas.map((idea, i) => (
+                <IdeaRow key={i} reportId={r.id} index={i} idea={idea} />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      )}
     </Card>
   );
 }
 
-export function DirectorReportList({
+export function DirectorDashboard({
   reports,
+  semanas,
+  selectedSemana,
+  isStaff,
 }: {
   reports: DirectorReportView[];
+  semanas: string[];
+  selectedSemana: string | null;
+  isStaff: boolean;
 }) {
-  if (reports.length === 0) {
-    return (
-      <p className="py-10 text-center text-sm text-muted-foreground">
-        Todavía no hay reportes. El Director Creativo corre los viernes y vas a
-        ver acá cómo viene cada cliente.
-      </p>
-    );
+  const router = useRouter();
+  const [pendingWeekly, startWeekly] = useTransition();
+  const [pendingMonthly, startMonthly] = useTransition();
+
+  function genWeekly() {
+    startWeekly(async () => {
+      const res = await runWeeklyNow();
+      if (res?.error) return toast.error(res.error);
+      toast.success("Parte semanal regenerado");
+      router.refresh();
+    });
   }
+  function genMonthly() {
+    startMonthly(async () => {
+      const res = await runMonthlyNow();
+      if (res?.error) return toast.error(res.error);
+      toast.success(
+        `Reportes del mes pasado preparados (${(res as { prepared?: number }).prepared ?? 0})`
+      );
+      router.refresh();
+    });
+  }
+
+  function fmtSemana(s: string) {
+    return new Date(s + "T12:00:00").toLocaleDateString("es-AR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  }
+
   return (
-    <div className="grid gap-3 md:grid-cols-2">
-      {reports.map((r) => (
-        <ReportCard key={r.id} r={r} />
-      ))}
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        {semanas.length > 0 && (
+          <select
+            value={selectedSemana ?? ""}
+            onChange={(e) => router.push(`/director?semana=${e.target.value}`)}
+            className="h-8 rounded-md border bg-background px-2 text-xs"
+          >
+            {semanas.map((s) => (
+              <option key={s} value={s}>
+                Parte del {fmtSemana(s)}
+              </option>
+            ))}
+          </select>
+        )}
+        <div className="ml-auto flex items-center gap-2">
+          {isStaff && (
+            <>
+              <Button size="sm" variant="outline" onClick={genWeekly} disabled={pendingWeekly}>
+                {pendingWeekly ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RotateCw className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                Generar semanal
+              </Button>
+              <Button size="sm" variant="outline" onClick={genMonthly} disabled={pendingMonthly}>
+                {pendingMonthly ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Video className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                Generar mensual
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {reports.length === 0 ? (
+        <p className="py-10 text-center text-sm text-muted-foreground">
+          Todavía no hay reportes para esta semana. {isStaff && "Usá “Generar semanal” para crear uno ahora."}
+        </p>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          {reports.map((r) => (
+            <ReportCard key={r.id} r={r} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

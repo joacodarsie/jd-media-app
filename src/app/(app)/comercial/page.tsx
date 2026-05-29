@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { LeadKanban, type LeadRow } from "@/components/lead-kanban";
 import { LeadFormDialog } from "@/components/lead-form-dialog";
 import { HelpTrigger } from "@/components/help-trigger";
+import { DismissibleHint } from "@/components/dismissible-hint";
 
 export const dynamic = "force-dynamic";
 
@@ -125,7 +126,10 @@ export default async function ComercialPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-xs text-foreground/80">
+      <DismissibleHint
+        id="comercial-post-meet"
+        className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-xs text-foreground/80"
+      >
         <div className="flex items-start gap-2">
           <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
           <p>
@@ -140,7 +144,7 @@ export default async function ComercialPage() {
             mensaje de follow-up listo, con el tono y el contexto de JD Media.
           </p>
         </div>
-      </div>
+      </DismissibleHint>
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Stat label="Leads activos" value={totalActivos} />

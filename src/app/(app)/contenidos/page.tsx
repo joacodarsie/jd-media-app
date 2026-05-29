@@ -4,12 +4,21 @@ import { getActiveUsers, getActiveClients } from "@/lib/cache";
 import type { PublicationWithRels } from "@/lib/types";
 import { PublicationsMonth } from "@/components/publications-month";
 import { HelpTrigger } from "@/components/help-trigger";
+import { DismissibleHint } from "@/components/dismissible-hint";
 
 export const dynamic = "force-dynamic";
 
 export default async function ContenidosPage() {
   await requireUser();
   const supabase = createClient();
+
+  // Traemos TODO el pipeline activo (no publicado, sin límite de fecha) + los
+  // publicados de los últimos 180 días. Lo que crece sin techo es la historia
+  // de publicados; recortarla mantiene el calendario y el Kanban livianos sin
+  // perder el pipeline en curso ni los publicados recientes.
+  const publishedSince = new Date(Date.now() - 180 * 86400_000)
+    .toISOString()
+    .slice(0, 10);
 
   const [
     { data: pubs },
@@ -22,6 +31,7 @@ export default async function ContenidosPage() {
       .select(
         "*, cliente:clients(id,nombre), creador:users!publications_creado_por_id_fkey(id,nombre,avatar_url), audiovisual:users!publications_audiovisual_id_fkey(id,nombre,avatar_url)"
       )
+      .or(`estado.neq.publicado,fecha_publicacion.gte.${publishedSince}`)
       .order("fecha_publicacion", { ascending: true, nullsFirst: false }),
     supabase
       .from("client_pub_comments")
@@ -52,13 +62,16 @@ export default async function ContenidosPage() {
           Todo el contenido planificado de la agencia, en un mes. Arrastrá una
           publicación a otro día para reprogramarla.
         </p>
-        <div className="mt-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-foreground/80">
+        <DismissibleHint
+          id="contenidos-como-funciona"
+          className="mt-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-foreground/80"
+        >
           <span className="font-semibold">Cómo funciona:</span> al crear una
           publicación se genera <b>automáticamente</b> una tarea de diseño
           (post/carrusel/historia) o de edición (reel/video) asignada al
           miembro del cliente. Aparece en <b>Tareas</b> y en el dashboard de
           esa persona.
-        </div>
+        </DismissibleHint>
       </div>
       <PublicationsMonth
         publications={(pubs ?? []) as PublicationWithRels[]}

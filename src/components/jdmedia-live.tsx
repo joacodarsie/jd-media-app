@@ -73,6 +73,16 @@ export function JdmediaLive({ userName }: { userName: string }) {
   const [micOn, setMicOn] = useState(true);
   const [aiSpeaking, setAiSpeaking] = useState(false);
   const [caption, setCaption] = useState("");
+  // getDisplayMedia no existe en navegadores móviles (Android/iOS). Detectamos
+  // soporte para mostrar un mensaje claro en vez de un error técnico.
+  const [supported, setSupported] = useState(true);
+  useEffect(() => {
+    setSupported(
+      typeof navigator !== "undefined" &&
+        !!navigator.mediaDevices &&
+        typeof navigator.mediaDevices.getDisplayMedia === "function"
+    );
+  }, []);
 
   // refs (no provocan re-render)
   const sessionRef = useRef<LiveSession | null>(null);
@@ -241,11 +251,15 @@ export function JdmediaLive({ userName }: { userName: string }) {
           systemInstruction: string;
         };
 
-      // 2) Capturar pantalla y micrófono
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: 5 },
+      // 2) Capturar pantalla y micrófono.
+      // cursor:"always" hace que el puntero del mouse aparezca en las capturas,
+      // así la IA ve qué está señalando el usuario. (No está en los tipos std.)
+      const displayOpts = {
+        video: { frameRate: 5, cursor: "always" },
         audio: false,
-      });
+      } as unknown as DisplayMediaStreamOptions;
+      const screenStream =
+        await navigator.mediaDevices.getDisplayMedia(displayOpts);
       screenStreamRef.current = screenStream;
       // si el usuario corta el compartir desde el chrome del navegador → colgamos
       screenStream.getVideoTracks()[0]?.addEventListener("ended", () => hangUp());
@@ -412,7 +426,25 @@ export function JdmediaLive({ userName }: { userName: string }) {
         )}
       </div>
 
-      {status === "idle" && (
+      {status === "idle" && !supported && (
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+          <MonitorUp className="h-12 w-12 text-muted-foreground" />
+          <div className="max-w-md space-y-1">
+            <p className="text-base font-medium">Disponible solo en computadora</p>
+            <p className="text-sm text-muted-foreground">
+              La sesión en vivo necesita compartir pantalla, algo que los
+              navegadores de celular no permiten. Abrí JDmedIA en vivo desde una
+              computadora (Chrome) para usarla. En el celu podés seguir usando el
+              chat de JDmedIA con normalidad.
+            </p>
+          </div>
+          <Button variant="outline" asChild>
+            <Link href="/jdmedia">Volver a JDmedIA</Link>
+          </Button>
+        </div>
+      )}
+
+      {status === "idle" && supported && (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
           <MonitorUp className="h-12 w-12 text-muted-foreground" />
           <div className="max-w-md space-y-1">
@@ -423,6 +455,10 @@ export function JdmediaLive({ userName }: { userName: string }) {
               Te va a ver la pantalla y guiar por voz, paso a paso. Ideal para
               configurar Meta Ads y resolver dudas en el momento. Vas a tener que
               permitir el acceso al micrófono y elegir qué pantalla compartir.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Tip: señalá con el mouse lo que quieras preguntar — la IA ve el
+              cursor y te responde sobre eso.
             </p>
           </div>
           <Button size="lg" onClick={start}>

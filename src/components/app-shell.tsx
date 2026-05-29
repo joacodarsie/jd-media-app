@@ -101,6 +101,20 @@ function SidebarContent({
 }) {
   const pathname = usePathname();
   const groups = visibleNavGroups(user, isLiveOwner);
+
+  // Sólo UN item activo: el del match más largo. Evita que "Equipo" y
+  // "Personas" (o "JDmedIA" y "JDmedIA en vivo") se prendan a la vez cuando
+  // un href es prefijo de otro.
+  let activeHref = "";
+  for (const it of NAV) {
+    if (
+      (pathname === it.href || pathname.startsWith(it.href + "/")) &&
+      it.href.length > activeHref.length
+    ) {
+      activeHref = it.href;
+    }
+  }
+
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const prevPathname = useRef(pathname);
   useEffect(() => {
@@ -148,8 +162,7 @@ function SidebarContent({
             )}
             {group.items.map((item) => {
               const Icon = ICONS[item.icon] ?? ListChecks;
-              const active =
-                pathname === item.href || pathname.startsWith(item.href + "/");
+              const active = item.href === activeHref;
               const isPending = pendingHref === item.href && !active;
               const rawBadge = badges[item.href] ?? 0;
               const badge =

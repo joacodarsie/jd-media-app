@@ -1,4 +1,4 @@
-import { PageSkeleton } from "@/components/skeleton-block";
+import { CalendarSkeleton } from "@/components/skeleton-block";
 export default function Loading() {
-  return <PageSkeleton rows={10} />;
+  return <CalendarSkeleton />;
 }

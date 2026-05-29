@@ -15,6 +15,18 @@ const nextConfig = {
       "@radix-ui/react-select",
       "@radix-ui/react-tabs",
     ],
+
+    // Router Cache del cliente: cuanto tiempo se reusa el contenido ya cargado
+    // de una sección al volver a ella, sin re-fetch al servidor.
+    // - dynamic: páginas force-dynamic (casi todas acá). 30s hace que volver a
+    //   una sección recién visitada sea INSTANTÁNEO. Las mutaciones siguen
+    //   bustando el cache vía revalidatePath/router.refresh, así que no se ve
+    //   data vieja tras una acción; sólo al navegar atrás/adelante.
+    // - static: páginas estáticas, se pueden retener más tiempo.
+    staleTimes: {
+      dynamic: 30,
+      static: 180,
+    },
   },
 
   // Cache de assets estaticos por mas tiempo en el browser

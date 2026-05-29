@@ -41,44 +41,61 @@ export default async function ChatPage({
     (m) => m.channel && !m.channel.archived
   );
 
-  // Para DMs, resolvemos quién es el "otro" miembro (no yo)
+  // Resolvemos en paralelo, en una sola ola, todo lo que sólo depende de la
+  // lista de canales (antes corría secuencial: peers de DM, luego un for-loop
+  // con await por canal para los no-leídos = N round-trips, y al final users).
   const dmChannelIds = channelsRaw
     .filter((m) => m.channel!.kind === "dm")
     .map((m) => m.channel!.id);
+  const channelIds = channelsRaw.map((c) => c.channel!.id);
+
+  const [{ data: dmMembers }, unreadEntries, { data: users }] =
+    await Promise.all([
+      dmChannelIds.length > 0
+        ? supabase
+            .from("team_channel_members")
+            .select(
+              "channel_id, user:users!team_channel_members_user_id_fkey(id, nombre, avatar_url)"
+            )
+            .in("channel_id", dmChannelIds)
+            .neq("user_id", me.id)
+        : Promise.resolve({ data: [] as never[] }),
+      // Conteo de no-leídos por canal, ahora EN PARALELO (no secuencial).
+      channelIds.length > 0
+        ? Promise.all(
+            channelsRaw.map(async (m) => {
+              const ch = m.channel!;
+              const since = m.last_read_at ?? "1970-01-01";
+              const { count } = await supabase
+                .from("team_messages")
+                .select("id", { count: "exact", head: true })
+                .eq("channel_id", ch.id)
+                .gt("created_at", since)
+                .neq("user_id", me.id);
+              return [ch.id, count ?? 0] as const;
+            })
+          )
+        : Promise.resolve([] as (readonly [string, number])[]),
+      // Lista de users para el @mention picker (no depende de nada más).
+      supabase
+        .from("users")
+        .select("id, nombre, avatar_url")
+        .eq("activo", true)
+        .order("nombre"),
+    ]);
+
   const dmPeers = new Map<
     string,
     { id: string; nombre: string; avatar_url: string | null }
   >();
-  if (dmChannelIds.length > 0) {
-    const { data: dmMembers } = await supabase
-      .from("team_channel_members")
-      .select("channel_id, user:users!team_channel_members_user_id_fkey(id, nombre, avatar_url)")
-      .in("channel_id", dmChannelIds)
-      .neq("user_id", me.id);
-    for (const row of (dmMembers ?? []) as unknown as {
-      channel_id: string;
-      user: { id: string; nombre: string; avatar_url: string | null } | null;
-    }[]) {
-      if (row.user) dmPeers.set(row.channel_id, row.user);
-    }
+  for (const row of (dmMembers ?? []) as unknown as {
+    channel_id: string;
+    user: { id: string; nombre: string; avatar_url: string | null } | null;
+  }[]) {
+    if (row.user) dmPeers.set(row.channel_id, row.user);
   }
 
-  // Conteo de mensajes no leídos por canal
-  const channelIds = channelsRaw.map((c) => c.channel!.id);
-  const unreadByChannel = new Map<string, number>();
-  if (channelIds.length > 0) {
-    for (const m of channelsRaw) {
-      const ch = m.channel!;
-      const since = m.last_read_at ?? "1970-01-01";
-      const { count } = await supabase
-        .from("team_messages")
-        .select("id", { count: "exact", head: true })
-        .eq("channel_id", ch.id)
-        .gt("created_at", since)
-        .neq("user_id", me.id);
-      unreadByChannel.set(ch.id, count ?? 0);
-    }
-  }
+  const unreadByChannel = new Map<string, number>(unreadEntries);
 
   const channels: ChatChannel[] = channelsRaw
     .map((m) => {
@@ -185,13 +202,6 @@ export default async function ChatPage({
         .eq("user_id", me.id);
     }
   }
-
-  // Lista de users para el @mention picker
-  const { data: users } = await supabase
-    .from("users")
-    .select("id, nombre, avatar_url")
-    .eq("activo", true)
-    .order("nombre");
 
   return (
     <ChatLayout

@@ -90,6 +90,10 @@ export default async function DashboardPage() {
   const inAWeek = new Date(startOfDay.getTime() + 7 * 86400000);
 
   const admin = createAdmin();
+
+  // --- Batch 1: todo lo que NO depende de otros resultados, en paralelo. ---
+  // Reuniones internas se incluye acá (sólo depende de la ventana de fechas,
+  // no de myClientIds) para no encadenar un round-trip extra.
   const [
     ,
     { data: myClients },
@@ -97,6 +101,7 @@ export default async function DashboardPage() {
     { data: calConns },
     { data: delegatedRaw },
     { data: recentNotifsRaw },
+    { data: myMeetingsRaw },
   ] = await Promise.all([
     // Genera notifs "vencida"/"proxima a vencer" en paralelo. Antes corria en
     // el layout en CADA nav (~10ms x nav). Ahora solo al entrar al dashboard.
@@ -134,25 +139,71 @@ export default async function DashboardPage() {
       .eq("leida", false)
       .order("created_at", { ascending: false })
       .limit(5),
+    // Reuniones internas (donde el user es asistente o creador) en la ventana
+    // semanal. Como creator se agrega automaticamente como asistente, el inner
+    // join cubre ambos casos.
+    supabase
+      .from("internal_meetings")
+      .select(
+        "id, titulo, starts_at, ends_at, ubicacion, meet_link, attendee:internal_meeting_attendees!inner(user_id)"
+      )
+      .eq("attendee.user_id", user.id)
+      .gte("starts_at", startOfDay.toISOString())
+      .lte("starts_at", inAWeek.toISOString())
+      .order("starts_at", { ascending: true }),
   ]);
 
   const hasCalendarConnections = (calConns ?? []).length > 0;
-  const googleCalendarEvents: CalEvent[] = hasCalendarConnections
-    ? await listEventsForUser(user.id, startOfDay.toISOString(), inAWeek.toISOString()).catch(() => [])
-    : [];
+  const myClientIds = (myClients ?? []).map((c) => c.id);
+  const hasClients = myClientIds.length > 0;
 
-  // Reuniones internas (donde el user es asistente o creador) en la ventana
-  // semanal del dashboard. Como creator se agrega automaticamente como asistente,
-  // el inner join cubre ambos casos.
-  const { data: myMeetingsRaw } = await supabase
-    .from("internal_meetings")
-    .select(
-      "id, titulo, starts_at, ends_at, ubicacion, meet_link, attendee:internal_meeting_attendees!inner(user_id)"
-    )
-    .eq("attendee.user_id", user.id)
-    .gte("starts_at", startOfDay.toISOString())
-    .lte("starts_at", inAWeek.toISOString())
-    .order("starts_at", { ascending: true });
+  // --- Batch 2: lo que depende del Batch 1 (eventos según conexiones, pubs y
+  // tareas según mis clientes), todo en paralelo en vez de encadenado. ---
+  const emptyRows = Promise.resolve({ data: [] as never[] });
+  const [
+    googleCalendarEvents,
+    { data: clientPubsToday },
+    { data: clientTasksRaw },
+    { data: clientPubsWeekRaw },
+  ] = await Promise.all([
+    hasCalendarConnections
+      ? listEventsForUser(
+          user.id,
+          startOfDay.toISOString(),
+          inAWeek.toISOString()
+        ).catch(() => [] as CalEvent[])
+      : Promise.resolve([] as CalEvent[]),
+    hasClients
+      ? supabase
+          .from("publications")
+          .select(
+            "id, titulo, fecha_publicacion, estado, red, tipo, cliente:clients(id,nombre)"
+          )
+          .in("cliente_id", myClientIds)
+          .gte("fecha_publicacion", startOfDay.toISOString())
+          .lte("fecha_publicacion", endOfDay.toISOString())
+          .order("fecha_publicacion", { ascending: true })
+          .limit(10)
+      : emptyRows,
+    hasClients
+      ? supabase
+          .from("tasks")
+          .select(
+            "id, titulo, estado, prioridad, fecha_limite, cliente_id, asignado:users!tasks_asignado_a_id_fkey(id,nombre)"
+          )
+          .in("cliente_id", myClientIds)
+          .neq("estado", "completada")
+      : emptyRows,
+    hasClients
+      ? supabase
+          .from("publications")
+          .select("id, titulo, fecha_publicacion, estado, red, tipo, cliente_id")
+          .in("cliente_id", myClientIds)
+          .gte("fecha_publicacion", startOfDay.toISOString())
+          .lte("fecha_publicacion", inAWeek.toISOString())
+          .order("fecha_publicacion", { ascending: true })
+      : emptyRows,
+  ]);
 
   type InternalMeetingLite = {
     id: string;
@@ -182,43 +233,6 @@ export default async function DashboardPage() {
     ...internalAsCal,
   ].sort((a, b) => a.start.localeCompare(b.start));
   const hasAnyMeetings = calendarEvents.length > 0 || hasCalendarConnections;
-
-  const myClientIds = (myClients ?? []).map((c) => c.id);
-  const { data: clientPubsToday } = myClientIds.length > 0
-    ? await supabase
-        .from("publications")
-        .select(
-          "id, titulo, fecha_publicacion, estado, red, tipo, cliente:clients(id,nombre)"
-        )
-        .in("cliente_id", myClientIds)
-        .gte("fecha_publicacion", startOfDay.toISOString())
-        .lte("fecha_publicacion", endOfDay.toISOString())
-        .order("fecha_publicacion", { ascending: true })
-        .limit(10)
-    : { data: [] };
-
-  // Para la vista "Por cliente": tareas activas + pubs proximas 7 dias
-  // de TODOS los clientes a mi cargo (no solo asignadas a mi)
-  const [{ data: clientTasksRaw }, { data: clientPubsWeekRaw }] = myClientIds.length > 0
-    ? await Promise.all([
-        supabase
-          .from("tasks")
-          .select(
-            "id, titulo, estado, prioridad, fecha_limite, cliente_id, asignado:users!tasks_asignado_a_id_fkey(id,nombre)"
-          )
-          .in("cliente_id", myClientIds)
-          .neq("estado", "completada"),
-        supabase
-          .from("publications")
-          .select(
-            "id, titulo, fecha_publicacion, estado, red, tipo, cliente_id"
-          )
-          .in("cliente_id", myClientIds)
-          .gte("fecha_publicacion", startOfDay.toISOString())
-          .lte("fecha_publicacion", inAWeek.toISOString())
-          .order("fecha_publicacion", { ascending: true }),
-      ])
-    : [{ data: [] }, { data: [] }];
 
   const tasks = (taskData ?? []) as TaskWithRels[];
   tasks.sort((a, b) => PRIORITY_ORDER[a.prioridad] - PRIORITY_ORDER[b.prioridad]);

@@ -1,15 +1,23 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "./supabase/server";
 import type { AppUser } from "./types";
 import type { Feature } from "./permissions";
 
-/** Devuelve el perfil del usuario logueado o redirige a /login. */
-export async function requireUser(): Promise<AppUser> {
+/**
+ * Resuelve el perfil del usuario logueado (o null) UNA sola vez por request.
+ *
+ * Envuelto en React `cache()`: el layout y la página (y cualquier action que
+ * corra en el mismo render) comparten el resultado, en vez de repetir el
+ * `auth.getUser()` (round-trip de red a Supabase Auth) + el SELECT a `users`
+ * en cada llamada. Antes esto corría 2+ veces por navegación.
+ */
+const resolveUserProfile = cache(async (): Promise<AppUser | null> => {
   const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) return null;
 
   const { data: profile } = await supabase
     .from("users")
@@ -17,8 +25,14 @@ export async function requireUser(): Promise<AppUser> {
     .eq("id", user.id)
     .single();
 
+  return (profile as AppUser) ?? null;
+});
+
+/** Devuelve el perfil del usuario logueado o redirige a /login. */
+export async function requireUser(): Promise<AppUser> {
+  const profile = await resolveUserProfile();
   if (!profile) redirect("/login");
-  return profile as AppUser;
+  return profile;
 }
 
 export function isStaff(rol: string) {

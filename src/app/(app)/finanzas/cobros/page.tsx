@@ -92,10 +92,7 @@ export default async function CobrosPage({
             {labelFor(k)} ({counts[k]})
           </Link>
         ))}
-        <MonthPicker
-          value={monthFilter}
-          buildHref={(m) => `/finanzas/cobros?f=${filter}${m ? `&m=${m}` : ""}`}
-        />
+        <MonthPicker value={monthFilter} />
       </div>
 
       <InvoicesTable rows={rows} rates={rates} clients={clients} />

@@ -248,10 +248,7 @@ export default async function PagosPage({
             {labelFor(k)} ({counts[k]})
           </Link>
         ))}
-        <MonthPicker
-          value={monthFilter}
-          buildHref={(m) => `/finanzas/pagos?f=${filter}${m ? `&m=${m}` : ""}`}
-        />
+        <MonthPicker value={monthFilter} />
       </div>
 
       <PaymentsTable rows={rows} rates={rates} users={users} clients={clients} />

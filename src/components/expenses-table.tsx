@@ -122,10 +122,7 @@ export function ExpensesTable({
             {labelFor(k)}
           </Link>
         ))}
-        <MonthPicker
-          value={monthFilter}
-          buildHref={(m) => `/finanzas/gastos?f=${filter}${m ? `&m=${m}` : ""}`}
-        />
+        <MonthPicker value={monthFilter} />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

@@ -63,10 +63,12 @@ export function ClientPortalLink({ clienteId, initialToken, initialLastSeen }: P
     <div className="rounded-xl border bg-card p-4">
       <div className="mb-2 flex items-center gap-2">
         <Globe className="h-4 w-4 text-primary" />
-        <h3 className="text-sm font-semibold">Portal del cliente</h3>
+        <h3 className="text-sm font-semibold">Link para el cliente</h3>
       </div>
       <p className="mb-3 text-xs text-muted-foreground">
-        Link público (sin login) para que el cliente vea su plan del mes, calendario y diagnóstico. Solo lee, no edita.
+        <b>Un solo link, sin login.</b> Desde acá el cliente ve su plan del mes,{" "}
+        <b>aprueba o pide cambios</b> en las piezas pendientes, y ve lo que viene.
+        Es el único link que necesitás mandarle.
       </p>
 
       {token && url ? (

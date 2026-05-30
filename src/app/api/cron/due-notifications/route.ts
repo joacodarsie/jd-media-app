@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdmin } from "@/lib/supabase/admin";
-import { ensureDueNotifications } from "@/lib/notifications";
+import {
+  ensureDueNotifications,
+  ensureFinanceNotifications,
+} from "@/lib/notifications";
 import {
   runMonthEndCompliance,
   runMonthStartReports,
@@ -57,6 +60,16 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Recordatorio de finanzas (cobros/pagos venciendo o atrasados) para admins
+  // y usuarios con la feature finanzas. Un aviso resumido por día.
+  let financeNotified = false;
+  try {
+    await ensureFinanceNotifications(admin);
+    financeNotified = true;
+  } catch {
+    financeNotified = false;
+  }
+
   // Auto-archive: tareas completadas hace más de 30 días.
   const cutoff = new Date(Date.now() - 30 * 86400_000).toISOString();
   const { data: archivedRows } = await admin
@@ -96,6 +109,7 @@ export async function GET(req: NextRequest) {
     users: ids.length,
     processed_ok: ok,
     processed_failed: failed,
+    finance_notified: financeNotified,
     tasks_archived: archivedRows?.length ?? 0,
     month_end: monthEnd,
     month_start: monthStart,

@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { GenerateMonthButton } from "@/components/generate-month-button";
 import { PaymentsTable, type PaymentTableRow } from "@/components/payments-table";
 import { MonthPicker } from "@/components/month-picker";
+import { CopyButton } from "@/components/copy-button";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -31,23 +32,38 @@ export default async function PagosPage({
   const monthFilter =
     searchParams.m && /^\d{4}-\d{2}$/.test(searchParams.m) ? searchParams.m : null;
 
-  const [{ data: paymentsData }, { data: compsData }, usersWithPos, clients] = await Promise.all([
-    supabase
-      .from("team_payments")
-      .select(
-        "id, user_id, cliente_id, monto, moneda, periodo, concepto, fecha_programada, fecha_pago, metodo_pago, notas, usuario:users!team_payments_user_id_fkey(id,nombre)"
-      )
-      .order("fecha_programada", { ascending: true }),
-    supabase
-      .from("compensation")
-      .select("user_id, monto"),
-    getActiveUsers(),
-    getActiveClients(),
-  ]);
+  const [{ data: paymentsData }, { data: compsData }, { data: bankData }, usersWithPos, clients] =
+    await Promise.all([
+      supabase
+        .from("team_payments")
+        .select(
+          "id, user_id, cliente_id, monto, moneda, periodo, concepto, fecha_programada, fecha_pago, metodo_pago, notas, usuario:users!team_payments_user_id_fkey(id,nombre)"
+        )
+        .order("fecha_programada", { ascending: true }),
+      supabase
+        .from("compensation")
+        .select("user_id, monto"),
+      // Datos para transferir (esta página ya está gateada por feature finanzas).
+      supabase
+        .from("users")
+        .select("id, alias_cbu, cbu, titular_cuenta")
+        .eq("activo", true),
+      getActiveUsers(),
+      getActiveClients(),
+    ]);
 
   const all = (paymentsData ?? []) as unknown as PaymentTableRow[];
   const users = usersWithPos.map((u) => ({ id: u.id, nombre: u.nombre }));
   const comps = (compsData ?? []) as { user_id: string; monto: number | null }[];
+  type BankRow = {
+    id: string;
+    alias_cbu: string | null;
+    cbu: string | null;
+    titular_cuenta: string | null;
+  };
+  const bankByUser = new Map(
+    ((bankData ?? []) as BankRow[]).map((b) => [b.id, b])
+  );
   const today = new Date().toISOString().slice(0, 10);
 
   // Cuántos no tienen compensación cargada (monto != null)
@@ -71,14 +87,21 @@ export default async function PagosPage({
   };
 
   // Pendiente por persona
-  const byUser = new Map<string, { nombre: string; pendientes: number; totalARS: number }>();
+  const byUser = new Map<
+    string,
+    { nombre: string; pendientes: number; totalARS: number; proxima: string | null }
+  >();
   for (const p of all.filter((x) => !x.fecha_pago)) {
     if (!p.usuario) continue;
     const k = p.usuario.id;
-    if (!byUser.has(k)) byUser.set(k, { nombre: p.usuario.nombre, pendientes: 0, totalARS: 0 });
+    if (!byUser.has(k))
+      byUser.set(k, { nombre: p.usuario.nombre, pendientes: 0, totalARS: 0, proxima: null });
     const e = byUser.get(k)!;
     e.pendientes += 1;
     e.totalARS += toARS(Number(p.monto), p.moneda, rates);
+    if (p.fecha_programada && (!e.proxima || p.fecha_programada < e.proxima)) {
+      e.proxima = p.fecha_programada;
+    }
   }
   const porPersona = Array.from(byUser.entries()).sort((a, b) => b[1].totalARS - a[1].totalARS);
 
@@ -136,21 +159,74 @@ export default async function PagosPage({
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Pendiente por persona
             </h2>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Cuánto transferirle a cada uno, cuándo vence y a qué alias/CBU.
+            </p>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {porPersona.map(([id, p]) => (
-                <div
-                  key={id}
-                  className="flex items-center justify-between gap-2 rounded-md border bg-card px-3 py-2 text-sm"
-                >
-                  <div>
-                    <div className="font-medium">{p.nombre}</div>
-                    <div className="text-[10px] text-muted-foreground">
-                      {p.pendientes} pago{p.pendientes !== 1 ? "s" : ""} pendiente{p.pendientes !== 1 ? "s" : ""}
+              {porPersona.map(([id, p]) => {
+                const bank = bankByUser.get(id);
+                const dias =
+                  p.proxima != null
+                    ? Math.floor((Date.parse(p.proxima) - Date.parse(today)) / 86400000)
+                    : null;
+                const venc =
+                  dias == null
+                    ? null
+                    : dias < 0
+                    ? { txt: `Atrasado ${-dias}d`, cls: "text-red-600 dark:text-red-400" }
+                    : dias === 0
+                    ? { txt: "Vence hoy", cls: "text-amber-600 dark:text-amber-400" }
+                    : { txt: `Vence en ${dias}d`, cls: "text-muted-foreground" };
+                return (
+                  <div
+                    key={id}
+                    className="space-y-1.5 rounded-md border bg-card px-3 py-2 text-sm"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-medium">{p.nombre}</div>
+                        <div className="text-[10px] text-muted-foreground">
+                          {p.pendientes} pago{p.pendientes !== 1 ? "s" : ""} pendiente
+                          {p.pendientes !== 1 ? "s" : ""}
+                          {venc && (
+                            <span className={cn("ml-1 font-medium", venc.cls)}>
+                              · {venc.txt}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-sm font-semibold tabular-nums">
+                        {fmtARS(p.totalARS)}
+                      </div>
                     </div>
+                    {bank && (bank.alias_cbu || bank.cbu) ? (
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-1.5 text-[11px] text-muted-foreground">
+                        {bank.alias_cbu && (
+                          <span className="inline-flex items-center gap-1">
+                            Alias{" "}
+                            <span className="font-mono text-foreground">{bank.alias_cbu}</span>
+                            <CopyButton value={bank.alias_cbu} />
+                          </span>
+                        )}
+                        {bank.cbu && (
+                          <span className="inline-flex items-center gap-1">
+                            CBU{" "}
+                            <span className="font-mono text-foreground">{bank.cbu}</span>
+                            <CopyButton value={bank.cbu} />
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="border-t pt-1.5 text-[11px] text-muted-foreground">
+                        Sin alias/CBU cargado.{" "}
+                        <Link href={`/equipo/persona/${id}`} className="underline">
+                          Cargar
+                        </Link>
+                      </div>
+                    )}
                   </div>
-                  <div className="text-sm font-semibold tabular-nums">{fmtARS(p.totalARS)}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>

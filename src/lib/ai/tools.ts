@@ -1,6 +1,8 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getExchangeRates } from "@/lib/exchange";
+import { toARS } from "@/lib/finanzas";
 
 /**
  * Tool definitions for the AI assistant.
@@ -390,6 +392,15 @@ export const TOOLS: Anthropic.Tool[] = [
         },
       },
       required: ["slug"],
+    },
+  },
+  {
+    name: "finance_health",
+    description:
+      "Salud financiera y panorama de pendientes de la agencia, CRUZANDO todos los periodos (no solo el mes). Devuelve, consolidado en ARS al dólar blue: lo que está POR COBRAR a clientes (con atrasados y los que vencen en 7 días, cada uno con días de atraso), lo que está POR PAGAR al equipo (atrasados, próximos 7 días, y total por persona), gastos pendientes, el margen real del mes actual, la posición neta (por cobrar menos por pagar) y banderas de alerta. Usalo para '¿cómo está la salud financiera?', '¿a quién le tengo que pagar?', '¿quién me debe?', '¿cuánto me deben?', '¿qué cobros/pagos están atrasados?', '¿llego a fin de mes?'.",
+    input_schema: {
+      type: "object",
+      properties: {},
     },
   },
   {
@@ -999,6 +1010,171 @@ export async function runTool(
               cantidad: expenses?.length ?? 0,
             },
             balance_neto: balance,
+          },
+        };
+      }
+
+      case "finance_health": {
+        const rates = await getExchangeRates();
+        const now = new Date();
+        const hoy = now.toLocaleDateString("en-CA", {
+          timeZone: "America/Argentina/Cordoba",
+        }); // YYYY-MM-DD
+        const in7d = new Date(now.getTime() + 7 * 86400000).toLocaleDateString(
+          "en-CA",
+          { timeZone: "America/Argentina/Cordoba" }
+        );
+        const startMonth = hoy.slice(0, 7) + "-01";
+
+        const [
+          { data: invUnpaid },
+          { data: payUnpaid },
+          { data: expUnpaid },
+          { data: invPaid },
+          { data: payPaid },
+          { data: expPaid },
+        ] = await Promise.all([
+          sb
+            .from("client_invoices")
+            .select("monto, moneda, fecha_vencimiento, concepto, cliente:clients(nombre)")
+            .is("fecha_cobro", null),
+          sb
+            .from("team_payments")
+            .select("monto, moneda, fecha_programada, concepto, user:users(nombre)")
+            .is("fecha_pago", null),
+          sb
+            .from("expenses")
+            .select("monto, moneda, fecha_programada, concepto, proveedor")
+            .is("fecha_pago", null),
+          sb.from("client_invoices").select("monto, moneda").gte("fecha_cobro", startMonth),
+          sb.from("team_payments").select("monto, moneda").gte("fecha_pago", startMonth),
+          sb.from("expenses").select("monto, moneda").gte("fecha_pago", startMonth),
+        ]);
+
+        type Money = { monto: number; moneda: string };
+        const arsOf = (rows: Money[] | null) =>
+          Math.round(
+            (rows ?? []).reduce(
+              (a, r) => a + toARS(Number(r.monto) || 0, r.moneda || "ARS", rates),
+              0
+            )
+          );
+        const diasAtraso = (d: string) =>
+          Math.floor((Date.parse(hoy) - Date.parse(d)) / 86400000);
+
+        const inv = (invUnpaid ?? []) as Array<
+          Money & { fecha_vencimiento: string | null; concepto: string | null; cliente: unknown }
+        >;
+        const pay = (payUnpaid ?? []) as Array<
+          Money & { fecha_programada: string | null; concepto: string | null; user: unknown }
+        >;
+        const exp = (expUnpaid ?? []) as Array<Money & { fecha_programada: string | null }>;
+
+        const cobAtrasados = inv
+          .filter((i) => i.fecha_vencimiento && i.fecha_vencimiento < hoy)
+          .map((i) => ({
+            cliente: (i.cliente as { nombre?: string } | null)?.nombre ?? "—",
+            concepto: i.concepto,
+            monto: i.monto,
+            moneda: i.moneda,
+            dias_atraso: i.fecha_vencimiento ? diasAtraso(i.fecha_vencimiento) : 0,
+          }))
+          .sort((a, b) => b.dias_atraso - a.dias_atraso);
+        const cobProximos = inv
+          .filter(
+            (i) =>
+              i.fecha_vencimiento &&
+              i.fecha_vencimiento >= hoy &&
+              i.fecha_vencimiento <= in7d
+          )
+          .map((i) => ({
+            cliente: (i.cliente as { nombre?: string } | null)?.nombre ?? "—",
+            monto: i.monto,
+            moneda: i.moneda,
+            vence: i.fecha_vencimiento,
+          }));
+
+        const pagAtrasados = pay
+          .filter((p) => p.fecha_programada && p.fecha_programada < hoy)
+          .map((p) => ({
+            persona: (p.user as { nombre?: string } | null)?.nombre ?? "—",
+            concepto: p.concepto,
+            monto: p.monto,
+            moneda: p.moneda,
+            dias_atraso: p.fecha_programada ? diasAtraso(p.fecha_programada) : 0,
+          }))
+          .sort((a, b) => b.dias_atraso - a.dias_atraso);
+        const pagProximos = pay
+          .filter(
+            (p) =>
+              p.fecha_programada &&
+              p.fecha_programada >= hoy &&
+              p.fecha_programada <= in7d
+          )
+          .map((p) => ({
+            persona: (p.user as { nombre?: string } | null)?.nombre ?? "—",
+            monto: p.monto,
+            moneda: p.moneda,
+            paga: p.fecha_programada,
+          }));
+
+        const byPerson: Record<string, number> = {};
+        for (const p of pay) {
+          const nombre = (p.user as { nombre?: string } | null)?.nombre ?? "—";
+          byPerson[nombre] =
+            (byPerson[nombre] ?? 0) + toARS(Number(p.monto) || 0, p.moneda || "ARS", rates);
+        }
+        const porPersona = Object.entries(byPerson)
+          .map(([nombre, ars]) => ({ persona: nombre, total_ars: Math.round(ars) }))
+          .sort((a, b) => b.total_ars - a.total_ars);
+
+        const porCobrarArs = arsOf(inv);
+        const porPagarArs = arsOf(pay);
+        const gastosPendArs = arsOf(exp);
+        const cobradoMesArs = arsOf(invPaid as Money[] | null);
+        const pagadoMesArs = arsOf(payPaid as Money[] | null);
+        const gastosMesArs = arsOf(expPaid as Money[] | null);
+        const margenMesArs = cobradoMesArs - pagadoMesArs - gastosMesArs;
+        const posicionNetaArs = porCobrarArs - porPagarArs - gastosPendArs;
+
+        const alertas: string[] = [];
+        if (cobAtrasados.length)
+          alertas.push(`${cobAtrasados.length} cobro(s) atrasado(s)`);
+        if (pagAtrasados.length)
+          alertas.push(`${pagAtrasados.length} pago(s) al equipo atrasado(s)`);
+        if (margenMesArs < 0)
+          alertas.push("el margen real del mes está en negativo");
+        if (posicionNetaArs < 0)
+          alertas.push("hay más por pagar que por cobrar");
+
+        return {
+          ok: true,
+          data: {
+            moneda_consolidada: "ARS",
+            dolar_blue: rates.USD,
+            por_cobrar: {
+              total_ars: porCobrarArs,
+              cantidad: inv.length,
+              atrasados: cobAtrasados.slice(0, 15),
+              proximos_7d: cobProximos.slice(0, 15),
+            },
+            por_pagar_equipo: {
+              total_ars: porPagarArs,
+              cantidad: pay.length,
+              atrasados: pagAtrasados.slice(0, 15),
+              proximos_7d: pagProximos.slice(0, 15),
+              total_por_persona: porPersona,
+            },
+            gastos_pendientes: { total_ars: gastosPendArs, cantidad: exp.length },
+            mes_actual: {
+              periodo: hoy.slice(0, 7),
+              cobrado_ars: cobradoMesArs,
+              pagado_equipo_ars: pagadoMesArs,
+              gastos_ars: gastosMesArs,
+              margen_real_ars: margenMesArs,
+            },
+            posicion_neta_ars: posicionNetaArs,
+            alertas,
           },
         };
       }

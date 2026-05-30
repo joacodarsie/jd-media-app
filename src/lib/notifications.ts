@@ -74,3 +74,83 @@ export async function ensureDueNotifications(
 
   if (nuevas.length) await supabase.from("notifications").insert(nuevas);
 }
+
+/**
+ * Genera un recordatorio diario de finanzas para admins / usuarios con la
+ * feature `finanzas`: avisa de cobros a clientes y pagos al equipo que están
+ * atrasados o vencen esta semana. Un solo aviso resumido por persona por día
+ * (no spamea aunque el cron corra varias veces). Corre en el cron diario.
+ */
+export async function ensureFinanceNotifications(admin: SupabaseClient) {
+  const hoy = formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM-dd");
+  const in7 = formatInTimeZone(
+    new Date(Date.now() + 7 * 86400000),
+    TIMEZONE,
+    "yyyy-MM-dd"
+  );
+  const inicioHoyCordoba = toZonedTime(new Date(hoy + "T00:00:00"), TIMEZONE);
+
+  // Destinatarios: admins + cualquiera con la feature `finanzas` otorgada.
+  const { data: usersRaw } = await admin
+    .from("users")
+    .select("id, rol, permisos")
+    .eq("activo", true);
+  type URow = { id: string; rol: string; permisos: Record<string, boolean> | null };
+  const recipients = ((usersRaw ?? []) as URow[])
+    .filter((u) => u.rol === "admin" || u.permisos?.finanzas === true)
+    .map((u) => u.id);
+  if (recipients.length === 0) return;
+
+  const [{ data: invoices }, { data: payments }] = await Promise.all([
+    admin
+      .from("client_invoices")
+      .select("fecha_vencimiento")
+      .is("fecha_cobro", null)
+      .not("fecha_vencimiento", "is", null),
+    admin
+      .from("team_payments")
+      .select("fecha_programada")
+      .is("fecha_pago", null),
+  ]);
+
+  const inv = (invoices ?? []) as { fecha_vencimiento: string }[];
+  const pay = (payments ?? []) as { fecha_programada: string }[];
+
+  const cobVenc = inv.filter((i) => i.fecha_vencimiento < hoy).length;
+  const cobSemana = inv.filter(
+    (i) => i.fecha_vencimiento >= hoy && i.fecha_vencimiento <= in7
+  ).length;
+  const pagVenc = pay.filter((p) => p.fecha_programada < hoy).length;
+  const pagSemana = pay.filter(
+    (p) => p.fecha_programada >= hoy && p.fecha_programada <= in7
+  ).length;
+
+  if (cobVenc + cobSemana + pagVenc + pagSemana === 0) return;
+
+  const parts: string[] = [];
+  if (cobVenc) parts.push(`${cobVenc} cobro${cobVenc > 1 ? "s" : ""} atrasado${cobVenc > 1 ? "s" : ""}`);
+  if (cobSemana) parts.push(`${cobSemana} cobro${cobSemana > 1 ? "s" : ""} esta semana`);
+  if (pagVenc) parts.push(`${pagVenc} pago${pagVenc > 1 ? "s" : ""} al equipo atrasado${pagVenc > 1 ? "s" : ""}`);
+  if (pagSemana) parts.push(`${pagSemana} pago${pagSemana > 1 ? "s" : ""} al equipo esta semana`);
+  const mensaje = `💰 Finanzas: ${parts.join(" · ")}.`;
+
+  // Un aviso por persona por día (dedup por tipo+link+fecha).
+  for (const uid of recipients) {
+    const { data: existing } = await admin
+      .from("notifications")
+      .select("id")
+      .eq("user_id", uid)
+      .eq("tipo", "recordatorio")
+      .eq("link", "/finanzas")
+      .gte("created_at", inicioHoyCordoba.toISOString())
+      .limit(1);
+    if (existing && existing.length > 0) continue;
+    await admin.from("notifications").insert({
+      user_id: uid,
+      tipo: "recordatorio",
+      mensaje,
+      link: "/finanzas",
+      task_id: null,
+    });
+  }
+}

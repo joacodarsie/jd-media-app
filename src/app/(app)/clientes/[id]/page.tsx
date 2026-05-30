@@ -30,7 +30,6 @@ import { TaskList } from "@/components/task-list";
 import { ClientFormDialog } from "@/components/client-form-dialog";
 import { DeleteClientButton } from "@/components/delete-client-button";
 import { ClientServicesEditor } from "@/components/client-services-editor";
-import { ApprovalLink } from "@/components/approval-link";
 import { ClientStatusToggle } from "@/components/client-status-toggle";
 import { ClientListEditor } from "@/components/client-list-editor";
 import { DocumentsManager, type DocumentRow } from "@/components/documents-manager";
@@ -369,21 +368,6 @@ export default async function ClientDetail({
               )}
             </CardContent>
           </Card>
-
-          {(c as unknown as { approval_token?: string }).approval_token && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">
-                  Portal de aprobación
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ApprovalLink
-                  token={(c as unknown as { approval_token: string }).approval_token}
-                />
-              </CardContent>
-            </Card>
-          )}
 
           {c.datos_facturacion && (
             <Card>

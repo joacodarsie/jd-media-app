@@ -285,18 +285,19 @@ La idea es que todo pase por acá, así trabajamos ordenados 🚀`;
   cronoLines.push("");
 
   if (svcTypes.has("gestion_redes" as ServiceType)) {
-    cronoLines.push("🗓️ Días 1 a 7");
-    cronoLines.push("– Análisis de la marca y situación inicial");
-    cronoLines.push("– Creación del manual de marca");
-    cronoLines.push("– Armado del diagnóstico inicial (PDF) con estrategia, plan de acción y pilares de contenido");
-    cronoLines.push("– Creación de Moodboard");
-    cronoLines.push("– Elaboración del primer calendario de contenidos");
+    cronoLines.push("🗓️ Semana 1");
+    cronoLines.push("– Reunión de onboarding para alinear objetivos, expectativas y conocer la marca a fondo");
+    cronoLines.push("– Análisis de la situación inicial y del entorno");
+    cronoLines.push("– Manual de marca y moodboard");
+    cronoLines.push("– Diagnóstico inicial (PDF) con la estrategia, los pilares de contenido y el plan de acción");
+    cronoLines.push("– Armado del primer calendario de contenidos");
     cronoLines.push("");
-    cronoLines.push("🗓️ Días 8 a 14");
-    cronoLines.push("– Rediseño y optimización de perfiles (bio, foto, historias destacadas, links, portadas)");
-    cronoLines.push("– Inicio de la creación del contenido");
+    cronoLines.push("🗓️ A partir del día 8");
+    cronoLines.push("– Optimización de los perfiles (bio, foto, historias destacadas, links, portadas)");
+    cronoLines.push("– Empezamos a publicar las primeras piezas, ya con el calendario aprobado");
     cronoLines.push("");
-    cronoLines.push("A partir del día 14, una vez aprobado el calendario y el contenido, comenzamos con las publicaciones.");
+    cronoLines.push("🗓️ A partir del día 14");
+    cronoLines.push("– Con las primeras publicaciones ya funcionando, ponemos en marcha las campañas para amplificar el alcance y potenciar los resultados");
   }
 
   if (svcTypes.has("paid_media" as ServiceType)) {

@@ -889,7 +889,7 @@ function PubItem({ pub }: { pub: PublicationWithRels }) {
     : "Sin fecha";
   return (
     <Link
-      href={pub.cliente?.id ? `/clientes/${pub.cliente.id}/calendario` : "/contenidos"}
+      href={pub.cliente?.id ? `/contenidos?cliente=${pub.cliente.id}` : "/contenidos"}
       className="block rounded-md border bg-card p-2 text-xs transition-colors hover:border-primary/40"
     >
       <div className="flex items-center justify-between gap-2">

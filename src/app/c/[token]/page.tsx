@@ -3,6 +3,7 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { AGENCY } from "@/lib/agency";
 import type { MonthlyContentPlan } from "@/lib/content-plans/schema";
 import { PortalReviewCard } from "@/components/portal-review-card";
+import { PortalPubComment } from "@/components/portal-pub-comment";
 
 export const dynamic = "force-dynamic";
 
@@ -73,9 +74,11 @@ export default async function PortalPage({ params }: { params: { token: string }
       .eq("cliente_id", cliente_id)
       .gte("fecha_publicacion", now.toISOString())
       .lte("fecha_publicacion", in8Weeks.toISOString())
-      .not("estado", "eq", "rechazado")
+      // Mostramos todo lo planificado (incluidas las "idea"), salvo lo
+      // rechazado y lo que ya está en la tarjeta de revisión de arriba.
+      .not("estado", "in", "(rechazado,revision_cliente)")
       .order("fecha_publicacion", { ascending: true })
-      .limit(20),
+      .limit(40),
     admin
       .from("publications")
       .select("id, titulo, copy, red, tipo, fecha_publicacion, asset_url")
@@ -313,11 +316,16 @@ export default async function PortalPage({ params }: { params: { token: string }
           </div>
         )}
 
-        {/* Próximas publicaciones */}
+        {/* Calendario de contenidos — todo lo planificado, en vivo */}
         {upcoming.length > 0 && (
           <div className="card">
-            <div className="card-label">Próximas semanas</div>
+            <div className="card-label">Calendario de contenidos</div>
             <h2 className="card-title">Lo que viene</h2>
+            <p style={{ fontSize: 13, color: "#555", margin: "0 0 12px", lineHeight: 1.5 }}>
+              Todo lo que tenemos planificado para vos. Si querés sumar una idea
+              o comentar algo de una pieza, dejanos tu comentario y le llega al
+              equipo al instante.
+            </p>
             <ul className="pub-list">
               {upcoming.map((p) => (
                 <li key={p.id} className="pub">
@@ -326,6 +334,7 @@ export default async function PortalPage({ params }: { params: { token: string }
                   <div className="pub-meta" style={{ textTransform: "capitalize" }}>
                     {p.tipo} · {p.red}
                   </div>
+                  <PortalPubComment pubId={p.id} token={params.token} />
                 </li>
               ))}
             </ul>

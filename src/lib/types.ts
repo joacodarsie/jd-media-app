@@ -44,6 +44,7 @@ export interface ClientService {
   pack_detalle: Record<string, number | string>;
   notas: string | null;
   activo: boolean;
+  responsables: string[];
   created_at: string;
   updated_at: string;
 }
@@ -135,6 +136,8 @@ export interface Client {
   datos_facturacion: string | null;
   notion_url: string | null;
   contacto_nombre: string | null;
+  contacto_dni_cuit: string | null;
+  contacto_domicilio: string | null;
   contacto_email: string | null;
   contacto_telefono: string | null;
   notas: string | null;

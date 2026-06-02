@@ -3,12 +3,19 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Plus, Trash2 } from "lucide-react";
 import {
   createClientRow,
   updateClientRow,
   type ClientInput,
+  type NewClientServiceInput,
 } from "@/app/(app)/clientes/actions";
-import { CLIENT_PACK_LABEL, CLIENT_STATUS_LABEL } from "@/lib/constants";
+import {
+  CLIENT_PACK_LABEL,
+  CLIENT_STATUS_LABEL,
+  PACK_DEFAULTS,
+  SERVICE_TYPE_LABEL,
+} from "@/lib/constants";
 import type { AppUser, Client } from "@/lib/types";
 import {
   Dialog,
@@ -71,9 +78,51 @@ export function ClientFormDialog({
   const [contactoNombre, setContactoNombre] = useState(
     client?.contacto_nombre ?? ""
   );
+  const [contactoDni, setContactoDni] = useState(client?.contacto_dni_cuit ?? "");
+  const [contactoDomicilio, setContactoDomicilio] = useState(
+    client?.contacto_domicilio ?? ""
+  );
   const [contactoEmail, setContactoEmail] = useState(client?.contacto_email ?? "");
   const [contactoTel, setContactoTel] = useState(client?.contacto_telefono ?? "");
   const [notas, setNotas] = useState(client?.notas ?? "");
+
+  // Servicios cargados desde el alta (solo modo create).
+  type DraftService = {
+    tipo: string;
+    pack: string;
+    monto: string;
+    responsables: string[];
+  };
+  const [draftServices, setDraftServices] = useState<DraftService[]>([]);
+
+  function addService() {
+    setDraftServices((prev) => [
+      ...prev,
+      { tipo: "gestion_redes", pack: "Presencia", monto: "", responsables: [] },
+    ]);
+  }
+  function updateService(i: number, patch: Partial<DraftService>) {
+    setDraftServices((prev) =>
+      prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s))
+    );
+  }
+  function removeService(i: number) {
+    setDraftServices((prev) => prev.filter((_, idx) => idx !== i));
+  }
+  function toggleServiceResp(i: number, userId: string) {
+    setDraftServices((prev) =>
+      prev.map((s, idx) =>
+        idx === i
+          ? {
+              ...s,
+              responsables: s.responsables.includes(userId)
+                ? s.responsables.filter((x) => x !== userId)
+                : [...s.responsables, userId],
+            }
+          : s
+      )
+    );
+  }
 
   function submit() {
     if (!nombre.trim()) {
@@ -96,6 +145,8 @@ export function ClientFormDialog({
       datos_facturacion: datosFact,
       notion_url: notionUrl,
       contacto_nombre: contactoNombre,
+      contacto_dni_cuit: contactoDni,
+      contacto_domicilio: contactoDomicilio,
       contacto_email: contactoEmail,
       contacto_telefono: contactoTel,
       notas,
@@ -103,16 +154,43 @@ export function ClientFormDialog({
       disenador_id: disenadorId === NONE ? null : disenadorId,
       audiovisual_id: audiovisualId === NONE ? null : audiovisualId,
     };
+    const servicesPayload: NewClientServiceInput[] = draftServices
+      .filter((s) => s.tipo)
+      .map((s) => {
+        const isRedes = s.tipo === "gestion_redes";
+        const def = isRedes ? PACK_DEFAULTS[s.pack] : undefined;
+        const pack_detalle: Record<string, number> = def
+          ? {
+              posts: def.posts,
+              historias_dias: def.historias_dias,
+              reels: def.reels,
+            }
+          : {};
+        return {
+          tipo: s.tipo,
+          pack: isRedes ? s.pack : null,
+          monto_mensual: s.monto ? Number(s.monto) : null,
+          moneda: "ARS",
+          pack_detalle,
+          responsables: s.responsables,
+        };
+      });
+
     start(async () => {
       const res =
         mode === "create"
-          ? await createClientRow(payload)
+          ? await createClientRow(payload, servicesPayload)
           : await updateClientRow(client!.id, payload);
       if (res?.error) {
         toast.error("No se pudo guardar: " + res.error);
         return;
       }
-      toast.success(mode === "create" ? "Cliente creado" : "Cliente actualizado");
+      const serviceWarning = (res as { serviceWarning?: string }).serviceWarning;
+      if (mode === "create" && serviceWarning) {
+        toast.warning(serviceWarning);
+      } else {
+        toast.success(mode === "create" ? "Cliente creado" : "Cliente actualizado");
+      }
       setOpen(false);
       router.refresh();
       if (mode === "create" && res.ok && "id" in res) {
@@ -320,30 +398,170 @@ export function ClientFormDialog({
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label>Contacto</Label>
-              <Input
-                value={contactoNombre}
-                onChange={(e) => setContactoNombre(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={contactoEmail}
-                onChange={(e) => setContactoEmail(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Teléfono</Label>
-              <Input
-                value={contactoTel}
-                onChange={(e) => setContactoTel(e.target.value)}
-              />
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <h4 className="mb-1 text-sm font-semibold">Datos del contacto / facturación</h4>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Se usan para generar la carta acuerdo. Lo que cargues acá se
+              autocompleta en el onboarding.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Nombre completo del contacto</Label>
+                <Input
+                  value={contactoNombre}
+                  onChange={(e) => setContactoNombre(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>DNI o CUIT</Label>
+                <Input
+                  value={contactoDni}
+                  onChange={(e) => setContactoDni(e.target.value)}
+                  placeholder="Ej: 20-12345678-9"
+                />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label>Domicilio legal</Label>
+                <Input
+                  value={contactoDomicilio}
+                  onChange={(e) => setContactoDomicilio(e.target.value)}
+                  placeholder="Calle, número, ciudad, provincia"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={contactoEmail}
+                  onChange={(e) => setContactoEmail(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Teléfono</Label>
+                <Input
+                  value={contactoTel}
+                  onChange={(e) => setContactoTel(e.target.value)}
+                />
+              </div>
             </div>
           </div>
+
+          {mode === "create" && (
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold">Servicios contratados</h4>
+                <Button type="button" size="sm" variant="outline" onClick={addService}>
+                  <Plus className="mr-1 h-3 w-3" /> Agregar servicio
+                </Button>
+              </div>
+              <p className="mb-3 mt-1 text-xs text-muted-foreground">
+                Cargalos acá y se crean junto con el cliente. A los responsables
+                que marques les llega una notificación.
+              </p>
+              {draftServices.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Sin servicios todavía. Podés agregarlos ahora o después desde la ficha.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {draftServices.map((s, i) => {
+                    const isRedes = s.tipo === "gestion_redes";
+                    return (
+                      <div key={i} className="rounded-md border bg-card p-3">
+                        <div className="flex items-start gap-2">
+                          <div className="grid flex-1 gap-2 sm:grid-cols-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Servicio</Label>
+                              <Select
+                                value={s.tipo}
+                                onValueChange={(v) => updateService(i, { tipo: v })}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.entries(SERVICE_TYPE_LABEL).map(([v, l]) => (
+                                    <SelectItem key={v} value={v}>
+                                      {l}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {isRedes && (
+                              <div className="space-y-1">
+                                <Label className="text-xs">Pack</Label>
+                                <Select
+                                  value={s.pack}
+                                  onValueChange={(v) => updateService(i, { pack: v })}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {Object.entries(CLIENT_PACK_LABEL).map(([v, l]) => (
+                                      <SelectItem key={v} value={v}>
+                                        {l}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                            <div className="space-y-1">
+                              <Label className="text-xs">Monto mensual (ARS)</Label>
+                              <Input
+                                type="number"
+                                inputMode="decimal"
+                                value={s.monto}
+                                onChange={(e) => updateService(i, { monto: e.target.value })}
+                              />
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeService(i)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-red-600" />
+                          </Button>
+                        </div>
+                        <div className="mt-2 space-y-1">
+                          <Label className="text-xs">Quién lo lleva</Label>
+                          {users.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">
+                              No hay usuarios disponibles.
+                            </p>
+                          ) : (
+                            <div className="flex flex-wrap gap-1.5">
+                              {users.map((u) => {
+                                const active = s.responsables.includes(u.id);
+                                return (
+                                  <button
+                                    key={u.id}
+                                    type="button"
+                                    onClick={() => toggleServiceResp(i, u.id)}
+                                    className={
+                                      active
+                                        ? "rounded-full border border-primary bg-primary/15 px-3 py-1 text-xs font-medium"
+                                        : "rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground hover:bg-muted"
+                                    }
+                                  >
+                                    {u.nombre}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Notas (Markdown)</Label>

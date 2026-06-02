@@ -176,7 +176,7 @@ export default async function ClientDetail({
             <CalendarDays className="mr-2 h-4 w-4" /> Plan mensual
           </Link>
           <Link
-            href={`/clientes/${c.id}/calendario`}
+            href={`/contenidos?cliente=${c.id}`}
             className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
           >
             <CalendarDays className="mr-2 h-4 w-4" /> Calendario de contenidos
@@ -251,7 +251,11 @@ export default async function ClientDetail({
       {/* Servicios contratados */}
       <Card>
         <CardContent className="pt-6">
-          <ClientServicesEditor clienteId={c.id} services={(services ?? []) as ClientService[]} />
+          <ClientServicesEditor
+            clienteId={c.id}
+            services={(services ?? []) as ClientService[]}
+            users={users ?? []}
+          />
         </CardContent>
       </Card>
 

@@ -5,6 +5,7 @@ import {
   FileText,
   FileBarChart,
   CheckCircle2,
+  Circle,
   CreditCard,
   Users,
   MessageSquare,
@@ -68,9 +69,9 @@ interface OnboardingState {
 }
 
 function calendarUrl(client: ClientLite) {
-  const text = encodeURIComponent(`Kickoff ${client.nombre} — JD Media`);
+  const text = encodeURIComponent(`Kickoff / Onboarding ${client.nombre} — JD Media`);
   const details = encodeURIComponent(
-    `Reunión de kickoff con ${client.contacto_nombre ?? client.nombre}. Presentar equipo, cronograma y próximos pasos.`
+    `Reunión de kickoff y onboarding con ${client.contacto_nombre ?? client.nombre}. Presentar equipo y cronograma + relevamiento estratégico de la marca (grabar para el diagnóstico).`
   );
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&details=${details}`;
 }
@@ -166,14 +167,17 @@ export default async function OnboardingPage({
       | "equipo_asignado_at"
       | "grupo_wpp_creado_at"
       | "mensajes_enviados_at"
+      | "meet_guide"
+      | "kickoff_agendado_at"
       | "diagnostico_generado_at"
-      | "tareas_iniciales_at"
-      | "kickoff_agendado_at";
+      | "tareas_iniciales_at";
     title: string;
     done: string | null | undefined;
     icon: typeof FileText;
     description?: string;
     autoDerived?: boolean;
+    /** Fila especial sin toggle de DB (estado derivado, acción propia). */
+    custom?: boolean;
   }> = [
     {
       key: "carta_enviada_at",
@@ -213,6 +217,21 @@ export default async function OnboardingPage({
       description: "Generá la cadena adaptada a los servicios contratados, copiala y pegala en el grupo.",
     },
     {
+      key: "meet_guide",
+      title: "Documento guía del meet de onboarding",
+      done: onb.meet_guide_md ? (onb.meet_guide_generated_at ?? onb.meet_guide_md) : null,
+      icon: FileText,
+      custom: true,
+      description: "Generá con IA la guía personalizada del meet de onboarding a partir de la transcripción del meet comercial. Usala para conducir la reunión.",
+    },
+    {
+      key: "kickoff_agendado_at",
+      title: "Reunión de kickoff / onboarding agendada",
+      done: onb.kickoff_agendado_at,
+      icon: CalendarPlus,
+      description: "Coordiná la primera reunión con el cliente y el equipo: presentación + relevamiento estratégico (de acá sale la transcripción para el diagnóstico). Cargala en Calendar.",
+    },
+    {
       key: "diagnostico_generado_at",
       title: "Diagnóstico inicial generado",
       done: diagDoneEffective as string | null,
@@ -227,13 +246,6 @@ export default async function OnboardingPage({
       autoDerived: !onb.tareas_iniciales_at && tareasDerived,
       icon: ListChecks,
       description: "Genera automáticamente las tareas según los servicios (auditoría, manual, calendario, etc.).",
-    },
-    {
-      key: "kickoff_agendado_at",
-      title: "Reunión kickoff agendada",
-      done: onb.kickoff_agendado_at,
-      icon: CalendarPlus,
-      description: "Coordiná la primera reunión con el cliente y el equipo. Cargala en Calendar.",
     },
   ];
 
@@ -276,13 +288,6 @@ export default async function OnboardingPage({
           style={{ width: `${progress}%` }}
         />
       </div>
-
-      {/* Guía personalizada del meet de onboarding (IA) */}
-      <MeetGuideGenerator
-        clienteId={client.id}
-        initialMarkdown={onb.meet_guide_md}
-        initialGeneratedAt={onb.meet_guide_generated_at}
-      />
 
       {/* Datos contractuales (form) */}
       <Card>
@@ -411,12 +416,25 @@ export default async function OnboardingPage({
                   isDone ? "border-emerald-300/60 bg-emerald-50/30 dark:border-emerald-900/60 dark:bg-emerald-950/15" : ""
                 }`}
               >
-                <OnboardingStepToggle
-                  clientId={client.id}
-                  stepKey={step.key}
-                  initialDone={isDone}
-                  autoDerived={!!step.autoDerived}
-                />
+                {step.custom ? (
+                  <div
+                    className="mt-0.5"
+                    title={isDone ? "Generado" : "Pendiente"}
+                  >
+                    {isDone ? (
+                      <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                    ) : (
+                      <Circle className="h-5 w-5 text-muted-foreground/40" />
+                    )}
+                  </div>
+                ) : (
+                  <OnboardingStepToggle
+                    clientId={client.id}
+                    stepKey={step.key as Exclude<typeof step.key, "meet_guide">}
+                    initialDone={isDone}
+                    autoDerived={!!step.autoDerived}
+                  />
+                )}
                 <div className="flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
@@ -444,6 +462,15 @@ export default async function OnboardingPage({
                   )}
                   {/* Acciones contextuales */}
                   <div className="mt-2 flex flex-wrap gap-2">
+                    {step.key === "meet_guide" && (
+                      <div className="w-full">
+                        <MeetGuideGenerator
+                          clienteId={client.id}
+                          initialMarkdown={onb.meet_guide_md}
+                          initialGeneratedAt={onb.meet_guide_generated_at}
+                        />
+                      </div>
+                    )}
                     {step.key === "carta_enviada_at" && (
                       <>
                         <Link

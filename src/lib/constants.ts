@@ -7,6 +7,7 @@ import type {
   PublicationNetwork,
   PublicationType,
 } from "./types";
+import { PACK_QUOTAS } from "./content-plans/packs";
 
 export const TIMEZONE = "America/Argentina/Cordoba";
 
@@ -117,8 +118,8 @@ export const VISIBLE_CLIENT_STATUSES: { value: ClientStatus; label: string }[] =
 export const CLIENT_PACK_LABEL: Record<string, string> = {
   Presencia: "Pack Presencia",
   Crecimiento: "Pack Crecimiento",
+  Escala: "Pack Escala",
   Personalizado: "Pack Personalizado",
-  Escala: "Pack Escala (legacy)",
 };
 
 export const SERVICE_TYPE_LABEL: Record<string, string> = {
@@ -132,13 +133,31 @@ export const SERVICE_TYPE_LABEL: Record<string, string> = {
   otro: "Otro",
 };
 
-/** Cuántas piezas mensuales rinde cada pack de gestión de redes (default editable por cliente). */
+/**
+ * Cuántas piezas mensuales rinde cada pack de gestión de redes (default
+ * editable por cliente). Se DERIVA de PACK_QUOTAS (content-plans/packs.ts),
+ * que es la fuente única de verdad alineada con la web de JD Media, para que
+ * los números nunca se desincronicen entre la IA y el editor de servicios.
+ */
 export const PACK_DEFAULTS: Record<
   string,
   { posts: number; historias_dias: number; reels: number }
 > = {
-  Presencia: { posts: 8, historias_dias: 12, reels: 0 },
-  Crecimiento: { posts: 12, historias_dias: 20, reels: 4 },
+  Presencia: {
+    posts: PACK_QUOTAS.Presencia.posts,
+    historias_dias: PACK_QUOTAS.Presencia.dias_stories,
+    reels: PACK_QUOTAS.Presencia.reels,
+  },
+  Crecimiento: {
+    posts: PACK_QUOTAS.Crecimiento.posts,
+    historias_dias: PACK_QUOTAS.Crecimiento.dias_stories,
+    reels: PACK_QUOTAS.Crecimiento.reels,
+  },
+  Escala: {
+    posts: PACK_QUOTAS.Escala.posts,
+    historias_dias: PACK_QUOTAS.Escala.dias_stories,
+    reels: PACK_QUOTAS.Escala.reels,
+  },
   Personalizado: { posts: 0, historias_dias: 0, reels: 0 },
 };
 

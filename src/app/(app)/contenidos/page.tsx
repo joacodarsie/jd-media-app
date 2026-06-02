@@ -8,9 +8,14 @@ import { DismissibleHint } from "@/components/dismissible-hint";
 
 export const dynamic = "force-dynamic";
 
-export default async function ContenidosPage() {
+export default async function ContenidosPage({
+  searchParams,
+}: {
+  searchParams?: { cliente?: string };
+}) {
   await requireUser();
   const supabase = createClient();
+  const clienteFiltro = searchParams?.cliente ?? undefined;
 
   // Traemos TODO el pipeline activo (no publicado, sin límite de fecha) + los
   // publicados de los últimos 180 días. Lo que crece sin techo es la historia
@@ -78,6 +83,7 @@ export default async function ContenidosPage() {
         clients={clients}
         users={users}
         unseenByPub={unseenByPub}
+        defaultClientId={clienteFiltro}
       />
     </div>
   );

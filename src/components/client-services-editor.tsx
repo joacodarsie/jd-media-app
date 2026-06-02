@@ -37,12 +37,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+type UserLite = { id: string; nombre: string };
+
 export function ClientServicesEditor({
   clienteId,
   services,
+  users = [],
 }: {
   clienteId: string;
   services: ClientService[];
+  users?: UserLite[];
 }) {
   return (
     <div className="space-y-2">
@@ -51,6 +55,7 @@ export function ClientServicesEditor({
         <ServiceDialog
           clienteId={clienteId}
           mode="create"
+          users={users}
           trigger={
             <Button size="sm" variant="outline">
               <Plus className="mr-1 h-3 w-3" /> Agregar servicio
@@ -66,7 +71,7 @@ export function ClientServicesEditor({
       ) : (
         <div className="space-y-2">
           {services.map((s) => (
-            <ServiceRow key={s.id} service={s} clienteId={clienteId} />
+            <ServiceRow key={s.id} service={s} clienteId={clienteId} users={users} />
           ))}
         </div>
       )}
@@ -81,13 +86,19 @@ export function ClientServicesEditor({
 function ServiceRow({
   service,
   clienteId,
+  users,
 }: {
   service: ClientService;
   clienteId: string;
+  users: UserLite[];
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const detalle = service.pack_detalle ?? {};
+  const responsables = (service as { responsables?: string[] }).responsables ?? [];
+  const responsablesNombres = responsables
+    .map((id) => users.find((u) => u.id === id)?.nombre)
+    .filter(Boolean) as string[];
 
   function onDelete() {
     if (!confirm("¿Eliminar este servicio?")) return;
@@ -152,6 +163,16 @@ function ServiceRow({
               )}
             </div>
           )}
+          {responsablesNombres.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px]">
+              <span className="text-muted-foreground">Lo lleva:</span>
+              {responsablesNombres.map((n) => (
+                <span key={n} className="rounded-full bg-primary/10 px-2 py-0.5 font-medium">
+                  {n}
+                </span>
+              ))}
+            </div>
+          )}
           {service.notas && (
             <div className="mt-1 text-xs text-muted-foreground">{service.notas}</div>
           )}
@@ -161,6 +182,7 @@ function ServiceRow({
             clienteId={clienteId}
             service={service}
             mode="edit"
+            users={users}
             trigger={
               <Button variant="ghost" size="icon">
                 <Pencil className="h-3.5 w-3.5" />
@@ -186,17 +208,28 @@ function ServiceDialog({
   service,
   mode,
   trigger,
+  users,
 }: {
   clienteId: string;
   service?: ClientService;
   mode: "create" | "edit";
   trigger: React.ReactNode;
+  users: UserLite[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
 
   const [tipo, setTipo] = useState<string>(service?.tipo ?? "gestion_redes");
+  const [responsables, setResponsables] = useState<string[]>(
+    (service as { responsables?: string[] } | undefined)?.responsables ?? []
+  );
+
+  function toggleResponsable(id: string) {
+    setResponsables((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
   const [pack, setPack] = useState<string>(service?.pack ?? "Presencia");
   const [fechaInicio, setFechaInicio] = useState(service?.fecha_inicio ?? "");
   const [fechaFin, setFechaFin] = useState(service?.fecha_fin ?? "");
@@ -251,6 +284,7 @@ function ServiceDialog({
       pack_detalle: detalle,
       notas,
       activo,
+      responsables,
     };
     start(async () => {
       const res =
@@ -308,13 +342,11 @@ function ServiceDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(CLIENT_PACK_LABEL)
-                      .filter(([v]) => v !== "Escala")
-                      .map(([v, l]) => (
-                        <SelectItem key={v} value={v}>
-                          {l}
-                        </SelectItem>
-                      ))}
+                    {Object.entries(CLIENT_PACK_LABEL).map(([v, l]) => (
+                      <SelectItem key={v} value={v}>
+                        {l}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -415,6 +447,39 @@ function ServiceDialog({
                 onChange={(e) => setFechaFin(e.target.value)}
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Quién lleva este servicio</Label>
+            <p className="text-xs text-muted-foreground">
+              Marcá las personas asignadas. Al guardar, a los que sumes les llega
+              una notificación.
+            </p>
+            {users.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                No hay usuarios disponibles.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {users.map((u) => {
+                  const active = responsables.includes(u.id);
+                  return (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => toggleResponsable(u.id)}
+                      className={
+                        active
+                          ? "rounded-full border border-primary bg-primary/15 px-3 py-1 text-xs font-medium"
+                          : "rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground hover:bg-muted"
+                      }
+                    >
+                      {u.nombre}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { LeadKanban, type LeadRow } from "@/components/lead-kanban";
 import { LeadFormDialog } from "@/components/lead-form-dialog";
+import { CopyRequestDataButton } from "@/components/copy-request-data-button";
 import { HelpTrigger } from "@/components/help-trigger";
 import { DismissibleHint } from "@/components/dismissible-hint";
 
@@ -103,6 +104,7 @@ export default async function ComercialPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <CopyRequestDataButton />
           <Button asChild variant="outline" className="gap-1.5">
             <Link
               href="/comercial/post-meet"

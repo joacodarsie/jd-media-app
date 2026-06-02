@@ -83,7 +83,7 @@ export async function POST(
   // Validar que la pub pertenece al mismo cliente del token
   const { data: pub } = await admin
     .from("publications")
-    .select("id, cliente_id, estado, titulo")
+    .select("id, cliente_id, estado, titulo, creado_por_id, audiovisual_id")
     .eq("id", body.publication_id)
     .maybeSingle();
 
@@ -150,6 +150,46 @@ export async function POST(
     if (updErr) {
       return NextResponse.json({ error: updErr.message }, { status: 500 });
     }
+  }
+
+  // Notificar al equipo que lleva la cuenta. El endpoint inserta el comentario
+  // directo (no vía RPC), así que la notificación la disparamos acá.
+  const { data: clientRow } = await admin
+    .from("clients")
+    .select("nombre, cm_id, disenador_id, audiovisual_id, creativa_asignada_id")
+    .eq("id", pub.cliente_id)
+    .maybeSingle();
+
+  const recipients = new Set<string>(
+    [
+      pub.creado_por_id,
+      pub.audiovisual_id,
+      clientRow?.cm_id,
+      clientRow?.disenador_id,
+      clientRow?.audiovisual_id,
+      clientRow?.creativa_asignada_id,
+    ].filter((id): id is string => !!id)
+  );
+
+  if (recipients.size > 0) {
+    const nombreCliente = clientRow?.nombre ?? "El cliente";
+    const titulo = pub.titulo ?? "una pieza";
+    const mensaje =
+      body.tipo === "aprobar"
+        ? `✅ ${nombreCliente} aprobó «${titulo}»`
+        : body.tipo === "rechazar"
+        ? `🔄 ${nombreCliente} pidió cambios en «${titulo}»`
+        : `💬 ${nombreCliente} comentó en «${titulo}»`;
+    const link = `/contenidos?cliente=${pub.cliente_id}`;
+    await admin.from("notifications").insert(
+      [...recipients].map((uid) => ({
+        user_id: uid,
+        tipo: "comentario",
+        mensaje,
+        link,
+        task_id: null,
+      }))
+    );
   }
 
   return NextResponse.json({ ok: true });

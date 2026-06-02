@@ -5,6 +5,7 @@ import {
   Check,
   Copy,
   FileText,
+  ImagePlus,
   Loader2,
   Mic,
   Send,
@@ -12,6 +13,7 @@ import {
   Square,
   Trash2,
   Upload,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -78,9 +80,23 @@ const QUICK_TWEAKS = [
   "Agregale que arrancamos esta semana",
 ];
 
+interface AttachedImage {
+  id: string;
+  name: string;
+  dataUrl: string;
+  media_type: string;
+  /** base64 sin el prefijo data: */
+  data: string;
+}
+
+/** Hacia qué cuadro va el dictado por voz. */
+type DictTarget = "context" | "instructions";
+
 export function PostMeetWorkspace() {
   const [clientName, setClientName] = useState("");
   const [context, setContext] = useState("");
+  const [instructions, setInstructions] = useState("");
+  const [images, setImages] = useState<AttachedImage[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryTurn[]>([]);
   const [tweakPrompt, setTweakPrompt] = useState("");
@@ -91,11 +107,14 @@ export function PostMeetWorkspace() {
   const [dragOver, setDragOver] = useState(false);
   const [lastPdfName, setLastPdfName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imgInputRef = useRef<HTMLInputElement>(null);
 
-  const [dictating, setDictating] = useState(false);
+  // Dictado: null = apagado, o el cuadro destino activo.
+  const [dictating, setDictating] = useState<DictTarget | null>(null);
   const [srSupported, setSrSupported] = useState(false);
   const recognitionRef = useRef<SRecognition | null>(null);
   const dictatingRef = useRef(false);
+  const dictTargetRef = useRef<DictTarget>("context");
 
   useEffect(() => {
     setSrSupported(!!getSpeechRecognition());
@@ -107,12 +126,13 @@ export function PostMeetWorkspace() {
     };
   }, []);
 
-  function startDictation() {
+  function startDictation(target: DictTarget) {
     const SR = getSpeechRecognition();
     if (!SR) {
       toast.error("Tu navegador no soporta dictado por voz. Probá con Chrome.");
       return;
     }
+    dictTargetRef.current = target;
     const rec = new SR();
     rec.lang = "es-AR";
     rec.continuous = true;
@@ -124,7 +144,8 @@ export function PostMeetWorkspace() {
         if (r.isFinal) finalChunk += r[0].transcript;
       }
       if (finalChunk.trim()) {
-        setContext((prev) =>
+        const setter = dictTargetRef.current === "instructions" ? setInstructions : setContext;
+        setter((prev) =>
           (prev ? prev.replace(/\s*$/, "") + " " : "") + finalChunk.trim()
         );
       }
@@ -134,7 +155,7 @@ export function PostMeetWorkspace() {
       if (ev?.error === "not-allowed" || ev?.error === "service-not-allowed") {
         toast.error("Permití el acceso al micrófono para dictar.");
         dictatingRef.current = false;
-        setDictating(false);
+        setDictating(null);
       }
     };
     rec.onend = () => {
@@ -145,12 +166,12 @@ export function PostMeetWorkspace() {
           rec.start();
         } catch {}
       } else {
-        setDictating(false);
+        setDictating(null);
       }
     };
     recognitionRef.current = rec;
     dictatingRef.current = true;
-    setDictating(true);
+    setDictating(target);
     try {
       rec.start();
     } catch {}
@@ -158,15 +179,19 @@ export function PostMeetWorkspace() {
 
   function stopDictation() {
     dictatingRef.current = false;
-    setDictating(false);
+    setDictating(null);
     try {
       recognitionRef.current?.stop();
     } catch {}
   }
 
-  function toggleDictation() {
-    if (dictating) stopDictation();
-    else startDictation();
+  function toggleDictation(target: DictTarget) {
+    if (dictating === target) stopDictation();
+    else if (dictating) {
+      // Cambiar de cuadro: paramos el actual y arrancamos el nuevo.
+      stopDictation();
+      setTimeout(() => startDictation(target), 150);
+    } else startDictation(target);
   }
 
   async function handlePdfFile(file: File) {
@@ -217,6 +242,46 @@ export function PostMeetWorkspace() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
+  async function addImageFile(file: File) {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Solo imágenes (captura, foto, etc.)");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("La imagen es muy grande (máx 8 MB)");
+      return;
+    }
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = () => reject(new Error("read"));
+      r.readAsDataURL(file);
+    });
+    const comma = dataUrl.indexOf(",");
+    const media_type = dataUrl.slice(5, dataUrl.indexOf(";"));
+    const data = dataUrl.slice(comma + 1);
+    setImages((prev) =>
+      prev.length >= 5
+        ? (toast.error("Máximo 5 imágenes"), prev)
+        : [...prev, { id: crypto.randomUUID(), name: file.name, dataUrl, media_type, data }]
+    );
+  }
+
+  function onPickImages(ev: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(ev.target.files ?? []);
+    files.forEach((f) => void addImageFile(f));
+    if (imgInputRef.current) imgInputRef.current.value = "";
+  }
+
+  function removeImage(id: string) {
+    setImages((prev) => prev.filter((im) => im.id !== id));
+  }
+
+  /** Imágenes en el formato que espera la API. */
+  function imagePayload() {
+    return images.map((im) => ({ media_type: im.media_type, data: im.data }));
+  }
+
   async function generate() {
     const text = context.trim();
     if (text.length < 30) {
@@ -233,7 +298,12 @@ export function PostMeetWorkspace() {
       const res = await fetch("/api/post-meet-message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ context: text, clientName: clientName.trim() }),
+        body: JSON.stringify({
+          context: text,
+          clientName: clientName.trim(),
+          instructions: instructions.trim() || undefined,
+          images: images.length ? imagePayload() : undefined,
+        }),
       });
       const data = (await res.json()) as { message?: string; error?: string };
       if (!res.ok || data.error) {
@@ -243,13 +313,19 @@ export function PostMeetWorkspace() {
       const reply = data.message ?? "";
       setMessage(reply);
       // Inicializamos el history conversacional para iterar despues.
-      const userText = clientName.trim()
-        ? `Cliente / contacto: ${clientName.trim()}\n\nTranscripcion / notas de la reunion:\n\n${text}`
-        : `Transcripcion / notas de la reunion:\n\n${text}`;
+      const extra = instructions.trim() ? `\n\nIndicaciones extra:\n${instructions.trim()}` : "";
+      const imgNote = images.length ? `\n\n(+${images.length} imagen/es adjunta/s)` : "";
+      const userText =
+        (clientName.trim()
+          ? `Cliente / contacto: ${clientName.trim()}\n\nTranscripcion / notas de la reunion:\n\n${text}`
+          : `Transcripcion / notas de la reunion:\n\n${text}`) +
+        extra +
+        imgNote;
       setHistory([
         { role: "user", content: userText },
         { role: "assistant", content: reply },
       ]);
+      setImages([]); // ya fueron enviadas con esta generación
     } catch (e) {
       toast.error("No se pudo generar: " + (e instanceof Error ? e.message : ""));
     } finally {
@@ -275,6 +351,7 @@ export function PostMeetWorkspace() {
         body: JSON.stringify({
           history,
           userMessage: prompt,
+          images: images.length ? imagePayload() : undefined,
         }),
       });
       const data = (await res.json()) as { message?: string; error?: string };
@@ -286,10 +363,11 @@ export function PostMeetWorkspace() {
       setMessage(reply);
       setHistory((h) => [
         ...h,
-        { role: "user", content: prompt },
+        { role: "user", content: prompt + (images.length ? ` (+${images.length} img)` : "") },
         { role: "assistant", content: reply },
       ]);
       setTweakPrompt("");
+      setImages([]);
       setCopied(false);
       toast.success("Mensaje actualizado");
     } catch (e) {
@@ -316,6 +394,8 @@ export function PostMeetWorkspace() {
   function clearAll() {
     setClientName("");
     setContext("");
+    setInstructions("");
+    setImages([]);
     setMessage(null);
     setHistory([]);
     setTweakPrompt("");
@@ -348,15 +428,15 @@ export function PostMeetWorkspace() {
                 {srSupported && (
                   <button
                     type="button"
-                    onClick={toggleDictation}
+                    onClick={() => toggleDictation("context")}
                     className={cn(
                       "inline-flex items-center gap-1 text-[11px] hover:underline",
-                      dictating
+                      dictating === "context"
                         ? "font-medium text-red-600"
                         : "text-primary"
                     )}
                   >
-                    {dictating ? (
+                    {dictating === "context" ? (
                       <>
                         <span className="relative flex h-3 w-3 items-center justify-center">
                           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/60" />
@@ -442,6 +522,88 @@ export function PostMeetWorkspace() {
                 </span>
               )}
             </p>
+          </div>
+
+          {/* Indicaciones extra para la IA + imágenes (antes de generar) */}
+          <div className="space-y-2 border-t pt-3">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="instructions" className="text-xs">
+                Indicaciones para la IA <span className="text-muted-foreground">(opcional)</span>
+              </Label>
+              <div className="flex items-center gap-3">
+                {srSupported && (
+                  <button
+                    type="button"
+                    onClick={() => toggleDictation("instructions")}
+                    className={cn(
+                      "inline-flex items-center gap-1 text-[11px] hover:underline",
+                      dictating === "instructions" ? "font-medium text-red-600" : "text-primary"
+                    )}
+                  >
+                    {dictating === "instructions" ? (
+                      <>
+                        <span className="relative flex h-3 w-3 items-center justify-center">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/60" />
+                          <Square className="h-2.5 w-2.5 fill-current" />
+                        </span>
+                        Detener
+                      </>
+                    ) : (
+                      <>
+                        <Mic className="h-3 w-3" />
+                        Grabar
+                      </>
+                    )}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => imgInputRef.current?.click()}
+                  className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                >
+                  <ImagePlus className="h-3 w-3" />
+                  Imagen
+                </button>
+                <input
+                  ref={imgInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={onPickImages}
+                  className="hidden"
+                />
+              </div>
+            </div>
+            <textarea
+              id="instructions"
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
+              rows={2}
+              placeholder="Ej: el cliente también pidió una landing y branding, contemplá eso. Tono más formal. No menciones precio todavía…"
+              className="min-h-[56px] w-full resize-y rounded-md border border-input bg-card p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            {images.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {images.map((im) => (
+                  <div key={im.id} className="group relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={im.dataUrl}
+                      alt={im.name}
+                      className="h-16 w-16 rounded-md border object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(im.id)}
+                      className="absolute -right-1.5 -top-1.5 rounded-full bg-red-600 p-0.5 text-white opacity-90 shadow hover:bg-red-700"
+                      title="Quitar"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

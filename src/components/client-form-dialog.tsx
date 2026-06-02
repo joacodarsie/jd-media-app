@@ -129,14 +129,27 @@ export function ClientFormDialog({
       toast.error("Falta el nombre.");
       return;
     }
+    // En alta, el pack y el monto del cliente se DERIVAN de los servicios
+    // (única carga). En edición se conservan los del header (legacy).
+    let derivedPack = pack;
+    let derivedMonto: number | null = monto ? Number(monto) : null;
+    if (mode === "create") {
+      const redes = draftServices.find((s) => s.tipo === "gestion_redes");
+      derivedPack = redes?.pack ?? "Personalizado";
+      const total = draftServices.reduce(
+        (acc, s) => acc + (s.monto ? Number(s.monto) || 0 : 0),
+        0
+      );
+      derivedMonto = total > 0 ? total : null;
+    }
     const payload: ClientInput = {
       nombre,
       rubro,
-      pack,
+      pack: derivedPack,
       estado,
       creativa_asignada_id: creativa === NONE ? null : creativa,
       fecha_inicio: fechaInicio || null,
-      monto_mensual: monto ? Number(monto) : null,
+      monto_mensual: derivedMonto,
       calendario_url: calUrl,
       drive_url: driveUrl,
       instagram_url: igUrl,
@@ -222,21 +235,23 @@ export function ClientFormDialog({
               <Label>Rubro</Label>
               <Input value={rubro} onChange={(e) => setRubro(e.target.value)} />
             </div>
-            <div className="space-y-2">
-              <Label>Pack</Label>
-              <Select value={pack} onValueChange={setPack}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(CLIENT_PACK_LABEL).map(([v, l]) => (
-                    <SelectItem key={v} value={v}>
-                      {l}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {mode === "edit" && (
+              <div className="space-y-2">
+                <Label>Pack</Label>
+                <Select value={pack} onValueChange={setPack}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(CLIENT_PACK_LABEL).map(([v, l]) => (
+                      <SelectItem key={v} value={v}>
+                        {l}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Estado</Label>
               <Select value={estado} onValueChange={setEstado}>
@@ -276,15 +291,17 @@ export function ClientFormDialog({
                 onChange={(e) => setFechaInicio(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <Label>Monto mensual (ARS)</Label>
-              <Input
-                type="number"
-                inputMode="decimal"
-                value={monto}
-                onChange={(e) => setMonto(e.target.value)}
-              />
-            </div>
+            {mode === "edit" && (
+              <div className="space-y-2">
+                <Label>Monto mensual (ARS)</Label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={monto}
+                  onChange={(e) => setMonto(e.target.value)}
+                />
+              </div>
+            )}
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -455,8 +472,10 @@ export function ClientFormDialog({
                 </Button>
               </div>
               <p className="mb-3 mt-1 text-xs text-muted-foreground">
-                Cargalos acá y se crean junto con el cliente. A los responsables
-                que marques les llega una notificación.
+                Elegí el servicio y, según cuál sea, se abre el desglose (el pack
+                solo aparece en Gestión de redes). El <b>pack y el monto del
+                cliente salen de acá</b> — no hace falta cargarlos dos veces. A los
+                responsables que marques les llega una notificación.
               </p>
               {draftServices.length === 0 ? (
                 <p className="text-xs text-muted-foreground">

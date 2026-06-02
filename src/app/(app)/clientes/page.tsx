@@ -16,7 +16,7 @@ export default async function ClientesPage() {
 
   const todayISO = new Date().toISOString();
 
-  const [{ data: clients }, { data: tasks }, users, { data: pubs }] =
+  const [{ data: clients }, { data: tasks }, users, { data: pubs }, { data: myServices }] =
     await Promise.all([
       supabase
         .from("clients")
@@ -38,7 +38,43 @@ export default async function ClientesPage() {
         .neq("estado", "publicado")
         .order("fecha_publicacion", { ascending: true })
         .limit(200),
+      // Cuentas donde la persona figura como responsable de un servicio activo.
+      isAdmin
+        ? Promise.resolve({ data: [] as { cliente_id: string }[] })
+        : supabase
+            .from("client_services")
+            .select("cliente_id")
+            .eq("activo", true)
+            .contains("responsables", [me.id]),
     ]);
+
+  // Los no-staff solo ven sus cuentas ACTIVAS: asignadas por rol (cm / diseño /
+  // audiovisual / creativa) o por ser responsables de un servicio activo.
+  let visibleClients = clients ?? [];
+  let visibleTasks = tasks ?? [];
+  let visiblePubs = pubs ?? [];
+  if (!isAdmin) {
+    const fromServices = new Set((myServices ?? []).map((s) => s.cliente_id));
+    visibleClients = visibleClients.filter((c) => {
+      const row = c as Record<string, unknown>;
+      if (row.estado !== "activo") return false;
+      const mine =
+        row.creativa_asignada_id === me.id ||
+        row.cm_id === me.id ||
+        row.disenador_id === me.id ||
+        row.audiovisual_id === me.id ||
+        fromServices.has(row.id as string);
+      return mine;
+    });
+    const allowed = new Set(visibleClients.map((c) => (c as { id: string }).id));
+    visibleTasks = visibleTasks.filter((t) => {
+      const cid = (t as { cliente_id?: string }).cliente_id;
+      return cid ? allowed.has(cid) : false;
+    });
+    visiblePubs = visiblePubs.filter((p) =>
+      allowed.has((p as { cliente_id: string }).cliente_id)
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -62,9 +98,9 @@ export default async function ClientesPage() {
         )}
       </div>
       <ClientsDashboard
-        clients={(clients ?? []) as never}
-        tasks={(tasks ?? []) as TaskWithRels[]}
-        upcomingPubs={(pubs ?? []) as never}
+        clients={visibleClients as never}
+        tasks={visibleTasks as TaskWithRels[]}
+        upcomingPubs={visiblePubs as never}
         canSeeFinancials={isAdmin}
       />
     </div>

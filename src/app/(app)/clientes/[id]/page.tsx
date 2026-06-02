@@ -139,13 +139,21 @@ export default async function ClientDetail({
   // canSeeFinancials = staff o cualquier persona asignada a la cuenta.
   // Las chicas que no esten asignadas pueden ver la ficha pero no datos privados
   // (contacto, monto, CBU, finanzas).
-  const canSeeFinancials =
-    isStaff(me.rol) ||
+  const svcList = (services ?? []) as ClientService[];
+  const assignedToMe =
     c.creativa_asignada_id === me.id ||
     (c as unknown as { cm_id?: string | null }).cm_id === me.id ||
     (c as unknown as { disenador_id?: string | null }).disenador_id === me.id ||
-    (c as unknown as { audiovisual_id?: string | null }).audiovisual_id ===
-      me.id;
+    (c as unknown as { audiovisual_id?: string | null }).audiovisual_id === me.id ||
+    svcList.some((s) => s.activo && (s.responsables ?? []).includes(me.id));
+
+  // Los no-staff solo pueden abrir sus cuentas ACTIVAS asignadas. Si entran por
+  // URL a una cuenta que no es suya (o inactiva), 404.
+  if (!isStaff(me.rol) && (!assignedToMe || c.estado !== "activo")) {
+    notFound();
+  }
+
+  const canSeeFinancials = isStaff(me.rol) || assignedToMe;
 
   return (
     <div className="space-y-5">

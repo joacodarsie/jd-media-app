@@ -23,6 +23,8 @@ export interface NewClientServiceInput {
   moneda: string;
   pack_detalle: Record<string, number>;
   responsables: string[];
+  /** 'mensual' (recurrente) | 'unico' (cobro de única vez). */
+  facturacion: "mensual" | "unico";
 }
 
 export interface ClientInput {
@@ -110,6 +112,7 @@ export async function createClientRow(
           : s.monto_mensual,
       moneda: s.moneda || "ARS",
       pack_detalle: s.pack_detalle ?? {},
+      facturacion: s.facturacion === "unico" ? "unico" : "mensual",
       fecha_inicio: cleaned.fecha_inicio,
       activo: true,
       responsables: Array.from(new Set((s.responsables ?? []).filter(Boolean))),

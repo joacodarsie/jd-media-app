@@ -25,6 +25,8 @@ export interface ServiceInput {
   pack_detalle: Record<string, number | string>;
   notas: string | null;
   activo: boolean;
+  /** 'mensual' (recurrente) | 'unico' (cobro de única vez). */
+  facturacion: "mensual" | "unico";
   /** Personas que llevan este servicio (equipo por servicio). */
   responsables: string[];
 }
@@ -42,6 +44,7 @@ function clean(input: ServiceInput) {
         : input.monto_mensual,
     moneda: input.moneda || "ARS",
     pack_detalle: input.pack_detalle ?? {},
+    facturacion: input.facturacion === "unico" ? "unico" : "mensual",
     notas: input.notas?.trim() || null,
     activo: input.activo,
     responsables: Array.isArray(input.responsables)

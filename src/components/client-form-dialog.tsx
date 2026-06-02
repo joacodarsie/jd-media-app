@@ -13,8 +13,11 @@ import {
 import {
   CLIENT_PACK_LABEL,
   CLIENT_STATUS_LABEL,
+  FACTURACION_LABEL,
   PACK_DEFAULTS,
+  SERVICE_BILLING_DEFAULT,
   SERVICE_TYPE_LABEL,
+  type Facturacion,
 } from "@/lib/constants";
 import type { AppUser, Client } from "@/lib/types";
 import {
@@ -91,6 +94,7 @@ export function ClientFormDialog({
     tipo: string;
     pack: string;
     monto: string;
+    facturacion: Facturacion;
     responsables: string[];
   };
   const [draftServices, setDraftServices] = useState<DraftService[]>([]);
@@ -98,12 +102,27 @@ export function ClientFormDialog({
   function addService() {
     setDraftServices((prev) => [
       ...prev,
-      { tipo: "gestion_redes", pack: "Presencia", monto: "", responsables: [] },
+      {
+        tipo: "gestion_redes",
+        pack: "Presencia",
+        monto: "",
+        facturacion: SERVICE_BILLING_DEFAULT["gestion_redes"],
+        responsables: [],
+      },
     ]);
   }
   function updateService(i: number, patch: Partial<DraftService>) {
     setDraftServices((prev) =>
-      prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s))
+      prev.map((s, idx) => {
+        if (idx !== i) return s;
+        const next = { ...s, ...patch };
+        // Al cambiar de servicio, ajustamos la facturación por defecto del nuevo
+        // tipo (salvo que el patch ya traiga una facturación explícita).
+        if (patch.tipo && patch.facturacion === undefined) {
+          next.facturacion = SERVICE_BILLING_DEFAULT[patch.tipo] ?? "mensual";
+        }
+        return next;
+      })
     );
   }
   function removeService(i: number) {
@@ -136,10 +155,11 @@ export function ClientFormDialog({
     if (mode === "create") {
       const redes = draftServices.find((s) => s.tipo === "gestion_redes");
       derivedPack = redes?.pack ?? "Personalizado";
-      const total = draftServices.reduce(
-        (acc, s) => acc + (s.monto ? Number(s.monto) || 0 : 0),
-        0
-      );
+      // El monto mensual del cliente = suma SOLO de los servicios recurrentes.
+      // Los de cobro único no inflan el ingreso mensual.
+      const total = draftServices
+        .filter((s) => s.facturacion === "mensual")
+        .reduce((acc, s) => acc + (s.monto ? Number(s.monto) || 0 : 0), 0);
       derivedMonto = total > 0 ? total : null;
     }
     const payload: ClientInput = {
@@ -186,6 +206,7 @@ export function ClientFormDialog({
           moneda: "ARS",
           pack_detalle,
           responsables: s.responsables,
+          facturacion: s.facturacion,
         };
       });
 
@@ -528,7 +549,31 @@ export function ClientFormDialog({
                               </div>
                             )}
                             <div className="space-y-1">
-                              <Label className="text-xs">Monto mensual (ARS)</Label>
+                              <Label className="text-xs">Facturación</Label>
+                              <Select
+                                value={s.facturacion}
+                                onValueChange={(v) =>
+                                  updateService(i, { facturacion: v as Facturacion })
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.entries(FACTURACION_LABEL).map(([v, l]) => (
+                                    <SelectItem key={v} value={v}>
+                                      {l}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">
+                                {s.facturacion === "unico"
+                                  ? "Monto del cobro único (ARS)"
+                                  : "Monto mensual (ARS)"}
+                              </Label>
                               <Input
                                 type="number"
                                 inputMode="decimal"

@@ -41,6 +41,7 @@ export interface ClientService {
   fecha_fin: string | null;
   monto_mensual: number | null;
   moneda: string;
+  facturacion: "mensual" | "unico";
   pack_detalle: Record<string, number | string>;
   notas: string | null;
   activo: boolean;

@@ -128,9 +128,29 @@ export const SERVICE_TYPE_LABEL: Record<string, string> = {
   diseno_grafico: "Diseño gráfico",
   edicion_audiovisual: "Edición audiovisual",
   desarrollo_web: "Desarrollo web",
+  branding: "Branding / estrategia de marca",
   botly: "Botly (bots WhatsApp)",
   consultoria: "Consultoría",
   otro: "Otro",
+};
+
+/** Cómo se cobra cada tipo de servicio por defecto (editable por servicio). */
+export type Facturacion = "mensual" | "unico";
+export const SERVICE_BILLING_DEFAULT: Record<string, Facturacion> = {
+  gestion_redes: "mensual",
+  paid_media: "mensual",
+  consultoria: "mensual",
+  diseno_grafico: "unico",
+  edicion_audiovisual: "unico",
+  desarrollo_web: "unico",
+  branding: "unico",
+  botly: "unico",
+  otro: "mensual",
+};
+
+export const FACTURACION_LABEL: Record<Facturacion, string> = {
+  mensual: "Mensual",
+  unico: "Cobro único",
 };
 
 /**

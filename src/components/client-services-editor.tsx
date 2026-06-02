@@ -12,8 +12,11 @@ import {
 } from "@/app/(app)/clientes/services-actions";
 import {
   CLIENT_PACK_LABEL,
+  FACTURACION_LABEL,
   PACK_DEFAULTS,
+  SERVICE_BILLING_DEFAULT,
   SERVICE_TYPE_LABEL,
+  type Facturacion,
 } from "@/lib/constants";
 import type { ClientService } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -134,7 +137,8 @@ function ServiceRow({
             {service.monto_mensual != null && (
               <span>
                 {service.moneda}{" "}
-                {Number(service.monto_mensual).toLocaleString("es-AR")} / mes
+                {Number(service.monto_mensual).toLocaleString("es-AR")}{" "}
+                {service.facturacion === "unico" ? "(único)" : "/ mes"}
               </span>
             )}
             {service.fecha_inicio && (
@@ -236,6 +240,16 @@ function ServiceDialog({
   const [monto, setMonto] = useState<string>(
     service?.monto_mensual != null ? String(service.monto_mensual) : ""
   );
+  const [facturacion, setFacturacion] = useState<Facturacion>(
+    (service?.facturacion as Facturacion | undefined) ??
+      SERVICE_BILLING_DEFAULT[service?.tipo ?? "gestion_redes"] ??
+      "mensual"
+  );
+  function changeTipo(v: string) {
+    setTipo(v);
+    // Al cambiar de servicio en un alta, ajustamos la facturación por defecto.
+    if (mode === "create") setFacturacion(SERVICE_BILLING_DEFAULT[v] ?? "mensual");
+  }
   const [moneda, setMoneda] = useState(service?.moneda ?? "ARS");
   const [notas, setNotas] = useState(service?.notas ?? "");
   const [activo, setActivo] = useState(service?.activo ?? true);
@@ -282,6 +296,7 @@ function ServiceDialog({
       monto_mensual: monto ? Number(monto) : null,
       moneda,
       pack_detalle: detalle,
+      facturacion,
       notas,
       activo,
       responsables,
@@ -313,7 +328,7 @@ function ServiceDialog({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Tipo de servicio</Label>
-            <Select value={tipo} onValueChange={setTipo}>
+            <Select value={tipo} onValueChange={changeTipo}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -391,15 +406,38 @@ function ServiceDialog({
             </>
           )}
 
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Monto mensual</Label>
+              <Label>Facturación</Label>
+              <Select
+                value={facturacion}
+                onValueChange={(v) => setFacturacion(v as Facturacion)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(FACTURACION_LABEL).map(([v, l]) => (
+                    <SelectItem key={v} value={v}>
+                      {l}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>
+                {facturacion === "unico" ? "Monto del cobro único" : "Monto mensual"}
+              </Label>
               <Input
                 type="number"
                 value={monto}
                 onChange={(e) => setMonto(e.target.value)}
               />
             </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Moneda</Label>
               <Select value={moneda} onValueChange={setMoneda}>

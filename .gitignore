@@ -28,6 +28,10 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# Local: scripts y exports de revisión de datos (data sensible — nunca commitear)
+/_*.mjs
+/revision-datos/
+
 # vercel
 .vercel
 

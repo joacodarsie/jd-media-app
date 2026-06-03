@@ -5,7 +5,6 @@ import {
   FileText,
   FileBarChart,
   CheckCircle2,
-  Circle,
   CreditCard,
   Users,
   MessageSquare,
@@ -219,7 +218,8 @@ export default async function OnboardingPage({
     {
       key: "meet_guide",
       title: "Documento guía del meet de onboarding",
-      done: onb.meet_guide_md ? (onb.meet_guide_generated_at ?? onb.meet_guide_md) : null,
+      // Hecho si se generó (md / generated_at) o si se marcó a mano (generated_at).
+      done: onb.meet_guide_generated_at ?? onb.meet_guide_md ?? null,
       icon: FileText,
       custom: true,
       description: "Generá con IA la guía personalizada del meet de onboarding a partir de la transcripción del meet comercial. Usala para conducir la reunión.",
@@ -417,16 +417,13 @@ export default async function OnboardingPage({
                 }`}
               >
                 {step.custom ? (
-                  <div
-                    className="mt-0.5"
-                    title={isDone ? "Generado" : "Pendiente"}
-                  >
-                    {isDone ? (
-                      <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                    ) : (
-                      <Circle className="h-5 w-5 text-muted-foreground/40" />
-                    )}
-                  </div>
+                  // meet_guide: se puede marcar a mano (sin generar) o queda
+                  // hecho al generar la guía.
+                  <OnboardingStepToggle
+                    clientId={client.id}
+                    stepKey="meet_guide_generated_at"
+                    initialDone={isDone}
+                  />
                 ) : (
                   <OnboardingStepToggle
                     clientId={client.id}

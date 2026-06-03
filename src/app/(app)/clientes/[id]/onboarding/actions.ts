@@ -16,7 +16,8 @@ type StepKey =
   | "mensajes_enviados_at"
   | "diagnostico_generado_at"
   | "tareas_iniciales_at"
-  | "kickoff_agendado_at";
+  | "kickoff_agendado_at"
+  | "meet_guide_generated_at";
 
 const VALID_STEPS: StepKey[] = [
   "carta_enviada_at",
@@ -27,6 +28,7 @@ const VALID_STEPS: StepKey[] = [
   "diagnostico_generado_at",
   "tareas_iniciales_at",
   "kickoff_agendado_at",
+  "meet_guide_generated_at",
 ];
 
 export async function toggleOnboardingStep(

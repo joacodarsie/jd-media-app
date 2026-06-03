@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdmin } from "@/lib/supabase/admin";
 import { requireUser, isStaff } from "@/lib/auth";
 
 export interface MonthlyMetrics {
@@ -65,15 +66,38 @@ function clean(input: MonthlyReportInput): MonthlyReportInput {
   };
 }
 
+/**
+ * Puede editar el reporte de un cliente: staff (admin/coordinador) o la CM /
+ * responsable asignada a esa cuenta.
+ */
+async function canEditClientReport(
+  supabase: ReturnType<typeof createClient>,
+  meId: string,
+  meRol: string,
+  clienteId: string
+): Promise<boolean> {
+  if (isStaff(meRol)) return true;
+  const { data } = await supabase
+    .from("clients")
+    .select("cm_id, creativa_asignada_id")
+    .eq("id", clienteId)
+    .maybeSingle();
+  return !!data && (data.cm_id === meId || data.creativa_asignada_id === meId);
+}
+
 export async function upsertMonthlyReport(input: MonthlyReportInput) {
   const me = await requireUser();
-  if (!isStaff(me.rol)) return { error: "Solo staff edita reportes." };
   if (!/^\d{4}-\d{2}$/.test(input.year_month)) {
     return { error: "Mes inválido." };
   }
   const supabase = createClient();
+  if (!(await canEditClientReport(supabase, me.id, me.rol, input.cliente_id))) {
+    return { error: "No tenés permiso para editar este reporte." };
+  }
   const payload = clean(input);
-  const { error } = await supabase.from("client_monthly_reports").upsert(
+  // Autorizado a nivel app; escribimos con admin para sortear el RLS staff-only
+  // (la CM/responsable no es staff pero sí puede editar su reporte).
+  const { error } = await createAdmin().from("client_monthly_reports").upsert(
     {
       cliente_id: payload.cliente_id,
       year_month: payload.year_month,
@@ -91,10 +115,19 @@ export async function upsertMonthlyReport(input: MonthlyReportInput) {
 /** Actualiza el link público de una publicación. */
 export async function setPublicationLink(publicationId: string, link: string | null) {
   const me = await requireUser();
-  if (!isStaff(me.rol)) return { error: "Solo staff puede editar." };
   const supabase = createClient();
+  // Resolvemos a qué cliente pertenece la pub para autorizar staff o CM/responsable.
+  const { data: pub } = await supabase
+    .from("publications")
+    .select("cliente_id")
+    .eq("id", publicationId)
+    .maybeSingle();
+  if (!pub?.cliente_id) return { error: "Publicación no encontrada." };
+  if (!(await canEditClientReport(supabase, me.id, me.rol, pub.cliente_id))) {
+    return { error: "No tenés permiso para editar." };
+  }
   const clean = link?.trim() || null;
-  const { data, error } = await supabase
+  const { data, error } = await createAdmin()
     .from("publications")
     .update({ link_publicacion: clean })
     .eq("id", publicationId)

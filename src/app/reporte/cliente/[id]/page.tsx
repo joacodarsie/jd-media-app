@@ -133,7 +133,6 @@ export default async function ReporteClientePage({
   searchParams: { mes?: string };
 }) {
   const me = await requireUser();
-  const canEdit = isStaff(me.rol);
   const supabase = createClient();
 
   const today = new Date();
@@ -256,6 +255,12 @@ export default async function ReporteClientePage({
     audiovisual?: { id: string; nombre: string } | null;
     creativa?: { id: string; nombre: string } | null;
   };
+  // Pueden editar el reporte: staff (admin/coordinador) y la CM / responsable
+  // asignada a esta cuenta.
+  const canEdit =
+    isStaff(me.rol) ||
+    c.cm_id === me.id ||
+    c.creativa_asignada_id === me.id;
   const pubList = (pubs ?? []) as RawPub[];
   const taskList = (tasks ?? []) as unknown as RawTask[];
   const commentList = (comments ?? []) as unknown as RawComment[];

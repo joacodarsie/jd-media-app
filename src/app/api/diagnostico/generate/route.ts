@@ -127,7 +127,9 @@ export async function POST(req: Request) {
 
         const messageStream = anthropic.messages.stream({
           model: DIAGNOSTIC_GENERATOR_MODEL,
-          max_tokens: 8192,
+          // El diagnóstico tiene 14 secciones; 8192 truncaba el JSON de la tool
+          // y rompía el JSON.parse ("estructura inválida"). Damos margen amplio.
+          max_tokens: 16384,
           system: [
             {
               type: "text",
@@ -159,7 +161,22 @@ export async function POST(req: Request) {
           }
         }
 
-        await messageStream.finalMessage();
+        const finalMsg = await messageStream.finalMessage();
+
+        // Si se cortó por límite de tokens, el JSON queda incompleto: avisamos
+        // claro en vez del genérico "JSON inválido".
+        if (finalMsg.stop_reason === "max_tokens") {
+          console.error("[diagnostico/generate] truncated by max_tokens", {
+            chars: toolInputRaw.length,
+          });
+          send({
+            type: "error",
+            error:
+              "El informe quedó demasiado largo y se cortó. Probá de nuevo; si vuelve a pasar, acortá la transcripción.",
+          });
+          controller.close();
+          return;
+        }
 
         let toolInput: unknown;
         try {

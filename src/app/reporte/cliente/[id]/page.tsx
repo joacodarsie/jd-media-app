@@ -340,7 +340,6 @@ export default async function ReporteClientePage({
       p.estado !== "aprobado" &&
       p.estado !== "rechazado"
   ).length;
-  const tareasCompletadas = taskList.length;
   const totalRevisadas = publicadas + aprobadas + cambiosPedidos;
   const tasaAprobacion =
     totalRevisadas > 0
@@ -475,7 +474,7 @@ export default async function ReporteClientePage({
         )}
 
         {/* Métricas principales */}
-        <section className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <section className="mt-6 grid grid-cols-3 gap-3">
           <Stat
             label="Publicadas"
             value={publicadas}
@@ -485,11 +484,6 @@ export default async function ReporteClientePage({
             label="En proceso"
             value={enProceso}
             accent="bg-blue-50 border-blue-200 text-blue-700"
-          />
-          <Stat
-            label="Tareas completadas"
-            value={tareasCompletadas}
-            accent="bg-amber-50 border-amber-200 text-amber-800"
           />
           <Stat
             label="Días con actividad"
@@ -810,39 +804,6 @@ export default async function ReporteClientePage({
                 + {commentList.length - 8} comentarios más en el portal.
               </p>
             )}
-          </section>
-        )}
-
-        {/* Tareas completadas */}
-        {taskList.length > 0 && (
-          <section className="mt-8 break-inside-avoid">
-            <h2 className="mb-2 text-base font-semibold text-zinc-900">
-              Tareas completadas ({taskList.length})
-            </h2>
-            <ul className="space-y-1.5 text-sm">
-              {taskList.map((t) => (
-                <li
-                  key={t.id}
-                  className="flex items-center justify-between gap-3 border-b border-zinc-100 py-1.5"
-                >
-                  <div className="min-w-0">
-                    <div className="truncate font-medium">{t.titulo}</div>
-                    <div className="text-xs text-zinc-500">
-                      {t.area}
-                      {t.asignado?.nombre ? ` · ${t.asignado.nombre}` : ""}
-                    </div>
-                  </div>
-                  <div className="shrink-0 text-xs tabular-nums text-zinc-500">
-                    {t.fecha_completada
-                      ? new Date(t.fecha_completada).toLocaleDateString(
-                          "es-AR",
-                          { day: "2-digit", month: "short" }
-                        )
-                      : ""}
-                  </div>
-                </li>
-              ))}
-            </ul>
           </section>
         )}
 

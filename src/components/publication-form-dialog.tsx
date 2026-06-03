@@ -132,6 +132,16 @@ export function PublicationFormDialog({
     setAudiovisual(auto ?? NONE);
   }, [tipo, selectedClient, audiovisualTouched, mode, publication]);
 
+  // Al abrir el "+" de un día, la fecha debe ser SIEMPRE la del día clickeado.
+  // Las celdas del calendario se reusan por índice, así que el estado inicial
+  // puede quedar viejo: sincronizamos la fecha (y el cliente) al abrir en create.
+  useEffect(() => {
+    if (!open || mode !== "create") return;
+    if (defaultDate) setFecha(`${defaultDate}T10:00`);
+    if (defaultClientId) setCliente(defaultClientId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   function submit() {
     if (!cliente) {
       toast.error("Elegí cliente.");

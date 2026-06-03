@@ -152,22 +152,22 @@ export async function generateInitialTasks(clientId: string) {
   if (svcTypes.has("paid_media" as ServiceType)) {
     add(3, "Setup Business Manager + accesos",
       "Verificar accesos a Meta Business Manager / Google Ads. Configurar permisos.",
-      "Paid", null);
+      "Paid Media", null);
     add(5, "Píxel / conversiones",
       "Implementar/verificar píxel de Meta y conversiones en GA4.",
-      "Paid", null);
+      "Paid Media", null);
     add(7, "Definición de objetivos y KPIs",
       "Acordar con el cliente objetivos (leads, ventas, ROAS) y KPIs medibles.",
-      "Paid", null);
+      "Paid Media", null);
     add(10, "Primera campaña configurada",
       "Estructura de campañas, segmentaciones, presupuestos y creatividades.",
-      "Paid", null);
+      "Paid Media", null);
   }
 
   if (svcTypes.has("edicion_audiovisual" as ServiceType)) {
     add(7, "Coordinar primera jornada de producción",
       "Definir fecha, locación, listado de tomas y briefing.",
-      "Audiovisuales", c.audiovisual_id);
+      "Edición Audiovisual", c.audiovisual_id);
   }
 
   if (svcTypes.has("diseno_grafico" as ServiceType)) {
@@ -182,10 +182,10 @@ export async function generateInitialTasks(clientId: string) {
   if (svcTypes.has("desarrollo_web" as ServiceType)) {
     add(5, "Análisis de requerimientos",
       "Relevar funcionalidades, integraciones, contenidos y plazos.",
-      "Web", null);
+      "Desarrollo Web", null);
     add(10, "Wireframes iniciales",
       "Diseñar wireframes de las páginas principales para aprobación.",
-      "Web", null);
+      "Desarrollo Web", null);
   }
 
   if (svcTypes.has("botly" as ServiceType)) {

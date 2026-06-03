@@ -24,6 +24,16 @@ export function getDeliverables(svc: ClientService): string[] {
         "Coordinación de una jornada de producción mensual.",
         "Entrega de material editado para publicación en redes.",
       ];
+    case "branding":
+      return [
+        "Sesión de descubrimiento de marca (esencia, valores, propósito).",
+        "Estrategia de marca: posicionamiento, propuesta de valor y arquitectura de marca.",
+        "Definición de identidad verbal: tono de voz, mensajes clave y narrativa.",
+        "Identidad visual: logo / sistema visual, paleta de colores y tipografías.",
+        "Manual de marca con guidelines de uso (do's & don'ts).",
+        "Entrega de archivos finales en los formatos necesarios.",
+        "Revisiones incluidas hasta la versión final aprobada.",
+      ];
     case "diseno_grafico":
       return [
         "Piezas gráficas según necesidades acordadas (posts, flyers, presentaciones, brand assets).",

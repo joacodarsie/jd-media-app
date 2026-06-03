@@ -28,6 +28,7 @@ export type ServiceType =
   | "diseno_grafico"
   | "edicion_audiovisual"
   | "desarrollo_web"
+  | "branding"
   | "botly"
   | "consultoria"
   | "otro";

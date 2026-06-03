@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Hash, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { assignContractNumber } from "@/app/(app)/clientes/[id]/onboarding/actio
 
 export function AssignContractNumberButton({ clientId }: { clientId: string }) {
   const [pending, start] = useTransition();
+  const router = useRouter();
 
   function run() {
     start(async () => {
@@ -18,6 +20,7 @@ export function AssignContractNumberButton({ clientId }: { clientId: string }) {
       }
       if ("numero" in res && res.numero) {
         toast.success(`Número asignado: ${res.numero}`);
+        router.refresh(); // refleja el número sin recargar la página a mano
       }
     });
   }

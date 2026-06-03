@@ -82,10 +82,23 @@ export default async function CartaAcuerdoPage({
   const svc = (services ?? []) as ClientService[];
 
   const moneda = c.contrato_moneda ?? "ARS";
-  const totalMensual = svc.reduce(
+  // Separamos servicios recurrentes (mensual) de los de pago único (branding,
+  // web, etc.) para que la carta hable correcto de cada uno.
+  const esUnico = (s: ClientService) =>
+    (s as { facturacion?: string }).facturacion === "unico";
+  const recurrentes = svc.filter((s) => !esUnico(s));
+  const unicos = svc.filter((s) => esUnico(s));
+  const totalMensual = recurrentes.reduce(
     (acc, s) => acc + (Number(s.monto_mensual) || 0),
     0
   );
+  const totalUnico = unicos.reduce(
+    (acc, s) => acc + (Number(s.monto_mensual) || 0),
+    0
+  );
+  const hayMensual = recurrentes.length > 0;
+  const hayUnico = unicos.length > 0;
+  const soloUnico = hayUnico && !hayMensual;
   const tienePaid = svc.some((s) => s.tipo === "paid_media");
   const tieneGestionContenido = svc.some(
     (s) => s.tipo === "gestion_redes" || s.tipo === "edicion_audiovisual"
@@ -482,7 +495,7 @@ export default async function CartaAcuerdoPage({
                       </div>
                       <div className="price">
                         {s.monto_mensual
-                          ? `${fmtMoney(Number(s.monto_mensual), s.moneda || moneda)} / mes`
+                          ? `${fmtMoney(Number(s.monto_mensual), s.moneda || moneda)}${esUnico(s) ? " (pago único)" : " / mes"}`
                           : "A convenir"}
                       </div>
                     </div>
@@ -510,10 +523,18 @@ export default async function CartaAcuerdoPage({
                 );
               })}
 
-              <div className="total-line">
-                <span className="label">Total mensual</span>
-                <span className="value">{fmtMoney(totalMensual, moneda)}</span>
-              </div>
+              {hayMensual && (
+                <div className="total-line">
+                  <span className="label">Total mensual</span>
+                  <span className="value">{fmtMoney(totalMensual, moneda)}</span>
+                </div>
+              )}
+              {hayUnico && (
+                <div className="total-line" style={{ marginTop: hayMensual ? 8 : 12 }}>
+                  <span className="label">Pago único</span>
+                  <span className="value">{fmtMoney(totalUnico, moneda)}</span>
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -523,15 +544,18 @@ export default async function CartaAcuerdoPage({
           <h2>
             <span className="num">04</span>Honorarios y forma de pago
           </h2>
-          <p>
-            El Cliente abonará la suma de{" "}
-            <strong>{fmtMoney(totalMensual, moneda)}</strong> por los servicios
-            contratados, por adelantado el {ordinalDia(diaCobro)} día hábil de
-            cada mes, mediante transferencia bancaria a los datos provistos por
-            La Agencia.
-          </p>
+          {hayMensual && (
+            <p>
+              Por los servicios <strong>mensuales</strong> contratados, el
+              Cliente abonará la suma de{" "}
+              <strong>{fmtMoney(totalMensual, moneda)}</strong> por mes, por
+              adelantado el {ordinalDia(diaCobro)} día hábil de cada mes,
+              mediante transferencia bancaria a los datos provistos por La
+              Agencia.
+            </p>
+          )}
 
-          {hayDescuento && montoConDescuento !== null && (
+          {hayMensual && hayDescuento && montoConDescuento !== null && (
             <div className="promo">
               <strong>Promoción inicial:</strong> durante los primeros{" "}
               {descMeses} {descMeses === 1 ? "mes" : "meses"} de contrato se
@@ -543,20 +567,35 @@ export default async function CartaAcuerdoPage({
             </div>
           )}
 
+          {hayMensual && (
+            <p>
+              Si el servicio inicia en fecha distinta al primer día del mes, se
+              abonará un monto proporcional por el período restante hasta el fin
+              de ese mes. Desde entonces, el pago será mensual y por adelantado.
+            </p>
+          )}
+
+          {hayUnico && (
+            <p>
+              Por los servicios de <strong>pago único</strong> contratados
+              (proyectos de única vez), el Cliente abonará la suma total de{" "}
+              <strong>{fmtMoney(totalUnico, moneda)}</strong>. Salvo acuerdo
+              distinto pactado por escrito, se abona el <strong>50%</strong> por
+              adelantado para iniciar el trabajo y el <strong>50%</strong>{" "}
+              restante contra la entrega de los archivos finales aprobados.
+            </p>
+          )}
+
           <p>
-            Si el servicio inicia en fecha distinta al primer día del mes, se
-            abonará un monto proporcional por el período restante hasta el fin
-            de ese mes. Desde entonces, el pago será mensual y por adelantado.
-          </p>
-          <p>
-            <strong>Cláusula de mora:</strong> si el pago no se efectúa dentro
+            <strong>Cláusula de mora:</strong> si un pago no se efectúa dentro
             de los 3 días hábiles posteriores a la fecha de vencimiento, La
             Agencia podrá suspender los servicios hasta que se regularice la
             situación.
           </p>
           <p>
             <strong>No reembolsos:</strong> los pagos realizados no serán
-            reembolsados una vez iniciado el mes de servicio.
+            reembolsados una vez iniciado el servicio
+            {hayMensual ? " del mes correspondiente" : " o entregado el avance"}.
           </p>
         </section>
 
@@ -584,20 +623,33 @@ export default async function CartaAcuerdoPage({
           <p>
             <strong>Fecha de inicio:</strong> {fechaInicio}
           </p>
-          <p>
-            <strong>Plazo inicial:</strong> {plazoMeses}{" "}
-            {plazoMeses === 1 ? "mes" : "meses"}.
-          </p>
-          <p>
-            <strong>Renovación automática:</strong> El contrato se renovará
-            automáticamente, salvo aviso por escrito con 15 días de
-            anticipación.
-          </p>
-          <p>
-            <strong>Revisión de tarifas:</strong> Las tarifas podrán
-            actualizarse cada 3 meses, avisando al Cliente con 10 días de
-            anticipación.
-          </p>
+          {hayMensual && (
+            <>
+              <p>
+                <strong>Plazo inicial:</strong> {plazoMeses}{" "}
+                {plazoMeses === 1 ? "mes" : "meses"}.
+              </p>
+              <p>
+                <strong>Renovación automática:</strong> El contrato de los
+                servicios mensuales se renovará automáticamente, salvo aviso por
+                escrito con 15 días de anticipación.
+              </p>
+              <p>
+                <strong>Revisión de tarifas:</strong> Las tarifas mensuales
+                podrán actualizarse cada 3 meses, avisando al Cliente con 10
+                días de anticipación.
+              </p>
+            </>
+          )}
+          {hayUnico && (
+            <p>
+              <strong>Servicios de pago único:</strong> se ejecutan como
+              proyecto puntual. El acuerdo respecto de ellos se considera
+              cumplido con la entrega de los archivos finales aprobados y el
+              pago total correspondiente. El plazo estimado de entrega se
+              acuerda por escrito según el alcance del proyecto.
+            </p>
+          )}
         </section>
 
         <section className="clause">

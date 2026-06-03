@@ -243,18 +243,35 @@ export function normalizeDiagnostic(value: unknown): unknown {
     "proximos_pasos",
   ];
 
-  const tryParse = (s: string): unknown | null => {
+  const attempt = (s: string): unknown | null => {
     try {
       return JSON.parse(s);
     } catch {
-      // Caso típico: el modelo deja un `}` o `]` extra al final.
-      const trimmed = s.replace(/[}\]]+\s*$/, (m) => m.slice(0, -1));
-      try {
-        return JSON.parse(trimmed);
-      } catch {
-        return null;
-      }
+      return null;
     }
+  };
+
+  const tryParse = (s: string): unknown | null => {
+    // 1) Intento directo.
+    const direct = attempt(s);
+    if (direct !== null) return direct;
+
+    // 2) El modelo a veces antepone basura (un `>`, comillas, espacios) o deja
+    //    caracteres de más al final. Recortamos desde el primer { o [ hasta el
+    //    último } o ] y reintentamos.
+    const firstBrace = s.indexOf("{");
+    const firstBracket = s.indexOf("[");
+    const starts = [firstBrace, firstBracket].filter((i) => i >= 0);
+    const start = starts.length ? Math.min(...starts) : -1;
+    const end = Math.max(s.lastIndexOf("}"), s.lastIndexOf("]"));
+    if (start >= 0 && end > start) {
+      const sliced = attempt(s.slice(start, end + 1));
+      if (sliced !== null) return sliced;
+    }
+
+    // 3) Último recurso: sacar un `]` o `}` extra al final.
+    const trimmed = s.replace(/[}\]]+\s*$/, (m) => m.slice(0, -1));
+    return attempt(trimmed);
   };
 
   for (const k of objectKeys) {
@@ -272,6 +289,13 @@ export function normalizeDiagnostic(value: unknown): unknown {
       const parsed = tryParse(cur);
       if (Array.isArray(parsed)) v[k as string] = parsed;
     }
+  }
+
+  // Red de seguridad: estas claves SIEMPRE deben ser arrays. Si algo quedó como
+  // string/objeto que no se pudo parsear, lo forzamos a [] para que el editor
+  // y el render (que hacen .map) nunca rompan la página entera.
+  for (const k of arrayKeys) {
+    if (!Array.isArray(v[k as string])) v[k as string] = [];
   }
 
   return v;

@@ -42,11 +42,12 @@ export async function POST(req: Request) {
   const cliente_id = String(form.get("cliente_id") ?? "");
   if (!cliente_id) return new Response("Falta cliente_id.", { status: 400 });
 
-  // Aceptamos PDF o texto plano.
+  // Aceptamos PDF, texto plano, notas/bases manuales y/o capturas.
   let transcript = String(form.get("transcript") ?? "").trim();
+  const instructions = String(form.get("instructions") ?? "").trim();
   const file = form.get("file");
 
-  if (!transcript && file instanceof File) {
+  if (file instanceof File && file.size > 0) {
     if (!file.name.toLowerCase().endsWith(".pdf")) {
       return new Response("El archivo debe ser un PDF.", { status: 400 });
     }
@@ -57,16 +58,38 @@ export async function POST(req: Request) {
       const bytes = new Uint8Array(await file.arrayBuffer());
       const pdf = await getDocumentProxy(bytes);
       const { text } = await extractText(pdf, { mergePages: true });
-      transcript = (Array.isArray(text) ? text.join("\n\n") : text).trim();
+      const pdfText = (Array.isArray(text) ? text.join("\n\n") : text).trim();
+      // Si ya había transcript pegado, lo combinamos con el del PDF.
+      transcript = [transcript, pdfText].filter(Boolean).join("\n\n");
     } catch (err) {
       console.error("[onboarding/generate-guide] pdf parse failed", err);
       return new Response("No se pudo leer el PDF.", { status: 422 });
     }
   }
 
-  if (!transcript || transcript.length < 200) {
+  // Capturas / imágenes (vision): IG, web, chats, etc.
+  const ALLOWED_IMG = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
+  const imageFiles = form.getAll("image").filter((x): x is File => x instanceof File && x.size > 0);
+  const imageBlocks: Anthropic.ImageBlockParam[] = [];
+  for (const img of imageFiles.slice(0, 5)) {
+    if (!ALLOWED_IMG.has(img.type)) continue;
+    if (img.size > 8 * 1024 * 1024) continue;
+    const b64 = Buffer.from(await img.arrayBuffer()).toString("base64");
+    imageBlocks.push({
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: img.type as "image/png" | "image/jpeg" | "image/webp" | "image/gif",
+        data: b64,
+      },
+    });
+  }
+
+  // Antes pedíamos 200 caracteres sí o sí. Ahora alcanza con CUALQUIER fuente:
+  // transcripción, notas manuales, un PDF, o capturas.
+  if (!transcript && !instructions && imageBlocks.length === 0) {
     return new Response(
-      "Necesito una transcripción de al menos 200 caracteres (PDF o texto pegado).",
+      "Cargá algo: transcripción, notas/bases, un PDF o al menos una captura.",
       { status: 400 }
     );
   }
@@ -89,13 +112,19 @@ export async function POST(req: Request) {
     .map((r: { tipo: string | null }) => r.tipo)
     .filter((x): x is string => Boolean(x));
 
-  const userMessage = buildMeetGuideUserMessage({
+  const userText = buildMeetGuideUserMessage({
     clienteNombre: client.nombre,
     rubro: (client as { rubro?: string | null }).rubro,
     pack: (client as { pack?: string | null }).pack,
     serviciosContratados,
     transcript,
+    instructions,
+    hasImages: imageBlocks.length > 0,
   });
+  const userContent: Anthropic.ContentBlockParam[] = [
+    { type: "text", text: userText },
+    ...imageBlocks,
+  ];
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -125,7 +154,7 @@ export async function POST(req: Request) {
               cache_control: { type: "ephemeral" },
             },
           ],
-          messages: [{ role: "user", content: userMessage }],
+          messages: [{ role: "user", content: userContent }],
         });
 
         for await (const event of messageStream) {
@@ -155,7 +184,8 @@ export async function POST(req: Request) {
             {
               cliente_id,
               meet_guide_md: fullMarkdown,
-              meet_guide_source_text: transcript,
+              meet_guide_source_text:
+                [transcript, instructions].filter(Boolean).join("\n\n---\n\n") || null,
               meet_guide_generated_at: now,
               meet_guide_model: MEET_GUIDE_MODEL,
             },

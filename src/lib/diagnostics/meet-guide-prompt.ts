@@ -11,10 +11,18 @@
 
 export const MEET_GUIDE_MODEL = "claude-sonnet-4-6";
 
-export const MEET_GUIDE_SYSTEM_PROMPT = `Sos el asistente del equipo comercial+estrategia de JD Media. Tu trabajo: leer la transcripción de un meet comercial con un PROSPECTO (todavía no firmó) y producir una **guía personalizada de meet de onboarding** para usar después de que firme.
+export const MEET_GUIDE_SYSTEM_PROMPT = `Sos el asistente del equipo comercial+estrategia de JD Media. Tu trabajo: a partir de la info disponible de un PROSPECTO (todavía no firmó) producir una **guía personalizada de meet de onboarding** para usar después de que firme.
 
 # Contexto JD Media
 Agencia de gestión de redes, paid media, producción de contenido, diseño y desarrollo web para PyMEs. Argentina (Córdoba). Español rioplatense (vos).
+
+# De dónde sale la info (puede ser cualquiera de estas, o una mezcla)
+La entrada NO siempre es una transcripción formal de Tactiq. Puede venir como:
+- Transcripción completa de un meet por videollamada, O
+- Notas / bases cargadas a mano (cuando el primer contacto fue por llamada o en persona), O
+- Links que dejó el usuario (ej. el Instagram o la web del negocio), O
+- Capturas / imágenes adjuntas (ej. screenshot del perfil de IG, de la web, de un chat).
+Usá TODO lo que haya. Si adjuntaron imágenes, analizalas (qué vende, estética, tono, seguidores, tipo de contenido). Si dejaron links, tenelos en cuenta como contexto. Cuanto menos material concreto haya, MÁS preguntas abiertas debe tener la guía (menos "ya cubierto").
 
 # La guía base que vas a personalizar
 La guía estándar de onboarding cubre 10 bloques que alimentan los campos del informe diagnóstico:
@@ -62,7 +70,11 @@ export function buildMeetGuideUserMessage(args: {
   rubro?: string | null;
   pack?: string | null;
   serviciosContratados?: string[];
-  transcript: string;
+  transcript?: string;
+  /** Notas / bases / links cargados a mano (cuando no hubo meet formal). */
+  instructions?: string;
+  /** Si se adjuntaron capturas/imágenes para que las analice. */
+  hasImages?: boolean;
 }): string {
   const lines: string[] = [];
   lines.push(`# Cliente`);
@@ -73,13 +85,38 @@ export function buildMeetGuideUserMessage(args: {
     lines.push(`Servicios contratados: ${args.serviciosContratados.join(", ")}`);
   }
   lines.push("");
-  lines.push(`# Transcripción del meet comercial previo`);
-  lines.push("");
-  lines.push(args.transcript);
-  lines.push("");
+
+  const transcript = (args.transcript ?? "").trim();
+  const instructions = (args.instructions ?? "").trim();
+
+  if (transcript) {
+    lines.push(`# Transcripción del meet comercial previo`);
+    lines.push("");
+    lines.push(transcript);
+    lines.push("");
+  }
+  if (instructions) {
+    lines.push(`# Notas / bases cargadas a mano (links, info por llamada/persona, etc.)`);
+    lines.push("");
+    lines.push(instructions);
+    lines.push("");
+  }
+  if (args.hasImages) {
+    lines.push(
+      `# Capturas adjuntas\nSe adjuntaron imágenes (ej. perfil de Instagram, web, chat). Analizalas y usalas como parte del contexto del cliente.`
+    );
+    lines.push("");
+  }
+  if (!transcript && !instructions && !args.hasImages) {
+    lines.push(
+      `# (Sin material previo)\nNo hay transcripción ni notas. Generá la guía base completa con todas las preguntas, adaptada al rubro si se conoce.`
+    );
+    lines.push("");
+  }
+
   lines.push(
     `# Tu tarea
-Generá la guía personalizada del meet de onboarding para este cliente. Markdown plano. Empezá DIRECTO con el título.`
+Generá la guía personalizada del meet de onboarding para este cliente, usando TODO el material disponible. Markdown plano. Empezá DIRECTO con el título.`
   );
   return lines.join("\n");
 }

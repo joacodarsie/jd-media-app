@@ -66,13 +66,10 @@ export function ClientFormDialog({
   const [monto, setMonto] = useState<string>(
     client?.monto_mensual != null ? String(client.monto_mensual) : ""
   );
-  const [calUrl, setCalUrl] = useState(client?.calendario_url ?? "");
   const [driveUrl, setDriveUrl] = useState(client?.drive_url ?? "");
   const [igUrl, setIgUrl] = useState(client?.instagram_url ?? "");
   const [fbUrl, setFbUrl] = useState(client?.facebook_url ?? "");
   const [webUrl, setWebUrl] = useState(client?.web_url ?? "");
-  const [datosFact, setDatosFact] = useState(client?.datos_facturacion ?? "");
-  const [notionUrl, setNotionUrl] = useState(client?.notion_url ?? "");
   const [cmId, setCmId] = useState<string>(client?.cm_id ?? NONE);
   const [disenadorId, setDisenadorId] = useState<string>(client?.disenador_id ?? NONE);
   const [audiovisualId, setAudiovisualId] = useState<string>(
@@ -170,13 +167,13 @@ export function ClientFormDialog({
       creativa_asignada_id: creativa === NONE ? null : creativa,
       fecha_inicio: fechaInicio || null,
       monto_mensual: derivedMonto,
-      calendario_url: calUrl,
+      calendario_url: client?.calendario_url ?? null,
       drive_url: driveUrl,
       instagram_url: igUrl,
       facebook_url: fbUrl,
       web_url: webUrl,
-      datos_facturacion: datosFact,
-      notion_url: notionUrl,
+      datos_facturacion: client?.datos_facturacion ?? null,
+      notion_url: client?.notion_url ?? null,
       contacto_nombre: contactoNombre,
       contacto_dni_cuit: contactoDni,
       contacto_domicilio: contactoDomicilio,
@@ -325,66 +322,10 @@ export function ClientFormDialog({
             )}
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
-              <Label>Calendario de contenidos (link)</Label>
-              <Input
-                placeholder="https://docs.google.com/spreadsheets/…"
-                value={calUrl}
-                onChange={(e) => setCalUrl(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label>Drive / carpeta del cliente</Label>
-              <Input
-                placeholder="https://drive.google.com/…"
-                value={driveUrl}
-                onChange={(e) => setDriveUrl(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Instagram</Label>
-              <Input
-                placeholder="https://www.instagram.com/usuario/"
-                value={igUrl}
-                onChange={(e) => setIgUrl(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Facebook</Label>
-              <Input
-                placeholder="https://www.facebook.com/pagina"
-                value={fbUrl}
-                onChange={(e) => setFbUrl(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Web</Label>
-              <Input
-                placeholder="https://…"
-                value={webUrl}
-                onChange={(e) => setWebUrl(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Notion (legacy)</Label>
-              <Input
-                placeholder="https://www.notion.so/…"
-                value={notionUrl}
-                onChange={(e) => setNotionUrl(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label>Datos para facturar</Label>
-              <Textarea
-                rows={2}
-                value={datosFact}
-                onChange={(e) => setDatosFact(e.target.value)}
-                placeholder="Razón social, CUIT, condición IVA, etc."
-              />
-            </div>
-          </div>
-
+          {/* Equipo asignado: solo aplica a Gestión de redes. En alta aparece
+              recién cuando se carga ese servicio; en edición se mantiene. */}
+          {(mode === "edit" ||
+            draftServices.some((s) => s.tipo === "gestion_redes")) && (
           <div className="rounded-lg border bg-muted/30 p-3">
             <h4 className="mb-2 text-sm font-semibold">Equipo asignado a esta cuenta</h4>
             <p className="mb-3 text-xs text-muted-foreground">
@@ -435,6 +376,7 @@ export function ClientFormDialog({
               </div>
             </div>
           </div>
+          )}
 
           <div className="rounded-lg border bg-muted/30 p-3">
             <h4 className="mb-1 text-sm font-semibold">Datos del contacto / facturación</h4>
@@ -626,6 +568,42 @@ export function ClientFormDialog({
               )}
             </div>
           )}
+
+          {/* Links del cliente (al fondo, son secundarios) */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Drive / carpeta del cliente</Label>
+              <Input
+                placeholder="https://drive.google.com/…"
+                value={driveUrl}
+                onChange={(e) => setDriveUrl(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Instagram</Label>
+              <Input
+                placeholder="https://www.instagram.com/usuario/"
+                value={igUrl}
+                onChange={(e) => setIgUrl(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Facebook</Label>
+              <Input
+                placeholder="https://www.facebook.com/pagina"
+                value={fbUrl}
+                onChange={(e) => setFbUrl(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Web</Label>
+              <Input
+                placeholder="https://…"
+                value={webUrl}
+                onChange={(e) => setWebUrl(e.target.value)}
+              />
+            </div>
+          </div>
 
           <div className="space-y-2">
             <Label>Notas (Markdown)</Label>

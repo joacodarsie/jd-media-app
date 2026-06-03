@@ -98,7 +98,6 @@ export default async function CartaAcuerdoPage({
   );
   const hayMensual = recurrentes.length > 0;
   const hayUnico = unicos.length > 0;
-  const soloUnico = hayUnico && !hayMensual;
   const tienePaid = svc.some((s) => s.tipo === "paid_media");
   const tieneGestionContenido = svc.some(
     (s) => s.tipo === "gestion_redes" || s.tipo === "edicion_audiovisual"

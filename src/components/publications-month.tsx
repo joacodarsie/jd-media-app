@@ -21,6 +21,8 @@ import {
   PUBLICATION_STATUS_BADGE,
   PUBLICATION_STATUS_DOT,
   PUBLICATION_STATUS_LABEL,
+  PUBLICATION_TYPE_BORDER,
+  PUBLICATION_TYPE_DOT,
   PUBLICATION_TYPE_LABEL,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -503,6 +505,22 @@ export function PublicationsMonth({
 
       {mode === "mes" ? (
         <>
+          {/* Leyenda de colores por tipo de pieza */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+            {(["post", "carrusel", "reel", "historia", "video"] as const).map(
+              (t) => (
+                <span key={t} className="inline-flex items-center gap-1">
+                  <span
+                    className={cn(
+                      "inline-block h-2.5 w-2.5 rounded-sm",
+                      PUBLICATION_TYPE_DOT[t]
+                    )}
+                  />
+                  {PUBLICATION_TYPE_LABEL[t]}
+                </span>
+              )
+            )}
+          </div>
           <div className="rounded-xl border bg-card">
             <div className="grid grid-cols-7 border-b text-xs font-medium text-muted-foreground">
               {DAY_NAMES.map((d) => (
@@ -1019,8 +1037,9 @@ function PubChip({
           }}
           onDragEnd={() => onDragEnd?.()}
           className={cn(
-            "flex w-full cursor-grab items-center gap-1 rounded px-1.5 py-1 text-left text-[11px] font-medium active:cursor-grabbing",
+            "flex w-full cursor-grab items-center gap-1 rounded border-l-[3px] px-1.5 py-1 text-left text-[11px] font-medium active:cursor-grabbing",
             PUBLICATION_STATUS_BADGE[pub.estado],
+            PUBLICATION_TYPE_BORDER[pub.tipo],
             dragging && "opacity-40"
           )}
           title={titleWithBadge}

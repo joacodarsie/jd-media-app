@@ -96,6 +96,38 @@ export async function canAccessClient(
   );
 }
 
+/**
+ * Devuelve los IDs de clientes que el usuario puede ver. Staff (admin/
+ * coordinador) ve TODO → devuelve null (sin restricción). El resto ve solo las
+ * cuentas donde está asignado: columnas legacy (cm/diseño/audiovisual/creativa)
+ * o responsable de un servicio activo. Devolver [] significa "no ve ninguna".
+ */
+export async function getAccessibleClientIds(
+  user: Pick<AppUser, "id" | "rol">
+): Promise<string[] | null> {
+  if (isStaff(user.rol)) return null;
+  const supabase = createClient();
+  const ids = new Set<string>();
+
+  const { data: byCols } = await supabase
+    .from("clients")
+    .select("id")
+    .or(
+      `cm_id.eq.${user.id},disenador_id.eq.${user.id},audiovisual_id.eq.${user.id},creativa_asignada_id.eq.${user.id}`
+    );
+  for (const r of (byCols ?? []) as { id: string }[]) ids.add(r.id);
+
+  const { data: bySvc } = await supabase
+    .from("client_services")
+    .select("cliente_id")
+    .eq("activo", true)
+    .contains("responsables", [user.id]);
+  for (const r of (bySvc ?? []) as { cliente_id: string }[])
+    ids.add(r.cliente_id);
+
+  return Array.from(ids);
+}
+
 /** Redirige al dashboard si el usuario no puede acceder al cliente. */
 export async function requireClientAccess(clientId: string): Promise<AppUser> {
   const user = await requireUser();

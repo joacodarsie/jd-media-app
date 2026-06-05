@@ -1,4 +1,4 @@
-import { requireUser } from "@/lib/auth";
+import { requireUser, getAccessibleClientIds } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveUsers, getActiveClients } from "@/lib/cache";
 import type { TaskWithRels } from "@/lib/types";
@@ -19,25 +19,50 @@ export default async function TareasPage() {
   const me = await requireUser();
   const supabase = createClient();
 
+  // Visibilidad: staff (admin/coordinador) ve TODAS las tareas. El resto solo
+  // ve las suyas (asignadas o creadas por él) + las de las cuentas que lleva.
+  const myClientIds = await getAccessibleClientIds(me);
+  const visibilityOr =
+    myClientIds === null
+      ? null
+      : [
+          `asignado_a_id.eq.${me.id}`,
+          `creado_por_id.eq.${me.id}`,
+          ...(myClientIds.length
+            ? [`cliente_id.in.(${myClientIds.join(",")})`]
+            : []),
+        ].join(",");
+
   // Activas/recientes (todo lo no-archivado) en una query, y las archivadas
   // recientes acotadas en otra; se mergean. El working set no se recorta:
   // nada activo puede quedar afuera.
-  const [{ data: activeTasks }, { data: archivedTasks }, users, clients] =
+  let activeQuery = supabase
+    .from("tasks")
+    .select(TASK_SELECT)
+    .neq("estado", "archivada")
+    .order("created_at", { ascending: false });
+  let archivedQuery = supabase
+    .from("tasks")
+    .select(TASK_SELECT)
+    .eq("estado", "archivada")
+    .order("fecha_completada", { ascending: false, nullsFirst: false })
+    .limit(ARCHIVED_LIMIT);
+  if (visibilityOr) {
+    activeQuery = activeQuery.or(visibilityOr);
+    archivedQuery = archivedQuery.or(visibilityOr);
+  }
+
+  const [{ data: activeTasks }, { data: archivedTasks }, users, allClients] =
     await Promise.all([
-      supabase
-        .from("tasks")
-        .select(TASK_SELECT)
-        .neq("estado", "archivada")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("tasks")
-        .select(TASK_SELECT)
-        .eq("estado", "archivada")
-        .order("fecha_completada", { ascending: false, nullsFirst: false })
-        .limit(ARCHIVED_LIMIT),
+      activeQuery,
+      archivedQuery,
       getActiveUsers(),
       getActiveClients(),
     ]);
+
+  const clients = myClientIds
+    ? allClients.filter((c) => myClientIds.includes(c.id))
+    : allClients;
 
   const tasks = [
     ...(activeTasks ?? []),

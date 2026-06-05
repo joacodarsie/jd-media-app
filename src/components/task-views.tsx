@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import {
   AlertCircle,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   Filter,
   Kanban,
   List,
@@ -96,6 +98,14 @@ export function TaskViews({
   const router = useRouter();
   const [view, setView] = useState<ViewMode>("lista");
   const [quick, setQuick] = useState<QuickFilter>("mias");
+  // Autofiltro por mes: arranca en el mes actual. null = todos los meses.
+  // Solo aplica a las vistas "Mis tareas" y "Todas" (hoy/semana/vencidas ya
+  // tienen su propio rango temporal).
+  const [monthCursor, setMonthCursor] = useState<Date | null>(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
+  const monthApplies = quick === "mias" || quick === "todas";
   const [q, setQ] = useState("");
   const [estado, setEstado] = useState(ALL);
   const [prioridad, setPrioridad] = useState(ALL);
@@ -159,6 +169,13 @@ export function TaskViews({
         const d = t.fecha_limite.slice(0, 10);
         if (d < today || d > weekEndStr) return false;
       }
+      // Autofiltro por mes (solo en "mias" / "todas"). Las tareas sin fecha
+      // límite se muestran igual para no perderlas.
+      if (monthApplies && monthCursor && t.fecha_limite) {
+        const d = t.fecha_limite.slice(0, 7);
+        const mk = `${monthCursor.getFullYear()}-${String(monthCursor.getMonth() + 1).padStart(2, "0")}`;
+        if (d !== mk) return false;
+      }
       // Filtros avanzados
       if (q && !t.titulo.toLowerCase().includes(q.toLowerCase())) return false;
       if (estado !== ALL && t.estado !== estado) return false;
@@ -178,7 +195,7 @@ export function TaskViews({
       return a.fecha_limite.localeCompare(b.fecha_limite);
     });
     return r;
-  }, [tasks, q, estado, prioridad, asignado, cliente, area, orden, quick, currentUserId]);
+  }, [tasks, q, estado, prioridad, asignado, cliente, area, orden, quick, currentUserId, monthApplies, monthCursor]);
 
   // Conteos para los chips
   const counts = useMemo(() => {
@@ -186,9 +203,17 @@ export function TaskViews({
     const weekEnd = new Date();
     weekEnd.setDate(weekEnd.getDate() + 7);
     const weekEndStr = ymd(weekEnd);
+    // Para "mias"/"todas" los conteos respetan el mes seleccionado (las sin
+    // fecha se cuentan igual, como en la lista).
+    const mk = monthCursor
+      ? `${monthCursor.getFullYear()}-${String(monthCursor.getMonth() + 1).padStart(2, "0")}`
+      : null;
+    const inMonth = (t: TaskWithRels) =>
+      !mk || !t.fecha_limite || t.fecha_limite.slice(0, 7) === mk;
     return {
-      todas: tasks.length,
-      mias: tasks.filter((t) => t.asignado_a_id === currentUserId).length,
+      todas: tasks.filter(inMonth).length,
+      mias: tasks.filter((t) => t.asignado_a_id === currentUserId && inMonth(t))
+        .length,
       vencidas: tasks.filter(
         (t) =>
           t.estado !== "completada" &&
@@ -205,7 +230,7 @@ export function TaskViews({
         return d >= today && d <= weekEndStr;
       }).length,
     };
-  }, [tasks, currentUserId]);
+  }, [tasks, currentUserId, monthCursor]);
 
   const activeAdv = [estado, prioridad, asignado, cliente, area].filter(
     (v) => v !== ALL
@@ -286,6 +311,58 @@ export function TaskViews({
           active={quick === "todas"}
           onClick={() => setQuick("todas")}
         />
+
+        {/* Selector de mes — solo aplica a Mis tareas / Todas */}
+        {monthApplies && (
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              onClick={() =>
+                setMonthCursor((c) => {
+                  const base = c ?? new Date();
+                  return new Date(base.getFullYear(), base.getMonth() - 1, 1);
+                })
+              }
+              className="rounded-md border bg-card p-1 text-muted-foreground hover:text-foreground"
+              title="Mes anterior"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => {
+                const d = new Date();
+                setMonthCursor((c) =>
+                  c ? null : new Date(d.getFullYear(), d.getMonth(), 1)
+                );
+              }}
+              className={cn(
+                "min-w-28 rounded-md border px-2 py-1 text-xs font-medium capitalize transition-colors",
+                monthCursor
+                  ? "bg-primary/10 text-foreground"
+                  : "bg-card text-muted-foreground"
+              )}
+              title={monthCursor ? "Ver todos los meses" : "Volver al mes actual"}
+            >
+              {monthCursor
+                ? monthCursor.toLocaleDateString("es-AR", {
+                    month: "long",
+                    year: "numeric",
+                  })
+                : "Todos los meses"}
+            </button>
+            <button
+              onClick={() =>
+                setMonthCursor((c) => {
+                  const base = c ?? new Date();
+                  return new Date(base.getFullYear(), base.getMonth() + 1, 1);
+                })
+              }
+              className="rounded-md border bg-card p-1 text-muted-foreground hover:text-foreground"
+              title="Mes siguiente"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Búsqueda + filtros avanzados + vista */}

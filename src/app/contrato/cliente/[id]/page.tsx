@@ -568,9 +568,12 @@ export default async function CartaAcuerdoPage({
 
           {hayMensual && (
             <p>
-              Si el servicio inicia en fecha distinta al primer día del mes, se
-              abonará un monto proporcional por el período restante hasta el fin
-              de ese mes. Desde entonces, el pago será mensual y por adelantado.
+              El abono mensual corresponde a la <strong>totalidad</strong> del
+              servicio del mes, con independencia del día en que se efectúe el
+              pago. Si el contenido previsto para el mes no llegara a completarse
+              dentro del período, las piezas pendientes se trasladan y suman a la
+              producción del mes siguiente, sin que ello genere costo adicional
+              ni reducción del abono.
             </p>
           )}
 

@@ -26,6 +26,7 @@ import { OnboardingContractForm } from "@/components/onboarding-contract-form";
 import { MeetGuideGenerator } from "@/components/meet-guide-generator";
 import { WelcomeMessagesDialog } from "@/components/welcome-messages-dialog";
 import { PaymentMessageDialog } from "@/components/payment-message-dialog";
+import { PagoRecibidoControl } from "@/components/pago-recibido-control";
 import { GenerateInitialTasksButton } from "@/components/generate-initial-tasks-button";
 import { AssignContractNumberButton } from "@/components/assign-contract-number-button";
 import { HelpTrigger } from "@/components/help-trigger";
@@ -57,6 +58,8 @@ interface OnboardingState {
   cliente_id: string;
   carta_enviada_at: string | null;
   pago_recibido_at: string | null;
+  pago_recibido_monto: number | null;
+  pago_recibido_nota: string | null;
   equipo_asignado_at: string | null;
   grupo_wpp_creado_at: string | null;
   mensajes_enviados_at: string | null;
@@ -127,6 +130,8 @@ export default async function OnboardingPage({
     cliente_id: client.id,
     carta_enviada_at: null,
     pago_recibido_at: null,
+    pago_recibido_monto: null,
+    pago_recibido_nota: null,
     equipo_asignado_at: null,
     grupo_wpp_creado_at: null,
     mensajes_enviados_at: null,
@@ -142,6 +147,13 @@ export default async function OnboardingPage({
     (acc, s) => acc + (Number(s.monto_mensual) || 0),
     0
   );
+
+  // Monto esperado del PRIMER pago: los servicios mensuales se cobran completos
+  // y los de pago único arrancan con el 50% por adelantado.
+  const pagoEsperado = services.reduce((acc, s) => {
+    const m = Number(s.monto_mensual) || 0;
+    return acc + (s.facturacion === "unico" ? m * 0.5 : m);
+  }, 0);
 
   // Señales que el sistema sabe SIN que el usuario tenga que clickear:
   // - Equipo: si hay al menos un rol asignado
@@ -184,14 +196,14 @@ export default async function OnboardingPage({
       done: cartaDoneEffective as string | null,
       autoDerived: !onb.carta_enviada_at && cartaDerived,
       icon: FileText,
-      description: "Descargá el PDF de la carta acuerdo y mandá el mensaje de cobro (con proporcional y datos bancarios autocalculados).",
+      description: "Descargá el PDF de la carta acuerdo y mandá el mensaje de cobro (con el monto del mes y datos bancarios autocalculados).",
     },
     {
       key: "pago_recibido_at",
       title: "Pago recibido",
       done: onb.pago_recibido_at,
       icon: CreditCard,
-      description: "Confirmá el ingreso del primer pago antes de seguir con el resto del proceso.",
+      description: "Registrá cuánto pagó el cliente. Si señó (pago parcial), cargá el monto recibido y queda registrado cuánto debe todavía.",
     },
     {
       key: "equipo_asignado_at",
@@ -482,6 +494,15 @@ export default async function OnboardingPage({
                           alreadyDone={isDone}
                         />
                       </>
+                    )}
+                    {step.key === "pago_recibido_at" && (
+                      <PagoRecibidoControl
+                        clientId={client.id}
+                        esperado={pagoEsperado}
+                        moneda={client.contrato_moneda ?? "ARS"}
+                        initialMonto={onb.pago_recibido_monto}
+                        initialNota={onb.pago_recibido_nota}
+                      />
                     )}
                     {step.key === "equipo_asignado_at" && (
                       <Link

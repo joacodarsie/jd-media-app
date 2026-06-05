@@ -25,11 +25,6 @@ export function PaymentMessageDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [breakdown, setBreakdown] = useState<{
-    montoEsteMes: number;
-    esProporcional: boolean;
-    moneda: string;
-  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [pending, start] = useTransition();
@@ -43,11 +38,6 @@ export function PaymentMessageDialog({
       return;
     }
     setMessage(res.message);
-    setBreakdown({
-      montoEsteMes: res.breakdown.montoEsteMes,
-      esProporcional: res.breakdown.esProporcional,
-      moneda: res.breakdown.moneda,
-    });
   }
 
   async function copy() {
@@ -94,17 +84,12 @@ export function PaymentMessageDialog({
         </DialogHeader>
         {loading || !message ? (
           <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Calculando proporcional y armando mensaje…
+            <Loader2 className="h-4 w-4 animate-spin" /> Armando mensaje…
           </div>
         ) : (
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">
-              Mensaje listo para copiar y enviar por WhatsApp.{" "}
-              {breakdown?.esProporcional && (
-                <span className="font-medium">
-                  Incluye proporcional calculado automáticamente.
-                </span>
-              )}
+              Mensaje listo para copiar y enviar por WhatsApp.
             </p>
             <div className="flex justify-between gap-2">
               <Button size="sm" variant="outline" onClick={copy}>

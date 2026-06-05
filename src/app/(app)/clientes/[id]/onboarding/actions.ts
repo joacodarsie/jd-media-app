@@ -54,6 +54,41 @@ export async function toggleOnboardingStep(
   return { ok: true };
 }
 
+/**
+ * Registra el pago recibido del onboarding con el monto efectivo (puede ser una
+ * seña parcial) y una nota opcional. Si el monto es > 0 marca el paso como
+ * hecho (pago_recibido_at = ahora); si se limpia (monto null/0 y sin nota) lo
+ * vuelve a pendiente.
+ */
+export async function setPagoRecibido(
+  clientId: string,
+  monto: number | null,
+  nota: string | null
+) {
+  await requireUser();
+  const admin = createAdmin();
+
+  const montoClean =
+    monto != null && Number.isFinite(monto) && monto > 0 ? monto : null;
+  const notaClean = nota?.trim() ? nota.trim() : null;
+  const recibido = montoClean != null || notaClean != null;
+
+  const { error } = await admin.from("client_onboarding").upsert(
+    {
+      cliente_id: clientId,
+      pago_recibido_monto: montoClean,
+      pago_recibido_nota: notaClean,
+      pago_recibido_at: recibido ? new Date().toISOString() : null,
+    },
+    { onConflict: "cliente_id" }
+  );
+  if (error) return { error: error.message };
+
+  revalidatePath(`/clientes/${clientId}/onboarding`);
+  revalidatePath(`/clientes/${clientId}`);
+  return { ok: true };
+}
+
 export async function assignContractNumber(clientId: string) {
   await requireUser();
   const admin = createAdmin();
@@ -424,26 +459,17 @@ export async function buildPaymentMessage(clientId: string): Promise<
   const hayDescuento = descPct > 0 && descMeses > 0;
   const montoEffective = hayDescuento ? totalMensual * (1 - descPct / 100) : totalMensual;
 
-  // Cálculo proporcional
+  // Política nueva (2026-06): el abono corresponde a la TOTALIDAD del servicio
+  // del mes, sin importar el día en que se efectúe el pago. No se prorratea por
+  // fecha de inicio; si el contenido del mes no se completa, se traslada y suma
+  // a la producción del mes siguiente.
   const inicio = c.contrato_fecha_inicio
     ? new Date(c.contrato_fecha_inicio + "T00:00:00")
     : null;
-  let esProporcional = false;
-  let diasRestantes = 0;
-  let diasMes = 30;
-  let montoEsteMes = montoEffective;
-
-  if (inicio) {
-    const día = inicio.getDate();
-    diasMes = new Date(inicio.getFullYear(), inicio.getMonth() + 1, 0).getDate();
-    diasRestantes = diasMes - día + 1;
-    if (día !== 1) {
-      esProporcional = true;
-      // Prorrateo y redondeo a múltiplos de 10
-      const prorrateado = (montoEffective * diasRestantes) / diasMes;
-      montoEsteMes = Math.round(prorrateado / 10) * 10;
-    }
-  }
+  const esProporcional = false;
+  const diasRestantes = 0;
+  const diasMes = 30;
+  const montoEsteMes = montoEffective;
 
   function fmtMoney(n: number) {
     try {
@@ -468,19 +494,14 @@ export async function buildPaymentMessage(clientId: string): Promise<
   lines.push(`Listo ${nombre}, te envío la carta acuerdo junto con el alcance de los servicios contratados.`);
   lines.push("");
 
-  if (esProporcional && inicio) {
-    const fechaFin = new Date(inicio.getFullYear(), inicio.getMonth() + 1, 0);
-    const fechaFinIso = fechaFin.toISOString().slice(0, 10);
-    lines.push(
-      `En caso de dar inicio al servicio el día ${fmtShort(c.contrato_fecha_inicio!)}, corresponde abonar un proporcional equivalente a ${fmtMoney(montoEsteMes)}, que cubre el período comprendido entre el ${fmtShort(c.contrato_fecha_inicio!)} y el ${fmtShort(fechaFinIso)}.`
-    );
-    lines.push(`A partir del próximo mes, el monto será de ${fmtMoney(montoEffective)} mensuales, como acordamos.`);
-  } else {
-    lines.push(`El monto mensual del servicio es de ${fmtMoney(montoEffective)}, como acordamos.`);
-    if (inicio) {
-      lines.push(`Fecha de inicio: ${fmtShort(c.contrato_fecha_inicio!)}.`);
-    }
+  lines.push(`El monto mensual del servicio es de ${fmtMoney(montoEffective)}, como acordamos.`);
+  if (inicio) {
+    lines.push(`Fecha de inicio: ${fmtShort(c.contrato_fecha_inicio!)}.`);
   }
+  lines.push("");
+  lines.push(
+    `El abono corresponde a la totalidad del servicio del mes, sin importar el día en que se realice el pago. Si por algún motivo no llegáramos a completar todo el contenido dentro del mes, las piezas pendientes se trasladan y suman a la producción del mes siguiente.`
+  );
 
   if (hayDescuento) {
     lines.push("");

@@ -156,7 +156,7 @@ export async function POST(
   // directo (no vía RPC), así que la notificación la disparamos acá.
   const { data: clientRow } = await admin
     .from("clients")
-    .select("nombre, cm_id, disenador_id, audiovisual_id, creativa_asignada_id")
+    .select("nombre, cm_id, disenador_id, audiovisual_id")
     .eq("id", pub.cliente_id)
     .maybeSingle();
 
@@ -167,7 +167,6 @@ export async function POST(
       clientRow?.cm_id,
       clientRow?.disenador_id,
       clientRow?.audiovisual_id,
-      clientRow?.creativa_asignada_id,
     ].filter((id): id is string => !!id)
   );
 

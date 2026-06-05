@@ -33,7 +33,7 @@ export const TOOLS: Anthropic.Tool[] = [
         },
         area: {
           type: "string",
-          description: "Filtrar por área. Ej: 'Paid Media', 'Creativas'.",
+          description: "Filtrar por área. Ej: 'Paid Media', 'Community Manager'.",
         },
         solo_vencidas: {
           type: "boolean",
@@ -65,7 +65,7 @@ export const TOOLS: Anthropic.Tool[] = [
         },
         area: {
           type: "string",
-          description: "Área. Default 'Creativas'.",
+          description: "Área. Default 'Community Manager'.",
         },
         prioridad: {
           type: "string",
@@ -510,7 +510,7 @@ export async function runTool(
           asignado_a_id,
           creado_por_id: currentUserId,
           cliente_id,
-          area: input.area ?? "Creativas",
+          area: input.area ?? "Community Manager",
           prioridad: input.prioridad ?? "media",
           fecha_limite: input.fecha_limite ?? null,
         }).select("id, titulo").single();
@@ -601,7 +601,7 @@ export async function runTool(
 
       case "list_clients": {
         let q = sb.from("clients")
-          .select("id, nombre, pack, estado, contacto_nombre, creativa:users!clients_creativa_asignada_id_fkey(nombre)")
+          .select("id, nombre, pack, estado, contacto_nombre, cm:users!clients_cm_id_fkey(nombre)")
           .order("nombre");
         if (input.solo_activos) q = q.eq("estado", "activo");
         const { data, error } = await q;
@@ -611,7 +611,7 @@ export async function runTool(
 
       case "get_client": {
         const { data: client, error } = await sb.from("clients")
-          .select("*, creativa:users!clients_creativa_asignada_id_fkey(nombre)")
+          .select("*, cm:users!clients_cm_id_fkey(nombre)")
           .ilike("nombre", `%${input.nombre}%`)
           .limit(1).maybeSingle();
         if (error) return { ok: false, error: error.message };

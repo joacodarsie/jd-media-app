@@ -70,7 +70,6 @@ export interface TeamRow {
 const ROLES: UserRole[] = [
   "admin",
   "coordinador",
-  "creativa",
   "community_manager",
   "audiovisual",
   "comercial",
@@ -84,7 +83,6 @@ const AREAS = [
   "Estrategia/Dirección",
   "Coordinación",
   "Diseño",
-  "Creativas",
   "Community Manager",
   "Edición Audiovisual",
   "Paid Media",
@@ -505,7 +503,7 @@ function InviteDialog() {
   const [open, setOpen] = useState(false);
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
-  const [rol, setRol] = useState<UserRole>("creativa");
+  const [rol, setRol] = useState<UserRole>("community_manager");
   const [area, setArea] = useState(AREAS[3]);
   const [pwd, setPwd] = useState("");
   const [pending, start] = useTransition();
@@ -513,7 +511,7 @@ function InviteDialog() {
   function reset() {
     setNombre("");
     setEmail("");
-    setRol("creativa");
+    setRol("community_manager");
     setArea(AREAS[3]);
     setPwd("");
   }

@@ -49,7 +49,7 @@ Si la pub fue creada por el CM y vos sos la responsable de diseño:
 1. Andá a [Contenidos](/ayuda/contenidos-calendario) → filtrá por estado `en_diseno` + tu nombre.
 2. Abrí la pub, mirá el copy y el guion que dejó el CM.
 3. Subí el asset al campo `asset_url` de la pub (link a Drive/figma/etc).
-4. Cambiá estado a `revision_creativa` para que la creativa o el CM lo revise antes de mandarlo al cliente.
+4. Cambiá estado a `revision_creativa` para que el CM lo revise antes de mandarlo al cliente.
 
 ## Lo que JDmedIA te resuelve
 

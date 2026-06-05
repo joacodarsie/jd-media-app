@@ -79,10 +79,10 @@ async function canEditClientReport(
   if (isStaff(meRol)) return true;
   const { data } = await supabase
     .from("clients")
-    .select("cm_id, creativa_asignada_id")
+    .select("cm_id")
     .eq("id", clienteId)
     .maybeSingle();
-  return !!data && (data.cm_id === meId || data.creativa_asignada_id === meId);
+  return !!data && data.cm_id === meId;
 }
 
 export async function upsertMonthlyReport(input: MonthlyReportInput) {

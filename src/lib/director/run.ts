@@ -15,7 +15,6 @@ interface ClientLite {
   rubro: string | null;
   pack: string | null;
   cm_id: string | null;
-  creativa_asignada_id: string | null;
 }
 
 function startOfMonthISO(d: Date) {
@@ -68,7 +67,7 @@ export async function runDirectorWeekly(
 
   const { data: clientsRaw } = await admin
     .from("clients")
-    .select("id, nombre, rubro, pack, cm_id, creativa_asignada_id")
+    .select("id, nombre, rubro, pack, cm_id")
     .eq("estado", "activo");
   const clients = (clientsRaw ?? []) as ClientLite[];
   if (clients.length === 0) return { ok: true, analyzed: 0, notified: 0 };
@@ -285,7 +284,7 @@ export async function runDirectorWeekly(
       rows.push({ user_id, tipo: "recordatorio", mensaje, leida: false, link: "/director" });
     };
     for (const x of conBrechas) {
-      const recipient = x.c.cm_id ?? x.c.creativa_asignada_id;
+      const recipient = x.c.cm_id;
       if (!recipient) continue;
       const partes: string[] = [];
       if (x.faltanReels > 0) partes.push(`${x.faltanReels} reel(s)`);

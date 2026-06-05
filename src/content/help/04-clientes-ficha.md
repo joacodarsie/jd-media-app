@@ -15,8 +15,7 @@ La ficha del cliente (`/clientes/[id]`) es el centro de control de todo lo que t
 Nombre, rubro, pack contratado, estado (activo/pausado/baja), fechas. Editable desde el botón **Editar cliente**.
 
 ### Equipo asignado
-- **CM** — Community Manager principal
-- **Creativa asignada** — quien lleva la estrategia/cuenta
+- **CM** — Community Manager principal: lleva la cuenta y responde los mensajes
 - **Diseñador**
 - **Audiovisual**
 

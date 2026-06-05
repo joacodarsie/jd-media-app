@@ -46,8 +46,7 @@ const ESTADO_BADGE: Record<string, string> = {
   perdido: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
 };
 
-interface ClientWithCreativa extends Client {
-  creativa: { id: string; nombre: string } | null;
+interface ClientWithTeam extends Client {
   cm?: { id: string; nombre: string } | null;
   disenador?: { id: string; nombre: string } | null;
   audiovisual?: { id: string; nombre: string } | null;
@@ -75,7 +74,7 @@ export default async function ClientDetail({
   ] = await Promise.all([
     supabase
       .from("clients")
-      .select("*, creativa:users!clients_creativa_asignada_id_fkey(id,nombre), cm:users!clients_cm_id_fkey(id,nombre), disenador:users!clients_disenador_id_fkey(id,nombre), audiovisual:users!clients_audiovisual_id_fkey(id,nombre)")
+      .select("*, cm:users!clients_cm_id_fkey(id,nombre), disenador:users!clients_disenador_id_fkey(id,nombre), audiovisual:users!clients_audiovisual_id_fkey(id,nombre)")
       .eq("id", params.id)
       .maybeSingle(),
     supabase
@@ -131,17 +130,18 @@ export default async function ClientDetail({
       /* silencioso */
     }
   }
-  const c = client as ClientWithCreativa;
+  const c = client as ClientWithTeam;
   const allTasks = (tasks ?? []) as TaskWithRels[];
   const activas = allTasks.filter((t) => t.estado !== "completada");
   const completadas = allTasks.filter((t) => t.estado === "completada");
-  const canEdit = isStaff(me.rol) || c.creativa_asignada_id === me.id;
+  const canEdit =
+    isStaff(me.rol) ||
+    (c as unknown as { cm_id?: string | null }).cm_id === me.id;
   // canSeeFinancials = staff o cualquier persona asignada a la cuenta.
   // Las chicas que no esten asignadas pueden ver la ficha pero no datos privados
   // (contacto, monto, CBU, finanzas).
   const svcList = (services ?? []) as ClientService[];
   const assignedToMe =
-    c.creativa_asignada_id === me.id ||
     (c as unknown as { cm_id?: string | null }).cm_id === me.id ||
     (c as unknown as { disenador_id?: string | null }).disenador_id === me.id ||
     (c as unknown as { audiovisual_id?: string | null }).audiovisual_id === me.id ||
@@ -236,7 +236,7 @@ export default async function ClientDetail({
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               {c.rubro ?? "Sin rubro"}
-              {c.creativa ? ` · Responsable: ${c.creativa.nombre}` : ""}
+              {c.cm ? ` · CM: ${c.cm.nombre}` : ""}
             </p>
           </div>
           {c.fecha_inicio && (

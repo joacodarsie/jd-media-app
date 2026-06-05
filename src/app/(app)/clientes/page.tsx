@@ -21,7 +21,7 @@ export default async function ClientesPage() {
       supabase
         .from("clients")
         .select(
-          "*, creativa:users!clients_creativa_asignada_id_fkey(id,nombre), cm:users!clients_cm_id_fkey(id,nombre), disenador:users!clients_disenador_id_fkey(id,nombre), audiovisual:users!clients_audiovisual_id_fkey(id,nombre)"
+          "*, cm:users!clients_cm_id_fkey(id,nombre), disenador:users!clients_disenador_id_fkey(id,nombre), audiovisual:users!clients_audiovisual_id_fkey(id,nombre)"
         )
         .order("nombre"),
       supabase
@@ -49,7 +49,7 @@ export default async function ClientesPage() {
     ]);
 
   // Los no-staff solo ven sus cuentas ACTIVAS: asignadas por rol (cm / diseño /
-  // audiovisual / creativa) o por ser responsables de un servicio activo.
+  // audiovisual) o por ser responsables de un servicio activo.
   let visibleClients = clients ?? [];
   let visibleTasks = tasks ?? [];
   let visiblePubs = pubs ?? [];
@@ -59,7 +59,6 @@ export default async function ClientesPage() {
       const row = c as Record<string, unknown>;
       if (row.estado !== "activo") return false;
       const mine =
-        row.creativa_asignada_id === me.id ||
         row.cm_id === me.id ||
         row.disenador_id === me.id ||
         row.audiovisual_id === me.id ||

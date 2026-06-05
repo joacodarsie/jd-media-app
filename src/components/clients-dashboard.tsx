@@ -18,7 +18,6 @@ import { Input } from "@/components/ui/input";
 import { TaskList } from "@/components/task-list";
 
 interface ClientRow extends Client {
-  creativa?: { id: string; nombre: string } | null;
   cm?: { id: string; nombre: string } | null;
   disenador?: { id: string; nombre: string } | null;
   audiovisual?: { id: string; nombre: string } | null;
@@ -103,7 +102,7 @@ export function ClientsDashboard({
   const responsables = useMemo(() => {
     const m = new Map<string, string>();
     for (const c of clients) {
-      if (c.creativa) m.set(c.creativa.id, c.creativa.nombre);
+      if (c.cm) m.set(c.cm.id, c.cm.nombre);
     }
     return Array.from(m.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [clients]);
@@ -113,7 +112,8 @@ export function ClientsDashboard({
       if (quick === "activos" && c.estado !== "activo") return false;
       if (quick === "perdido" && c.estado !== "perdido") return false;
       if (pack !== "__all__" && c.pack !== pack) return false;
-      if (resp !== "__all__" && c.creativa_asignada_id !== resp) return false;
+      if (resp !== "__all__" && (c as { cm_id?: string | null }).cm_id !== resp)
+        return false;
       if (q && !c.nombre.toLowerCase().includes(q.toLowerCase())) return false;
       return true;
     });
@@ -255,7 +255,7 @@ function ClientCard({
             </span>
           </div>
           <div className="mt-0.5 text-xs text-muted-foreground">
-            {client.pack} · {client.creativa?.nombre ?? "Sin responsable"}
+            {client.pack} · {client.cm?.nombre ?? "Sin CM"}
           </div>
           {(nextPub || equipo.length > 0) && (
             <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">

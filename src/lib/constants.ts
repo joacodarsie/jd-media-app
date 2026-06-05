@@ -26,7 +26,6 @@ export const AREAS = [
   "Estrategia/Dirección",
   "Coordinación",
   "Diseño",
-  "Creativas",
   "Community Manager",
   "Edición Audiovisual",
   "Paid Media",
@@ -39,7 +38,6 @@ export const AREAS = [
 export const ROLE_LABEL: Record<UserRole, string> = {
   admin: "Admin",
   coordinador: "Coordinación",
-  creativa: "Creativa",
   community_manager: "Community Manager",
   audiovisual: "Editor Audiovisual",
   comercial: "Comercial",

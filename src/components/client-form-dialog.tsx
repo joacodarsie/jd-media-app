@@ -61,7 +61,6 @@ export function ClientFormDialog({
   const [rubro, setRubro] = useState(client?.rubro ?? "");
   const [pack, setPack] = useState<string>(client?.pack ?? "Presencia");
   const [estado, setEstado] = useState<string>(client?.estado ?? "activo");
-  const [creativa, setCreativa] = useState(client?.creativa_asignada_id ?? NONE);
   const [fechaInicio, setFechaInicio] = useState(client?.fecha_inicio ?? "");
   const [monto, setMonto] = useState<string>(
     client?.monto_mensual != null ? String(client.monto_mensual) : ""
@@ -164,7 +163,6 @@ export function ClientFormDialog({
       rubro,
       pack: derivedPack,
       estado,
-      creativa_asignada_id: creativa === NONE ? null : creativa,
       fecha_inicio: fechaInicio || null,
       monto_mensual: derivedMonto,
       calendario_url: client?.calendario_url ?? null,
@@ -280,22 +278,6 @@ export function ClientFormDialog({
                   {Object.entries(CLIENT_STATUS_LABEL).map(([v, l]) => (
                     <SelectItem key={v} value={v}>
                       {l}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Responsable</Label>
-              <Select value={creativa} onValueChange={setCreativa}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>Sin asignar</SelectItem>
-                  {users.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.nombre}
                     </SelectItem>
                   ))}
                 </SelectContent>

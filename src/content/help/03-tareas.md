@@ -19,7 +19,7 @@ Click en **Nueva tarea** desde la vista de Tareas, o pedíselo directamente a JD
 - **Título**: corto y accionable ("Revisar moodboard Nico", no "moodboard").
 - **Asignado a**: quien tiene que hacer la tarea. Una sola persona.
 - **Cliente**: si la tarea está vinculada a un cliente. Aparecerá en su ficha.
-- **Área**: para clasificar (Creativas, Paid, Diseño, Audiovisuales, etc).
+- **Área**: para clasificar (Community Manager, Paid, Diseño, Audiovisuales, etc).
 - **Prioridad**: baja / media / alta / urgente.
 - **Fecha límite**: cuando vence.
 

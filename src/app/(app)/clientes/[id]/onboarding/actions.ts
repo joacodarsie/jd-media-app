@@ -116,7 +116,7 @@ export async function generateInitialTasks(clientId: string) {
 
   const { data: client } = await supabase
     .from("clients")
-    .select("id, nombre, creativa_asignada_id, cm_id, disenador_id, audiovisual_id")
+    .select("id, nombre, cm_id, disenador_id, audiovisual_id")
     .eq("id", clientId)
     .maybeSingle();
 
@@ -131,7 +131,6 @@ export async function generateInitialTasks(clientId: string) {
   const c = client as {
     id: string;
     nombre: string;
-    creativa_asignada_id: string | null;
     cm_id: string | null;
     disenador_id: string | null;
     audiovisual_id: string | null;
@@ -158,7 +157,7 @@ export async function generateInitialTasks(clientId: string) {
       titulo,
       descripcion,
       area,
-      asignado_a_id: asignado ?? c.creativa_asignada_id ?? null,
+      asignado_a_id: asignado ?? c.cm_id ?? null,
       diasPlazo: when,
     });
   }
@@ -166,19 +165,19 @@ export async function generateInitialTasks(clientId: string) {
   if (svcTypes.has("gestion_redes" as ServiceType)) {
     add(2, "Auditoría inicial de redes",
       "Revisar perfiles actuales del cliente, performance histórica, contenido publicado y oportunidades.",
-      "Creativas", c.creativa_asignada_id);
+      "Community Manager", c.cm_id);
     add(5, "Manual de marca",
       "Definir paleta, tipografías, tono de voz, do/don'ts y guidelines visuales.",
-      "Creativas", c.creativa_asignada_id);
+      "Diseño", c.disenador_id);
     add(7, "Diagnóstico inicial (PDF)",
       "Estrategia, plan de acción, pilares de contenido y lineamientos. Compartir con el cliente.",
-      "Creativas", c.creativa_asignada_id);
+      "Community Manager", c.cm_id);
     add(10, "Moodboard",
       "Armar moodboard visual para definir estética del feed.",
       "Diseño", c.disenador_id);
     add(10, "Primer calendario de contenidos",
       "Calendario mensual con copys, formatos y referencias. Pasar a aprobación del cliente.",
-      "Creativas", c.creativa_asignada_id);
+      "Community Manager", c.cm_id);
     add(14, "Optimización de perfiles",
       "Bio, foto, historias destacadas, links, portadas.",
       "Diseño", c.disenador_id);
@@ -232,10 +231,10 @@ export async function generateInitialTasks(clientId: string) {
   // Tareas comunes a TODOS los clientes
   add(1, "Reunión de kickoff",
     `Primera reunión con el cliente. Presentar equipo asignado, cronograma y siguientes pasos.`,
-    "Creativas", c.creativa_asignada_id);
+    "Community Manager", c.cm_id);
   add(2, "Pedir accesos y material",
     "Solicitar al cliente: accesos a redes, fotos/videos existentes, logos, brand assets.",
-    "Creativas", c.creativa_asignada_id);
+    "Community Manager", c.cm_id);
 
   if (tasks.length === 0) {
     return { error: "No hay servicios contratados activos para generar tareas." };
@@ -281,7 +280,7 @@ export async function buildWelcomeMessages(clientId: string): Promise<
 
   const { data: client } = await supabase
     .from("clients")
-    .select("nombre, contacto_nombre, creativa:users!clients_creativa_asignada_id_fkey(nombre)")
+    .select("nombre, contacto_nombre, cm:users!clients_cm_id_fkey(nombre)")
     .eq("id", clientId)
     .maybeSingle();
   if (!client) return { ok: false, error: "Cliente no encontrado" };
@@ -296,16 +295,14 @@ export async function buildWelcomeMessages(clientId: string): Promise<
   const c = client as {
     nombre: string;
     contacto_nombre: string | null;
-    creativa: { nombre?: string } | { nombre?: string }[] | null;
+    cm: { nombre?: string } | { nombre?: string }[] | null;
   };
-  const creativaName = Array.isArray(c.creativa)
-    ? c.creativa[0]?.nombre
-    : c.creativa?.nombre;
+  const cmName = Array.isArray(c.cm) ? c.cm[0]?.nombre : c.cm?.nombre;
   const nombreContacto = (c.contacto_nombre ?? c.nombre).split(" ")[0];
 
   const m1 = `Hola ${nombreContacto}!! 👋 Bienvenido al grupo de trabajo de JD Media.
 
-${creativaName ? `${creativaName} va a estar a cargo` : "Vamos a estar a cargo"} de la estrategia general y del seguimiento del proyecto.
+${cmName ? `${cmName} va a estar a cargo` : "Vamos a estar a cargo"} de la estrategia general y del seguimiento del proyecto.
 
 Este grupo lo vamos a usar para centralizar toda la comunicación del proyecto:
 – coordinación general

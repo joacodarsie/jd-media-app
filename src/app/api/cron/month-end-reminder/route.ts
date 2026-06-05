@@ -10,7 +10,6 @@ export const maxDuration = 60;
  * Detecta clientes activos que todavía no tienen plan de contenido para el
  * mes siguiente y dispara una notificación in-app a:
  *   - el CM asignado al cliente (si tiene)
- *   - la creativa asignada (si tiene)
  *   - los admins de la agencia
  *
  * Idempotente dentro del mismo día (no duplica notificaciones).
@@ -62,7 +61,7 @@ export async function GET(req: NextRequest) {
   // 1) Clientes activos
   const { data: clients, error: clientsErr } = await admin
     .from("clients")
-    .select("id, nombre, cm_id, creativa_asignada_id")
+    .select("id, nombre, cm_id")
     .eq("estado", "activo");
 
   if (clientsErr) {
@@ -72,7 +71,6 @@ export async function GET(req: NextRequest) {
     id: string;
     nombre: string;
     cm_id: string | null;
-    creativa_asignada_id: string | null;
   }[];
 
   if (clientList.length === 0) {
@@ -113,7 +111,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // 3) Resolver destinatarios: admins activos + CM/creativa asignados de cada cliente faltante
+  // 3) Resolver destinatarios: admins activos + CM asignado de cada cliente faltante
   const { data: admins } = await admin
     .from("users")
     .select("id")
@@ -150,7 +148,6 @@ export async function GET(req: NextRequest) {
   for (const a of adminIds) recipients.add(a);
   for (const c of missing) {
     if (c.cm_id) recipients.add(c.cm_id);
-    if (c.creativa_asignada_id) recipients.add(c.creativa_asignada_id);
   }
 
   const rows = Array.from(recipients)

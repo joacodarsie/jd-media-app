@@ -1,7 +1,6 @@
 export type UserRole =
   | "admin"
   | "coordinador"
-  | "creativa"
   | "community_manager"
   | "audiovisual"
   | "comercial"
@@ -126,7 +125,6 @@ export interface Client {
   nombre: string;
   rubro: string | null;
   pack: ClientPack;
-  creativa_asignada_id: string | null;
   estado: ClientStatus;
   fecha_inicio: string | null;
   monto_mensual: number | null;

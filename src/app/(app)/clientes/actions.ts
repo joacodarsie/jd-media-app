@@ -32,7 +32,6 @@ export interface ClientInput {
   rubro: string | null;
   pack: string;
   estado: string;
-  creativa_asignada_id: string | null;
   fecha_inicio: string | null;
   monto_mensual: number | null;
   calendario_url: string | null;
@@ -59,7 +58,6 @@ function clean(input: ClientInput) {
     rubro: input.rubro?.trim() || null,
     pack: input.pack,
     estado: input.estado,
-    creativa_asignada_id: input.creativa_asignada_id || null,
     fecha_inicio: input.fecha_inicio || null,
     monto_mensual:
       input.monto_mensual === null || Number.isNaN(input.monto_mensual)

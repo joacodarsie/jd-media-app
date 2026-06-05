@@ -52,7 +52,7 @@ export function PositionFormDialog({
   const [pending, start] = useTransition();
 
   const [nombre, setNombre] = useState(position?.nombre ?? "");
-  const [area, setArea] = useState<string>(position?.area ?? "Creativas");
+  const [area, setArea] = useState<string>(position?.area ?? "Community Manager");
   const [descripcion, setDescripcion] = useState(position?.descripcion ?? "");
   const [aIncluye, setAIncluye] = useState(position?.alcance_incluye ?? "");
   const [aExcluye, setAExcluye] = useState(position?.alcance_excluye ?? "");

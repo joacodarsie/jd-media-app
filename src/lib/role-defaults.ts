@@ -27,7 +27,6 @@ export const ROLE_DEFAULT_FEATURES: Record<UserRole, Feature[]> = {
     "documentos_globales",
   ],
   comercial: ["clientes_credenciales"],
-  creativa: [],
   community_manager: [],
   audiovisual: [],
   paid_media: [],

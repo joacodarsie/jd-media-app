@@ -53,7 +53,7 @@ export function TaskFormDialog({
     task?.asignado_a_id ?? NONE
   );
   const [cliente, setCliente] = useState<string>(task?.cliente_id ?? NONE);
-  const [area, setArea] = useState<string>(task?.area ?? "Creativas");
+  const [area, setArea] = useState<string>(task?.area ?? "Community Manager");
   const [prioridad, setPrioridad] = useState<string>(
     task?.prioridad ?? "media"
   );

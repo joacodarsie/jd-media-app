@@ -24,7 +24,7 @@ const SERVICE_GROUPS: { id: string; title: string; subtitle: string; areas: stri
     id: "gestion_redes",
     title: "Gestión de redes",
     subtitle: "El servicio principal: contenido + comunidad por cliente",
-    areas: ["Creativas", "Community Manager", "Diseño", "Edición Audiovisual"],
+    areas: ["Community Manager", "Diseño", "Edición Audiovisual"],
   },
   {
     id: "paid_media",

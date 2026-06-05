@@ -10,7 +10,6 @@ interface ClientLite {
   nombre: string;
   pack: string | null;
   cm_id: string | null;
-  creativa_asignada_id: string | null;
 }
 
 function quotaFor(pack: string | null): { reels: number; posts: number } {
@@ -106,7 +105,7 @@ export async function runMonthEndCompliance(admin: SupabaseClient, now: Date) {
 
   const { data: clientsRaw } = await admin
     .from("clients")
-    .select("id, nombre, pack, cm_id, creativa_asignada_id")
+    .select("id, nombre, pack, cm_id")
     .eq("estado", "activo");
   const clients = (clientsRaw ?? []) as ClientLite[];
   if (clients.length === 0) return { ok: true, notified: 0 };
@@ -144,7 +143,7 @@ export async function runMonthEndCompliance(admin: SupabaseClient, now: Date) {
     if (faltaP > 0) det.push(`${p}/${q.posts} posts`);
     incompletos.push(`${c.nombre} (${det.join(", ")})`);
 
-    const recipient = c.cm_id ?? c.creativa_asignada_id;
+    const recipient = c.cm_id;
     if (recipient) {
       rows.push({
         user_id: recipient,
@@ -198,7 +197,7 @@ export async function runMonthStartReports(admin: SupabaseClient, now: Date) {
 
   const { data: clientsRaw } = await admin
     .from("clients")
-    .select("id, nombre, pack, cm_id, creativa_asignada_id")
+    .select("id, nombre, pack, cm_id")
     .eq("estado", "activo");
   const clients = (clientsRaw ?? []) as ClientLite[];
   if (clients.length === 0) return { ok: true, prepared: 0 };

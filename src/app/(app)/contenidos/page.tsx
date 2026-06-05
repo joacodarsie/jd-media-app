@@ -17,7 +17,7 @@ export default async function ContenidosPage({
   const supabase = createClient();
   const clienteFiltro = searchParams?.cliente ?? undefined;
 
-  // CM / diseño / audiovisual / creativa: solo ven las cuentas que llevan.
+  // CM / diseño / audiovisual: solo ven las cuentas que llevan.
   // Staff (admin/coordinador) → null = ven todas.
   const myClientIds = await getAccessibleClientIds(me);
 

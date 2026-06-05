@@ -160,7 +160,7 @@ export default async function ReporteClientePage({
     supabase
       .from("clients")
       .select(
-        "*, cm:users!clients_cm_id_fkey(id,nombre), disenador:users!clients_disenador_id_fkey(id,nombre), audiovisual:users!clients_audiovisual_id_fkey(id,nombre), creativa:users!clients_creativa_asignada_id_fkey(id,nombre)"
+        "*, cm:users!clients_cm_id_fkey(id,nombre), disenador:users!clients_disenador_id_fkey(id,nombre), audiovisual:users!clients_audiovisual_id_fkey(id,nombre)"
       )
       .eq("id", params.id)
       .maybeSingle(),
@@ -253,14 +253,12 @@ export default async function ReporteClientePage({
     cm?: { id: string; nombre: string } | null;
     disenador?: { id: string; nombre: string } | null;
     audiovisual?: { id: string; nombre: string } | null;
-    creativa?: { id: string; nombre: string } | null;
   };
   // Pueden editar el reporte: staff (admin/coordinador) y la CM / responsable
   // asignada a esta cuenta.
   const canEdit =
     isStaff(me.rol) ||
-    c.cm_id === me.id ||
-    c.creativa_asignada_id === me.id;
+    c.cm_id === me.id;
   const pubList = (pubs ?? []) as RawPub[];
   const taskList = (tasks ?? []) as unknown as RawTask[];
   const commentList = (comments ?? []) as unknown as RawComment[];
@@ -531,8 +529,7 @@ export default async function ReporteClientePage({
           <h2 className="mb-2 text-base font-semibold text-zinc-900">
             Equipo asignado
           </h2>
-          <div className="grid grid-cols-2 gap-3 rounded-lg border border-zinc-200 p-4 md:grid-cols-4">
-            <Field label="Coordinación" value={c.creativa?.nombre ?? "—"} />
+          <div className="grid grid-cols-2 gap-3 rounded-lg border border-zinc-200 p-4 md:grid-cols-3">
             <Field label="Community Manager" value={c.cm?.nombre ?? "—"} />
             <Field label="Diseño" value={c.disenador?.nombre ?? "—"} />
             <Field label="Audiovisual" value={c.audiovisual?.nombre ?? "—"} />

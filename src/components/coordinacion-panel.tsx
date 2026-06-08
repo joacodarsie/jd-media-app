@@ -259,13 +259,6 @@ export function CoordinacionPanel({
             </label>
           </div>
 
-          {/* Comisiones en cuadros separados (monto en $ según el pack) */}
-          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-3">
-            <Stat label="Comisión cierre" value={fmt(sim.closerFull)} sub={`15% de ${fmt(sim.p.precio)}`} />
-            <Stat label="Comisión referido" value={fmt(sim.referidoFull)} sub={`5% de ${fmt(sim.p.precio)}`} />
-            <Stat label="Cerró + refirió" value={fmt(sim.ambosFull)} sub="misma persona · 20%" />
-          </div>
-
           <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-4">
             <Stat label="Margen recurrente" value={fmt(sim.margenRec)} sub={`/mes · ${pctOf(sim.margenRec, sim.p.precio)}%`} tone="good" />
             <Stat label="Costos 1er mes" value={fmt(sim.oneTime)} sub="una vez" muted />
@@ -312,15 +305,20 @@ export function CoordinacionPanel({
           <h2 className="text-base font-semibold">Tarifas por rol</h2>
         </div>
         <div className="space-y-4 p-4">
-          <div className="grid gap-3 sm:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-3">
             <Field label="Diseño · por pieza"><NumInput prefix="$" value={rates.diseno_pieza} onChange={(n) => patchRate("diseno_pieza", n)} /></Field>
             <Field label="Edición · por reel"><NumInput prefix="$" value={rates.edicion_reel} onChange={(n) => patchRate("edicion_reel", n)} /></Field>
             <Field label="Manual de marca (único)"><NumInput prefix="$" value={rates.manual_marca} onChange={(n) => patchRate("manual_marca", n)} /></Field>
-            <Field label="Comisión closer (1er mes)">
-              <div className="flex h-8 items-center rounded-md border bg-muted/40 px-2 text-xs text-muted-foreground">
-                15% cierre · 5% referido · 20% ambas
-              </div>
-            </Field>
+          </div>
+          <div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Comisión de venta · % del 1er mes
+            </h3>
+            <div className="grid grid-cols-3 gap-3">
+              <ReadField label="Cierre" value="15%" />
+              <ReadField label="Referido" value="5%" />
+              <ReadField label="Cerró + refirió" value="20%" />
+            </div>
           </div>
           <RateLadder title="Community Manager · por pack" prefix="cm" rates={rates.cm} onChange={patchRate} />
           <RateLadder title="Media Buyer · por pack" prefix="mb" rates={rates.media_buyer} onChange={patchRate} />
@@ -370,8 +368,13 @@ export function CoordinacionPanel({
 function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
   const [posts, setPosts] = useState(4);
   const [reels, setReels] = useState(4);
+  const [stories, setStories] = useState(8);
   const [incluyePauta, setIncluyePauta] = useState(false);
   const [margenObjetivo, setMargenObjetivo] = useState(40);
+  // Costos posibles del primer mes (one-time)
+  const [conManual, setConManual] = useState(false);
+  const [conCloser, setConCloser] = useState(false);
+  const [conReferido, setConReferido] = useState(false);
 
   const costo =
     productionBase("Personalizado", posts, reels, rates) +
@@ -380,6 +383,14 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
   const precioAt = (m: number) => (m >= 100 ? costo : Math.round(costo / (1 - m / 100)));
   const precioObjetivo = precioAt(margenObjetivo);
   const margenObjetivoMonto = precioObjetivo - costo;
+
+  // One-time del 1er mes: manual de marca + comisiones (% del precio sugerido).
+  const oneTime =
+    (conManual ? rates.manual_marca : 0) +
+    (conCloser ? Math.round(precioObjetivo * COMMISSION_PCT.closer) : 0) +
+    (conReferido ? Math.round(precioObjetivo * COMMISSION_PCT.referido) : 0);
+  const margenMes1 = margenObjetivoMonto - oneTime;
+  const hayOneTime = oneTime > 0;
 
   return (
     <section className="rounded-xl border bg-card">
@@ -395,16 +406,15 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Field label="Posts / carruseles"><NumInput value={posts} onChange={setPosts} /></Field>
           <Field label="Reels"><NumInput value={reels} onChange={setReels} /></Field>
+          <Field label="Días stories"><NumInput value={stories} onChange={setStories} /></Field>
           <Field label="Margen objetivo %"><NumInput value={margenObjetivo} onChange={setMargenObjetivo} /></Field>
-          <label className="flex cursor-pointer items-end gap-2 pb-1.5 text-sm">
-            <input
-              type="checkbox"
-              checked={incluyePauta}
-              onChange={(e) => setIncluyePauta(e.target.checked)}
-              className="h-4 w-4 accent-primary"
-            />
-            Incluye pauta (media buyer)
-          </label>
+        </div>
+
+        <div className="flex flex-wrap gap-x-5 gap-y-2">
+          <Check label="Incluye pauta (media buyer)" checked={incluyePauta} onChange={setIncluyePauta} />
+          <Check label={`Manual de marca 1er mes (${fmt(rates.manual_marca)})`} checked={conManual} onChange={setConManual} />
+          <Check label="Comisión cierre 15% (1er mes)" checked={conCloser} onChange={setConCloser} />
+          <Check label="Comisión referido 5% (1er mes)" checked={conReferido} onChange={setConReferido} />
         </div>
 
         <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-4">
@@ -412,22 +422,68 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
           <Stat
             label={`Precio sugerido · ${margenObjetivo}%`}
             value={fmt(precioObjetivo)}
-            sub={`margen ${fmt(margenObjetivoMonto)}`}
+            sub={`margen ${fmt(margenObjetivoMonto)}/mes`}
             tone="good"
           />
           <Stat label="Mínimo sano · 25%" value={fmt(precioAt(25))} sub="cobrá al menos esto" />
           <Stat label="Premium · 50%" value={fmt(precioAt(50))} sub="techo cómodo" />
         </div>
 
+        {hayOneTime && (
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2">
+            <Stat label="Costos 1er mes" value={fmt(oneTime)} sub="una vez (manual + comisión)" muted />
+            <Stat
+              label="Margen 1er mes"
+              value={fmt(margenMes1)}
+              sub={`${pctOf(margenMes1, precioObjetivo)}% del 1er mes`}
+              tone={margenMes1 >= 0 ? "good" : "bad"}
+            />
+          </div>
+        )}
+
         <p className="text-[11px] text-muted-foreground">
           El precio sugerido = costo ÷ (1 − margen). Los packs actuales rinden
-          entre 24% y 40%; bajar del 25% deja la cuenta muy fina. El costo no
-          incluye el manual de marca ($
-          {rates.manual_marca.toLocaleString("es-AR")}, único) ni la comisión del
-          closer (one-time del 1er mes).
+          entre 24% y 40%; bajar del 25% deja la cuenta muy fina. Las historias
+          las hace la CM (ya incluidas en su tarifa, no suman costo). El manual y
+          la comisión son costos de una sola vez del primer mes.
         </p>
       </div>
     </section>
+  );
+}
+
+// Checkbox con label, reutilizable.
+function Check({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2 text-sm">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-4 w-4 accent-primary"
+      />
+      {label}
+    </label>
+  );
+}
+
+// Campo de solo-lectura con el mismo look que Field (para tarifas no editables).
+function ReadField({ label, value }: { label: string; value: string }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-medium text-muted-foreground">{label}</span>
+      <div className="flex h-8 items-center rounded-md border bg-muted/40 px-2 text-sm font-semibold tabular-nums">
+        {value}
+      </div>
+    </label>
   );
 }
 

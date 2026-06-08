@@ -98,6 +98,12 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/global", label: "Global", icon: "BarChart3", feature: "global" },
       { href: "/finanzas", label: "Finanzas", icon: "Wallet", feature: "finanzas" },
+      {
+        href: "/coordinacion",
+        label: "Coordinación",
+        icon: "SlidersHorizontal",
+        roles: ["admin"],
+      },
     ],
   },
   {

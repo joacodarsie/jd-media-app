@@ -99,16 +99,21 @@ export function ClientsDashboard({
     return m;
   }, [upcomingPubs]);
 
+  // Cuentas internas (JD Media) van en su propia sección, fuera de la lista de
+  // clientes y de los conteos.
+  const realClients = useMemo(() => clients.filter((c) => !c.es_interno), [clients]);
+  const internalClients = useMemo(() => clients.filter((c) => c.es_interno), [clients]);
+
   const responsables = useMemo(() => {
     const m = new Map<string, string>();
-    for (const c of clients) {
+    for (const c of realClients) {
       if (c.cm) m.set(c.cm.id, c.cm.nombre);
     }
     return Array.from(m.entries()).sort((a, b) => a[1].localeCompare(b[1]));
-  }, [clients]);
+  }, [realClients]);
 
   const filtered = useMemo(() => {
-    return clients.filter((c) => {
+    return realClients.filter((c) => {
       if (quick === "activos" && c.estado !== "activo") return false;
       if (quick === "perdido" && c.estado !== "perdido") return false;
       if (pack !== "__all__" && c.pack !== pack) return false;
@@ -117,15 +122,15 @@ export function ClientsDashboard({
       if (q && !c.nombre.toLowerCase().includes(q.toLowerCase())) return false;
       return true;
     });
-  }, [clients, quick, pack, resp, q]);
+  }, [realClients, quick, pack, resp, q]);
 
   const counts = useMemo(
     () => ({
-      activos: clients.filter((c) => c.estado === "activo").length,
-      perdido: clients.filter((c) => c.estado === "perdido").length,
-      todos: clients.length,
+      activos: realClients.filter((c) => c.estado === "activo").length,
+      perdido: realClients.filter((c) => c.estado === "perdido").length,
+      todos: realClients.length,
     }),
-    [clients]
+    [realClients]
   );
 
   const internas = tasks.filter((t) => !t.cliente_id);
@@ -208,6 +213,30 @@ export function ClientsDashboard({
           <Group title="Tareas internas (sin cliente)" tasks={internas} />
         )}
       </div>
+
+      {/* Cuentas internas de la agencia (JD Media): no son clientes, pero
+          tienen calendario y seguimiento propio. */}
+      {internalClients.length > 0 && (
+        <div className="space-y-2 pt-2">
+          <div className="flex items-center gap-2 px-1">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Cuenta interna
+            </h2>
+            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:bg-violet-950 dark:text-violet-300">
+              No cuenta como cliente
+            </span>
+          </div>
+          {internalClients.map((c) => (
+            <ClientCard
+              key={c.id}
+              client={c}
+              tasks={byClient.get(c.id) ?? []}
+              nextPub={pubByClient.get(c.id) ?? null}
+              pubsTotal={pubCountByClient.get(c.id) ?? 0}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

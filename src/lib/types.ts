@@ -126,6 +126,8 @@ export interface Client {
   rubro: string | null;
   pack: ClientPack;
   estado: ClientStatus;
+  /** true = cuenta interna de la agencia (no cliente facturable). */
+  es_interno: boolean;
   fecha_inicio: string | null;
   monto_mensual: number | null;
   calendario_url: string | null;

@@ -67,6 +67,7 @@ export default async function RentabilidadPage({
     supabase
       .from("clients")
       .select("id, nombre, estado")
+      .eq("es_interno", false)
       .order("nombre"),
     supabase
       .from("client_invoices")

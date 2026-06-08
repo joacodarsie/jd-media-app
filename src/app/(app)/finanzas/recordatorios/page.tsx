@@ -40,6 +40,7 @@ export default async function RecordatoriosPage({
       "id, nombre, pack, monto_mensual, contacto_nombre, contacto_telefono, contrato_moneda, contrato_descuento_pct"
     )
     .eq("estado", "activo")
+    .eq("es_interno", false)
     .order("nombre");
 
   const clients = (data ?? []) as ClientRow[];

@@ -104,6 +104,12 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "SlidersHorizontal",
         roles: ["admin"],
       },
+      {
+        href: "/coordinacion/sueldos",
+        label: "Sueldos",
+        icon: "Banknote",
+        roles: ["admin"],
+      },
     ],
   },
   {

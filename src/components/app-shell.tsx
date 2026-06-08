@@ -26,6 +26,7 @@ import {
   Megaphone,
   Radio,
   SlidersHorizontal,
+  Banknote,
   Menu,
   LogOut,
   type LucideIcon,
@@ -77,6 +78,7 @@ const ICONS: Record<string, LucideIcon> = {
   Megaphone,
   Radio,
   SlidersHorizontal,
+  Banknote,
 };
 
 function initials(nombre: string) {

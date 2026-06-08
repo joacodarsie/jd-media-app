@@ -11,6 +11,7 @@ import {
   type PackParam,
   type RatePack,
 } from "@/lib/coordinacion";
+import { COMMISSION_PCT } from "@/lib/payroll";
 import { saveAgencySettings } from "@/app/(app)/coordinacion/actions";
 import { cn } from "@/lib/utils";
 
@@ -78,6 +79,7 @@ export function CoordinacionPanel({
   // Simulador
   const [simPack, setSimPack] = useState<PackName>("Crecimiento");
   const [simCloser, setSimCloser] = useState(true);
+  const [simReferido, setSimReferido] = useState(false);
   const [simManual, setSimManual] = useState(true);
 
   function patchPack(id: PackName, field: keyof PackParam, n: number) {
@@ -116,15 +118,35 @@ export function CoordinacionPanel({
   );
 
   // Simulador: primer mes vs. meses siguientes vs. año 1
+  // La comisión del closer/referido es % del precio del pack seleccionado.
   const sim = useMemo(() => {
     const p = packs.find((x) => x.id === simPack) ?? packs[0];
     const costoRec = packCost(p, rates);
     const margenRec = p.precio - costoRec;
-    const oneTime = (simCloser ? rates.closer : 0) + (simManual ? rates.manual_marca : 0);
+    const closerFull = Math.round(p.precio * COMMISSION_PCT.closer);
+    const referidoFull = Math.round(p.precio * COMMISSION_PCT.referido);
+    const ambosFull = Math.round(p.precio * COMMISSION_PCT.ambos);
+    const closerMonto = simCloser ? closerFull : 0;
+    const referidoMonto = simReferido ? referidoFull : 0;
+    const manualMonto = simManual ? rates.manual_marca : 0;
+    const oneTime = closerMonto + referidoMonto + manualMonto;
     const margenMes1 = margenRec - oneTime;
     const anio1 = margenMes1 + margenRec * 11;
-    return { p, costoRec, margenRec, oneTime, margenMes1, anio1 };
-  }, [packs, rates, simPack, simCloser, simManual]);
+    return {
+      p,
+      costoRec,
+      margenRec,
+      closerFull,
+      referidoFull,
+      ambosFull,
+      closerMonto,
+      referidoMonto,
+      manualMonto,
+      oneTime,
+      margenMes1,
+      anio1,
+    };
+  }, [packs, rates, simPack, simCloser, simReferido, simManual]);
 
   // Panorama real (totales)
   const tot = useMemo(() => {
@@ -219,16 +241,26 @@ export function CoordinacionPanel({
             ))}
           </div>
 
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={simCloser} onChange={(e) => setSimCloser(e.target.checked)} className="h-4 w-4 accent-primary" />
-              Pagar closer el 1er mes ({fmt(rates.closer)})
+              Comisión closer · 15% (<span className="font-medium">{fmt(sim.closerFull)}</span>)
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={simReferido} onChange={(e) => setSimReferido(e.target.checked)} className="h-4 w-4 accent-primary" />
+              Lead referido por el equipo · 5% (<span className="font-medium">{fmt(sim.referidoFull)}</span>)
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={simManual} onChange={(e) => setSimManual(e.target.checked)} className="h-4 w-4 accent-primary" />
               Manual de marca el 1er mes ({fmt(rates.manual_marca)})
             </label>
           </div>
+
+          <p className="-mt-1 text-[11px] text-muted-foreground">
+            Comisiones calculadas sobre el precio del pack ({fmt(sim.p.precio)}/mes):
+            cierre 15% = {fmt(sim.closerFull)} · referido 5% = {fmt(sim.referidoFull)} ·
+            cerró y refirió la misma persona 20% = {fmt(sim.ambosFull)}.
+          </p>
 
           <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-4">
             <Stat label="Margen recurrente" value={fmt(sim.margenRec)} sub={`/mes · ${pctOf(sim.margenRec, sim.p.precio)}%`} tone="good" />
@@ -280,7 +312,11 @@ export function CoordinacionPanel({
             <Field label="Diseño · por pieza"><NumInput prefix="$" value={rates.diseno_pieza} onChange={(n) => patchRate("diseno_pieza", n)} /></Field>
             <Field label="Edición · por reel"><NumInput prefix="$" value={rates.edicion_reel} onChange={(n) => patchRate("edicion_reel", n)} /></Field>
             <Field label="Manual de marca (único)"><NumInput prefix="$" value={rates.manual_marca} onChange={(n) => patchRate("manual_marca", n)} /></Field>
-            <Field label="Closer (comisión 1er mes)"><NumInput prefix="$" value={rates.closer} onChange={(n) => patchRate("closer", n)} /></Field>
+            <Field label="Comisión closer (1er mes)">
+              <div className="flex h-8 items-center rounded-md border bg-muted/40 px-2 text-xs text-muted-foreground">
+                15% cierre · 5% referido · 20% ambas
+              </div>
+            </Field>
           </div>
           <RateLadder title="Community Manager · por pack" prefix="cm" rates={rates.cm} onChange={patchRate} />
           <RateLadder title="Media Buyer · por pack" prefix="mb" rates={rates.media_buyer} onChange={patchRate} />

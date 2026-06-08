@@ -1,6 +1,8 @@
 // Parámetros clave de la agencia que controla el admin desde /coordinacion.
 
 export type PackName = "Presencia" | "Crecimiento" | "Escala";
+/** Para las tarifas por pack incluimos Personalizado (cuentas a medida). */
+export type RatePack = PackName | "Personalizado";
 
 export interface PackParam {
   id: PackName;
@@ -19,10 +21,12 @@ export interface AgencyRates {
   edicion_reel: number;
   /** Manual de marca básico (documento de inicio): pago único. */
   manual_marca: number;
+  /** Comisión del closer de venta: se paga una vez, el primer mes del cliente. */
+  closer: number;
   /** Community Manager por pack (incluye historias). */
-  cm: Record<PackName, number>;
+  cm: Record<RatePack, number>;
   /** Media Buyer (gestión de campañas Meta) por pack. */
-  media_buyer: Record<PackName, number>;
+  media_buyer: Record<RatePack, number>;
 }
 
 export interface AgencySettings {
@@ -40,21 +44,51 @@ export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
     diseno_pieza: 10000,
     edicion_reel: 17900,
     manual_marca: 50000,
-    cm: { Presencia: 50000, Crecimiento: 70000, Escala: 100000 },
-    media_buyer: { Presencia: 50000, Crecimiento: 70000, Escala: 100000 },
+    closer: 0,
+    cm: { Presencia: 50000, Crecimiento: 70000, Escala: 100000, Personalizado: 70000 },
+    media_buyer: { Presencia: 50000, Crecimiento: 70000, Escala: 100000, Personalizado: 70000 },
   },
 };
 
 /**
- * Costo de producción mensual de un pack: suma de los roles que lo atienden.
- * Las historias las hace la CM (incluidas en su tarifa), por eso no suman aparte.
- * El manual de marca es un pago único, no entra en el costo recurrente del pack.
+ * Completa cualquier clave faltante de la config guardada con los defaults.
+ * Útil cuando agregamos parámetros nuevos (closer, Personalizado) y la fila
+ * vieja todavía no los tiene.
  */
-export function packCost(pack: PackParam, rates: AgencyRates): number {
+export function mergeSettings(raw: Partial<AgencySettings> | null): AgencySettings {
+  const d = DEFAULT_AGENCY_SETTINGS;
+  if (!raw) return d;
+  return {
+    packs: raw.packs?.length ? raw.packs : d.packs,
+    rates: {
+      ...d.rates,
+      ...(raw.rates ?? {}),
+      cm: { ...d.rates.cm, ...(raw.rates?.cm ?? {}) },
+      media_buyer: { ...d.rates.media_buyer, ...(raw.rates?.media_buyer ?? {}) },
+    },
+  };
+}
+
+/**
+ * Costo de producción mensual recurrente, dado pack + cantidades de piezas.
+ * Las historias las hace la CM (incluidas en su tarifa). El manual de marca y la
+ * comisión del closer NO entran acá (son one-time del primer mes).
+ */
+export function productionCost(
+  pack: RatePack,
+  posts: number,
+  reels: number,
+  rates: AgencyRates
+): number {
   return (
-    (rates.cm[pack.id] ?? 0) +
-    pack.posts * rates.diseno_pieza +
-    pack.reels * rates.edicion_reel +
-    (rates.media_buyer[pack.id] ?? 0)
+    (rates.cm[pack] ?? 0) +
+    posts * rates.diseno_pieza +
+    reels * rates.edicion_reel +
+    (rates.media_buyer[pack] ?? 0)
   );
+}
+
+/** Costo de un pack estándar usando sus cantidades. */
+export function packCost(pack: PackParam, rates: AgencyRates): number {
+  return productionCost(pack.id, pack.posts, pack.reels, rates);
 }

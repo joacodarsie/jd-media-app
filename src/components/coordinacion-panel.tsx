@@ -9,27 +9,40 @@ import {
   type AgencySettings,
   type PackName,
   type PackParam,
+  type RatePack,
 } from "@/lib/coordinacion";
 import { saveAgencySettings } from "@/app/(app)/coordinacion/actions";
 import { cn } from "@/lib/utils";
 
+export interface PanoramaRow {
+  id: string;
+  nombre: string;
+  pack: string;
+  ingreso: number;
+  costo: number;
+  margen: number;
+}
+
+const RATE_PACKS: RatePack[] = ["Presencia", "Crecimiento", "Escala", "Personalizado"];
+
 function fmt(n: number) {
   return "$" + Math.round(n).toLocaleString("es-AR");
+}
+function pctOf(margen: number, ingreso: number) {
+  return ingreso > 0 ? Math.round((margen / ingreso) * 100) : 0;
 }
 
 function NumInput({
   value,
   onChange,
   prefix,
-  className,
 }: {
   value: number;
   onChange: (n: number) => void;
   prefix?: string;
-  className?: string;
 }) {
   return (
-    <div className={cn("relative", className)}>
+    <div className="relative">
       {prefix && (
         <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
           {prefix}
@@ -49,24 +62,33 @@ function NumInput({
   );
 }
 
-export function CoordinacionPanel({ initial }: { initial: AgencySettings }) {
+export function CoordinacionPanel({
+  initial,
+  panorama,
+}: {
+  initial: AgencySettings;
+  panorama: PanoramaRow[];
+}) {
   const router = useRouter();
   const [packs, setPacks] = useState<PackParam[]>(initial.packs);
   const [rates, setRates] = useState(initial.rates);
   const [dirty, setDirty] = useState(false);
   const [pending, start] = useTransition();
 
+  // Simulador
+  const [simPack, setSimPack] = useState<PackName>("Crecimiento");
+  const [simCloser, setSimCloser] = useState(true);
+  const [simManual, setSimManual] = useState(true);
+
   function patchPack(id: PackName, field: keyof PackParam, n: number) {
-    setPacks((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, [field]: n } : p))
-    );
+    setPacks((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: n } : p)));
     setDirty(true);
   }
   function patchRate(path: string, n: number) {
     setRates((prev) => {
       const next = structuredClone(prev);
-      if (path.startsWith("cm.")) next.cm[path.slice(3) as PackName] = n;
-      else if (path.startsWith("mb.")) next.media_buyer[path.slice(3) as PackName] = n;
+      if (path.startsWith("cm.")) next.cm[path.slice(3) as RatePack] = n;
+      else if (path.startsWith("mb.")) next.media_buyer[path.slice(3) as RatePack] = n;
       else (next as unknown as Record<string, number>)[path] = n;
       return next;
     });
@@ -76,176 +98,281 @@ export function CoordinacionPanel({ initial }: { initial: AgencySettings }) {
   function save() {
     start(async () => {
       const res = await saveAgencySettings({ packs, rates });
-      if (res?.error) {
-        toast.error(res.error);
-        return;
-      }
+      if (res?.error) return void toast.error(res.error);
       toast.success("Parámetros guardados.");
       setDirty(false);
       router.refresh();
     });
   }
 
-  const rows = useMemo(
+  const packRows = useMemo(
     () =>
       packs.map((p) => {
         const costo = packCost(p, rates);
         const margen = p.precio - costo;
-        const pct = p.precio > 0 ? Math.round((margen / p.precio) * 100) : 0;
-        return { p, costo, margen, pct };
+        return { p, costo, margen, pct: pctOf(margen, p.precio) };
       }),
     [packs, rates]
   );
 
+  // Simulador: primer mes vs. meses siguientes vs. año 1
+  const sim = useMemo(() => {
+    const p = packs.find((x) => x.id === simPack) ?? packs[0];
+    const costoRec = packCost(p, rates);
+    const margenRec = p.precio - costoRec;
+    const oneTime = (simCloser ? rates.closer : 0) + (simManual ? rates.manual_marca : 0);
+    const margenMes1 = margenRec - oneTime;
+    const anio1 = margenMes1 + margenRec * 11;
+    return { p, costoRec, margenRec, oneTime, margenMes1, anio1 };
+  }, [packs, rates, simPack, simCloser, simManual]);
+
+  // Panorama real (totales)
+  const tot = useMemo(() => {
+    const ingreso = panorama.reduce((a, r) => a + r.ingreso, 0);
+    const costo = panorama.reduce((a, r) => a + r.costo, 0);
+    return { ingreso, costo, margen: ingreso - costo, n: panorama.length };
+  }, [panorama]);
+
   return (
     <div className="space-y-5 pb-24">
-      {/* Economía por pack — lo más visible */}
+      {/* ── PANORAMA REAL ───────────────────────────── */}
       <section className="rounded-xl border bg-card">
         <div className="border-b px-4 py-3">
-          <h2 className="text-base font-semibold">Economía por pack</h2>
+          <h2 className="text-base font-semibold">Panorama real de la agencia</h2>
           <p className="text-xs text-muted-foreground">
-            Cuánto te cuesta brindar cada pack vs. cuánto te paga el cliente. Se
-            recalcula al toque cuando cambiás cualquier valor abajo.
+            Todos los servicios activos con números reales: lo que cobrás vs. lo
+            que te cuesta producirlo, según el modelo de tarifas de abajo.
           </p>
+        </div>
+        <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
+          <Stat label="Ingreso mensual" value={fmt(tot.ingreso)} />
+          <Stat label="Costo producción" value={fmt(tot.costo)} muted />
+          <Stat
+            label="Margen mensual"
+            value={fmt(tot.margen)}
+            tone={tot.margen >= 0 ? "good" : "bad"}
+          />
+          <Stat label="Margen %" value={`${pctOf(tot.margen, tot.ingreso)}%`} tone="good" />
         </div>
         <div className="overflow-x-auto p-4">
           <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <th className="pb-2 font-medium">Cuenta</th>
                 <th className="pb-2 font-medium">Pack</th>
-                <th className="pb-2 text-right font-medium">Precio cliente</th>
-                <th className="pb-2 text-right font-medium">Costo de brindarlo</th>
+                <th className="pb-2 text-right font-medium">Ingreso</th>
+                <th className="pb-2 text-right font-medium">Costo</th>
                 <th className="pb-2 text-right font-medium">Margen</th>
                 <th className="pb-2 text-right font-medium">%</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ p, costo, margen, pct }) => (
-                <tr key={p.id} className="border-t">
-                  <td className="py-2 font-medium">{p.id}</td>
-                  <td className="py-2 text-right tabular-nums">{fmt(p.precio)}</td>
-                  <td className="py-2 text-right tabular-nums text-muted-foreground">
-                    {fmt(costo)}
-                  </td>
-                  <td
-                    className={cn(
-                      "py-2 text-right font-semibold tabular-nums",
-                      margen < 0 ? "text-red-600" : "text-emerald-600"
-                    )}
-                  >
-                    {fmt(margen)}
-                  </td>
-                  <td
-                    className={cn(
-                      "py-2 text-right font-semibold tabular-nums",
-                      pct < 25 ? "text-amber-600" : "text-emerald-600"
-                    )}
-                  >
-                    {pct}%
-                  </td>
-                </tr>
-              ))}
+              {panorama.map((r) => {
+                const pct = pctOf(r.margen, r.ingreso);
+                return (
+                  <tr key={r.id} className="border-t">
+                    <td className="py-2 font-medium">{r.nombre}</td>
+                    <td className="py-2 text-muted-foreground">{r.pack}</td>
+                    <td className="py-2 text-right tabular-nums">{fmt(r.ingreso)}</td>
+                    <td className="py-2 text-right tabular-nums text-muted-foreground">{fmt(r.costo)}</td>
+                    <td className={cn("py-2 text-right font-semibold tabular-nums", r.margen < 0 ? "text-red-600" : "text-emerald-600")}>
+                      {fmt(r.margen)}
+                    </td>
+                    <td className={cn("py-2 text-right font-semibold tabular-nums", pct < 25 ? "text-amber-600" : "text-emerald-600")}>
+                      {pct}%
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           <p className="mt-3 text-[11px] text-muted-foreground">
-            Costo = CM + (posts × diseño) + (reels × edición) + media buyer. Las
-            historias las lleva la CM (incluidas). El manual de marca es un pago
-            único, no entra en el costo mensual.
+            Ingreso = monto real de los servicios mensuales del cliente. Costo =
+            CM + (posts × diseño) + (reels × edición) + media buyer del pack. Los
+            Personalizado usan las cantidades cargadas en cada cuenta.
           </p>
         </div>
       </section>
 
-      {/* Tarifas por rol */}
+      {/* ── SIMULADOR ───────────────────────────────── */}
+      <section className="rounded-xl border bg-card">
+        <div className="border-b px-4 py-3">
+          <h2 className="text-base font-semibold">Simulador de escenarios</h2>
+          <p className="text-xs text-muted-foreground">
+            Probá un cliente nuevo y mirá la ganancia del primer mes (con costos
+            de una vez) vs. los meses siguientes.
+          </p>
+        </div>
+        <div className="space-y-4 p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {packs.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setSimPack(p.id)}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                  simPack === p.id ? "border-primary bg-primary/10 text-foreground" : "border-transparent bg-muted/50 text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {p.id} · {fmt(p.precio)}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={simCloser} onChange={(e) => setSimCloser(e.target.checked)} className="h-4 w-4 accent-primary" />
+              Pagar closer el 1er mes ({fmt(rates.closer)})
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={simManual} onChange={(e) => setSimManual(e.target.checked)} className="h-4 w-4 accent-primary" />
+              Manual de marca el 1er mes ({fmt(rates.manual_marca)})
+            </label>
+          </div>
+
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-4">
+            <Stat label="Margen recurrente" value={fmt(sim.margenRec)} sub={`/mes · ${pctOf(sim.margenRec, sim.p.precio)}%`} tone="good" />
+            <Stat label="Costos 1er mes" value={fmt(sim.oneTime)} sub="una vez" muted />
+            <Stat label="Margen 1er mes" value={fmt(sim.margenMes1)} tone={sim.margenMes1 >= 0 ? "good" : "bad"} />
+            <Stat label="Ganancia año 1" value={fmt(sim.anio1)} sub="mes1 + 11 recurrentes" tone="good" />
+          </div>
+        </div>
+      </section>
+
+      {/* ── ECONOMÍA POR PACK ───────────────────────── */}
+      <section className="rounded-xl border bg-card">
+        <div className="border-b px-4 py-3">
+          <h2 className="text-base font-semibold">Economía por pack (precio de lista)</h2>
+        </div>
+        <div className="overflow-x-auto p-4">
+          <table className="w-full min-w-[480px] text-sm">
+            <thead>
+              <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <th className="pb-2 font-medium">Pack</th>
+                <th className="pb-2 text-right font-medium">Precio</th>
+                <th className="pb-2 text-right font-medium">Costo</th>
+                <th className="pb-2 text-right font-medium">Margen</th>
+                <th className="pb-2 text-right font-medium">%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {packRows.map(({ p, costo, margen, pct }) => (
+                <tr key={p.id} className="border-t">
+                  <td className="py-2 font-medium">{p.id}</td>
+                  <td className="py-2 text-right tabular-nums">{fmt(p.precio)}</td>
+                  <td className="py-2 text-right tabular-nums text-muted-foreground">{fmt(costo)}</td>
+                  <td className={cn("py-2 text-right font-semibold tabular-nums", margen < 0 ? "text-red-600" : "text-emerald-600")}>{fmt(margen)}</td>
+                  <td className={cn("py-2 text-right font-semibold tabular-nums", pct < 25 ? "text-amber-600" : "text-emerald-600")}>{pct}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* ── TARIFAS ─────────────────────────────────── */}
       <section className="rounded-xl border bg-card">
         <div className="border-b px-4 py-3">
           <h2 className="text-base font-semibold">Tarifas por rol</h2>
         </div>
         <div className="space-y-4 p-4">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Field label="Diseño · por pieza">
-              <NumInput prefix="$" value={rates.diseno_pieza} onChange={(n) => patchRate("diseno_pieza", n)} />
-            </Field>
-            <Field label="Edición · por reel">
-              <NumInput prefix="$" value={rates.edicion_reel} onChange={(n) => patchRate("edicion_reel", n)} />
-            </Field>
-            <Field label="Manual de marca (único)">
-              <NumInput prefix="$" value={rates.manual_marca} onChange={(n) => patchRate("manual_marca", n)} />
-            </Field>
+          <div className="grid gap-3 sm:grid-cols-4">
+            <Field label="Diseño · por pieza"><NumInput prefix="$" value={rates.diseno_pieza} onChange={(n) => patchRate("diseno_pieza", n)} /></Field>
+            <Field label="Edición · por reel"><NumInput prefix="$" value={rates.edicion_reel} onChange={(n) => patchRate("edicion_reel", n)} /></Field>
+            <Field label="Manual de marca (único)"><NumInput prefix="$" value={rates.manual_marca} onChange={(n) => patchRate("manual_marca", n)} /></Field>
+            <Field label="Closer (comisión 1er mes)"><NumInput prefix="$" value={rates.closer} onChange={(n) => patchRate("closer", n)} /></Field>
           </div>
-
-          <div>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Community Manager · por pack
-            </h3>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {packs.map((p) => (
-                <Field key={p.id} label={p.id}>
-                  <NumInput prefix="$" value={rates.cm[p.id]} onChange={(n) => patchRate("cm." + p.id, n)} />
-                </Field>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Media Buyer · por pack
-            </h3>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {packs.map((p) => (
-                <Field key={p.id} label={p.id}>
-                  <NumInput prefix="$" value={rates.media_buyer[p.id]} onChange={(n) => patchRate("mb." + p.id, n)} />
-                </Field>
-              ))}
-            </div>
-          </div>
+          <RateLadder title="Community Manager · por pack" prefix="cm" rates={rates.cm} onChange={patchRate} />
+          <RateLadder title="Media Buyer · por pack" prefix="mb" rates={rates.media_buyer} onChange={patchRate} />
         </div>
       </section>
 
-      {/* Packs */}
+      {/* ── PACKS ───────────────────────────────────── */}
       <section className="rounded-xl border bg-card">
         <div className="border-b px-4 py-3">
           <h2 className="text-base font-semibold">Packs</h2>
-          <p className="text-xs text-muted-foreground">
-            Precio de lista y cantidades de contenido de cada pack.
-          </p>
+          <p className="text-xs text-muted-foreground">Precio de lista y cantidades de contenido.</p>
         </div>
         <div className="space-y-4 p-4">
           {packs.map((p) => (
             <div key={p.id} className="rounded-lg border p-3">
               <div className="mb-2 font-medium">{p.id}</div>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <Field label="Precio cliente">
-                  <NumInput prefix="$" value={p.precio} onChange={(n) => patchPack(p.id, "precio", n)} />
-                </Field>
-                <Field label="Reels">
-                  <NumInput value={p.reels} onChange={(n) => patchPack(p.id, "reels", n)} />
-                </Field>
-                <Field label="Posts">
-                  <NumInput value={p.posts} onChange={(n) => patchPack(p.id, "posts", n)} />
-                </Field>
-                <Field label="Días stories">
-                  <NumInput value={p.stories} onChange={(n) => patchPack(p.id, "stories", n)} />
-                </Field>
+                <Field label="Precio cliente"><NumInput prefix="$" value={p.precio} onChange={(n) => patchPack(p.id, "precio", n)} /></Field>
+                <Field label="Reels"><NumInput value={p.reels} onChange={(n) => patchPack(p.id, "reels", n)} /></Field>
+                <Field label="Posts"><NumInput value={p.posts} onChange={(n) => patchPack(p.id, "posts", n)} /></Field>
+                <Field label="Días stories"><NumInput value={p.stories} onChange={(n) => patchPack(p.id, "stories", n)} /></Field>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Barra de guardado */}
       {dirty && (
         <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-xl border bg-card px-4 py-2.5 shadow-lg">
           <span className="text-sm text-muted-foreground">Cambios sin guardar</span>
-          <button
-            onClick={save}
-            disabled={pending}
-            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
-          >
+          <button onClick={save} disabled={pending} className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Guardar
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function RateLadder({
+  title,
+  prefix,
+  rates,
+  onChange,
+}: {
+  title: string;
+  prefix: "cm" | "mb";
+  rates: Record<string, number>;
+  onChange: (path: string, n: number) => void;
+}) {
+  return (
+    <div>
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
+      <div className="grid gap-3 sm:grid-cols-4">
+        {RATE_PACKS.map((rp) => (
+          <Field key={rp} label={rp}>
+            <NumInput prefix="$" value={rates[rp] ?? 0} onChange={(n) => onChange(`${prefix}.${rp}`, n)} />
+          </Field>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  sub,
+  tone,
+  muted,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  tone?: "good" | "bad";
+  muted?: boolean;
+}) {
+  return (
+    <div className="bg-card p-3">
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div
+        className={cn(
+          "text-lg font-bold tabular-nums",
+          tone === "good" && "text-emerald-600",
+          tone === "bad" && "text-red-600",
+          muted && "text-muted-foreground"
+        )}
+      >
+        {value}
+      </div>
+      {sub && <div className="text-[10px] text-muted-foreground">{sub}</div>}
     </div>
   );
 }

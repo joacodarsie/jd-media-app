@@ -6,6 +6,9 @@ import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import {
   packCost,
+  productionBase,
+  mbCost,
+  type AgencyRates,
   type AgencySettings,
   type PackName,
   type PackParam,
@@ -256,16 +259,17 @@ export function CoordinacionPanel({
             </label>
           </div>
 
-          <p className="-mt-1 text-[11px] text-muted-foreground">
-            Comisiones calculadas sobre el precio del pack ({fmt(sim.p.precio)}/mes):
-            cierre 15% = {fmt(sim.closerFull)} · referido 5% = {fmt(sim.referidoFull)} ·
-            cerró y refirió la misma persona 20% = {fmt(sim.ambosFull)}.
-          </p>
+          {/* Comisiones en cuadros separados (monto en $ según el pack) */}
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-3">
+            <Stat label="Comisión cierre" value={fmt(sim.closerFull)} sub={`15% de ${fmt(sim.p.precio)}`} />
+            <Stat label="Comisión referido" value={fmt(sim.referidoFull)} sub={`5% de ${fmt(sim.p.precio)}`} />
+            <Stat label="Cerró + refirió" value={fmt(sim.ambosFull)} sub="misma persona · 20%" />
+          </div>
 
           <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-4">
             <Stat label="Margen recurrente" value={fmt(sim.margenRec)} sub={`/mes · ${pctOf(sim.margenRec, sim.p.precio)}%`} tone="good" />
             <Stat label="Costos 1er mes" value={fmt(sim.oneTime)} sub="una vez" muted />
-            <Stat label="Margen 1er mes" value={fmt(sim.margenMes1)} tone={sim.margenMes1 >= 0 ? "good" : "bad"} />
+            <Stat label="Margen 1er mes" value={fmt(sim.margenMes1)} sub={`${pctOf(sim.margenMes1, sim.p.precio)}% del 1er mes`} tone={sim.margenMes1 >= 0 ? "good" : "bad"} />
             <Stat label="Ganancia año 1" value={fmt(sim.anio1)} sub="mes1 + 11 recurrentes" tone="good" />
           </div>
         </div>
@@ -344,6 +348,9 @@ export function CoordinacionPanel({
         </div>
       </section>
 
+      {/* ── COTIZADOR PERSONALIZADO ─────────────────── */}
+      <CustomPackEstimator rates={rates} />
+
       {dirty && (
         <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-xl border bg-card px-4 py-2.5 shadow-lg">
           <span className="text-sm text-muted-foreground">Cambios sin guardar</span>
@@ -354,6 +361,73 @@ export function CoordinacionPanel({
         </div>
       )}
     </div>
+  );
+}
+
+// Cotizador de pack a medida: estima cuánto cobrar siguiendo la misma lógica de
+// costos de los packs (CM + posts×diseño + reels×edición + pauta opcional) y
+// proyecta el precio a distintos márgenes sanos.
+function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
+  const [posts, setPosts] = useState(4);
+  const [reels, setReels] = useState(4);
+  const [incluyePauta, setIncluyePauta] = useState(false);
+  const [margenObjetivo, setMargenObjetivo] = useState(40);
+
+  const costo =
+    productionBase("Personalizado", posts, reels, rates) +
+    (incluyePauta ? mbCost("Personalizado", rates) : 0);
+
+  const precioAt = (m: number) => (m >= 100 ? costo : Math.round(costo / (1 - m / 100)));
+  const precioObjetivo = precioAt(margenObjetivo);
+  const margenObjetivoMonto = precioObjetivo - costo;
+
+  return (
+    <section className="rounded-xl border bg-card">
+      <div className="border-b px-4 py-3">
+        <h2 className="text-base font-semibold">Cotizador de pack personalizado</h2>
+        <p className="text-xs text-muted-foreground">
+          Armá un pack a medida y estimá cuánto deberías y podrías cobrar. Usa la
+          misma lógica de costo que los packs: CM base + diseño por pieza +
+          edición por reel (+ media buyer si incluís pauta).
+        </p>
+      </div>
+      <div className="space-y-4 p-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Field label="Posts / carruseles"><NumInput value={posts} onChange={setPosts} /></Field>
+          <Field label="Reels"><NumInput value={reels} onChange={setReels} /></Field>
+          <Field label="Margen objetivo %"><NumInput value={margenObjetivo} onChange={setMargenObjetivo} /></Field>
+          <label className="flex cursor-pointer items-end gap-2 pb-1.5 text-sm">
+            <input
+              type="checkbox"
+              checked={incluyePauta}
+              onChange={(e) => setIncluyePauta(e.target.checked)}
+              className="h-4 w-4 accent-primary"
+            />
+            Incluye pauta (media buyer)
+          </label>
+        </div>
+
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-4">
+          <Stat label="Costo producción" value={fmt(costo)} sub="por mes" muted />
+          <Stat
+            label={`Precio sugerido · ${margenObjetivo}%`}
+            value={fmt(precioObjetivo)}
+            sub={`margen ${fmt(margenObjetivoMonto)}`}
+            tone="good"
+          />
+          <Stat label="Mínimo sano · 25%" value={fmt(precioAt(25))} sub="cobrá al menos esto" />
+          <Stat label="Premium · 50%" value={fmt(precioAt(50))} sub="techo cómodo" />
+        </div>
+
+        <p className="text-[11px] text-muted-foreground">
+          El precio sugerido = costo ÷ (1 − margen). Los packs actuales rinden
+          entre 24% y 40%; bajar del 25% deja la cuenta muy fina. El costo no
+          incluye el manual de marca ($
+          {rates.manual_marca.toLocaleString("es-AR")}, único) ni la comisión del
+          closer (one-time del 1er mes).
+        </p>
+      </div>
+    </section>
   );
 }
 

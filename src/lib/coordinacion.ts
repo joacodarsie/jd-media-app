@@ -70,11 +70,11 @@ export function mergeSettings(raw: Partial<AgencySettings> | null): AgencySettin
 }
 
 /**
- * Costo de producción mensual recurrente, dado pack + cantidades de piezas.
+ * Costo del equipo creativo (CM + diseño + edición), sin la pauta.
  * Las historias las hace la CM (incluidas en su tarifa). El manual de marca y la
  * comisión del closer NO entran acá (son one-time del primer mes).
  */
-export function productionCost(
+export function productionBase(
   pack: RatePack,
   posts: number,
   reels: number,
@@ -83,12 +83,16 @@ export function productionCost(
   return (
     (rates.cm[pack] ?? 0) +
     posts * rates.diseno_pieza +
-    reels * rates.edicion_reel +
-    (rates.media_buyer[pack] ?? 0)
+    reels * rates.edicion_reel
   );
 }
 
-/** Costo de un pack estándar usando sus cantidades. */
+/** Costo del media buyer para un pack (solo aplica si la cuenta tiene pauta). */
+export function mbCost(pack: RatePack, rates: AgencyRates): number {
+  return rates.media_buyer[pack] ?? 0;
+}
+
+/** Costo de un pack estándar (incluye pauta: escenario de lista full-service). */
 export function packCost(pack: PackParam, rates: AgencyRates): number {
-  return productionCost(pack.id, pack.posts, pack.reels, rates);
+  return productionBase(pack.id, pack.posts, pack.reels, rates) + mbCost(pack.id, rates);
 }

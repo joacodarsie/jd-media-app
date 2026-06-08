@@ -2,7 +2,8 @@ import { requireRole } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import {
   mergeSettings,
-  productionCost,
+  productionBase,
+  mbCost,
   type RatePack,
   type AgencySettings,
 } from "@/lib/coordinacion";
@@ -24,7 +25,7 @@ export default async function CoordinacionPage() {
         .eq("es_interno", false),
       admin
         .from("client_services")
-        .select("cliente_id, tipo, pack, monto_mensual, facturacion, pack_detalle, activo")
+        .select("cliente_id, tipo, pack, monto_mensual, facturacion, pack_detalle, activo, costo_override")
         .eq("activo", true),
     ]);
 
@@ -52,23 +53,26 @@ export default async function CoordinacionPage() {
     // Cuentas sin gestión mensual (ej. branding único) no entran en el panorama
     // de ingresos recurrentes.
     if (!gestion && ingreso === 0) continue;
+    // La pauta (media buyer) solo cuesta si la cuenta tiene servicio de pauta.
+    const conPauta = svcs.some((s) => s.tipo === "paid_media");
     let costo = 0;
     let packLabel = "—";
     if (gestion) {
       const pack = (gestion.pack ?? "Personalizado") as RatePack;
       packLabel = pack;
-      let posts = 0;
-      let reels = 0;
-      const std = packQty.get(pack as never);
-      if (std) {
-        posts = std.posts;
-        reels = std.reels;
+      if (gestion.costo_override != null) {
+        // Acuerdo particular (ej. Luz): costo de equipo fijo. La pauta, si la
+        // hay, se suma aparte.
+        costo = Number(gestion.costo_override) + (conPauta ? mbCost(pack, settings.rates) : 0);
       } else {
+        const std = packQty.get(pack as never);
         const pd = (gestion.pack_detalle ?? {}) as Record<string, number>;
-        posts = Number(pd.posts ?? 0);
-        reels = Number(pd.reels ?? 0);
+        const posts = std ? std.posts : Number(pd.posts ?? 0);
+        const reels = std ? std.reels : Number(pd.reels ?? 0);
+        costo =
+          productionBase(pack, posts, reels, settings.rates) +
+          (conPauta ? mbCost(pack, settings.rates) : 0);
       }
-      costo = productionCost(pack, posts, reels, settings.rates);
     }
     panorama.push({
       id: c.id,

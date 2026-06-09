@@ -54,6 +54,9 @@ export function ContentPlanWorkspace({
   const [genProgress, setGenProgress] = useState(0);
   const [pending, setPending] = useState(false);
 
+  // Instrucciones puntuales para este plan (pedido del cliente, evento, etc.)
+  const [instrucciones, setInstrucciones] = useState("");
+
   // Input opcional del meet con cliente
   const [showMeetInput, setShowMeetInput] = useState(false);
   const [meetMode, setMeetMode] = useState<"pdf" | "text">("pdf");
@@ -97,6 +100,7 @@ export function ContentPlanWorkspace({
 
     const form = new FormData();
     form.set("periodo_label", periodoLabel.trim());
+    if (instrucciones.trim()) form.set("instrucciones", instrucciones.trim());
     if (showMeetInput) {
       if (meetMode === "pdf" && meetFile) form.set("file", meetFile);
       else if (meetMode === "text" && meetText.trim().length >= 50) form.set("transcript", meetText.trim());
@@ -243,6 +247,23 @@ export function ContentPlanWorkspace({
             <Button onClick={generate} disabled={!periodoLabel.trim()}>
               <Sparkles className="mr-1 h-4 w-4" /> Generar
             </Button>
+          </div>
+
+          {/* Instrucciones puntuales para este plan */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">
+              ¿Algo puntual a tener en cuenta este mes? (opcional)
+            </label>
+            <Textarea
+              value={instrucciones}
+              onChange={(e) => setInstrucciones(e.target.value)}
+              rows={2}
+              placeholder="Ej: el cliente lanza producto nuevo el 15, hay un evento en el local el finde, quiere foco en X, no postear de tal tema…"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              La IA prioriza esto al armar el plan, junto con lo que pida el
+              cliente en el meet.
+            </p>
           </div>
 
           {/* Toggle meet opcional */}

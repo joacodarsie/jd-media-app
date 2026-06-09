@@ -181,11 +181,22 @@ export function buildPlanUserMessage(args: {
   publicacionesUltimos60d: Array<{ titulo: string; tipo: string; red: string; fecha: string | null }>;
   publicacionesPlanificadas: Array<{ titulo: string; tipo: string; red: string; fecha: string | null; estado: string }>;
   meetTranscript?: string | null;
+  instruccionesAdHoc?: string | null;
 }): string {
   const lines: string[] = [];
   lines.push(`# Cliente: ${args.clienteNombre}`);
   lines.push(`# Período a planificar: ${args.periodoLabel}`);
   lines.push("");
+
+  if (args.instruccionesAdHoc && args.instruccionesAdHoc.trim().length > 0) {
+    lines.push("## ⚠️ Instrucciones puntuales para ESTE plan (MÁXIMA PRIORIDAD)");
+    lines.push(
+      "Joaquín dejó estas indicaciones específicas para este período. Tienen prioridad sobre tus propias ideas y deben reflejarse en el plan (temas, campañas, cadencia o reglas operativas según corresponda):"
+    );
+    lines.push("");
+    lines.push(args.instruccionesAdHoc.trim());
+    lines.push("");
+  }
   lines.push("## Pack y cuotas mensuales (RESPETAR)");
   lines.push(args.packDescription);
   lines.push("");

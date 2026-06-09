@@ -43,15 +43,21 @@ export async function POST(
   // Aceptamos tanto JSON como form-data.
   let periodo_label = "";
   let meetTranscript = "";
+  let instrucciones = "";
   const contentType = req.headers.get("content-type") ?? "";
 
   if (contentType.includes("application/json")) {
-    const body = (await req.json().catch(() => null)) as { periodo_label?: string } | null;
+    const body = (await req.json().catch(() => null)) as {
+      periodo_label?: string;
+      instrucciones?: string;
+    } | null;
     periodo_label = (body?.periodo_label ?? "").trim();
+    instrucciones = (body?.instrucciones ?? "").trim();
   } else {
     const form = await req.formData();
     periodo_label = String(form.get("periodo_label") ?? "").trim();
     meetTranscript = String(form.get("transcript") ?? "").trim();
+    instrucciones = String(form.get("instrucciones") ?? "").trim();
 
     const file = form.get("file");
     if (!meetTranscript && file instanceof File) {
@@ -181,6 +187,7 @@ export async function POST(
       })
     ),
     meetTranscript: meetTranscript || null,
+    instruccionesAdHoc: instrucciones || null,
   });
 
   const encoder = new TextEncoder();

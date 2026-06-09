@@ -5,6 +5,8 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { AdsOnboardingChecklist, type AdsOnboardingState } from "@/components/ads-onboarding-checklist";
+import { ClientListEditor } from "@/components/client-list-editor";
+import { Card, CardContent } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
 
@@ -19,10 +21,14 @@ export default async function PublicidadOnboardingPage({
 
   const { data: client } = await supabase
     .from("clients")
-    .select("id, nombre")
+    .select("id, nombre, credenciales")
     .eq("id", params.id)
     .maybeSingle();
   if (!client) notFound();
+
+  const credenciales =
+    ((client as unknown as { credenciales?: Record<string, string>[] }).credenciales ??
+      []) as Record<string, string>[];
 
   const [{ data: onboarding }, { data: paidSvc }] = await Promise.all([
     admin
@@ -70,6 +76,26 @@ export default async function PublicidadOnboardingPage({
       )}
 
       <AdsOnboardingChecklist clientId={client.id} initial={state} />
+
+      <Card>
+        <CardContent className="pt-4">
+          <ClientListEditor
+            clientId={client.id}
+            field="credenciales"
+            title="Accesos del cliente"
+            description="Credenciales de las plataformas (Meta, Facebook, Google…) para volver a loguearte cuando haga falta. Es la misma lista que figura en la ficha del cliente."
+            addLabel="Agregar acceso"
+            initial={credenciales}
+            itemFields={[
+              { name: "servicio", label: "Servicio", placeholder: "Ej: Meta Business" },
+              { name: "url", label: "URL (opcional)", type: "url", placeholder: "https://business.facebook.com" },
+              { name: "usuario", label: "Usuario / Email" },
+              { name: "password", label: "Contraseña", type: "password" },
+              { name: "notas", label: "Notas (opcional)" },
+            ]}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

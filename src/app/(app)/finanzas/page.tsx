@@ -406,6 +406,15 @@ export default async function FinanzasPage() {
             Historial unificado de cobros y pagos.
           </div>
         </Link>
+        <Link
+          href="/finanzas/evolucion"
+          className="rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40"
+        >
+          <div className="font-semibold">Evolución →</div>
+          <div className="text-xs text-muted-foreground">
+            Ingresos, costos y margen mes a mes (últimos 12).
+          </div>
+        </Link>
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ import {
   FolderOpen,
   Globe,
   Mail,
+  Megaphone,
   Phone,
   Pencil,
   Sparkles,
@@ -183,6 +184,14 @@ export default async function ClientDetail({
           >
             <CalendarDays className="mr-2 h-4 w-4" /> Plan mensual
           </Link>
+          {svcList.some((s) => s.tipo === "paid_media") && (
+            <Link
+              href={`/clientes/${c.id}/publicidad`}
+              className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
+            >
+              <Megaphone className="mr-2 h-4 w-4" /> Publicidad
+            </Link>
+          )}
           <Link
             href={`/contenidos?cliente=${c.id}`}
             className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"

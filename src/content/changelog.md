@@ -2,6 +2,19 @@
 title: Novedades
 ---
 
+## 2026-06-09 — Plan mensual, publicidad y chat
+
+- 📝 **Instrucciones puntuales en el plan mensual**: antes de generar el plan de un cliente, ahora podés agregar una nota de *"¿Algo puntual a tener en cuenta este mes?"* (un lanzamiento, una fecha clave, un cambio de foco). La IA lo toma como prioridad máxima al armar el plan.
+- 📣 **Onboarding de Publicidad por cliente**: en la ficha de los clientes con servicio de pauta aparece una sección **Publicidad** con el checklist de pasos para dejar la cuenta de anuncios lista (accesos de Facebook, administrador de Meta, Dólar App, tarjeta, campañas). Con barra de progreso, notas de campañas y las credenciales del cliente a mano ahí mismo.
+- 💬 **Chat — ya podés iniciar mensajes directos**: arreglamos un problema que impedía a algunos integrantes arrancar un DM o crear un canal nuevo. Ahora todos pueden escribir primero.
+
+## 2026-06-08 — Finanzas y coordinación
+
+- 💰 **Sueldos (administración)**: nuevo módulo en Coordinación que arma la nómina del mes por persona en forma automática desde el modelo de tarifas, suma las comisiones de venta y permite registrar el pago (y copiar el mensaje de aviso para cada uno).
+- 🧮 **Coordinación más completa**: el simulador ahora calcula la comisión de venta como % del pack, y sumamos un **cotizador de pack personalizado** — elegís posts / reels / historias y un margen objetivo y te sugiere el precio.
+- 🧾 **Suscripciones y plataformas**: nueva sección en **Finanzas** para llevar el control de las herramientas que se pagan (Canva, IA, etc.): costo mensual, próxima renovación y botón **"Pagué"** que lo registra como gasto automáticamente.
+- 📈 **Evolución financiera**: nueva vista en **Finanzas** con los últimos 12 meses (ingresos vs egresos y margen mes a mes) para ver la salud del negocio de un vistazo.
+
 ## 2026-05-27 — Templates de mensajes + más UX
 
 - 📄 **Templates**: snippets reusables de texto. Crealos en `/templates` y usalos directo desde el chat interno con el botón 📄 al lado del clip. Soporta scope **propio** (solo vos) y **global** (toda la agencia).

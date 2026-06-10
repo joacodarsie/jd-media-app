@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
+  Check,
+  Copy,
   Loader2,
   Mic,
   MicOff,
@@ -63,9 +65,27 @@ interface ServerMessage {
     };
     turnComplete?: boolean;
   };
+  // El servidor avisa que va a cerrar la conexión pronto.
+  goAway?: { timeLeft?: string };
+  // Handle para retomar la sesión tras una reconexión.
+  sessionResumptionUpdate?: { newHandle?: string; resumable?: boolean };
 }
 
 type Status = "idle" | "connecting" | "live" | "error";
+
+interface TranscriptLine {
+  id: number;
+  role: "user" | "ai";
+  text: string;
+}
+
+// Config que pedimos en cada conexión (la inicial y las reconexiones).
+interface SessionConfig {
+  model: string;
+  voice: string;
+  languageCode: string;
+  systemInstruction: string;
+}
 
 export function JdmediaLive({ userName }: { userName: string }) {
   const [status, setStatus] = useState<Status>("idle");
@@ -73,6 +93,9 @@ export function JdmediaLive({ userName }: { userName: string }) {
   const [micOn, setMicOn] = useState(true);
   const [aiSpeaking, setAiSpeaking] = useState(false);
   const [caption, setCaption] = useState("");
+  const [reconnecting, setReconnecting] = useState(false);
+  const [transcript, setTranscript] = useState<TranscriptLine[]>([]);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
   // getDisplayMedia no existe en navegadores móviles (Android/iOS). Detectamos
   // soporte para mostrar un mensaje claro en vez de un error técnico.
   const [supported, setSupported] = useState(true);
@@ -101,9 +124,19 @@ export function JdmediaLive({ userName }: { userName: string }) {
   // playback scheduling
   const nextStartRef = useRef(0);
   const scheduledRef = useRef<AudioBufferSourceNode[]>([]);
+
+  // transcripción + reconexión
+  const inCaptionRef = useRef("");
   const outCaptionRef = useRef("");
+  const lineIdRef = useRef(0);
+  const resumeHandleRef = useRef<string | null>(null);
+  const reconnectingRef = useRef(false);
+  const intentionalRef = useRef(false);
+  const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
 
   const stopAll = useCallback(() => {
+    // Cualquier teardown es intencional: evita que onclose dispare reconexión.
+    intentionalRef.current = true;
     if (frameTimerRef.current) {
       clearInterval(frameTimerRef.current);
       frameTimerRef.current = null;
@@ -145,7 +178,9 @@ export function JdmediaLive({ userName }: { userName: string }) {
     stopAll();
     setStatus("idle");
     setAiSpeaking(false);
+    setReconnecting(false);
     setCaption("");
+    // No limpiamos la transcripción: queda visible para copiar después de colgar.
   }, [stopAll]);
 
   // limpieza al desmontar
@@ -161,6 +196,12 @@ export function JdmediaLive({ userName }: { userName: string }) {
       previewRef.current.play().catch(() => {});
     }
   }, [status]);
+
+  // Auto-scroll de la transcripción al último mensaje.
+  useEffect(() => {
+    const el = transcriptScrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [transcript, caption]);
 
   function clearScheduledAudio() {
     for (const s of scheduledRef.current) {
@@ -200,7 +241,27 @@ export function JdmediaLive({ userName }: { userName: string }) {
     };
   }
 
+  // Vuelca lo acumulado de un turno a la transcripción persistente.
+  function flushTurn() {
+    const userText = inCaptionRef.current.trim();
+    const aiText = outCaptionRef.current.trim();
+    const additions: TranscriptLine[] = [];
+    if (userText) additions.push({ id: ++lineIdRef.current, role: "user", text: userText });
+    if (aiText) additions.push({ id: ++lineIdRef.current, role: "ai", text: aiText });
+    if (additions.length) setTranscript((prev) => [...prev, ...additions]);
+    inCaptionRef.current = "";
+    outCaptionRef.current = "";
+  }
+
   function handleMessage(msg: ServerMessage) {
+    // El servidor avisa que va a cerrar: reconectamos proactivamente.
+    if (msg.goAway) {
+      void reconnect();
+    }
+    if (msg.sessionResumptionUpdate?.newHandle) {
+      resumeHandleRef.current = msg.sessionResumptionUpdate.newHandle;
+    }
+
     const content = msg.serverContent;
     if (!content) return;
 
@@ -210,7 +271,8 @@ export function JdmediaLive({ userName }: { userName: string }) {
     }
 
     if (content.inputTranscription?.text) {
-      setCaption("Vos: " + content.inputTranscription.text);
+      inCaptionRef.current += content.inputTranscription.text;
+      setCaption("Vos: " + inCaptionRef.current);
     }
     if (content.outputTranscription?.text) {
       outCaptionRef.current += content.outputTranscription.text;
@@ -227,31 +289,104 @@ export function JdmediaLive({ userName }: { userName: string }) {
     }
 
     if (content.turnComplete) {
-      outCaptionRef.current = "";
+      flushTurn();
+      setCaption("");
+    }
+  }
+
+  // Abre (o reabre) la sesión Live. Si pasás un handle, retoma la anterior.
+  // Reusa los streams/contextos de audio ya montados por start().
+  async function openSession(resumeHandle: string | null): Promise<LiveSession> {
+    // 1) Token efímero del servidor (gated a la cuenta dueña). Uno nuevo por
+    //    conexión, así las reconexiones no chocan con el límite del token.
+    const res = await fetch("/api/jdmedia/live-token", { method: "POST" });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? `Error ${res.status} pidiendo token`);
+    }
+    const { token, model, voice, languageCode, systemInstruction } =
+      (await res.json()) as { token: string } & SessionConfig;
+
+    const { GoogleGenAI, Modality } = await import("@google/genai");
+    const ai = new GoogleGenAI({
+      apiKey: token,
+      httpOptions: { apiVersion: "v1alpha" },
+    });
+
+    const session = (await ai.live.connect({
+      model,
+      config: {
+        responseModalities: [Modality.AUDIO],
+        systemInstruction: { parts: [{ text: systemInstruction }] },
+        speechConfig: {
+          languageCode,
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } },
+        },
+        inputAudioTranscription: {},
+        outputAudioTranscription: {},
+        // Comprime el contexto viejo → la sesión deja de tener tope de duración.
+        contextWindowCompression: { slidingWindow: {} },
+        // Permite retomar la sesión tras un corte (reconexión transparente).
+        sessionResumption: resumeHandle ? { handle: resumeHandle } : {},
+      },
+      callbacks: {
+        onopen: () => {
+          setStatus("live");
+          setReconnecting(false);
+        },
+        onmessage: (m: unknown) => handleMessage(m as ServerMessage),
+        onerror: (e: unknown) => {
+          // Si estamos reconectando, dejamos que el flujo de reconexión maneje el error.
+          if (reconnectingRef.current) return;
+          const m = e instanceof Error ? e.message : "Error de conexión";
+          setError(m);
+          setStatus("error");
+        },
+        onclose: () => {
+          // Cierre intencional (colgaste) o reconexión en curso → no hacer nada.
+          if (intentionalRef.current || reconnectingRef.current) return;
+          // Cierre inesperado del servidor → intentamos retomar la sesión.
+          void reconnect();
+        },
+      },
+    })) as unknown as LiveSession;
+    return session;
+  }
+
+  // Reabre la sesión sin perder el micrófono/pantalla ni la transcripción.
+  async function reconnect() {
+    if (intentionalRef.current || reconnectingRef.current) return;
+    reconnectingRef.current = true;
+    setReconnecting(true);
+    // El turno en curso quedó cortado: lo volcamos para no perder texto.
+    flushTurn();
+    try {
+      const prev = sessionRef.current;
+      const session = await openSession(resumeHandleRef.current);
+      sessionRef.current = session; // los pipelines de audio/video ya apuntan a sessionRef.current
+      try {
+        prev?.close();
+      } catch {}
+    } catch {
+      setError("Se perdió la conexión y no se pudo reconectar.");
+      setStatus("error");
+      stopAll();
+    } finally {
+      reconnectingRef.current = false;
+      setReconnecting(false);
     }
   }
 
   async function start() {
     setError(null);
     setStatus("connecting");
+    setTranscript([]);
+    inCaptionRef.current = "";
     outCaptionRef.current = "";
+    resumeHandleRef.current = null;
+    intentionalRef.current = false;
     try {
-      // 1) Token efímero del servidor (gated a la cuenta dueña)
-      const res = await fetch("/api/jdmedia/live-token", { method: "POST" });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? `Error ${res.status} pidiendo token`);
-      }
-      const { token, model, voice, languageCode, systemInstruction } =
-        (await res.json()) as {
-          token: string;
-          model: string;
-          voice: string;
-          languageCode: string;
-          systemInstruction: string;
-        };
-
-      // 2) Capturar pantalla y micrófono.
+      // 1) Capturar pantalla y micrófono.
       // cursor:"always" hace que el puntero del mouse aparezca en las capturas,
       // así la IA ve qué está señalando el usuario. (No está en los tipos std.)
       const displayOpts = {
@@ -274,39 +409,11 @@ export function JdmediaLive({ userName }: { userName: string }) {
       micStreamRef.current = micStream;
       // (el preview se adjunta vía useEffect cuando status pasa a "live")
 
-      // 3) Conectar a Gemini Live con el token efímero (directo desde el browser)
-      const { GoogleGenAI, Modality } = await import("@google/genai");
-      const ai = new GoogleGenAI({
-        apiKey: token,
-        httpOptions: { apiVersion: "v1alpha" },
-      });
+      // 2) Contexto de salida (reproducción de la voz de la IA, 24kHz)
+      outCtxRef.current = new AudioContext({ sampleRate: 24000 });
 
-      const session = (await ai.live.connect({
-        model,
-        config: {
-          responseModalities: [Modality.AUDIO],
-          systemInstruction: { parts: [{ text: systemInstruction }] },
-          speechConfig: {
-            languageCode,
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } },
-          },
-          inputAudioTranscription: {},
-          outputAudioTranscription: {},
-        },
-        callbacks: {
-          onopen: () => setStatus("live"),
-          onmessage: (m: unknown) => handleMessage(m as ServerMessage),
-          onerror: (e: unknown) => {
-            const m = e instanceof Error ? e.message : "Error de conexión";
-            setError(m);
-            setStatus("error");
-          },
-          onclose: () => {
-            if (sessionRef.current) hangUp();
-          },
-        },
-      })) as unknown as LiveSession;
-      sessionRef.current = session;
+      // 3) Conectar a Gemini Live (directo desde el browser con token efímero)
+      sessionRef.current = await openSession(null);
 
       // 4) Pipeline de audio de entrada: mic → PCM16 16kHz → Gemini
       const inCtx = new AudioContext({ sampleRate: 16000 });
@@ -334,10 +441,7 @@ export function JdmediaLive({ userName }: { userName: string }) {
       processor.connect(muteGain);
       muteGain.connect(inCtx.destination);
 
-      // 5) Contexto de salida (reproducción de la voz de la IA, 24kHz)
-      outCtxRef.current = new AudioContext({ sampleRate: 24000 });
-
-      // 6) Pipeline de video: pantalla → JPEG 1 fps → Gemini
+      // 5) Pipeline de video: pantalla → JPEG 1 fps → Gemini
       const videoEl = document.createElement("video");
       videoEl.srcObject = screenStream;
       videoEl.muted = true;
@@ -389,6 +493,14 @@ export function JdmediaLive({ userName }: { userName: string }) {
     micStreamRef.current?.getAudioTracks().forEach((t) => (t.enabled = next));
   }
 
+  async function copyLine(line: TranscriptLine) {
+    try {
+      await navigator.clipboard.writeText(line.text);
+      setCopiedId(line.id);
+      setTimeout(() => setCopiedId((c) => (c === line.id ? null : c)), 1500);
+    } catch {}
+  }
+
   const isLive = status === "live";
   const isConnecting = status === "connecting";
 
@@ -418,10 +530,16 @@ export function JdmediaLive({ userName }: { userName: string }) {
           )}
         />
         <h1 className="text-lg font-semibold">JDmedIA en vivo</h1>
-        {isLive && (
+        {isLive && !reconnecting && (
           <span className="ml-1 flex items-center gap-1.5 rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-600">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
             EN VIVO
+          </span>
+        )}
+        {reconnecting && (
+          <span className="ml-1 flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Reconectando…
           </span>
         )}
       </div>
@@ -484,8 +602,8 @@ export function JdmediaLive({ userName }: { userName: string }) {
       )}
 
       {isLive && (
-        <div className="flex flex-1 flex-col gap-4">
-          <div className="relative flex-1 overflow-hidden rounded-xl border bg-black">
+        <div className="flex flex-1 flex-col gap-3">
+          <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl border bg-black">
             <video
               ref={previewRef}
               muted
@@ -510,11 +628,64 @@ export function JdmediaLive({ userName }: { userName: string }) {
             </div>
           </div>
 
-          {caption && (
-            <p className="line-clamp-2 text-center text-sm text-muted-foreground">
-              {caption}
-            </p>
-          )}
+          {/* Panel de transcripción: lo que se habla, escrito, con copiar. */}
+          <div className="flex flex-col rounded-xl border bg-card">
+            <div className="flex items-center justify-between border-b px-3 py-1.5">
+              <span className="text-xs font-medium text-muted-foreground">
+                Transcripción
+              </span>
+            </div>
+            <div
+              ref={transcriptScrollRef}
+              className="h-36 space-y-2 overflow-y-auto px-3 py-2 text-sm"
+            >
+              {transcript.length === 0 && !caption && (
+                <p className="text-xs text-muted-foreground">
+                  Lo que hablen va a aparecer acá escrito. Pasá el mouse sobre una
+                  respuesta de la IA para copiarla.
+                </p>
+              )}
+              {transcript.map((line) => (
+                <div
+                  key={line.id}
+                  className={cn(
+                    "group flex items-start gap-2",
+                    line.role === "user" && "opacity-70"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "mt-0.5 shrink-0 text-[10px] font-bold uppercase tracking-wide",
+                      line.role === "ai" ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
+                    {line.role === "ai" ? "IA" : "Vos"}
+                  </span>
+                  <p className="flex-1 leading-relaxed text-foreground/90">
+                    {line.text}
+                  </p>
+                  {line.role === "ai" && (
+                    <button
+                      type="button"
+                      onClick={() => copyLine(line)}
+                      className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition hover:bg-muted hover:text-foreground group-hover:opacity-100"
+                      title="Copiar"
+                      aria-label="Copiar respuesta"
+                    >
+                      {copiedId === line.id ? (
+                        <Check className="h-3.5 w-3.5 text-green-600" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  )}
+                </div>
+              ))}
+              {caption && (
+                <p className="text-xs italic text-muted-foreground">{caption}</p>
+              )}
+            </div>
+          </div>
 
           <div className="flex items-center justify-center gap-3 pb-2">
             <Button
@@ -535,6 +706,55 @@ export function JdmediaLive({ userName }: { userName: string }) {
             <Button variant="destructive" size="lg" onClick={hangUp}>
               <PhoneOff className="mr-2 h-4 w-4" /> Terminar
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Transcripción visible también después de colgar, para copiar tranquilo. */}
+      {status === "idle" && transcript.length > 0 && (
+        <div className="flex flex-col rounded-xl border bg-card">
+          <div className="flex items-center justify-between border-b px-3 py-1.5">
+            <span className="text-xs font-medium text-muted-foreground">
+              Transcripción de la última sesión
+            </span>
+          </div>
+          <div className="max-h-72 space-y-2 overflow-y-auto px-3 py-2 text-sm">
+            {transcript.map((line) => (
+              <div
+                key={line.id}
+                className={cn(
+                  "group flex items-start gap-2",
+                  line.role === "user" && "opacity-70"
+                )}
+              >
+                <span
+                  className={cn(
+                    "mt-0.5 shrink-0 text-[10px] font-bold uppercase tracking-wide",
+                    line.role === "ai" ? "text-primary" : "text-muted-foreground"
+                  )}
+                >
+                  {line.role === "ai" ? "IA" : "Vos"}
+                </span>
+                <p className="flex-1 leading-relaxed text-foreground/90">
+                  {line.text}
+                </p>
+                {line.role === "ai" && (
+                  <button
+                    type="button"
+                    onClick={() => copyLine(line)}
+                    className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition hover:bg-muted hover:text-foreground group-hover:opacity-100"
+                    title="Copiar"
+                    aria-label="Copiar respuesta"
+                  >
+                    {copiedId === line.id ? (
+                      <Check className="h-3.5 w-3.5 text-green-600" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}

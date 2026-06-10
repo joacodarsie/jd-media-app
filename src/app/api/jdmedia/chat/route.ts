@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { TOOLS, runTool } from "@/lib/ai/tools";
+import { friendlyAiError } from "@/lib/ai/errors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -320,8 +321,8 @@ export async function POST(req: Request) {
 
         send({ type: "done" });
       } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        send({ type: "error", message: msg });
+        console.error("[jdmedia/chat] stream error", e);
+        send({ type: "error", message: friendlyAiError(e) });
       } finally {
         controller.close();
       }

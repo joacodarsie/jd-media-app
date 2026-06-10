@@ -11,6 +11,7 @@ import {
 import { isPlanShape, type MonthlyContentPlan } from "@/lib/content-plans/schema";
 import { normalizeDiagnostic } from "@/lib/diagnostics/schema";
 import { describePack } from "@/lib/content-plans/packs";
+import { friendlyAiError } from "@/lib/ai/errors";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -282,7 +283,7 @@ export async function POST(
         send({ type: "done", id: inserted.id, content });
       } catch (err) {
         console.error("[plan/generate] stream error", err);
-        const msg = err instanceof Error ? err.message : "Error";
+        const msg = friendlyAiError(err);
         try {
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ type: "error", error: msg })}\n\n`)

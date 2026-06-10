@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { requireUser } from "@/lib/auth";
 import { TOOLS, runTool } from "@/lib/ai/tools";
 import { fetchAllUrls } from "@/lib/url-fetch";
+import { friendlyAiError } from "@/lib/ai/errors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -151,8 +152,8 @@ export async function POST(req: Request) {
         thinking: { type: "adaptive" },
       });
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return NextResponse.json({ error: msg }, { status: 500 });
+      console.error("[chat] anthropic error", e);
+      return NextResponse.json({ error: friendlyAiError(e) }, { status: 500 });
     }
 
     // Append assistant turn verbatim

@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { requireRole } from "@/lib/auth";
+import { AI_MODEL_SMART } from "@/lib/ai/models";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 const client = new Anthropic();
-const MODEL = "claude-sonnet-4-6";
+const MODEL = AI_MODEL_SMART;
 
 function systemPrompt() {
   return `Sos un abogado especializado en contratos de prestacion de servicios para emprendimientos en **Argentina**. Tu cliente es **JD Media**, una agencia de marketing digital cordobesa.

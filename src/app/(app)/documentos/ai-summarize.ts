@@ -4,8 +4,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser, isStaff } from "@/lib/auth";
+import { AI_MODEL_FAST } from "@/lib/ai/models";
 
-const MODEL = "claude-sonnet-4-6";
+const MODEL = AI_MODEL_FAST;
 const MAX_BYTES = 12 * 1024 * 1024; // 12MB
 
 /**

@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { requireUser } from "@/lib/auth";
+import { AI_MODEL_SMART } from "@/lib/ai/models";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const client = new Anthropic();
-const MODEL = "claude-sonnet-4-6";
+const MODEL = AI_MODEL_SMART;
 
 function systemPrompt() {
   return `Sos un especialista en cierre comercial de **JD Media**, una agencia cordobesa de marketing digital. JD Media NO es solo gestion de redes: ofrece un abanico de servicios y muchas veces el cliente necesita una combinacion, no un solo pack.

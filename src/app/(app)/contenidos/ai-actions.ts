@@ -3,8 +3,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
+import { AI_MODEL_FAST } from "@/lib/ai/models";
 
-const MODEL = "claude-sonnet-4-6";
+const MODEL = AI_MODEL_FAST;
 
 // Límites para no explotar el contexto / billing
 const MAX_DOCS_TO_READ = 4;

@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { AI_MODEL_SMART } from "@/lib/ai/models";
 
-const MODEL = "claude-sonnet-4-6";
+const MODEL = AI_MODEL_SMART;
 const client = new Anthropic();
 
 export interface DirectorIdea {

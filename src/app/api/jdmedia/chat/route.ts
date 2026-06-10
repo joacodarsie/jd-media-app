@@ -3,12 +3,13 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { TOOLS, runTool } from "@/lib/ai/tools";
 import { friendlyAiError } from "@/lib/ai/errors";
+import { AI_MODEL_FAST } from "@/lib/ai/models";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const client = new Anthropic();
-const MODEL = "claude-sonnet-4-6";
+const MODEL = AI_MODEL_FAST;
 
 function permissionsBlock(userRol: string): string {
   const isStaff = userRol === "admin" || userRol === "coordinador";

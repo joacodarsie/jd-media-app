@@ -2,7 +2,9 @@
  * Prompt + tool schema para generar el Plan de Contenido mensual con Claude.
  */
 
-export const CONTENT_PLAN_MODEL = "claude-sonnet-4-6";
+import { AI_MODEL_SMART } from "@/lib/ai/models";
+
+export const CONTENT_PLAN_MODEL = AI_MODEL_SMART;
 
 export const CONTENT_PLAN_SYSTEM_PROMPT = `Sos el **director de contenido** de JD Media, agencia cordobesa de marketing. Tu tarea: generar un Plan de Contenido para un período (típicamente un mes) que sea **operativo, concreto y respetuoso de la estrategia ya definida en el diagnóstico + las cuotas del pack contratado**.
 

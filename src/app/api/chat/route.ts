@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { TOOLS, runTool } from "@/lib/ai/tools";
 import { fetchAllUrls } from "@/lib/url-fetch";
 import { friendlyAiError } from "@/lib/ai/errors";
+import { AI_MODEL_FAST } from "@/lib/ai/models";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,7 +13,7 @@ export const maxDuration = 60;
 
 const client = new Anthropic();
 
-const MODEL = "claude-sonnet-4-6";
+const MODEL = AI_MODEL_FAST;
 
 function systemPrompt(userName: string, userArea: string, userRol: string) {
   const today = new Date().toLocaleDateString("es-AR", {

@@ -9,7 +9,9 @@
  *   - Lista al inicio "Info que ya tenemos" para no re-preguntar.
  */
 
-export const MEET_GUIDE_MODEL = "claude-sonnet-4-6";
+import { AI_MODEL_SMART } from "@/lib/ai/models";
+
+export const MEET_GUIDE_MODEL = AI_MODEL_SMART;
 
 export const MEET_GUIDE_SYSTEM_PROMPT = `Sos el asistente del equipo comercial+estrategia de JD Media. Tu trabajo: a partir de la info disponible de un PROSPECTO (todavía no firmó) producir una **guía personalizada de meet de onboarding** para usar después de que firme.
 

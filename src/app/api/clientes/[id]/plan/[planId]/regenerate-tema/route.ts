@@ -3,12 +3,13 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import type { MonthlyContentPlan, TemaDestacado } from "@/lib/content-plans/schema";
+import { AI_MODEL_SMART } from "@/lib/ai/models";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const anthropic = new Anthropic();
-const MODEL = "claude-sonnet-4-6";
+const MODEL = AI_MODEL_SMART;
 
 const SYSTEM_PROMPT = `Sos el director de contenido de JD Media. Tu tarea: REEMPLAZAR un tema específico del plan de contenido del cliente con una idea distinta, manteniendo coherencia con el resto del plan.
 

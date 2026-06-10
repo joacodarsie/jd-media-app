@@ -5,7 +5,9 @@
  * así la generación es barata después de la primera vez.
  */
 
-export const DIAGNOSTIC_GENERATOR_MODEL = "claude-sonnet-4-6";
+import { AI_MODEL_SMART } from "@/lib/ai/models";
+
+export const DIAGNOSTIC_GENERATOR_MODEL = AI_MODEL_SMART;
 
 export const DIAGNOSTIC_SYSTEM_PROMPT = `Sos el **analista estratégico** de JD Media, una agencia de marketing digital de Córdoba, Argentina. Tu trabajo es producir un **Diagnóstico Inicial** completo, claro y accionable a partir de la transcripción de un meet de onboarding con un cliente nuevo.
 

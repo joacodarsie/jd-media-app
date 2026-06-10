@@ -4,7 +4,8 @@
 //   - CM por pack         → clients.cm_id
 //   - Diseño por pieza    → clients.disenador_id
 //   - Edición por reel    → clients.audiovisual_id
-//   - Media buyer por pack→ paid_media.media_buyer_user_id (toggle media_buyer_aplica)
+//   - Media buyer por pack→ clients.media_buyer_id (gestor de pauta de la cuenta),
+//       con fallback a paid_media.media_buyer_user_id (toggle media_buyer_aplica)
 //   - Acuerdo fijo (override) → client_services.costo_override_user (monto completo)
 // El total de la nómina auto debe coincidir con el costo del panorama.
 
@@ -39,6 +40,7 @@ export interface PayrollClient {
   cm_id: string | null;
   disenador_id: string | null;
   audiovisual_id: string | null;
+  media_buyer_id: string | null;
 }
 
 export interface PayrollService {
@@ -130,7 +132,8 @@ export function computeAutoPayroll(
     for (const s of svcs) {
       if (s.tipo !== "paid_media") continue;
       if (s.media_buyer_aplica === false) continue;
-      const who = s.media_buyer_user_id ?? fallbackMediaBuyerId;
+      // El gestor de pauta de la cuenta manda; si no hay, cae al del servicio.
+      const who = c.media_buyer_id ?? s.media_buyer_user_id ?? fallbackMediaBuyerId;
       add(who, {
         clienteId: c.id,
         cliente: c.nombre,

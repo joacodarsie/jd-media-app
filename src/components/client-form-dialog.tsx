@@ -74,6 +74,9 @@ export function ClientFormDialog({
   const [audiovisualId, setAudiovisualId] = useState<string>(
     client?.audiovisual_id ?? NONE
   );
+  const [mediaBuyerId, setMediaBuyerId] = useState<string>(
+    client?.media_buyer_id ?? NONE
+  );
   const [contactoNombre, setContactoNombre] = useState(
     client?.contacto_nombre ?? ""
   );
@@ -181,6 +184,7 @@ export function ClientFormDialog({
       cm_id: cmId === NONE ? null : cmId,
       disenador_id: disenadorId === NONE ? null : disenadorId,
       audiovisual_id: audiovisualId === NONE ? null : audiovisualId,
+      media_buyer_id: mediaBuyerId === NONE ? null : mediaBuyerId,
     };
     const servicesPayload: NewClientServiceInput[] = draftServices
       .filter((s) => s.tipo)
@@ -311,9 +315,12 @@ export function ClientFormDialog({
           <div className="rounded-lg border bg-muted/30 p-3">
             <h4 className="mb-2 text-sm font-semibold">Equipo asignado a esta cuenta</h4>
             <p className="mb-3 text-xs text-muted-foreground">
-              Estas personas se sugieren automáticamente al crear publicaciones según el tipo de contenido.
+              Quién lleva cada parte de la cuenta. El Community Manager, diseñador/a
+              y editor/a se sugieren automáticamente al crear publicaciones según el
+              tipo de contenido. El gestor de pauta lleva la gestión básica de
+              campañas (incluida en Gestión de redes).
             </p>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Community Manager</Label>
                 <Select value={cmId} onValueChange={setCmId}>
@@ -345,6 +352,20 @@ export function ClientFormDialog({
               <div className="space-y-2">
                 <Label>Editor/a audiovisual</Label>
                 <Select value={audiovisualId} onValueChange={setAudiovisualId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Sin asignar</SelectItem>
+                    {users.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>{u.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Gestor/a de pauta</Label>
+                <Select value={mediaBuyerId} onValueChange={setMediaBuyerId}>
                   <SelectTrigger>
                     <SelectValue placeholder="—" />
                   </SelectTrigger>

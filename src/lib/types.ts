@@ -146,6 +146,7 @@ export interface Client {
   cm_id: string | null;
   disenador_id: string | null;
   audiovisual_id: string | null;
+  media_buyer_id: string | null;
   created_at: string;
   updated_at: string;
 }

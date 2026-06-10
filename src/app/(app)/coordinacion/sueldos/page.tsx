@@ -38,7 +38,7 @@ export default async function SueldosPage({
     admin.from("agency_settings").select("packs, rates").eq("id", 1).maybeSingle(),
     admin
       .from("clients")
-      .select("id, nombre, cm_id, disenador_id, audiovisual_id")
+      .select("id, nombre, cm_id, disenador_id, audiovisual_id, media_buyer_id")
       .eq("estado", "activo")
       .eq("es_interno", false),
     admin

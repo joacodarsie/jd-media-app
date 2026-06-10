@@ -351,6 +351,7 @@ function PubDetail({ pub, token, onClose }: { pub: PortalPub; token: string; onC
   return (
     <div
       onClick={onClose}
+      className="portal-backdrop"
       style={{
         position: "fixed",
         inset: 0,
@@ -364,6 +365,7 @@ function PubDetail({ pub, token, onClose }: { pub: PortalPub; token: string; onC
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        className="portal-sheet"
         style={{
           background: "#fff",
           width: "100%",

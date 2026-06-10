@@ -174,6 +174,15 @@ export default async function PortalPage({ params }: { params: { token: string }
         .pub-meta { font-size: 11px; color: #777; margin-top: 2px; }
 
         .empty { text-align: center; padding: 40px 20px; color: #999; font-size: 14px; }
+
+        @keyframes portalFade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes portalUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .portal-backdrop { animation: portalFade .18s ease; }
+        .portal-sheet { animation: portalUp .28s cubic-bezier(.22,1,.36,1); }
+        @media (min-width: 600px) {
+          .portal-backdrop { align-items: center !important; }
+          .portal-sheet { border-radius: 18px !important; animation: portalFade .2s ease; }
+        }
         .footer { margin-top: 40px; text-align: center; padding: 24px 0; color: #888; font-size: 12px; border-top: 1px solid #ececec; }
       `}</style>
 

@@ -646,6 +646,7 @@ export function PublicationsMonth({
                   pub={p}
                   clients={clients}
                   users={users}
+                  unseenCount={unseenByPub?.[p.id] ?? 0}
                   onDragStart={(id) => setDraggingId(id)}
                   onDragEnd={() => {
                     setDraggingId(null);
@@ -729,6 +730,7 @@ export function PublicationsMonth({
           unscheduled={unscheduled}
           clients={clients}
           users={users}
+          unseenByPub={unseenByPub}
           selectMode={selectMode}
           selectedIds={selectedIds}
           onToggleSelect={toggleSelect}
@@ -756,6 +758,7 @@ export function PublicationsMonth({
                       pub={p}
                       clients={clients}
                       users={users}
+                      unseenCount={unseenByPub?.[p.id] ?? 0}
                       selectMode={selectMode}
                       selected={selectedIds.has(p.id)}
                       onToggleSelect={toggleSelect}
@@ -814,6 +817,7 @@ function AgendaView({
   unscheduled,
   clients,
   users,
+  unseenByPub,
   selectMode,
   selectedIds,
   onToggleSelect,
@@ -822,6 +826,7 @@ function AgendaView({
   unscheduled: PublicationWithRels[];
   clients: ClientForPub[];
   users: Pick<AppUser, "id" | "nombre">[];
+  unseenByPub?: Record<string, number>;
   selectMode?: boolean;
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
@@ -888,6 +893,7 @@ function AgendaView({
                   pub={p}
                   clients={clients}
                   users={users}
+                  unseenCount={unseenByPub?.[p.id] ?? 0}
                   selectMode={selectMode}
                   selected={selectedIds?.has(p.id)}
                   onToggleSelect={onToggleSelect}
@@ -911,6 +917,7 @@ function AgendaView({
                 pub={p}
                 clients={clients}
                 users={users}
+                unseenCount={unseenByPub?.[p.id] ?? 0}
                 selectMode={selectMode}
                 selected={selectedIds?.has(p.id)}
                 onToggleSelect={onToggleSelect}
@@ -1065,6 +1072,7 @@ function PubRow({
   pub,
   clients,
   users,
+  unseenCount = 0,
   onDragStart,
   onDragEnd,
   dragging,
@@ -1075,6 +1083,7 @@ function PubRow({
   pub: PublicationWithRels;
   clients: ClientForPub[];
   users: Pick<AppUser, "id" | "nombre">[];
+  unseenCount?: number;
   onDragStart?: (id: string) => void;
   onDragEnd?: () => void;
   dragging?: boolean;
@@ -1108,6 +1117,15 @@ function PubRow({
       >
         {PUBLICATION_STATUS_LABEL[pub.estado]}
       </span>
+      {unseenCount > 0 && (
+        <span
+          aria-label={`${unseenCount} comentario(s) del cliente sin ver`}
+          title={`${unseenCount} comentario(s) del cliente sin ver`}
+          className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white"
+        >
+          💬 {unseenCount > 9 ? "9+" : unseenCount}
+        </span>
+      )}
       <span className="truncate">{pub.titulo}</span>
     </div>
   );

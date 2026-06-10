@@ -3,7 +3,7 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { AGENCY } from "@/lib/agency";
 import type { MonthlyContentPlan } from "@/lib/content-plans/schema";
 import { PortalReviewCard } from "@/components/portal-review-card";
-import { PortalPubComment } from "@/components/portal-pub-comment";
+import { PortalContent } from "@/components/portal-content";
 
 export const dynamic = "force-dynamic";
 
@@ -17,14 +17,6 @@ const FORMATO_LABEL: Record<string, string> = {
   otro: "Otros",
 };
 
-function fmtDate(iso?: string | null) {
-  if (!iso) return "";
-  return new Date(iso).toLocaleDateString("es-AR", {
-    day: "2-digit",
-    month: "long",
-  });
-}
-
 interface UpcomingPub {
   id: string;
   titulo: string;
@@ -32,6 +24,10 @@ interface UpcomingPub {
   red: string;
   tipo: string;
   estado: string;
+  copy: string | null;
+  descripcion: string | null;
+  hashtags: string | null;
+  asset_url: string | null;
 }
 
 export default async function PortalPage({ params }: { params: { token: string } }) {
@@ -70,7 +66,7 @@ export default async function PortalPage({ params }: { params: { token: string }
       .maybeSingle(),
     admin
       .from("publications")
-      .select("id, titulo, fecha_publicacion, red, tipo, estado")
+      .select("id, titulo, fecha_publicacion, red, tipo, estado, copy, descripcion, hashtags, asset_url")
       .eq("cliente_id", cliente_id)
       .gte("fecha_publicacion", now.toISOString())
       .lte("fecha_publicacion", in8Weeks.toISOString())
@@ -321,23 +317,11 @@ export default async function PortalPage({ params }: { params: { token: string }
           <div className="card">
             <div className="card-label">Calendario de contenidos</div>
             <h2 className="card-title">Lo que viene</h2>
-            <p style={{ fontSize: 13, color: "#555", margin: "0 0 12px", lineHeight: 1.5 }}>
-              Todo lo que tenemos planificado para vos. Si querés sumar una idea
-              o comentar algo de una pieza, dejanos tu comentario y le llega al
-              equipo al instante.
+            <p style={{ fontSize: 13, color: "#555", margin: "0 0 16px", lineHeight: 1.5 }}>
+              Tocá una pieza para verla en detalle (texto, imagen y más) y dejar
+              tu comentario. Lo que escribas le llega al equipo al instante.
             </p>
-            <ul className="pub-list">
-              {upcoming.map((p) => (
-                <li key={p.id} className="pub">
-                  <div className="pub-date">{fmtDate(p.fecha_publicacion)}</div>
-                  <div className="pub-title">{p.titulo}</div>
-                  <div className="pub-meta" style={{ textTransform: "capitalize" }}>
-                    {p.tipo} · {p.red}
-                  </div>
-                  <PortalPubComment pubId={p.id} token={params.token} />
-                </li>
-              ))}
-            </ul>
+            <PortalContent pubs={upcoming} token={params.token} />
           </div>
         )}
 

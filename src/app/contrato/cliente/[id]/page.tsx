@@ -266,6 +266,18 @@ export default async function CartaAcuerdoPage({
           color: #444;
         }
         .service-card ul li { margin: 2px 0; }
+        .service-card ul li.subhead {
+          list-style: none;
+          margin-left: -18px;
+          margin-top: 8px;
+          margin-bottom: 2px;
+          font-weight: 600;
+          font-size: 11px;
+          color: #222;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
+        }
+        .service-card ul li.subhead:first-child { margin-top: 0; }
 
         .total-line {
           display: flex;
@@ -501,9 +513,15 @@ export default async function CartaAcuerdoPage({
                     {s.pack && <div className="pack">Pack: {s.pack}</div>}
                     {deliverables.length > 0 && (
                       <ul>
-                        {deliverables.map((d, i) => (
-                          <li key={i}>{d}</li>
-                        ))}
+                        {deliverables.map((d, i) =>
+                          d.startsWith("## ") ? (
+                            <li key={i} className="subhead">
+                              {d.slice(3)}
+                            </li>
+                          ) : (
+                            <li key={i}>{d}</li>
+                          )
+                        )}
                       </ul>
                     )}
                     {s.notas && (

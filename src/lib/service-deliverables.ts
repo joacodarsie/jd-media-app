@@ -11,17 +11,26 @@ export function getDeliverables(svc: ClientService): string[] {
     case "gestion_redes":
       return gestionRedesDeliverables(svc);
     case "paid_media":
+      // El prefijo "## " marca un subtítulo (se renderiza separado en la carta).
       return [
+        "## Estrategia y planificación",
+        "Definición de objetivos (leads, ventas o tráfico) y del embudo de campañas.",
+        "Planificación de campañas y presupuestos según los objetivos acordados.",
+        "## Configuración y públicos",
         "Setup y verificación de Business Manager / Google Ads.",
         "Configuración de píxel y eventos de conversión.",
-        "Estructura de campañas según objetivos acordados (leads, ventas o tráfico).",
-        "Optimización continua y reporting mensual de resultados.",
-        "La inversión publicitaria se factura aparte y no está incluida en este honorario.",
+        "Creación de públicos, segmentaciones y audiencias personalizadas.",
+        "## Gestión y optimización",
+        "Armado y puesta en marcha de las campañas.",
+        "Optimización continua durante todo el mes (presupuesto, pujas, creatividades y públicos).",
+        "## Reporte",
+        "Reporte mensual con métricas claras y próximos pasos.",
+        "## Importante",
+        "La inversión publicitaria (presupuesto de pauta) se factura aparte y no está incluida en este honorario.",
       ];
     case "edicion_audiovisual":
       return [
         "Edición de piezas audiovisuales según calendario acordado.",
-        "Coordinación de una jornada de producción mensual.",
         "Entrega de material editado para publicación en redes.",
       ];
     case "branding":
@@ -73,9 +82,9 @@ function gestionRedesDeliverables(svc: ClientService): string[] {
     "Rediseño y optimización de perfiles y biografías.",
     "Publicación del contenido + copys + reposteo a historias.",
     "Resubida de contenido a TikTok cuando aplique.",
+    "Gestión básica de campañas publicitarias en Meta (la inversión en pauta corre por cuenta del cliente).",
     "Reporte mensual de avances, métricas principales y próximos pasos.",
     "Grupo de WhatsApp entre cliente y equipo de JD Media.",
-    "Una jornada de producción de contenido mensual.",
   ];
 
   // Pack_detalle puede tener piezas: posts, historias_dias, reels, carruseles

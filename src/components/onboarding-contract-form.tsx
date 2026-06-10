@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ export function OnboardingContractForm({
 }) {
   const [form, setForm] = useState<Initial>(initial);
   const [pending, start] = useTransition();
+  const router = useRouter();
 
   function set<K extends keyof Initial>(key: K, value: Initial[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -45,6 +47,7 @@ export function OnboardingContractForm({
         return;
       }
       toast.success("Datos guardados.");
+      router.refresh(); // refleja el nº de contrato en la carta sin recargar a mano
     });
   }
 

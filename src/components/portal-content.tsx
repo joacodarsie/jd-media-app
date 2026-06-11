@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import { PUBLICATION_TYPE_HEX } from "@/lib/constants";
 
 /**
  * Calendario de contenidos del Cliente Portal.
@@ -24,24 +25,16 @@ export interface PortalPub {
 }
 
 const TIPO_LABEL: Record<string, string> = {
+  post: "Posteo",
   reel: "Reel",
-  post: "Post",
   carrusel: "Carrusel",
-  story: "Historia",
-  video_largo: "Video",
-  live: "Live",
+  historia: "Historia",
+  video: "Video",
   otro: "Pieza",
 };
 
-const RED_COLOR: Record<string, string> = {
-  instagram: "#E1306C",
-  facebook: "#1877F2",
-  tiktok: "#111111",
-  youtube: "#FF0000",
-  linkedin: "#0A66C2",
-  x: "#111111",
-  twitter: "#111111",
-};
+// Orden de preferencia para la leyenda.
+const TIPO_ORDER = ["post", "reel", "historia", "carrusel", "video", "otro"];
 
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -52,8 +45,11 @@ const DIAS = ["L", "M", "M", "J", "V", "S", "D"];
 function dayKey(d: Date) {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
-function redColor(red: string) {
-  return RED_COLOR[red?.toLowerCase()] ?? "#999";
+function tipoColor(tipo: string) {
+  return (PUBLICATION_TYPE_HEX as Record<string, string>)[tipo] ?? "#94a3b8";
+}
+function tipoLabel(tipo: string) {
+  return TIPO_LABEL[tipo] ?? "Pieza";
 }
 function isImage(url: string | null): boolean {
   if (!url) return false;
@@ -120,6 +116,14 @@ export function PortalContent({ pubs, token }: { pubs: PortalPub[]; token: strin
   const effectiveSelKey = selKey && byDay.has(selKey) ? selKey : (monthDays[0] ? dayKey(monthDays[0]) : null);
   const selPubs = effectiveSelKey ? (byDay.get(effectiveSelKey) ?? []) : [];
 
+  // Tipos presentes (para la leyenda), en orden de preferencia.
+  const legendTipos = useMemo(() => {
+    const present = new Set(pubs.map((p) => p.tipo));
+    const ordered = TIPO_ORDER.filter((t) => present.has(t));
+    const rest = [...present].filter((t) => !TIPO_ORDER.includes(t));
+    return [...ordered, ...rest];
+  }, [pubs]);
+
   if (pubs.length === 0) {
     return (
       <p style={{ color: "#999", fontSize: 14, textAlign: "center", padding: "20px 0" }}>
@@ -139,6 +143,9 @@ export function PortalContent({ pubs, token }: { pubs: PortalPub[]; token: strin
           📋 Lista
         </ToggleBtn>
       </div>
+
+      {/* Leyenda: qué representa cada color */}
+      <Legend tipos={legendTipos} />
 
       {view === "calendar" ? (
         <>
@@ -190,7 +197,7 @@ export function PortalContent({ pubs, token }: { pubs: PortalPub[]; token: strin
                   </span>
                   <div style={{ display: "flex", gap: 2, flexWrap: "wrap", justifyContent: "center" }}>
                     {dayPubs.slice(0, 3).map((p) => (
-                      <span key={p.id} style={{ width: 6, height: 6, borderRadius: 999, background: redColor(p.red) }} />
+                      <span key={p.id} style={{ width: 6, height: 6, borderRadius: 999, background: tipoColor(p.tipo) }} />
                     ))}
                   </div>
                 </button>
@@ -228,6 +235,35 @@ export function PortalContent({ pubs, token }: { pubs: PortalPub[]; token: strin
       )}
 
       {openPub && <PubDetail pub={openPub} token={token} onClose={() => setOpenId(null)} />}
+    </div>
+  );
+}
+
+function Legend({ tipos }: { tipos: string[] }) {
+  if (tipos.length === 0) return null;
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        alignItems: "center",
+        gap: "6px 16px",
+        marginBottom: 14,
+        padding: "10px 12px",
+        background: "#fafafa",
+        border: "1px solid #eee",
+        borderRadius: 10,
+      }}
+    >
+      <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#999", fontWeight: 700 }}>
+        Referencias
+      </span>
+      {tipos.map((t) => (
+        <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "#444" }}>
+          <span style={{ width: 10, height: 10, borderRadius: 999, background: tipoColor(t) }} />
+          {tipoLabel(t)}
+        </span>
+      ))}
     </div>
   );
 }
@@ -295,13 +331,13 @@ function PubRow({ pub, onClick, showDate }: { pub: PortalPub; onClick: () => voi
         cursor: "pointer",
       }}
     >
-      <span style={{ width: 4, alignSelf: "stretch", borderRadius: 4, background: redColor(pub.red), minHeight: 36 }} />
+      <span style={{ width: 4, alignSelf: "stretch", borderRadius: 4, background: tipoColor(pub.tipo), minHeight: 36 }} />
       {isImage(pub.asset_url) ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={pub.asset_url!} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
       ) : (
         <span style={{ width: 40, height: 40, borderRadius: 8, background: "#f4f4f4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
-          {pub.tipo === "reel" || pub.tipo === "video_largo" ? "🎬" : pub.tipo === "story" ? "⚡" : "🖼️"}
+          {pub.tipo === "reel" || pub.tipo === "video" ? "🎬" : pub.tipo === "historia" ? "⚡" : "🖼️"}
         </span>
       )}
       <span style={{ flex: 1, minWidth: 0 }}>

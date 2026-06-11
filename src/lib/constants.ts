@@ -282,6 +282,28 @@ export const PUBLICATION_TYPE_BORDER: Record<PublicationType, string> = {
   otro: "border-l-slate-400",
 };
 
+// Esquema de color por TIPO (post=rojo, reel=azul, historia=verde) usado en el
+// portal del cliente y en los chips en estado "idea" del calendario del equipo.
+// Hex para estilos inline (portal); clases Tailwind para el chip del equipo.
+export const PUBLICATION_TYPE_HEX: Record<PublicationType, string> = {
+  post: "#ef4444", // rojo
+  reel: "#3b82f6", // azul
+  historia: "#22c55e", // verde
+  carrusel: "#f97316", // naranja
+  video: "#8b5cf6", // violeta
+  otro: "#94a3b8", // gris
+};
+
+// Chip por tipo para piezas en estado "idea" (bg suave + texto + borde acento).
+export const PUBLICATION_TYPE_IDEA_BADGE: Record<PublicationType, string> = {
+  post: "bg-red-100 text-red-900 border-l-red-500 dark:bg-red-500/30 dark:text-red-50",
+  reel: "bg-blue-100 text-blue-900 border-l-blue-500 dark:bg-blue-500/30 dark:text-blue-50",
+  historia: "bg-green-100 text-green-900 border-l-green-500 dark:bg-green-500/30 dark:text-green-50",
+  carrusel: "bg-orange-100 text-orange-900 border-l-orange-500 dark:bg-orange-500/30 dark:text-orange-50",
+  video: "bg-violet-100 text-violet-900 border-l-violet-500 dark:bg-violet-500/30 dark:text-violet-50",
+  otro: "bg-slate-100 text-slate-800 border-l-slate-400 dark:bg-slate-500/30 dark:text-slate-50",
+};
+
 /** Flujo sugerido por tipo. */
 export function nextPublicationStatuses(
   current: PublicationStatus,

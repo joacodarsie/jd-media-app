@@ -23,6 +23,7 @@ import {
   PUBLICATION_STATUS_LABEL,
   PUBLICATION_TYPE_BORDER,
   PUBLICATION_TYPE_DOT,
+  PUBLICATION_TYPE_IDEA_BADGE,
   PUBLICATION_TYPE_LABEL,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -1045,8 +1046,11 @@ function PubChip({
           onDragEnd={() => onDragEnd?.()}
           className={cn(
             "flex w-full cursor-grab items-center gap-1 rounded border-l-[3px] px-1.5 py-1 text-left text-[11px] font-medium active:cursor-grabbing",
-            PUBLICATION_STATUS_BADGE[pub.estado],
-            PUBLICATION_TYPE_BORDER[pub.tipo],
+            // En estado "idea" coloreamos por TIPO (post=rojo, reel=azul,
+            // historia=verde); en el resto, color por estado + acento por tipo.
+            pub.estado === "idea"
+              ? PUBLICATION_TYPE_IDEA_BADGE[pub.tipo]
+              : cn(PUBLICATION_STATUS_BADGE[pub.estado], PUBLICATION_TYPE_BORDER[pub.tipo]),
             dragging && "opacity-40"
           )}
           title={titleWithBadge}

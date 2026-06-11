@@ -260,25 +260,25 @@ export const PUBLICATION_TYPE_LABEL: Record<PublicationType, string> = {
   otro: "Otro",
 };
 
-// Color por TIPO de pieza, para distinguir de un vistazo en el calendario.
-// post/carrusel = azules (estáticos), reel/video = violetas (audiovisual),
-// historia = fucsia (efímero), otro = gris.
+// Color por TIPO de pieza, para distinguir de un vistazo. Esquema unificado con
+// el portal del cliente: post=rojo, reel=azul, historia=verde, carrusel=naranja,
+// video=violeta, otro=gris. (Ver PUBLICATION_TYPE_HEX para los hex equivalentes.)
 export const PUBLICATION_TYPE_DOT: Record<PublicationType, string> = {
-  post: "bg-sky-500",
-  carrusel: "bg-cyan-500",
-  reel: "bg-violet-500",
-  historia: "bg-fuchsia-500",
-  video: "bg-indigo-500",
+  post: "bg-red-500",
+  carrusel: "bg-orange-500",
+  reel: "bg-blue-500",
+  historia: "bg-green-500",
+  video: "bg-violet-500",
   otro: "bg-slate-400",
 };
 
 // Borde izquierdo (acento) por tipo — se aplica sobre el chip del calendario.
 export const PUBLICATION_TYPE_BORDER: Record<PublicationType, string> = {
-  post: "border-l-sky-500",
-  carrusel: "border-l-cyan-500",
-  reel: "border-l-violet-500",
-  historia: "border-l-fuchsia-500",
-  video: "border-l-indigo-500",
+  post: "border-l-red-500",
+  carrusel: "border-l-orange-500",
+  reel: "border-l-blue-500",
+  historia: "border-l-green-500",
+  video: "border-l-violet-500",
   otro: "border-l-slate-400",
 };
 

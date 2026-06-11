@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import type {
   AppUser,
   PublicationStatus,
+  PublicationType,
   PublicationWithRels,
 } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -189,6 +190,26 @@ export function PublicationsMonth({
     localStorage.setItem("jd:contenidos:mode", mode);
   }, [mode]);
 
+  // Cliente por defecto: si no viene fijado por la URL, mostrar el último
+  // cliente al que entró la persona (si sigue activo), o el primero que lleve.
+  useEffect(() => {
+    if (defaultClientId) return; // la URL manda
+    if (fCliente !== "__all__") return;
+    const actives = clients.filter((c) => c.estado === "activo");
+    if (actives.length === 0) return;
+    const last = localStorage.getItem("jd:contenidos:lastClient");
+    if (last && actives.some((c) => c.id === last)) setFCliente(last);
+    else setFCliente(actives[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Recordar el último cliente visto (para la próxima visita).
+  useEffect(() => {
+    if (fCliente !== "__all__") {
+      localStorage.setItem("jd:contenidos:lastClient", fCliente);
+    }
+  }, [fCliente]);
+
   // Set de cliente_ids que tienen al menos una publicación
   const clientesConPubs = useMemo(() => {
     return new Set(publications.map((p) => p.cliente_id).filter(Boolean));
@@ -281,6 +302,18 @@ export function PublicationsMonth({
     month: "long",
     year: "numeric",
   });
+
+  // Conteo por tipo del MES visible (cursor) + cliente filtrado (ya en `filtered`).
+  const cursorYM = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
+  const monthTypeCounts = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const p of filtered) {
+      if (!p.fecha_publicacion) continue;
+      if (p.fecha_publicacion.slice(0, 7) !== cursorYM) continue;
+      c[p.tipo] = (c[p.tipo] ?? 0) + 1;
+    }
+    return c;
+  }, [filtered, cursorYM]);
 
   return (
     <div className="space-y-4">
@@ -506,7 +539,8 @@ export function PublicationsMonth({
 
       {mode === "mes" ? (
         <>
-          {/* Leyenda de colores por tipo de pieza */}
+          {/* Leyenda de colores por tipo + contador del mes visible */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
             {(["post", "carrusel", "reel", "historia", "video"] as const).map(
               (t) => (
@@ -521,6 +555,8 @@ export function PublicationsMonth({
                 </span>
               )
             )}
+          </div>
+            <MonthTypeSummary counts={monthTypeCounts} />
           </div>
           <div className="rounded-xl border bg-card">
             <div className="grid grid-cols-7 border-b text-xs font-medium text-muted-foreground">
@@ -1005,6 +1041,33 @@ function ModeBtn({
       <Icon className="h-3.5 w-3.5" />
       <span className="hidden sm:inline">{label}</span>
     </button>
+  );
+}
+
+function MonthTypeSummary({ counts }: { counts: Record<string, number> }) {
+  // Siempre mostramos los 3 principales; carrusel/video/otro solo si hay.
+  const core: { tipo: PublicationType; label: string }[] = [
+    { tipo: "post", label: "Posteos" },
+    { tipo: "reel", label: "Reels" },
+    { tipo: "historia", label: "Historias" },
+  ];
+  const extra: { tipo: PublicationType; label: string }[] = [
+    { tipo: "carrusel", label: "Carruseles" },
+    { tipo: "video", label: "Videos" },
+    { tipo: "otro", label: "Otros" },
+  ];
+  const items = [...core, ...extra.filter((e) => (counts[e.tipo] ?? 0) > 0)];
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-card px-3 py-1.5 text-xs">
+      <span className="font-semibold text-muted-foreground">Este mes</span>
+      {items.map((it) => (
+        <span key={it.tipo} className="inline-flex items-center gap-1">
+          <span className={cn("inline-block h-2 w-2 rounded-full", PUBLICATION_TYPE_DOT[it.tipo])} />
+          <span className="font-bold tabular-nums">{counts[it.tipo] ?? 0}</span>
+          <span className="text-muted-foreground">{it.label}</span>
+        </span>
+      ))}
+    </div>
   );
 }
 

@@ -8,6 +8,7 @@ import {
   runMonthEndCompliance,
   runMonthStartReports,
 } from "@/lib/director/monthly";
+import { runPaidMediaDaily } from "@/lib/paid-media/sync";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -104,6 +105,15 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Paid media: snapshot diario + análisis IA de cada cuenta con Meta cargado.
+  // Va acá (no en un cron propio) para no sumar crons en Hobby.
+  let paidMedia: unknown = null;
+  try {
+    paidMedia = await runPaidMediaDaily();
+  } catch (e) {
+    paidMedia = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   return NextResponse.json({
     ok: true,
     users: ids.length,
@@ -113,5 +123,6 @@ export async function GET(req: NextRequest) {
     tasks_archived: archivedRows?.length ?? 0,
     month_end: monthEnd,
     month_start: monthStart,
+    paid_media: paidMedia,
   });
 }

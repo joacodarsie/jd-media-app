@@ -29,6 +29,7 @@ import {
   Banknote,
   Network,
   Clapperboard,
+  TrendingUp,
   Menu,
   LogOut,
   ChevronDown,
@@ -84,6 +85,7 @@ const ICONS: Record<string, LucideIcon> = {
   Banknote,
   Network,
   Clapperboard,
+  TrendingUp,
 };
 
 function initials(nombre: string) {

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { requireUser, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdmin } from "@/lib/supabase/admin";
 import {
   PUBLICATION_NETWORK_LABEL,
   PUBLICATION_TYPE_LABEL,
@@ -373,6 +374,34 @@ export default async function ReporteClientePage({
   );
   const monedaContratado = serviceList[0]?.moneda ?? "ARS";
 
+  // Paid media del mes (snapshots diarios agregados). Tabla RLS-only → admin.
+  const { data: pmSnaps } = await createAdmin()
+    .from("paid_media_snapshots")
+    .select("spend, impressions, clicks, conversions, moneda")
+    .eq("cliente_id", params.id)
+    .gte("fecha", `${mes}-01`)
+    .lte("fecha", `${mes}-31`);
+  const pmRows = (pmSnaps ?? []) as {
+    spend: number;
+    impressions: number;
+    clicks: number;
+    conversions: number;
+    moneda: string;
+  }[];
+  const paid = pmRows.reduce(
+    (acc, r) => ({
+      spend: acc.spend + Number(r.spend),
+      impressions: acc.impressions + Number(r.impressions),
+      clicks: acc.clicks + Number(r.clicks),
+      conversions: acc.conversions + Number(r.conversions),
+      moneda: r.moneda || acc.moneda,
+    }),
+    { spend: 0, impressions: 0, clicks: 0, conversions: 0, moneda: "ARS" }
+  );
+  const hasPaid = pmRows.length > 0 && (paid.spend > 0 || paid.conversions > 0);
+  const paidCostPerConv =
+    paid.conversions > 0 ? Math.round(paid.spend / paid.conversions) : null;
+
   return (
     <div className="min-h-screen bg-white text-zinc-900">
       {/* Toolbar (no se imprime) */}
@@ -549,6 +578,30 @@ export default async function ReporteClientePage({
               <MetricBox label="Impresiones" value={metricas.impresiones} />
               <MetricBox label="Interacciones" value={metricas.interacciones} />
               <MetricBox label="Visitas al perfil" value={metricas.visitas_perfil} />
+            </div>
+          </section>
+        )}
+
+        {/* Paid Media del mes */}
+        {hasPaid && (
+          <section className="mt-8 break-inside-avoid">
+            <h2 className="mb-2 flex items-center gap-2 text-base font-semibold text-zinc-900">
+              <TrendingUp className="h-4 w-4 text-blue-600" />
+              Publicidad (Paid Media)
+            </h2>
+            <div className="grid grid-cols-2 gap-3 rounded-lg border border-zinc-200 p-4 md:grid-cols-4">
+              <MetricBox
+                label="Inversión"
+                value={Math.round(paid.spend)}
+                prefix={`${paid.moneda} `}
+              />
+              <MetricBox label="Conversiones" value={paid.conversions} />
+              <MetricBox
+                label="Costo por conversión"
+                value={paidCostPerConv}
+                prefix={`${paid.moneda} `}
+              />
+              <MetricBox label="Clicks" value={paid.clicks} />
             </div>
           </section>
         )}

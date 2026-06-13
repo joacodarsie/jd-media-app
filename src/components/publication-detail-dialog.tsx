@@ -13,11 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Check, Loader2 } from "lucide-react";
 import {
   PUBLICATION_NETWORK_LABEL,
-  PUBLICATION_STATUS_BADGE,
+  PUBLICATION_STATUS_HEX,
   PUBLICATION_STATUS_LABEL,
   PUBLICATION_TYPE_LABEL,
 } from "@/lib/constants";
-import { cn } from "@/lib/utils";
 import type { AppUser, PublicationWithRels } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -82,10 +81,8 @@ export function PublicationDetailDialog({
           <DialogTitle className="flex items-center gap-2 pr-6">
             <span>{p.titulo}</span>
             <span
-              className={cn(
-                "rounded-full px-2 py-0.5 text-[11px] font-medium",
-                PUBLICATION_STATUS_BADGE[p.estado]
-              )}
+              className="rounded-full px-2 py-0.5 text-[11px] font-medium text-foreground"
+              style={{ backgroundColor: PUBLICATION_STATUS_HEX[p.estado] + "33" }}
             >
               {PUBLICATION_STATUS_LABEL[p.estado]}
             </span>

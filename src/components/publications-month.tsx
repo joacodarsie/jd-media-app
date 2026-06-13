@@ -21,10 +21,9 @@ import {
 } from "lucide-react";
 import {
   PUBLICATION_NETWORK_LABEL,
-  PUBLICATION_STATUS_BADGE,
-  PUBLICATION_STATUS_CHIP,
+  PUBLICATION_STATUS_HEX,
   PUBLICATION_STATUS_LABEL,
-  PUBLICATION_TYPE_DOT,
+  PUBLICATION_TYPE_HEX,
   PUBLICATION_TYPE_LABEL,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -725,10 +724,8 @@ export function PublicationsMonth({
               >
                 <div className="flex items-center justify-between border-b px-3 py-2">
                   <span
-                    className={cn(
-                      "rounded px-2 py-0.5 text-[11px] font-semibold",
-                      PUBLICATION_STATUS_BADGE[s]
-                    )}
+                    className="rounded px-2 py-0.5 text-[11px] font-semibold text-foreground"
+                    style={{ backgroundColor: PUBLICATION_STATUS_HEX[s] + "33" }}
                   >
                     {PUBLICATION_STATUS_LABEL[s]}
                   </span>
@@ -894,12 +891,12 @@ function ModeBtn({
 function MonthTypeSummary({ counts }: { counts: Record<string, number> }) {
   // Posteo y carrusel son el mismo formato → se cuentan juntos como "Posteos".
   // El verde queda para "publicado", así que historia va en ámbar.
-  const items: { key: string; label: string; dot: string; value: number; always: boolean }[] = [
-    { key: "post", label: "Posteos", dot: PUBLICATION_TYPE_DOT.post, value: (counts.post ?? 0) + (counts.carrusel ?? 0), always: true },
-    { key: "reel", label: "Reels", dot: PUBLICATION_TYPE_DOT.reel, value: counts.reel ?? 0, always: true },
-    { key: "historia", label: "Historias", dot: PUBLICATION_TYPE_DOT.historia, value: counts.historia ?? 0, always: true },
-    { key: "video", label: "Videos", dot: PUBLICATION_TYPE_DOT.video, value: counts.video ?? 0, always: false },
-    { key: "otro", label: "Otros", dot: PUBLICATION_TYPE_DOT.otro, value: counts.otro ?? 0, always: false },
+  const items: { key: string; label: string; hex: string; value: number; always: boolean }[] = [
+    { key: "post", label: "Posteos", hex: PUBLICATION_TYPE_HEX.post, value: (counts.post ?? 0) + (counts.carrusel ?? 0), always: true },
+    { key: "reel", label: "Reels", hex: PUBLICATION_TYPE_HEX.reel, value: counts.reel ?? 0, always: true },
+    { key: "historia", label: "Historias", hex: PUBLICATION_TYPE_HEX.historia, value: counts.historia ?? 0, always: true },
+    { key: "video", label: "Videos", hex: PUBLICATION_TYPE_HEX.video, value: counts.video ?? 0, always: false },
+    { key: "otro", label: "Otros", hex: PUBLICATION_TYPE_HEX.otro, value: counts.otro ?? 0, always: false },
   ];
   const shown = items.filter((it) => it.always || it.value > 0);
   return (
@@ -907,7 +904,10 @@ function MonthTypeSummary({ counts }: { counts: Record<string, number> }) {
       <span className="font-semibold text-muted-foreground">Este mes</span>
       {shown.map((it) => (
         <span key={it.key} className="inline-flex items-center gap-1.5">
-          <span className={cn("inline-block h-2.5 w-2.5 rounded-sm", it.dot)} />
+          <span
+            className="inline-block h-2.5 w-2.5 rounded-sm"
+            style={{ backgroundColor: it.hex }}
+          />
           <span className="font-bold tabular-nums">{it.value}</span>
           <span className="text-muted-foreground">{it.label}</span>
         </span>
@@ -952,11 +952,15 @@ function PubChip({
             onDragStart?.(pub.id);
           }}
           onDragEnd={() => onDragEnd?.()}
+          // Fondo por ESTADO (hex + opacidad, se ve bien en claro y oscuro);
+          // texto neutro fijo. El TIPO se indica con el puntito de color.
+          style={{
+            backgroundColor:
+              PUBLICATION_STATUS_HEX[pub.estado] +
+              (pub.estado === "publicado" ? "59" : "2e"),
+          }}
           className={cn(
-            // Fondo por ESTADO; texto neutro fijo (legible en claro y oscuro).
-            // El TIPO se indica con el puntito de color a la izquierda.
             "flex w-full cursor-grab items-center gap-1.5 rounded px-1.5 py-1 text-left text-[11px] font-medium text-foreground active:cursor-grabbing",
-            PUBLICATION_STATUS_CHIP[pub.estado],
             dragging && "opacity-40"
           )}
           title={titleWithBadge}
@@ -970,10 +974,8 @@ function PubChip({
             </span>
           )}
           <span
-            className={cn(
-              "h-2 w-2 shrink-0 rounded-full",
-              PUBLICATION_TYPE_DOT[pub.tipo]
-            )}
+            className="h-2 w-2 shrink-0 rounded-full"
+            style={{ backgroundColor: PUBLICATION_TYPE_HEX[pub.tipo] }}
             aria-label={PUBLICATION_TYPE_LABEL[pub.tipo]}
           />
           <span className="truncate">{pub.titulo}</span>
@@ -1027,10 +1029,8 @@ function PubRow({
         />
       )}
       <span
-        className={cn(
-          "rounded-full px-2 py-0.5 text-[10px] font-medium",
-          PUBLICATION_STATUS_BADGE[pub.estado]
-        )}
+        className="rounded-full px-2 py-0.5 text-[10px] font-medium text-foreground"
+        style={{ backgroundColor: PUBLICATION_STATUS_HEX[pub.estado] + "33" }}
       >
         {PUBLICATION_STATUS_LABEL[pub.estado]}
       </span>
@@ -1226,10 +1226,8 @@ function PubTableRow({
       <td className="whitespace-nowrap px-3 py-2.5">
         <span className="inline-flex items-center gap-1.5">
           <span
-            className={cn(
-              "inline-block h-2.5 w-2.5 shrink-0 rounded-sm",
-              PUBLICATION_TYPE_DOT[pub.tipo]
-            )}
+            className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
+            style={{ backgroundColor: PUBLICATION_TYPE_HEX[pub.tipo] }}
           />
           <span className="text-xs font-medium">{PUBLICATION_TYPE_LABEL[pub.tipo]}</span>
         </span>

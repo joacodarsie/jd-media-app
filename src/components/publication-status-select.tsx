@@ -7,8 +7,7 @@ import { Loader2 } from "lucide-react";
 import { changePublicationStatus } from "@/app/(app)/contenidos/actions";
 import {
   PUBLICATION_STATUS_LABEL,
-  PUBLICATION_STATUS_BADGE,
-  PUBLICATION_STATUS_DOT,
+  PUBLICATION_STATUS_HEX,
 } from "@/lib/constants";
 import type { PublicationStatus, Publication } from "@/lib/types";
 import {
@@ -109,10 +108,10 @@ export function PublicationStatusSelect({
         disabled={pending}
       >
         <SelectTrigger
+          style={{ backgroundColor: PUBLICATION_STATUS_HEX[localEstado] + "2e" }}
           className={cn(
-            "w-full font-medium",
-            size === "sm" ? "h-8 text-xs" : "h-9 text-sm",
-            PUBLICATION_STATUS_BADGE[localEstado]
+            "w-full border-0 font-medium text-foreground",
+            size === "sm" ? "h-8 text-xs" : "h-9 text-sm"
           )}
         >
           <SelectValue />
@@ -122,10 +121,8 @@ export function PublicationStatusSelect({
             <SelectItem key={s} value={s}>
               <span className="flex items-center gap-2">
                 <span
-                  className={cn(
-                    "inline-block h-2.5 w-2.5 shrink-0 rounded-full",
-                    PUBLICATION_STATUS_DOT[s]
-                  )}
+                  className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: PUBLICATION_STATUS_HEX[s] }}
                 />
                 {PUBLICATION_STATUS_LABEL[s]}
               </span>

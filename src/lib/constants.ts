@@ -242,19 +242,19 @@ export const PUBLICATION_STATUS_DOT: Record<PublicationStatus, string> = {
   rechazado: "bg-rose-500",
 };
 
-// Fondo del CHIP del calendario por estado. Pensado para usarse con texto
-// neutro (text-foreground) y leerse bien en claro y oscuro. El fondo lleva el
-// estado; el color del TIPO va en un punto aparte. Publicado resalta más.
-export const PUBLICATION_STATUS_CHIP: Record<PublicationStatus, string> = {
-  idea: "bg-violet-100 dark:bg-violet-500/25",
-  en_diseno: "bg-blue-100 dark:bg-blue-500/25",
-  guion: "bg-slate-100 dark:bg-slate-500/25",
-  edicion: "bg-indigo-100 dark:bg-indigo-500/25",
-  revision_creativa: "bg-amber-100 dark:bg-amber-500/25",
-  revision_cliente: "bg-orange-100 dark:bg-orange-500/25",
-  aprobado: "bg-cyan-100 dark:bg-cyan-500/25",
-  publicado: "bg-emerald-200 dark:bg-emerald-500/40",
-  rechazado: "bg-rose-100 dark:bg-rose-500/25",
+// Hex por estado (para estilos inline: dots y fondo de chip con opacidad). Se
+// usa inline en vez de clases Tailwind para garantizar que SIEMPRE renderice
+// (algunas clases de color dinámicas se purgan) y controlar el tono en dark.
+export const PUBLICATION_STATUS_HEX: Record<PublicationStatus, string> = {
+  idea: "#8b5cf6", // violeta
+  en_diseno: "#3b82f6", // azul
+  guion: "#94a3b8", // gris (legacy)
+  edicion: "#6366f1", // índigo
+  revision_creativa: "#f59e0b", // ámbar
+  revision_cliente: "#f97316", // naranja
+  aprobado: "#06b6d4", // cian
+  publicado: "#10b981", // verde
+  rechazado: "#f43f5e", // rosa
 };
 
 export const PUBLICATION_NETWORK_LABEL: Record<PublicationNetwork, string> = {

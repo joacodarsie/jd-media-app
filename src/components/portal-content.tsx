@@ -429,7 +429,7 @@ function PubDetail({ pub, token, onClose }: { pub: PortalPub; token: string; onC
         )}
         {!isImage(pub.asset_url) && pub.asset_url && (
           <a href={pub.asset_url} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, fontSize: 13, fontWeight: 600, color: "#1a1a1a", textDecoration: "underline" }}>
-            Ver pieza adjunta →
+            Ver contenido en el Drive →
           </a>
         )}
 

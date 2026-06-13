@@ -192,6 +192,21 @@ export async function setPublicationTiktokSubido(
   return { ok: true };
 }
 
+/** Guarda el link del contenido final (Drive/Canva) de una publicación. */
+export async function setPublicationAsset(id: string, url: string) {
+  const { supabase } = await ctx();
+  const value = url.trim() || null;
+  const { data, error } = await supabase
+    .from("publications")
+    .update({ asset_url: value })
+    .eq("id", id)
+    .select("cliente_id")
+    .single();
+  if (error) return { error: error.message };
+  invalidate(data?.cliente_id);
+  return { ok: true };
+}
+
 export async function deletePublication(id: string) {
   const { supabase } = await ctx();
   const { data, error } = await supabase

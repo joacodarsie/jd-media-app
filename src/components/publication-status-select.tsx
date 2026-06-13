@@ -23,7 +23,6 @@ import { cn } from "@/lib/utils";
 const ALL_STATUSES: PublicationStatus[] = [
   "idea",
   "en_diseno",
-  "guion",
   "edicion",
   "revision_creativa",
   "revision_cliente",

@@ -195,11 +195,11 @@ export const PAY_FREQUENCY_LABEL: Record<string, string> = {
 export const PUBLICATION_STATUS_LABEL: Record<PublicationStatus, string> = {
   idea: "Idea",
   en_diseno: "En diseño",
-  guion: "Guion",
-  edicion: "Edición",
+  guion: "Guion", // legacy: ya no se ofrece, se mantiene para piezas viejas
+  edicion: "En edición",
   revision_creativa: "Revisión creativa",
   revision_cliente: "Revisión cliente",
-  aprobado: "Aprobado",
+  aprobado: "Programado",
   publicado: "Publicado",
   rechazado: "Cambios pedidos",
 };
@@ -231,15 +231,30 @@ export const PUBLICATION_STATUS_BADGE: Record<PublicationStatus, string> = {
 
 // Colores sólidos para los dots/indicadores (visibles en cualquier fondo).
 export const PUBLICATION_STATUS_DOT: Record<PublicationStatus, string> = {
-  idea: "bg-slate-400",
+  idea: "bg-violet-500",
   en_diseno: "bg-blue-500",
-  guion: "bg-indigo-500",
-  edicion: "bg-purple-500",
+  guion: "bg-slate-400",
+  edicion: "bg-indigo-500",
   revision_creativa: "bg-amber-500",
   revision_cliente: "bg-orange-500",
-  aprobado: "bg-lime-500",
+  aprobado: "bg-cyan-500",
   publicado: "bg-emerald-500",
   rechazado: "bg-rose-500",
+};
+
+// Fondo del CHIP del calendario por estado. Pensado para usarse con texto
+// neutro (text-foreground) y leerse bien en claro y oscuro. El fondo lleva el
+// estado; el color del TIPO va en un punto aparte. Publicado resalta más.
+export const PUBLICATION_STATUS_CHIP: Record<PublicationStatus, string> = {
+  idea: "bg-violet-100 dark:bg-violet-500/25",
+  en_diseno: "bg-blue-100 dark:bg-blue-500/25",
+  guion: "bg-slate-100 dark:bg-slate-500/25",
+  edicion: "bg-indigo-100 dark:bg-indigo-500/25",
+  revision_creativa: "bg-amber-100 dark:bg-amber-500/25",
+  revision_cliente: "bg-orange-100 dark:bg-orange-500/25",
+  aprobado: "bg-cyan-100 dark:bg-cyan-500/25",
+  publicado: "bg-emerald-200 dark:bg-emerald-500/40",
+  rechazado: "bg-rose-100 dark:bg-rose-500/25",
 };
 
 export const PUBLICATION_NETWORK_LABEL: Record<PublicationNetwork, string> = {

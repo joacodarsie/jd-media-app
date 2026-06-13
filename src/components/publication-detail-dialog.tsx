@@ -7,7 +7,10 @@ import { CalendarDays, ExternalLink, Trash2, Pencil, ListChecks } from "lucide-r
 import { toast } from "sonner";
 import {
   deletePublication,
+  setPublicationAsset,
 } from "@/app/(app)/contenidos/actions";
+import { Input } from "@/components/ui/input";
+import { Check, Loader2 } from "lucide-react";
 import {
   PUBLICATION_NETWORK_LABEL,
   PUBLICATION_STATUS_BADGE,
@@ -137,28 +140,18 @@ export function PublicationDetailDialog({
             <div className="text-xs text-muted-foreground">{p.hashtags}</div>
           )}
 
-          <div className="flex flex-wrap gap-2">
-            {p.asset_url && (
-              <a
-                href={p.asset_url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-xs hover:bg-muted"
-              >
-                <ExternalLink className="h-3 w-3" /> Asset
-              </a>
-            )}
-            {p.referencia_url && (
-              <a
-                href={p.referencia_url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-xs hover:bg-muted"
-              >
-                <ExternalLink className="h-3 w-3" /> Referencia
-              </a>
-            )}
-          </div>
+          <DriveLinkEditor id={p.id} initialUrl={p.asset_url} />
+
+          {p.referencia_url && (
+            <a
+              href={p.referencia_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 rounded border bg-muted/30 px-2 py-1 text-xs hover:bg-muted"
+            >
+              <ExternalLink className="h-3 w-3" /> Referencia
+            </a>
+          )}
 
           {/* Recordatorio TikTok: visible en TikTok o cuando es un reel
               (los reels de IG normalmente se replican en TikTok). */}
@@ -229,5 +222,59 @@ export function PublicationDetailDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Editor inline del link del contenido final (Drive/Canva). El editor/diseñador
+ * lo pega cuando termina la pieza; el cliente lo ve desde el portal.
+ */
+function DriveLinkEditor({ id, initialUrl }: { id: string; initialUrl: string | null }) {
+  const router = useRouter();
+  const [url, setUrl] = useState(initialUrl ?? "");
+  const [pending, start] = useTransition();
+  const dirty = (url.trim() || null) !== (initialUrl ?? null);
+
+  function save() {
+    start(async () => {
+      const res = await setPublicationAsset(id, url);
+      if (res?.error) return void toast.error("No se pudo guardar: " + res.error);
+      toast.success("Link del contenido guardado.");
+      router.refresh();
+    });
+  }
+
+  return (
+    <div>
+      <h4 className="mb-1 flex items-center gap-1.5 text-sm font-semibold">
+        <ExternalLink className="h-3.5 w-3.5" /> Link del contenido (Drive / Canva)
+      </h4>
+      <p className="mb-1.5 text-xs text-muted-foreground">
+        Pegá acá el link de la pieza final subida al Drive del cliente. El cliente
+        lo ve al revisar el calendario.
+      </p>
+      <div className="flex items-center gap-1.5">
+        <Input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://drive.google.com/…"
+          className="h-8 text-xs"
+        />
+        {url.trim() && (
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-8 items-center rounded-md border px-2 text-muted-foreground hover:bg-muted"
+            title="Abrir link"
+          >
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        )}
+        <Button size="sm" className="h-8 px-2" onClick={save} disabled={pending || !dirty}>
+          {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+        </Button>
+      </div>
+    </div>
   );
 }

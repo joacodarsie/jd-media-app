@@ -80,7 +80,7 @@ export function PortalReviewCard({ pub, token }: { pub: ReviewPub; token: string
           className="mt-2 inline-block text-xs font-medium underline"
           style={{ color: "#1a1a1a" }}
         >
-          Ver pieza adjunta →
+          Ver contenido en el Drive →
         </a>
       )}
 

@@ -14,16 +14,17 @@ import {
   Plus,
   Trash2,
   Table as TableIcon,
-  Music,
   ExternalLink,
+  Briefcase,
+  FolderOpen,
   X,
 } from "lucide-react";
 import {
   PUBLICATION_NETWORK_LABEL,
   PUBLICATION_STATUS_BADGE,
+  PUBLICATION_STATUS_CHIP,
   PUBLICATION_STATUS_LABEL,
   PUBLICATION_TYPE_DOT,
-  PUBLICATION_TYPE_IDEA_BADGE,
   PUBLICATION_TYPE_LABEL,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ import {
   type ClientForPub,
 } from "@/components/publication-form-dialog";
 import { PublicationDetailDialog } from "@/components/publication-detail-dialog";
+import { PublicationStatusSelect } from "@/components/publication-status-select";
 import {
   updatePublicationDate,
   changePublicationStatus,
@@ -59,7 +61,6 @@ type Mode = "mes" | "kanban" | "tabla";
 const STATUS_ORDER: PublicationStatus[] = [
   "idea",
   "en_diseno",
-  "guion",
   "edicion",
   "revision_creativa",
   "revision_cliente",
@@ -310,8 +311,32 @@ export function PublicationsMonth({
     return c;
   }, [filtered, cursorYM]);
 
+  const selectedClient =
+    fCliente !== "__all__" ? clients.find((c) => c.id === fCliente) ?? null : null;
+
   return (
     <div className="space-y-4">
+      {selectedClient && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <Briefcase className="h-4 w-4 text-muted-foreground" />
+            <span className="text-base font-semibold">{selectedClient.nombre}</span>
+          </div>
+          {selectedClient.drive_url ? (
+            <a
+              href={selectedClient.drive_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-muted"
+            >
+              <FolderOpen className="h-4 w-4" /> Abrir Drive del cliente
+              <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+            </a>
+          ) : (
+            <span className="text-xs text-muted-foreground">Sin Drive cargado en la ficha</span>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           {mode === "mes" && (
@@ -928,12 +953,10 @@ function PubChip({
           }}
           onDragEnd={() => onDragEnd?.()}
           className={cn(
-            "flex w-full cursor-grab items-center gap-1 rounded border-l-[3px] px-1.5 py-1 text-left text-[11px] font-medium active:cursor-grabbing",
-            // Color por FORMATO (tinte suave) para todas las piezas; las ya
-            // PUBLICADAS van en verde sólido (el único estado que resaltamos).
-            pub.estado === "publicado"
-              ? "border-l-emerald-700 bg-emerald-600 text-white"
-              : PUBLICATION_TYPE_IDEA_BADGE[pub.tipo],
+            // Fondo por ESTADO; texto neutro fijo (legible en claro y oscuro).
+            // El TIPO se indica con el puntito de color a la izquierda.
+            "flex w-full cursor-grab items-center gap-1.5 rounded px-1.5 py-1 text-left text-[11px] font-medium text-foreground active:cursor-grabbing",
+            PUBLICATION_STATUS_CHIP[pub.estado],
             dragging && "opacity-40"
           )}
           title={titleWithBadge}
@@ -946,9 +969,14 @@ function PubChip({
               {unseenCount > 9 ? "9+" : unseenCount}
             </span>
           )}
-          <span className="truncate">
-            {PUBLICATION_TYPE_LABEL[pub.tipo]} · {pub.titulo}
-          </span>
+          <span
+            className={cn(
+              "h-2 w-2 shrink-0 rounded-full",
+              PUBLICATION_TYPE_DOT[pub.tipo]
+            )}
+            aria-label={PUBLICATION_TYPE_LABEL[pub.tipo]}
+          />
+          <span className="truncate">{pub.titulo}</span>
         </button>
       }
     />
@@ -1252,15 +1280,8 @@ function PubTableRow({
           <span className="text-muted-foreground/50">—</span>
         )}
       </td>
-      <td className="whitespace-nowrap px-3 py-2.5">
-        <span
-          className={cn(
-            "rounded-full px-2 py-0.5 text-[10px] font-medium",
-            PUBLICATION_STATUS_BADGE[pub.estado]
-          )}
-        >
-          {PUBLICATION_STATUS_LABEL[pub.estado]}
-        </span>
+      <td className="w-40 px-3 py-2.5 align-middle">
+        <PublicationStatusSelect publication={pub} size="sm" />
       </td>
       <td className="px-3 py-2.5">
         {pub.referencia_url ? (
@@ -1321,20 +1342,13 @@ function TiktokCell({ id, initial }: { id: string; initial: boolean }) {
   }
 
   return (
-    <button
-      onClick={toggle}
+    <input
+      type="checkbox"
+      checked={subido}
       disabled={pending}
+      onChange={toggle}
       title={subido ? "Ya está subido a TikTok" : "Pendiente de subir a TikTok"}
-      className={cn(
-        "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition",
-        subido
-          ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300"
-          : "border-dashed text-muted-foreground hover:bg-muted",
-        pending && "opacity-60"
-      )}
-    >
-      <Music className="h-3.5 w-3.5" />
-      {subido ? "Subido" : "Subir"}
-    </button>
+      className={cn("h-4 w-4 cursor-pointer accent-emerald-500", pending && "opacity-60")}
+    />
   );
 }

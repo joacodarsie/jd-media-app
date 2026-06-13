@@ -45,7 +45,7 @@ const NONE = "__none__";
 // Subset de Client con la info necesaria para auto-asignar
 export type ClientForPub = Pick<
   Client,
-  "id" | "nombre" | "estado" | "cm_id" | "disenador_id" | "audiovisual_id"
+  "id" | "nombre" | "estado" | "cm_id" | "disenador_id" | "audiovisual_id" | "drive_url"
 >;
 
 /** Devuelve el user_id que debería producir el contenido según tipo + equipo del cliente. */

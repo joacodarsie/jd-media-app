@@ -42,7 +42,7 @@ export const getActiveClients = unstable_cache(
     const { data } = await admin
       .from("clients")
       .select(
-        "id, nombre, rubro, pack, estado, cm_id, disenador_id, audiovisual_id"
+        "id, nombre, rubro, pack, estado, cm_id, disenador_id, audiovisual_id, drive_url"
       )
       .eq("estado", "activo")
       .order("nombre");

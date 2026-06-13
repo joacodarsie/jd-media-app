@@ -22,7 +22,6 @@ import {
   PUBLICATION_NETWORK_LABEL,
   PUBLICATION_STATUS_BADGE,
   PUBLICATION_STATUS_LABEL,
-  PUBLICATION_TYPE_BORDER,
   PUBLICATION_TYPE_DOT,
   PUBLICATION_TYPE_IDEA_BADGE,
   PUBLICATION_TYPE_LABEL,
@@ -31,7 +30,6 @@ import { cn } from "@/lib/utils";
 import type {
   AppUser,
   PublicationStatus,
-  PublicationType,
   PublicationWithRels,
 } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -532,25 +530,8 @@ export function PublicationsMonth({
 
       {mode === "mes" ? (
         <>
-          {/* Leyenda de colores por tipo + contador del mes visible */}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-            {(["post", "carrusel", "reel", "historia", "video"] as const).map(
-              (t) => (
-                <span key={t} className="inline-flex items-center gap-1">
-                  <span
-                    className={cn(
-                      "inline-block h-2.5 w-2.5 rounded-sm",
-                      PUBLICATION_TYPE_DOT[t]
-                    )}
-                  />
-                  {PUBLICATION_TYPE_LABEL[t]}
-                </span>
-              )
-            )}
-          </div>
-            <MonthTypeSummary counts={monthTypeCounts} />
-          </div>
+          {/* Resumen del mes visible por formato (hace también de leyenda de colores) */}
+          <MonthTypeSummary counts={monthTypeCounts} />
           <div className="rounded-xl border bg-card">
             <div className="grid grid-cols-7 border-b text-xs font-medium text-muted-foreground">
               {DAY_NAMES.map((d) => (
@@ -886,25 +867,23 @@ function ModeBtn({
 }
 
 function MonthTypeSummary({ counts }: { counts: Record<string, number> }) {
-  // Siempre mostramos los 3 principales; carrusel/video/otro solo si hay.
-  const core: { tipo: PublicationType; label: string }[] = [
-    { tipo: "post", label: "Posteos" },
-    { tipo: "reel", label: "Reels" },
-    { tipo: "historia", label: "Historias" },
+  // Posteo y carrusel son el mismo formato → se cuentan juntos como "Posteos".
+  // El verde queda para "publicado", así que historia va en ámbar.
+  const items: { key: string; label: string; dot: string; value: number; always: boolean }[] = [
+    { key: "post", label: "Posteos", dot: PUBLICATION_TYPE_DOT.post, value: (counts.post ?? 0) + (counts.carrusel ?? 0), always: true },
+    { key: "reel", label: "Reels", dot: PUBLICATION_TYPE_DOT.reel, value: counts.reel ?? 0, always: true },
+    { key: "historia", label: "Historias", dot: PUBLICATION_TYPE_DOT.historia, value: counts.historia ?? 0, always: true },
+    { key: "video", label: "Videos", dot: PUBLICATION_TYPE_DOT.video, value: counts.video ?? 0, always: false },
+    { key: "otro", label: "Otros", dot: PUBLICATION_TYPE_DOT.otro, value: counts.otro ?? 0, always: false },
   ];
-  const extra: { tipo: PublicationType; label: string }[] = [
-    { tipo: "carrusel", label: "Carruseles" },
-    { tipo: "video", label: "Videos" },
-    { tipo: "otro", label: "Otros" },
-  ];
-  const items = [...core, ...extra.filter((e) => (counts[e.tipo] ?? 0) > 0)];
+  const shown = items.filter((it) => it.always || it.value > 0);
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border bg-card px-3 py-1.5 text-xs">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border bg-card px-3 py-1.5 text-xs">
       <span className="font-semibold text-muted-foreground">Este mes</span>
-      {items.map((it) => (
-        <span key={it.tipo} className="inline-flex items-center gap-1">
-          <span className={cn("inline-block h-2 w-2 rounded-full", PUBLICATION_TYPE_DOT[it.tipo])} />
-          <span className="font-bold tabular-nums">{counts[it.tipo] ?? 0}</span>
+      {shown.map((it) => (
+        <span key={it.key} className="inline-flex items-center gap-1.5">
+          <span className={cn("inline-block h-2.5 w-2.5 rounded-sm", it.dot)} />
+          <span className="font-bold tabular-nums">{it.value}</span>
           <span className="text-muted-foreground">{it.label}</span>
         </span>
       ))}
@@ -950,11 +929,11 @@ function PubChip({
           onDragEnd={() => onDragEnd?.()}
           className={cn(
             "flex w-full cursor-grab items-center gap-1 rounded border-l-[3px] px-1.5 py-1 text-left text-[11px] font-medium active:cursor-grabbing",
-            // En estado "idea" coloreamos por TIPO (post=rojo, reel=azul,
-            // historia=verde); en el resto, color por estado + acento por tipo.
-            pub.estado === "idea"
-              ? PUBLICATION_TYPE_IDEA_BADGE[pub.tipo]
-              : cn(PUBLICATION_STATUS_BADGE[pub.estado], PUBLICATION_TYPE_BORDER[pub.tipo]),
+            // Color por FORMATO (tinte suave) para todas las piezas; las ya
+            // PUBLICADAS van en verde sólido (el único estado que resaltamos).
+            pub.estado === "publicado"
+              ? "border-l-emerald-700 bg-emerald-600 text-white"
+              : PUBLICATION_TYPE_IDEA_BADGE[pub.tipo],
             dragging && "opacity-40"
           )}
           title={titleWithBadge}

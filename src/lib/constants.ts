@@ -261,14 +261,15 @@ export const PUBLICATION_TYPE_LABEL: Record<PublicationType, string> = {
   otro: "Otro",
 };
 
-// Color por TIPO de pieza, para distinguir de un vistazo. Esquema unificado con
-// el portal del cliente: post=rojo, reel=azul, historia=verde, carrusel=naranja,
-// video=violeta, otro=gris. (Ver PUBLICATION_TYPE_HEX para los hex equivalentes.)
+// Color por TIPO de pieza, para distinguir de un vistazo. El POSTEO y el CARRUSEL
+// son el mismo formato (un posteo de una o varias placas) → mismo color rojo.
+// El verde queda RESERVADO para el estado "publicado", por eso la historia usa
+// ámbar. Esquema: posteo/carrusel=rojo, reel=azul, historia=ámbar, video=violeta.
 export const PUBLICATION_TYPE_DOT: Record<PublicationType, string> = {
   post: "bg-red-500",
-  carrusel: "bg-orange-500",
+  carrusel: "bg-red-500",
   reel: "bg-blue-500",
-  historia: "bg-green-500",
+  historia: "bg-amber-500",
   video: "bg-violet-500",
   otro: "bg-slate-400",
 };
@@ -276,31 +277,32 @@ export const PUBLICATION_TYPE_DOT: Record<PublicationType, string> = {
 // Borde izquierdo (acento) por tipo — se aplica sobre el chip del calendario.
 export const PUBLICATION_TYPE_BORDER: Record<PublicationType, string> = {
   post: "border-l-red-500",
-  carrusel: "border-l-orange-500",
+  carrusel: "border-l-red-500",
   reel: "border-l-blue-500",
-  historia: "border-l-green-500",
+  historia: "border-l-amber-500",
   video: "border-l-violet-500",
   otro: "border-l-slate-400",
 };
 
-// Esquema de color por TIPO (post=rojo, reel=azul, historia=verde) usado en el
-// portal del cliente y en los chips en estado "idea" del calendario del equipo.
-// Hex para estilos inline (portal); clases Tailwind para el chip del equipo.
+// Esquema de color por TIPO usado en el portal del cliente y en los chips del
+// calendario del equipo. Hex para estilos inline (portal); clases Tailwind para
+// el chip del equipo. Posteo/carrusel comparten color (mismo formato).
 export const PUBLICATION_TYPE_HEX: Record<PublicationType, string> = {
   post: "#ef4444", // rojo
   reel: "#3b82f6", // azul
-  historia: "#22c55e", // verde
-  carrusel: "#f97316", // naranja
+  historia: "#f59e0b", // ámbar
+  carrusel: "#ef4444", // rojo (= posteo)
   video: "#8b5cf6", // violeta
   otro: "#94a3b8", // gris
 };
 
-// Chip por tipo para piezas en estado "idea" (bg suave + texto + borde acento).
+// Chip por tipo (bg suave + texto + borde acento). Se usa para TODAS las piezas
+// no publicadas en el calendario del equipo (las publicadas van en verde sólido).
 export const PUBLICATION_TYPE_IDEA_BADGE: Record<PublicationType, string> = {
   post: "bg-red-100 text-red-900 border-l-red-500 dark:bg-red-500/30 dark:text-red-50",
   reel: "bg-blue-100 text-blue-900 border-l-blue-500 dark:bg-blue-500/30 dark:text-blue-50",
-  historia: "bg-green-100 text-green-900 border-l-green-500 dark:bg-green-500/30 dark:text-green-50",
-  carrusel: "bg-orange-100 text-orange-900 border-l-orange-500 dark:bg-orange-500/30 dark:text-orange-50",
+  historia: "bg-amber-100 text-amber-900 border-l-amber-500 dark:bg-amber-500/30 dark:text-amber-50",
+  carrusel: "bg-red-100 text-red-900 border-l-red-500 dark:bg-red-500/30 dark:text-red-50",
   video: "bg-violet-100 text-violet-900 border-l-violet-500 dark:bg-violet-500/30 dark:text-violet-50",
   otro: "bg-slate-100 text-slate-800 border-l-slate-400 dark:bg-slate-500/30 dark:text-slate-50",
 };

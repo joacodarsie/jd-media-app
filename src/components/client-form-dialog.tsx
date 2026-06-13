@@ -77,6 +77,9 @@ export function ClientFormDialog({
   const [mediaBuyerId, setMediaBuyerId] = useState<string>(
     client?.media_buyer_id ?? NONE
   );
+  const [coordinadorId, setCoordinadorId] = useState<string>(
+    client?.coordinador_id ?? NONE
+  );
   const [contactoNombre, setContactoNombre] = useState(
     client?.contacto_nombre ?? ""
   );
@@ -185,6 +188,7 @@ export function ClientFormDialog({
       disenador_id: disenadorId === NONE ? null : disenadorId,
       audiovisual_id: audiovisualId === NONE ? null : audiovisualId,
       media_buyer_id: mediaBuyerId === NONE ? null : mediaBuyerId,
+      coordinador_id: coordinadorId === NONE ? null : coordinadorId,
     };
     const servicesPayload: NewClientServiceInput[] = draftServices
       .filter((s) => s.tipo)
@@ -377,7 +381,25 @@ export function ClientFormDialog({
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label>Coordinador/a de gestión de redes</Label>
+                <Select value={coordinadorId} onValueChange={setCoordinadorId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Sin asignar</SelectItem>
+                    {users.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>{u.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              El coordinador/a de la cuenta cobra la comisión de coordinación
+              recurrente sobre el abono de gestión de redes.
+            </p>
           </div>
           )}
 

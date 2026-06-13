@@ -41,6 +41,7 @@ export interface PayrollClient {
   disenador_id: string | null;
   audiovisual_id: string | null;
   media_buyer_id: string | null;
+  coordinador_id: string | null;
 }
 
 export interface PayrollService {

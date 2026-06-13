@@ -42,7 +42,7 @@ export default async function SueldosPage({
     admin.from("agency_settings").select("packs, rates").eq("id", 1).maybeSingle(),
     admin
       .from("clients")
-      .select("id, nombre, cm_id, disenador_id, audiovisual_id, media_buyer_id")
+      .select("id, nombre, cm_id, disenador_id, audiovisual_id, media_buyer_id, coordinador_id")
       .eq("estado", "activo")
       .eq("es_interno", false),
     admin
@@ -116,12 +116,12 @@ export default async function SueldosPage({
     });
   }
 
-  // Comisión recurrente de la coordinadora de Gestión de Redes: % del abono
-  // mensual del servicio de gestión de redes de cada cuenta que coordina
-  // (solo esa línea, sin contar pauta ni otros servicios).
+  // Comisión recurrente de coordinación: % del abono mensual del servicio de
+  // gestión de redes de cada cuenta, atribuida al coordinador/a DE ESA CUENTA
+  // (clients.coordinador_id; fallback al único coordinador activo).
   const coordPct = settings.rates.comision_coordinacion ?? 0;
-  const coordinadores = users.filter((u) => u.rol === "coordinador");
-  if (coordPct > 0 && coordinadores.length > 0) {
+  const fallbackCoordinador = users.find((u) => u.rol === "coordinador")?.id ?? null;
+  if (coordPct > 0) {
     const gdrByClient = new Map<string, number>();
     for (const s of services) {
       if (s.tipo !== "gestion_redes") continue;
@@ -134,17 +134,17 @@ export default async function SueldosPage({
     for (const c of clients) {
       const abono = gdrByClient.get(c.id) ?? 0;
       if (abono <= 0) continue;
+      const who = c.coordinador_id ?? fallbackCoordinador;
+      if (!who) continue;
       const monto = Math.round(abono * coordPct);
-      for (const coord of coordinadores) {
-        if (!autoByUser.has(coord.id)) autoByUser.set(coord.id, []);
-        autoByUser.get(coord.id)!.push({
-          clienteId: c.id,
-          cliente: c.nombre,
-          concepto: `Coordinación gestión de redes (${Math.round(coordPct * 100)}%)`,
-          monto,
-          kind: "comision",
-        });
-      }
+      if (!autoByUser.has(who)) autoByUser.set(who, []);
+      autoByUser.get(who)!.push({
+        clienteId: c.id,
+        cliente: c.nombre,
+        concepto: `Coordinación gestión de redes (${Math.round(coordPct * 100)}%)`,
+        monto,
+        kind: "comision",
+      });
     }
   }
 

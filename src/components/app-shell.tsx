@@ -31,6 +31,7 @@ import {
   Clapperboard,
   Menu,
   LogOut,
+  ChevronDown,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -152,6 +153,26 @@ function SidebarContent({
   }, []);
   const novedadesAlreadySeen =
     novedadesLatestDate && novedadesSeen && novedadesSeen >= novedadesLatestDate;
+
+  // Grupos colapsables: las secciones con label arrancan plegadas (para no
+  // abrumar) y se recuerda la preferencia. El grupo que contiene la ruta activa
+  // se abre solo.
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("jd:nav:collapsed");
+      if (raw) setCollapsed(JSON.parse(raw));
+    } catch {}
+  }, []);
+  function toggleGroup(label: string) {
+    setCollapsed((prev) => {
+      const next = { ...prev, [label]: !(prev[label] ?? true) };
+      try {
+        localStorage.setItem("jd:nav:collapsed", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex items-center gap-2 px-5 py-5">
@@ -161,14 +182,39 @@ function SidebarContent({
         <span className="text-lg font-bold">JD Media</span>
       </div>
       <nav className="sidebar-scroll flex-1 space-y-4 overflow-y-auto px-3 pb-4">
-        {groups.map((group, gi) => (
+        {groups.map((group, gi) => {
+          const groupHasActive = group.items.some((i) => i.href === activeHref);
+          const isCollapsed = group.label
+            ? groupHasActive
+              ? false
+              : (collapsed[group.label] ?? true)
+            : false;
+          const groupBadge = group.items.reduce((sum, i) => {
+            const raw = badges[i.href] ?? 0;
+            const b = i.href === "/novedades" && novedadesAlreadySeen ? 0 : raw;
+            return sum + b;
+          }, 0);
+          return (
           <div key={group.label ?? `g-${gi}`} className="space-y-0.5">
             {group.label && (
-              <div className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">
-                {group.label}
-              </div>
+              <button
+                type="button"
+                onClick={() => toggleGroup(group.label!)}
+                className="flex w-full items-center gap-1 px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 transition-colors hover:text-sidebar-foreground/80"
+              >
+                <ChevronDown
+                  className={cn(
+                    "h-3 w-3 transition-transform",
+                    isCollapsed && "-rotate-90"
+                  )}
+                />
+                <span className="flex-1 text-left">{group.label}</span>
+                {isCollapsed && groupBadge > 0 && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-500" aria-label="Novedades en esta sección" />
+                )}
+              </button>
             )}
-            {group.items.map((item) => {
+            {!isCollapsed && group.items.map((item) => {
               const Icon = ICONS[item.icon] ?? ListChecks;
               const active = item.href === activeHref;
               const isPending = pendingHref === item.href && !active;
@@ -215,7 +261,8 @@ function SidebarContent({
               );
             })}
           </div>
-        ))}
+          );
+        })}
       </nav>
       <div className="border-t border-sidebar-border px-5 py-3 text-xs text-sidebar-foreground/60">
         <div className="truncate font-medium text-sidebar-foreground/80">

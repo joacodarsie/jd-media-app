@@ -4,7 +4,6 @@ import { useMemo, useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  CalendarClock,
   CalendarDays,
   CheckSquare,
   ChevronLeft,
@@ -22,7 +21,6 @@ import {
 import {
   PUBLICATION_NETWORK_LABEL,
   PUBLICATION_STATUS_BADGE,
-  PUBLICATION_STATUS_DOT,
   PUBLICATION_STATUS_LABEL,
   PUBLICATION_TYPE_BORDER,
   PUBLICATION_TYPE_DOT,
@@ -58,7 +56,7 @@ import {
 } from "@/components/ui/select";
 
 const DAY_NAMES = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-type Mode = "mes" | "lista" | "kanban" | "agenda" | "tabla";
+type Mode = "mes" | "kanban" | "tabla";
 
 const STATUS_ORDER: PublicationStatus[] = [
   "idea",
@@ -181,13 +179,8 @@ export function PublicationsMonth({
 
   useEffect(() => {
     const v = localStorage.getItem("jd:contenidos:mode") as Mode | null;
-    if (v === "mes" || v === "lista" || v === "kanban" || v === "agenda" || v === "tabla") {
+    if (v === "mes" || v === "kanban" || v === "tabla") {
       setMode(v);
-      return;
-    }
-    // Sin preferencia guardada: en mobile arrancamos en agenda (lineal por fecha).
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
-      setMode("agenda");
     }
   }, []);
   useEffect(() => {
@@ -356,14 +349,6 @@ export function PublicationsMonth({
               </Button>
             </>
           )}
-          {mode === "lista" && (
-            <h2 className="text-lg font-semibold">
-              {publications.length} publicacion{publications.length === 1 ? "" : "es"}
-            </h2>
-          )}
-          {mode === "agenda" && (
-            <h2 className="text-lg font-semibold">Agenda</h2>
-          )}
           {mode === "tabla" && (
             <h2 className="text-lg font-semibold">
               {publications.length} publicacion{publications.length === 1 ? "" : "es"}
@@ -371,15 +356,13 @@ export function PublicationsMonth({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {/* Toggle Mes / Lista */}
+          {/* Toggle de vistas */}
           <div className="flex items-center rounded-md border bg-card p-0.5">
-            <ModeBtn icon={CalendarClock} label="Agenda" active={mode === "agenda"} onClick={() => setMode("agenda")} />
             <ModeBtn icon={CalendarDays} label="Mes" active={mode === "mes"} onClick={() => setMode("mes")} />
             <ModeBtn icon={KanbanSquare} label="Kanban" active={mode === "kanban"} onClick={() => setMode("kanban")} />
-            <ModeBtn icon={List} label="Lista" active={mode === "lista"} onClick={() => setMode("lista")} />
             <ModeBtn icon={TableIcon} label="Tabla" active={mode === "tabla"} onClick={() => setMode("tabla")} />
           </div>
-          {(mode === "lista" || mode === "agenda") && (
+          {mode === "tabla" && (
             <Button
               variant={selectMode ? "secondary" : "outline"}
               size="sm"
@@ -771,10 +754,10 @@ export function PublicationsMonth({
             );
           })}
         </div>
-      ) : mode === "agenda" ? (
-        <AgendaView
-          byDay={byDay}
-          unscheduled={unscheduled}
+      ) : (
+        // Modo tabla — planilla ordenada por fecha (con selección para bulk)
+        <PubTable
+          pubs={filtered}
           clients={clients}
           users={users}
           unseenByPub={unseenByPub}
@@ -782,47 +765,6 @@ export function PublicationsMonth({
           selectedIds={selectedIds}
           onToggleSelect={toggleSelect}
         />
-      ) : mode === "tabla" ? (
-        <PubTable
-          pubs={filtered}
-          clients={clients}
-          users={users}
-          unseenByPub={unseenByPub}
-        />
-      ) : (
-        // Modo lista — agrupado por estado del flujo
-        <div className="space-y-4">
-          {STATUS_ORDER.filter((s) => byStatus.has(s)).map((s) => {
-            const arr = byStatus.get(s) ?? [];
-            return (
-              <section key={s}>
-                <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  <span
-                    className={cn(
-                      "inline-block h-2.5 w-2.5 rounded-full",
-                      PUBLICATION_STATUS_DOT[s]
-                    )}
-                  />
-                  {PUBLICATION_STATUS_LABEL[s]} · {arr.length}
-                </h3>
-                <div className="space-y-1.5">
-                  {arr.map((p) => (
-                    <PubRow
-                      key={p.id}
-                      pub={p}
-                      clients={clients}
-                      users={users}
-                      unseenCount={unseenByPub?.[p.id] ?? 0}
-                      selectMode={selectMode}
-                      selected={selectedIds.has(p.id)}
-                      onToggleSelect={toggleSelect}
-                    />
-                  ))}
-                </div>
-              </section>
-            );
-          })}
-        </div>
       )}
 
       {/* Barra de bulk actions — fixed bottom cuando hay selección */}
@@ -861,124 +803,6 @@ export function PublicationsMonth({
             <X className="h-4 w-4" />
           </Button>
         </div>
-      )}
-    </div>
-  );
-}
-
-function AgendaView({
-  byDay,
-  unscheduled,
-  clients,
-  users,
-  unseenByPub,
-  selectMode,
-  selectedIds,
-  onToggleSelect,
-}: {
-  byDay: Map<string, PublicationWithRels[]>;
-  unscheduled: PublicationWithRels[];
-  clients: ClientForPub[];
-  users: Pick<AppUser, "id" | "nombre">[];
-  unseenByPub?: Record<string, number>;
-  selectMode?: boolean;
-  selectedIds?: Set<string>;
-  onToggleSelect?: (id: string) => void;
-}) {
-  const sortedDays = Array.from(byDay.keys()).sort();
-  const todayStr = ymd(new Date());
-
-  function dateLabel(key: string) {
-    // key = YYYY-MM-DD. Parseamos como fecha local para evitar el offset de UTC.
-    const [y, m, d] = key.split("-").map(Number);
-    const dt = new Date(y, (m ?? 1) - 1, d ?? 1);
-    const weekday = dt.toLocaleDateString("es-AR", { weekday: "long" });
-    const day = dt.getDate();
-    const month = dt.toLocaleDateString("es-AR", { month: "long" });
-    const isToday = key === todayStr;
-    const isPast = key < todayStr;
-    return { weekday, day, month, isToday, isPast };
-  }
-
-  if (sortedDays.length === 0 && unscheduled.length === 0) {
-    return (
-      <p className="py-10 text-center text-sm text-muted-foreground">
-        No hay publicaciones para mostrar con los filtros actuales.
-      </p>
-    );
-  }
-
-  return (
-    <div className="space-y-5">
-      {sortedDays.map((key) => {
-        const arr = byDay.get(key) ?? [];
-        const { weekday, day, month, isToday, isPast } = dateLabel(key);
-        return (
-          <section key={key} className="space-y-1.5">
-            <div
-              className={cn(
-                "sticky top-14 z-[5] -mx-1 flex items-baseline gap-2 border-b bg-background/95 px-1 py-1.5 backdrop-blur",
-                isToday && "border-primary",
-                !isToday && isPast && "opacity-70"
-              )}
-            >
-              <span className="text-2xl font-bold tabular-nums">{day}</span>
-              <div className="flex flex-col">
-                <span className="text-[11px] font-semibold uppercase tracking-wide">
-                  {weekday}
-                </span>
-                <span className="text-[10px] text-muted-foreground capitalize">
-                  {month}
-                </span>
-              </div>
-              {isToday && (
-                <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase text-primary-foreground">
-                  Hoy
-                </span>
-              )}
-              <span className="ml-auto text-[11px] text-muted-foreground">
-                {arr.length} {arr.length === 1 ? "pub" : "pubs"}
-              </span>
-            </div>
-            <div className="space-y-1.5">
-              {arr.map((p) => (
-                <PubRow
-                  key={p.id}
-                  pub={p}
-                  clients={clients}
-                  users={users}
-                  unseenCount={unseenByPub?.[p.id] ?? 0}
-                  selectMode={selectMode}
-                  selected={selectedIds?.has(p.id)}
-                  onToggleSelect={onToggleSelect}
-                />
-              ))}
-            </div>
-          </section>
-        );
-      })}
-      {unscheduled.length > 0 && (
-        <section className="space-y-1.5">
-          <div className="-mx-1 border-b border-dashed px-1 py-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Sin fecha · {unscheduled.length}
-            </span>
-          </div>
-          <div className="space-y-1.5">
-            {unscheduled.map((p) => (
-              <PubRow
-                key={p.id}
-                pub={p}
-                clients={clients}
-                users={users}
-                unseenCount={unseenByPub?.[p.id] ?? 0}
-                selectMode={selectMode}
-                selected={selectedIds?.has(p.id)}
-                onToggleSelect={onToggleSelect}
-              />
-            ))}
-          </div>
-        </section>
       )}
     </div>
   );
@@ -1152,6 +976,8 @@ function PubChip({
   );
 }
 
+// Fila compacta de publicación. Se usa en el modo Mes para la lista de piezas
+// "sin fecha asignada" (con drag & drop para programarlas).
 function PubRow({
   pub,
   clients,
@@ -1203,7 +1029,6 @@ function PubRow({
       </span>
       {unseenCount > 0 && (
         <span
-          aria-label={`${unseenCount} comentario(s) del cliente sin ver`}
           title={`${unseenCount} comentario(s) del cliente sin ver`}
           className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white"
         >
@@ -1257,7 +1082,8 @@ function PubRow({
             "flex w-full items-center justify-between gap-3 rounded-md border bg-card px-3 py-2 text-left text-sm transition-colors hover:border-primary/40",
             onDragStart && "cursor-grab active:cursor-grabbing",
             dragging && "opacity-40"
-          )}>
+          )}
+        >
           {rowContent}
           {rowMeta}
         </button>
@@ -1276,11 +1102,17 @@ function PubTable({
   clients,
   users,
   unseenByPub,
+  selectMode,
+  selectedIds,
+  onToggleSelect,
 }: {
   pubs: PublicationWithRels[];
   clients: ClientForPub[];
   users: Pick<AppUser, "id" | "nombre">[];
   unseenByPub?: Record<string, number>;
+  selectMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
 }) {
   const rows = useMemo(
     () =>
@@ -1305,6 +1137,7 @@ function PubTable({
       <table className="w-full min-w-[1100px] text-sm">
         <thead>
           <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+            {selectMode && <th className="w-8 px-3 py-2.5" />}
             <th className="px-3 py-2.5 font-medium">Fecha</th>
             <th className="px-3 py-2.5 font-medium">Formato</th>
             <th className="px-3 py-2.5 font-medium">Contenido</th>
@@ -1324,6 +1157,9 @@ function PubTable({
               clients={clients}
               users={users}
               unseenCount={unseenByPub?.[p.id] ?? 0}
+              selectMode={selectMode}
+              selected={selectedIds?.has(p.id)}
+              onToggleSelect={onToggleSelect}
             />
           ))}
         </tbody>
@@ -1337,11 +1173,17 @@ function PubTableRow({
   clients,
   users,
   unseenCount = 0,
+  selectMode,
+  selected,
+  onToggleSelect,
 }: {
   pub: PublicationWithRels;
   clients: ClientForPub[];
   users: Pick<AppUser, "id" | "nombre">[];
   unseenCount?: number;
+  selectMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }) {
   const fecha = pub.fecha_publicacion
     ? new Date(pub.fecha_publicacion + "T12:00:00").toLocaleDateString("es-AR", {
@@ -1355,7 +1197,22 @@ function PubTableRow({
   const subido = (pub as unknown as { tiktok_subido?: boolean }).tiktok_subido ?? false;
 
   return (
-    <tr className="border-b last:border-0 align-top hover:bg-muted/30">
+    <tr
+      className={cn(
+        "border-b last:border-0 align-top hover:bg-muted/30",
+        selected && "bg-primary/5"
+      )}
+    >
+      {selectMode && (
+        <td className="px-3 py-2.5">
+          <input
+            type="checkbox"
+            checked={!!selected}
+            onChange={() => onToggleSelect?.(pub.id)}
+            className="h-4 w-4 accent-primary"
+          />
+        </td>
+      )}
       <td className="whitespace-nowrap px-3 py-2.5 capitalize text-muted-foreground">
         {fecha}
       </td>

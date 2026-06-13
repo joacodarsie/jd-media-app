@@ -71,6 +71,7 @@ const ROLES: UserRole[] = [
   "admin",
   "coordinador",
   "community_manager",
+  "diseno",
   "audiovisual",
   "comercial",
   "paid_media",

@@ -33,6 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { fmtARS, periodLabel, prevPeriod, nextPeriod } from "@/lib/finanzas";
+import { ROLE_LABEL } from "@/lib/constants";
 import { encodeCommissionNote, type PayrollLine } from "@/lib/payroll";
 
 export interface CommissionConfig {
@@ -755,16 +756,5 @@ function nameOf(options: TeamOption[], id: string): string {
 }
 
 function roleLabel(rol: string): string {
-  const map: Record<string, string> = {
-    admin: "Admin",
-    coordinador: "Coordinación",
-    community_manager: "Community Manager",
-    audiovisual: "Audiovisual",
-    comercial: "Comercial",
-    paid_media: "Media Buyer",
-    prospecting: "Prospecting",
-    web: "Web",
-    botly: "Botly",
-  };
-  return map[rol] ?? rol;
+  return ROLE_LABEL[rol as keyof typeof ROLE_LABEL] ?? rol;
 }

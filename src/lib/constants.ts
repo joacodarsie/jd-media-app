@@ -39,6 +39,7 @@ export const ROLE_LABEL: Record<UserRole, string> = {
   admin: "Admin",
   coordinador: "Coordinación",
   community_manager: "Community Manager",
+  diseno: "Diseño",
   audiovisual: "Editor Audiovisual",
   comercial: "Comercial",
   paid_media: "Paid Media",

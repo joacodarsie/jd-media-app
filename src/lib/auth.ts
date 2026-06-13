@@ -77,7 +77,7 @@ export async function canAccessClient(
   const supabase = createClient();
   const { data } = await supabase
     .from("clients")
-    .select("cm_id, audiovisual_id, disenador_id")
+    .select("cm_id, audiovisual_id, disenador_id, media_buyer_id")
     .eq("id", clientId)
     .maybeSingle();
   if (!data) return false;
@@ -85,12 +85,14 @@ export async function canAccessClient(
     cm_id: string | null;
     audiovisual_id: string | null;
     disenador_id: string | null;
+    media_buyer_id: string | null;
   };
   const c = data as Row;
   return (
     c.cm_id === userId ||
     c.audiovisual_id === userId ||
-    c.disenador_id === userId
+    c.disenador_id === userId ||
+    c.media_buyer_id === userId
   );
 }
 
@@ -111,7 +113,7 @@ export async function getAccessibleClientIds(
     .from("clients")
     .select("id")
     .or(
-      `cm_id.eq.${user.id},disenador_id.eq.${user.id},audiovisual_id.eq.${user.id}`
+      `cm_id.eq.${user.id},disenador_id.eq.${user.id},audiovisual_id.eq.${user.id},media_buyer_id.eq.${user.id}`
     );
   for (const r of (byCols ?? []) as { id: string }[]) ids.add(r.id);
 

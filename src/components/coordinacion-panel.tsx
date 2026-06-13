@@ -14,7 +14,6 @@ import {
   type PackParam,
   type RatePack,
 } from "@/lib/coordinacion";
-import { COMMISSION_PCT } from "@/lib/payroll";
 import { saveAgencySettings } from "@/app/(app)/coordinacion/actions";
 import { cn } from "@/lib/utils";
 
@@ -126,9 +125,9 @@ export function CoordinacionPanel({
     const p = packs.find((x) => x.id === simPack) ?? packs[0];
     const costoRec = packCost(p, rates);
     const margenRec = p.precio - costoRec;
-    const closerFull = Math.round(p.precio * COMMISSION_PCT.closer);
-    const referidoFull = Math.round(p.precio * COMMISSION_PCT.referido);
-    const ambosFull = Math.round(p.precio * COMMISSION_PCT.ambos);
+    const closerFull = Math.round(p.precio * (rates.comision_cierre ?? 0.1));
+    const referidoFull = Math.round(p.precio * (rates.comision_lead_propio ?? 0.05));
+    const ambosFull = Math.round(p.precio * ((rates.comision_cierre ?? 0.1) + (rates.comision_lead_propio ?? 0.05)));
     const closerMonto = simCloser ? closerFull : 0;
     const referidoMonto = simReferido ? referidoFull : 0;
     const manualMonto = simManual ? rates.manual_marca : 0;
@@ -247,7 +246,7 @@ export function CoordinacionPanel({
           <div className="flex flex-wrap gap-x-5 gap-y-2">
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={simCloser} onChange={(e) => setSimCloser(e.target.checked)} className="h-4 w-4 accent-primary" />
-              Comisión closer · 15% (<span className="font-medium">{fmt(sim.closerFull)}</span>)
+              Comisión closer · 10% (<span className="font-medium">{fmt(sim.closerFull)}</span>)
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={simReferido} onChange={(e) => setSimReferido(e.target.checked)} className="h-4 w-4 accent-primary" />
@@ -312,13 +311,30 @@ export function CoordinacionPanel({
           </div>
           <div>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Comisión de venta · % del 1er mes
+              Comercial / comisiones
             </h3>
-            <div className="grid grid-cols-3 gap-3">
-              <ReadField label="Cierre" value="15%" />
-              <ReadField label="Referido" value="5%" />
-              <ReadField label="Cerró + refirió" value="20%" />
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Field label="Fijo mensual (gestión de mensajes)">
+                <NumInput prefix="$" value={rates.comercial_fijo ?? 0} onChange={(n) => patchRate("comercial_fijo", n)} />
+              </Field>
+              <Field label="Cierre · % del 1er mes">
+                <NumInput prefix="%" value={Math.round((rates.comision_cierre ?? 0) * 100)} onChange={(n) => patchRate("comision_cierre", n / 100)} />
+              </Field>
+              <Field label="Lead propio · % del 1er mes">
+                <NumInput prefix="%" value={Math.round((rates.comision_lead_propio ?? 0) * 100)} onChange={(n) => patchRate("comision_lead_propio", n / 100)} />
+              </Field>
+              <Field label="Coordinación GdR · % recurrente">
+                <NumInput prefix="%" value={Math.round((rates.comision_coordinacion ?? 0) * 100)} onChange={(n) => patchRate("comision_coordinacion", n / 100)} />
+              </Field>
             </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Cierre + lead propio ={" "}
+              {Math.round(((rates.comision_cierre ?? 0) + (rates.comision_lead_propio ?? 0)) * 100)}% del
+              1er mes. El fijo del comercial va aparte de las comisiones. La
+              coordinación cobra ese % del abono de gestión de redes de cada
+              cuenta que coordina, todos los meses. Bonus por volumen del closer: +2% cada 2
+              cierres del mes, tope 6% (fórmula fija).
+            </p>
           </div>
           <RateLadder title="Community Manager · por pack" prefix="cm" rates={rates.cm} onChange={patchRate} />
           <RateLadder title="Media Buyer · por pack" prefix="mb" rates={rates.media_buyer} onChange={patchRate} />
@@ -387,8 +403,8 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
   // One-time del 1er mes: manual de marca + comisiones (% del precio sugerido).
   const oneTime =
     (conManual ? rates.manual_marca : 0) +
-    (conCloser ? Math.round(precioObjetivo * COMMISSION_PCT.closer) : 0) +
-    (conReferido ? Math.round(precioObjetivo * COMMISSION_PCT.referido) : 0);
+    (conCloser ? Math.round(precioObjetivo * (rates.comision_cierre ?? 0.1)) : 0) +
+    (conReferido ? Math.round(precioObjetivo * (rates.comision_lead_propio ?? 0.05)) : 0);
   const margenMes1 = margenObjetivoMonto - oneTime;
   const hayOneTime = oneTime > 0;
 
@@ -413,8 +429,8 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
         <div className="flex flex-wrap gap-x-5 gap-y-2">
           <Check label="Incluye pauta (media buyer)" checked={incluyePauta} onChange={setIncluyePauta} />
           <Check label={`Manual de marca 1er mes (${fmt(rates.manual_marca)})`} checked={conManual} onChange={setConManual} />
-          <Check label="Comisión cierre 15% (1er mes)" checked={conCloser} onChange={setConCloser} />
-          <Check label="Comisión referido 5% (1er mes)" checked={conReferido} onChange={setConReferido} />
+          <Check label="Comisión cierre 10% (1er mes)" checked={conCloser} onChange={setConCloser} />
+          <Check label="Comisión lead propio 5% (1er mes)" checked={conReferido} onChange={setConReferido} />
         </div>
 
         <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-4">
@@ -471,18 +487,6 @@ function Check({
         className="h-4 w-4 accent-primary"
       />
       {label}
-    </label>
-  );
-}
-
-// Campo de solo-lectura con el mismo look que Field (para tarifas no editables).
-function ReadField({ label, value }: { label: string; value: string }) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-xs font-medium text-muted-foreground">{label}</span>
-      <div className="flex h-8 items-center rounded-md border bg-muted/40 px-2 text-sm font-semibold tabular-nums">
-        {value}
-      </div>
     </label>
   );
 }

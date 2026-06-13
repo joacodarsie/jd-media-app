@@ -27,6 +27,8 @@ import {
   Radio,
   SlidersHorizontal,
   Banknote,
+  Network,
+  Clapperboard,
   Menu,
   LogOut,
   type LucideIcon,
@@ -79,6 +81,8 @@ const ICONS: Record<string, LucideIcon> = {
   Radio,
   SlidersHorizontal,
   Banknote,
+  Network,
+  Clapperboard,
 };
 
 function initials(nombre: string) {

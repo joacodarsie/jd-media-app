@@ -2,7 +2,11 @@
 title: Novedades
 ---
 
-## 2026-06-09 — Plan mensual, publicidad y chat
+## 2026-06-13 — Vista tabla, organigrama y plan con historias
+
+- 🗂️ **Calendario — nueva vista "Tabla"**: en **Contenidos** sumamos un botón **Tabla** (al lado de Mes / Kanban / Lista / Agenda) con la vista clásica tipo planilla: Fecha · Formato · Contenido · Desarrollo · Copy · Estado · Referencias · TikTok · Canva/Drive. Para las que prefieren leer el mes como lista ordenada por fecha. Se acuerda de la vista que elegiste.
+- 🌳 **Organigrama**: nueva sección en el menú (**Equipo & clientes → Organigrama**) con la estructura de la agencia y quién está en cada área. Se actualiza solo.
+- 📅 **Plan mensual ahora incluye historias**: al generar el plan de un cliente, la IA propone también los temas de **historias** del mes (según los días de stories del pack), no solo reels y posteos.
 
 - 📝 **Instrucciones puntuales en el plan mensual**: antes de generar el plan de un cliente, ahora podés agregar una nota de *"¿Algo puntual a tener en cuenta este mes?"* (un lanzamiento, una fecha clave, un cambio de foco). La IA lo toma como prioridad máxima al armar el plan.
 - 📣 **Onboarding de Publicidad por cliente**: en la ficha de los clientes con servicio de pauta aparece una sección **Publicidad** con el checklist de pasos para dejar la cuenta de anuncios lista (accesos de Facebook, administrador de Meta, Dólar App, tarjeta, campañas). Con barra de progreso, notas de campañas y las credenciales del cliente a mano ahí mismo.

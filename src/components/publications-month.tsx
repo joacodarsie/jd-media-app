@@ -14,6 +14,9 @@ import {
   Loader2,
   Plus,
   Trash2,
+  Table as TableIcon,
+  Music,
+  ExternalLink,
   X,
 } from "lucide-react";
 import {
@@ -44,6 +47,7 @@ import {
   changePublicationStatus,
   bulkDeletePublications,
   bulkChangePublicationStatus,
+  setPublicationTiktokSubido,
 } from "@/app/(app)/contenidos/actions";
 import {
   Select,
@@ -54,7 +58,7 @@ import {
 } from "@/components/ui/select";
 
 const DAY_NAMES = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-type Mode = "mes" | "lista" | "kanban" | "agenda";
+type Mode = "mes" | "lista" | "kanban" | "agenda" | "tabla";
 
 const STATUS_ORDER: PublicationStatus[] = [
   "idea",
@@ -177,7 +181,7 @@ export function PublicationsMonth({
 
   useEffect(() => {
     const v = localStorage.getItem("jd:contenidos:mode") as Mode | null;
-    if (v === "mes" || v === "lista" || v === "kanban" || v === "agenda") {
+    if (v === "mes" || v === "lista" || v === "kanban" || v === "agenda" || v === "tabla") {
       setMode(v);
       return;
     }
@@ -360,6 +364,11 @@ export function PublicationsMonth({
           {mode === "agenda" && (
             <h2 className="text-lg font-semibold">Agenda</h2>
           )}
+          {mode === "tabla" && (
+            <h2 className="text-lg font-semibold">
+              {publications.length} publicacion{publications.length === 1 ? "" : "es"}
+            </h2>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {/* Toggle Mes / Lista */}
@@ -368,6 +377,7 @@ export function PublicationsMonth({
             <ModeBtn icon={CalendarDays} label="Mes" active={mode === "mes"} onClick={() => setMode("mes")} />
             <ModeBtn icon={KanbanSquare} label="Kanban" active={mode === "kanban"} onClick={() => setMode("kanban")} />
             <ModeBtn icon={List} label="Lista" active={mode === "lista"} onClick={() => setMode("lista")} />
+            <ModeBtn icon={TableIcon} label="Tabla" active={mode === "tabla"} onClick={() => setMode("tabla")} />
           </div>
           {(mode === "lista" || mode === "agenda") && (
             <Button
@@ -771,6 +781,13 @@ export function PublicationsMonth({
           selectMode={selectMode}
           selectedIds={selectedIds}
           onToggleSelect={toggleSelect}
+        />
+      ) : mode === "tabla" ? (
+        <PubTable
+          pubs={filtered}
+          clients={clients}
+          users={users}
+          unseenByPub={unseenByPub}
         />
       ) : (
         // Modo lista — agrupado por estado del flujo
@@ -1246,5 +1263,242 @@ function PubRow({
         </button>
       }
     />
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Modo TABLA — vista clásica tipo planilla (fecha, contenido, copy, estado,
+// TikTok, referencia). Pensada para quienes prefieren leer el mes como lista
+// ordenada por fecha.
+// ─────────────────────────────────────────────────────────────────────────
+function PubTable({
+  pubs,
+  clients,
+  users,
+  unseenByPub,
+}: {
+  pubs: PublicationWithRels[];
+  clients: ClientForPub[];
+  users: Pick<AppUser, "id" | "nombre">[];
+  unseenByPub?: Record<string, number>;
+}) {
+  const rows = useMemo(
+    () =>
+      [...pubs].sort((a, b) =>
+        (a.fecha_publicacion ?? "9999-12-31").localeCompare(
+          b.fecha_publicacion ?? "9999-12-31"
+        )
+      ),
+    [pubs]
+  );
+
+  if (rows.length === 0) {
+    return (
+      <p className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
+        No hay publicaciones para mostrar.
+      </p>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-xl border bg-card">
+      <table className="w-full min-w-[1100px] text-sm">
+        <thead>
+          <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+            <th className="px-3 py-2.5 font-medium">Fecha</th>
+            <th className="px-3 py-2.5 font-medium">Formato</th>
+            <th className="px-3 py-2.5 font-medium">Contenido</th>
+            <th className="px-3 py-2.5 font-medium">Desarrollo</th>
+            <th className="px-3 py-2.5 font-medium">Copy</th>
+            <th className="px-3 py-2.5 font-medium">Estado</th>
+            <th className="px-3 py-2.5 font-medium">Referencias</th>
+            <th className="px-3 py-2.5 text-center font-medium">TikTok</th>
+            <th className="px-3 py-2.5 font-medium">Canva / Drive</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((p) => (
+            <PubTableRow
+              key={p.id}
+              pub={p}
+              clients={clients}
+              users={users}
+              unseenCount={unseenByPub?.[p.id] ?? 0}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PubTableRow({
+  pub,
+  clients,
+  users,
+  unseenCount = 0,
+}: {
+  pub: PublicationWithRels;
+  clients: ClientForPub[];
+  users: Pick<AppUser, "id" | "nombre">[];
+  unseenCount?: number;
+}) {
+  const fecha = pub.fecha_publicacion
+    ? new Date(pub.fecha_publicacion + "T12:00:00").toLocaleDateString("es-AR", {
+        weekday: "short",
+        day: "2-digit",
+        month: "short",
+      })
+    : "Sin fecha";
+  // reels y posts espejan en TikTok; el resto no aplica.
+  const tiktokAplica = pub.tipo === "reel" || pub.tipo === "post";
+  const subido = (pub as unknown as { tiktok_subido?: boolean }).tiktok_subido ?? false;
+
+  return (
+    <tr className="border-b last:border-0 align-top hover:bg-muted/30">
+      <td className="whitespace-nowrap px-3 py-2.5 capitalize text-muted-foreground">
+        {fecha}
+      </td>
+      <td className="whitespace-nowrap px-3 py-2.5">
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            className={cn(
+              "inline-block h-2.5 w-2.5 shrink-0 rounded-sm",
+              PUBLICATION_TYPE_DOT[pub.tipo]
+            )}
+          />
+          <span className="text-xs font-medium">{PUBLICATION_TYPE_LABEL[pub.tipo]}</span>
+        </span>
+        <span className="mt-0.5 block text-[11px] text-muted-foreground">
+          {PUBLICATION_NETWORK_LABEL[pub.red]}
+        </span>
+      </td>
+      <td className="px-3 py-2.5">
+        <PublicationDetailDialog
+          publication={pub}
+          clients={clients}
+          users={users}
+          trigger={
+            <button className="group flex items-center gap-1.5 text-left">
+              <span className="font-medium group-hover:underline">{pub.titulo}</span>
+              {unseenCount > 0 && (
+                <span
+                  title={`${unseenCount} comentario(s) del cliente sin ver`}
+                  className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white"
+                >
+                  💬 {unseenCount > 9 ? "9+" : unseenCount}
+                </span>
+              )}
+            </button>
+          }
+        />
+        {pub.cliente && (
+          <span className="mt-0.5 block text-[11px] text-muted-foreground">
+            {pub.cliente.nombre}
+          </span>
+        )}
+      </td>
+      <td className="max-w-[240px] px-3 py-2.5 text-xs text-muted-foreground">
+        {pub.descripcion ? (
+          <span className="line-clamp-3 whitespace-pre-wrap" title={pub.descripcion}>
+            {pub.descripcion}
+          </span>
+        ) : (
+          <span className="text-muted-foreground/50">—</span>
+        )}
+      </td>
+      <td className="max-w-[260px] px-3 py-2.5 text-xs text-muted-foreground">
+        {pub.copy ? (
+          <span className="line-clamp-3 whitespace-pre-wrap" title={pub.copy}>
+            {pub.copy}
+          </span>
+        ) : (
+          <span className="text-muted-foreground/50">—</span>
+        )}
+      </td>
+      <td className="whitespace-nowrap px-3 py-2.5">
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 text-[10px] font-medium",
+            PUBLICATION_STATUS_BADGE[pub.estado]
+          )}
+        >
+          {PUBLICATION_STATUS_LABEL[pub.estado]}
+        </span>
+      </td>
+      <td className="px-3 py-2.5">
+        {pub.referencia_url ? (
+          <a
+            href={pub.referencia_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+          >
+            <ExternalLink className="h-3.5 w-3.5" /> Ver
+          </a>
+        ) : (
+          <span className="text-xs text-muted-foreground/50">—</span>
+        )}
+      </td>
+      <td className="px-3 py-2.5 text-center">
+        {tiktokAplica ? (
+          <TiktokCell id={pub.id} initial={subido} />
+        ) : (
+          <span className="text-xs text-muted-foreground/50">—</span>
+        )}
+      </td>
+      <td className="px-3 py-2.5">
+        {pub.asset_url ? (
+          <a
+            href={pub.asset_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+          >
+            <ExternalLink className="h-3.5 w-3.5" /> Abrir
+          </a>
+        ) : (
+          <span className="text-xs text-muted-foreground/50">—</span>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+function TiktokCell({ id, initial }: { id: string; initial: boolean }) {
+  const router = useRouter();
+  const [subido, setSubido] = useState(initial);
+  const [pending, start] = useTransition();
+
+  function toggle() {
+    const next = !subido;
+    setSubido(next); // optimista
+    start(async () => {
+      const res = await setPublicationTiktokSubido(id, next);
+      if (res?.error) {
+        toast.error("No se pudo guardar: " + res.error);
+        setSubido(!next);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  return (
+    <button
+      onClick={toggle}
+      disabled={pending}
+      title={subido ? "Ya está subido a TikTok" : "Pendiente de subir a TikTok"}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition",
+        subido
+          ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300"
+          : "border-dashed text-muted-foreground hover:bg-muted",
+        pending && "opacity-60"
+      )}
+    >
+      <Music className="h-3.5 w-3.5" />
+      {subido ? "Subido" : "Subir"}
+    </button>
   );
 }

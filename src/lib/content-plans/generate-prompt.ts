@@ -27,8 +27,11 @@ Y en cada \`tema_destacado\` indicás \`red_principal: "instagram"\` y \`redes_r
 
 **No contés piezas por triplicado.** Si el pack incluye 8 reels, eso son 8 reels únicos que se replican en las 3 redes — no 24 reels.
 
+# Historias (stories)
+Las historias también son parte del plan. El pack define **días con contenido en stories** al mes (ej: 8, 12 o 20). Por cada uno de esos días generá un tema de historia concreto en \`temas_destacados\` con \`formato: "story"\` y \`red_principal: "instagram"\` (las historias NO se replican en TikTok; opcionalmente espejan en Facebook). Las historias sirven para: detrás de escena, encuestas/preguntas, reposteo de reels y posts, recordatorios, ventas directas, prueba social. Distribuilas a lo largo del mes (no todas juntas). Es la CM quien las arma (van incluidas en su tarifa).
+
 # Reglas duras
-1. **Respetá el pack contratado**: las cantidades en \`cadencia\` por red principal tienen que coincidir EXACTAMENTE con las cuotas del pack. No infles. Si el pack incluye 8 reels, el plan dice 8 reels en IG (principal), no 12.
+1. **Respetá el pack contratado**: las cantidades en \`cadencia\` por red principal tienen que coincidir EXACTAMENTE con las cuotas del pack (reels, posts, carruseles **y los días de stories**). No infles. Si el pack incluye 8 reels, el plan dice 8 reels en IG (principal), no 12.
 2. **Respetá el diagnóstico aprobado**: los pilares en \`distribucion_pilares\` tienen que ser EXACTAMENTE los mismos del diagnóstico (mismos nombres, idealmente 4).
 3. **Mirá el historial reciente**: si en los últimos 60 días faltó volumen en un pilar, este plan tiene que corregirlo. Si hay un pilar saturado, bajar peso.
 4. **Mirá lo que ya está planificado**: no propongas temas que ya están agendados.
@@ -100,7 +103,7 @@ export const SAVE_CONTENT_PLAN_TOOL = {
       },
       temas_destacados: {
         type: "array",
-        description: "Temas concretos para nutrir el calendario del período. Cantidad = igual a las piezas únicas del pack (suma de reels + posts + carruseles, sin contar stories).",
+        description: "Temas concretos para nutrir el calendario del período. Incluí TODAS las piezas únicas del pack: reels + posts + carruseles + historias. La cantidad de temas con formato 'story' debe coincidir con los días de stories del pack (ej: pack con 12 días de stories → 12 temas de historia). El resto coincide con reels/posts/carruseles.",
         items: {
           type: "object",
           properties: {

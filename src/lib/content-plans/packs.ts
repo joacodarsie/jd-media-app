@@ -58,9 +58,9 @@ export function describePack(pack: string | null | undefined): string {
     `Cuota mensual incluida (piezas únicas de producción):`,
     `  - ${q.reels} reels`,
     `  - ${q.posts} posts`,
-    `  - ${q.dias_stories} días con contenido en stories`,
+    `  - ${q.dias_stories} días con contenido en stories (generá ${q.dias_stories} temas de historia con formato "story")`,
     `Redes incluidas (replica automática): ${q.redes_incluidas.join(", ")}.`,
     ``,
-    `IMPORTANTE: estos números son LÍMITES contractuales. No los excedas. Si querés sugerir más volumen, indicalo en notas pero no inflés el mix.`,
+    `IMPORTANTE: estos números son LÍMITES contractuales. No los excedas. Si querés sugerir más volumen, indicalo en notas pero no inflés el mix. Las historias también se planifican: incluí ${q.dias_stories} temas con formato "story".`,
   ].join("\n");
 }

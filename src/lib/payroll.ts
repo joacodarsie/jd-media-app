@@ -164,9 +164,39 @@ export function payrollKindLabel(kind: PayrollLineKind): string {
   }
 }
 
+/** Fijo mensual del comercial por la gestión de mensajes/leads (independiente de cierres). */
+export const COMERCIAL_FIXED_MENSUAL = 50000;
+
 /** Porcentaje de comisión del closer según su intervención en la venta. */
 export const COMMISSION_PCT = {
-  ambos: 0.2, // cerró y refirió
-  closer: 0.15, // solo cerró
-  referido: 0.05, // solo refirió
+  ambos: 0.15, // cerró Y refirió (lead propio): 10% + 5%
+  closer: 0.1, // solo cerró
+  referido: 0.05, // solo refirió (lead propio de otro)
 } as const;
+
+/**
+ * Bonus por volumen de cierres del mes: por cada 2 clientes cerrados se suma
+ * un 2% extra de comisión, con tope del 6%. Se aplica sobre la misma base que
+ * la comisión (el abono del primer mes de cada cliente que cerró).
+ * Devuelve la fracción a aplicar: 0, 0.02, 0.04 o 0.06.
+ */
+export function closerVolumeBonusPct(clientesCerrados: number): number {
+  const pct = Math.min(Math.floor(clientesCerrados / 2) * 2, 6);
+  return pct / 100;
+}
+
+/** Codifica/decodifica el detalle de una comisión en payroll_items.notas: "rol:base". */
+export type CommissionRole = "closer" | "both" | "ref";
+export function encodeCommissionNote(role: CommissionRole, base: number): string {
+  return `${role}:${Math.round(base)}`;
+}
+export function decodeCommissionNote(
+  notas: string | null
+): { role: CommissionRole; base: number } | null {
+  if (!notas) return null;
+  const [role, baseStr] = notas.split(":");
+  if (role !== "closer" && role !== "both" && role !== "ref") return null;
+  const base = Number(baseStr);
+  if (!Number.isFinite(base)) return null;
+  return { role, base };
+}

@@ -33,7 +33,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { fmtARS, periodLabel, prevPeriod, nextPeriod } from "@/lib/finanzas";
-import { COMMISSION_PCT, type PayrollLine } from "@/lib/payroll";
+import { encodeCommissionNote, type PayrollLine } from "@/lib/payroll";
+
+export interface CommissionConfig {
+  /** Fracción por cierre (ej: 0.10). */
+  cierre: number;
+  /** Fracción extra si es lead propio (ej: 0.05). */
+  leadPropio: number;
+}
 import {
   addPayrollItem,
   deletePayrollItem,
@@ -90,6 +97,7 @@ export function SueldosPanel({
   clientOptions,
   teamOptions,
   mbAccounts,
+  commission,
 }: {
   periodo: string;
   people: PersonPayroll[];
@@ -98,6 +106,7 @@ export function SueldosPanel({
   clientOptions: ClientOption[];
   teamOptions: TeamOption[];
   mbAccounts: MediaBuyerAccount[];
+  commission: CommissionConfig;
 }) {
   const router = useRouter();
   const [showMb, setShowMb] = useState(false);
@@ -137,7 +146,7 @@ export function SueldosPanel({
             <div className="text-xl font-bold tabular-nums">{fmt(totalNomina)}</div>
           </div>
           <div className="flex items-center gap-2">
-            <CommissionDialog periodo={periodo} clientOptions={clientOptions} teamOptions={teamOptions} />
+            <CommissionDialog periodo={periodo} clientOptions={clientOptions} teamOptions={teamOptions} commission={commission} />
             <Button
               variant="outline"
               size="sm"
@@ -348,10 +357,12 @@ function CommissionDialog({
   periodo,
   clientOptions,
   teamOptions,
+  commission,
 }: {
   periodo: string;
   clientOptions: ClientOption[];
   teamOptions: TeamOption[];
+  commission: CommissionConfig;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -361,10 +372,17 @@ function CommissionDialog({
   const [closerId, setCloserId] = useState("");
   const [referidoId, setReferidoId] = useState("");
 
+  const pctCierre = commission.cierre;
+  const pctLead = commission.leadPropio;
+  const pctAmbos = pctCierre + pctLead;
+  const lblCierre = Math.round(pctCierre * 100);
+  const lblLead = Math.round(pctLead * 100);
+  const lblAmbos = Math.round(pctAmbos * 100);
+
   const cliente = clientOptions.find((c) => c.id === clienteId);
   const sameSame = closerId && referidoId && closerId === referidoId;
-  const closerMonto = closerId ? Math.round(base * (sameSame ? COMMISSION_PCT.ambos : COMMISSION_PCT.closer)) : 0;
-  const referidoMonto = referidoId && !sameSame ? Math.round(base * COMMISSION_PCT.referido) : 0;
+  const closerMonto = closerId ? Math.round(base * (sameSame ? pctAmbos : pctCierre)) : 0;
+  const referidoMonto = referidoId && !sameSame ? Math.round(base * pctLead) : 0;
 
   function reset() {
     setClienteId("");
@@ -385,9 +403,10 @@ function CommissionDialog({
             userId: closerId,
             periodo,
             tipo: "comision",
-            concepto: `Comisión 20% (cierre + referido) · ${cName}`,
+            concepto: `Comisión ${lblAmbos}% (cierre + lead propio) · ${cName}`,
             monto: closerMonto,
             clienteId: clienteId || null,
+            notas: encodeCommissionNote("both", base),
           })
         );
       } else {
@@ -397,9 +416,10 @@ function CommissionDialog({
               userId: closerId,
               periodo,
               tipo: "comision",
-              concepto: `Comisión 15% (cierre) · ${cName}`,
+              concepto: `Comisión ${lblCierre}% (cierre) · ${cName}`,
               monto: closerMonto,
               clienteId: clienteId || null,
+              notas: encodeCommissionNote("closer", base),
             })
           );
         if (referidoId)
@@ -408,9 +428,10 @@ function CommissionDialog({
               userId: referidoId,
               periodo,
               tipo: "comision",
-              concepto: `Comisión 5% (referido) · ${cName}`,
+              concepto: `Comisión ${lblLead}% (lead propio) · ${cName}`,
               monto: referidoMonto,
               clienteId: clienteId || null,
+              notas: encodeCommissionNote("ref", base),
             })
           );
       }
@@ -474,11 +495,11 @@ function CommissionDialog({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Cerró (15%)</Label>
+              <Label>Cerró ({lblCierre}%)</Label>
               <PersonSelect value={closerId} onChange={setCloserId} options={teamOptions} />
             </div>
             <div>
-              <Label>Refirió (5%)</Label>
+              <Label>Lead propio ({lblLead}%)</Label>
               <PersonSelect value={referidoId} onChange={setReferidoId} options={teamOptions} />
             </div>
           </div>
@@ -487,26 +508,31 @@ function CommissionDialog({
               <span className="text-muted-foreground">Elegí beneficiario(s).</span>
             ) : sameSame ? (
               <div className="flex items-center justify-between">
-                <span>20% (cerró y refirió)</span>
+                <span>{lblAmbos}% (cierre + lead propio)</span>
                 <span className="font-semibold tabular-nums">{fmt(closerMonto)}</span>
               </div>
             ) : (
               <div className="space-y-1">
                 {closerId && (
                   <div className="flex items-center justify-between">
-                    <span>15% cierre · {nameOf(teamOptions, closerId)}</span>
+                    <span>{lblCierre}% cierre · {nameOf(teamOptions, closerId)}</span>
                     <span className="font-semibold tabular-nums">{fmt(closerMonto)}</span>
                   </div>
                 )}
                 {referidoId && (
                   <div className="flex items-center justify-between">
-                    <span>5% referido · {nameOf(teamOptions, referidoId)}</span>
+                    <span>{lblLead}% lead propio · {nameOf(teamOptions, referidoId)}</span>
                     <span className="font-semibold tabular-nums">{fmt(referidoMonto)}</span>
                   </div>
                 )}
               </div>
             )}
           </div>
+          <p className="text-[11px] text-muted-foreground">
+            El <strong>bonus por volumen</strong> (+2% cada 2 cierres del mes,
+            tope 6%) se calcula y suma solo al cerrar el mes, automáticamente,
+            según los cierres cargados acá.
+          </p>
         </div>
         <DialogFooter>
           <Button onClick={submit} disabled={pending}>

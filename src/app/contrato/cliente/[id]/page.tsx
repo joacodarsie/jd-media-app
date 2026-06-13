@@ -655,9 +655,15 @@ export default async function CartaAcuerdoPage({
                 escrito con 15 días de anticipación.
               </p>
               <p>
-                <strong>Revisión de tarifas:</strong> Las tarifas mensuales
-                podrán actualizarse cada 3 meses, avisando al Cliente con 10
-                días de anticipación.
+                <strong>Ajuste de tarifas por inflación:</strong> En el
+                contexto inflacionario de Argentina, los honorarios mensuales se
+                actualizarán <strong>cada 3 meses</strong> tomando como
+                referencia la variación del Índice de Precios al Consumidor
+                (IPC) publicado por el INDEC para el período transcurrido, o el
+                índice oficial que lo reemplace. La Agencia notificará al Cliente
+                el nuevo valor con al menos 10 días de anticipación a su entrada
+                en vigencia. Este ajuste tiene por único fin mantener el valor
+                real del servicio y no constituye un aumento adicional.
               </p>
             </>
           )}

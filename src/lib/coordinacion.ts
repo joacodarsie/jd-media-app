@@ -27,6 +27,16 @@ export interface AgencyRates {
   cm: Record<RatePack, number>;
   /** Media Buyer (gestión de campañas Meta) por pack. */
   media_buyer: Record<RatePack, number>;
+
+  // ── Modelo comercial / comisiones (editable desde Coordinación) ──
+  /** Fijo mensual del comercial por gestión de mensajes (aparte de las comisiones). */
+  comercial_fijo: number;
+  /** % de comisión por cerrar una venta (sobre el abono del 1er mes). */
+  comision_cierre: number;
+  /** % extra si la venta vino por un lead propio del closer. */
+  comision_lead_propio: number;
+  /** % recurrente de la coordinadora de Gestión de Redes sobre el abono de cada cuenta que coordina. */
+  comision_coordinacion: number;
 }
 
 export interface AgencySettings {
@@ -47,6 +57,10 @@ export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
     closer: 0,
     cm: { Presencia: 50000, Crecimiento: 70000, Escala: 100000, Personalizado: 70000 },
     media_buyer: { Presencia: 50000, Crecimiento: 70000, Escala: 100000, Personalizado: 70000 },
+    comercial_fijo: 50000,
+    comision_cierre: 0.1,
+    comision_lead_propio: 0.05,
+    comision_coordinacion: 0.1,
   },
 };
 

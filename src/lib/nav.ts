@@ -62,6 +62,7 @@ export const NAV_GROUPS: NavGroup[] = [
         roles: ["admin", "coordinador", "comercial", "prospecting"],
       },
       { href: "/equipo", label: "Equipo", icon: "Users2" },
+      { href: "/organigrama", label: "Organigrama", icon: "Network" },
       {
         href: "/equipo/personas",
         label: "Personas",
@@ -108,6 +109,12 @@ export const NAV_GROUPS: NavGroup[] = [
         href: "/coordinacion/sueldos",
         label: "Sueldos",
         icon: "Banknote",
+        roles: ["admin"],
+      },
+      {
+        href: "/coordinacion/jornadas",
+        label: "Jornadas",
+        icon: "Clapperboard",
         roles: ["admin"],
       },
     ],

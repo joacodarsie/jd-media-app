@@ -3,6 +3,9 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { mergeSettings, type AgencySettings } from "@/lib/coordinacion";
 import {
   computeAutoPayroll,
+  closerVolumeBonusPct,
+  decodeCommissionNote,
+  COMERCIAL_FIXED_MENSUAL,
   type PayrollClient,
   type PayrollService,
   type PayrollLine,
@@ -34,6 +37,7 @@ export default async function SueldosPage({
     { data: usersRaw },
     { data: itemsRaw },
     { data: paymentsRaw },
+    { data: sessionsRaw },
   ] = await Promise.all([
     admin.from("agency_settings").select("packs, rates").eq("id", 1).maybeSingle(),
     admin
@@ -55,6 +59,10 @@ export default async function SueldosPage({
     admin
       .from("team_payments")
       .select("id, user_id, concepto, monto, fecha_pago")
+      .eq("periodo", periodo),
+    admin
+      .from("production_sessions")
+      .select("id, fecha, monto, cliente_id, lugar, asistentes")
       .eq("periodo", periodo),
   ]);
 
@@ -92,6 +100,81 @@ export default async function SueldosPage({
   // ── Nómina automática (modelo de tarifas) ──
   const autoByUser = computeAutoPayroll(clients, services, settings.rates, fallbackMediaBuyer);
 
+  // Fijo mensual del/los comercial(es) por gestión de mensajes y leads (aparte
+  // de las comisiones). Editable desde Coordinación.
+  const comercialFijo = settings.rates.comercial_fijo ?? COMERCIAL_FIXED_MENSUAL;
+  for (const u of users) {
+    if (u.rol !== "comercial") continue;
+    if (comercialFijo <= 0) continue;
+    if (!autoByUser.has(u.id)) autoByUser.set(u.id, []);
+    autoByUser.get(u.id)!.push({
+      clienteId: null,
+      cliente: "—",
+      concepto: "Gestión de mensajes (fijo mensual)",
+      monto: comercialFijo,
+      kind: "extra",
+    });
+  }
+
+  // Comisión recurrente de la coordinadora de Gestión de Redes: % del abono
+  // mensual del servicio de gestión de redes de cada cuenta que coordina
+  // (solo esa línea, sin contar pauta ni otros servicios).
+  const coordPct = settings.rates.comision_coordinacion ?? 0;
+  const coordinadores = users.filter((u) => u.rol === "coordinador");
+  if (coordPct > 0 && coordinadores.length > 0) {
+    const gdrByClient = new Map<string, number>();
+    for (const s of services) {
+      if (s.tipo !== "gestion_redes") continue;
+      if (s.facturacion === "unico") continue;
+      gdrByClient.set(
+        s.cliente_id,
+        (gdrByClient.get(s.cliente_id) ?? 0) + (Number(s.monto_mensual) || 0)
+      );
+    }
+    for (const c of clients) {
+      const abono = gdrByClient.get(c.id) ?? 0;
+      if (abono <= 0) continue;
+      const monto = Math.round(abono * coordPct);
+      for (const coord of coordinadores) {
+        if (!autoByUser.has(coord.id)) autoByUser.set(coord.id, []);
+        autoByUser.get(coord.id)!.push({
+          clienteId: c.id,
+          cliente: c.nombre,
+          concepto: `Coordinación gestión de redes (${Math.round(coordPct * 100)}%)`,
+          monto,
+          kind: "comision",
+        });
+      }
+    }
+  }
+
+  // Jornadas de producción del mes: el monto se reparte en partes iguales
+  // entre los asistentes y se suma a la nómina de cada uno.
+  const sessions = (sessionsRaw ?? []) as {
+    id: string;
+    fecha: string;
+    monto: number;
+    cliente_id: string | null;
+    lugar: string | null;
+    asistentes: string[];
+  }[];
+  for (const s of sessions) {
+    const asistentes = s.asistentes ?? [];
+    if (asistentes.length === 0) continue;
+    const porPersona = Math.round(Number(s.monto) / asistentes.length);
+    const detalle = s.lugar ?? new Date(s.fecha + "T12:00:00").toLocaleDateString("es-AR");
+    for (const uid of asistentes) {
+      if (!autoByUser.has(uid)) autoByUser.set(uid, []);
+      autoByUser.get(uid)!.push({
+        clienteId: s.cliente_id,
+        cliente: "—",
+        concepto: `Jornada de producción · ${detalle}`,
+        monto: porPersona,
+        kind: "extra",
+      });
+    }
+  }
+
   const userById = new Map(users.map((u) => [u.id, u]));
   const clientById = new Map(clients.map((c) => [c.id, c.nombre]));
   const SALARY_CONCEPTO = `Sueldo ${periodo}`;
@@ -106,7 +189,31 @@ export default async function SueldosPage({
   for (const uid of personIds) {
     const u = userById.get(uid);
     if (!u) continue; // persona inactiva con ítems viejos: la salteamos
-    const autoLines = autoByUser.get(uid) ?? [];
+    const baseAutoLines = autoByUser.get(uid) ?? [];
+
+    // Bonus por volumen de cierres del mes (closer): +2% cada 2 clientes, tope 6%.
+    const cierres = items
+      .filter((i) => i.user_id === uid && i.tipo === "comision")
+      .map((i) => decodeCommissionNote(i.notas))
+      .filter(
+        (d): d is { role: "closer" | "both" | "ref"; base: number } =>
+          !!d && (d.role === "closer" || d.role === "both")
+      );
+    const bonusPct = closerVolumeBonusPct(cierres.length);
+    const bonusLine: PayrollLine | null =
+      bonusPct > 0
+        ? {
+            clienteId: null,
+            cliente: "—",
+            concepto: `Bonus por volumen · ${cierres.length} cierres (${Math.round(
+              bonusPct * 100
+            )}%)`,
+            monto: Math.round(cierres.reduce((a, c) => a + c.base, 0) * bonusPct),
+            kind: "comision",
+          }
+        : null;
+
+    const autoLines = bonusLine ? [...baseAutoLines, bonusLine] : baseAutoLines;
     const manualLines: PayrollLine[] = items
       .filter((i) => i.user_id === uid)
       .map((i) => ({
@@ -197,6 +304,10 @@ export default async function SueldosPage({
         clientOptions={clientOptions}
         teamOptions={teamOptions}
         mbAccounts={mbAccounts}
+        commission={{
+          cierre: settings.rates.comision_cierre ?? 0.1,
+          leadPropio: settings.rates.comision_lead_propio ?? 0.05,
+        }}
       />
     </div>
   );

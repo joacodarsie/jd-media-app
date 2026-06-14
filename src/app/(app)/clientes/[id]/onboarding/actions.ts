@@ -17,7 +17,10 @@ type StepKey =
   | "diagnostico_generado_at"
   | "tareas_iniciales_at"
   | "kickoff_agendado_at"
-  | "meet_guide_generated_at";
+  | "meet_guide_generated_at"
+  | "drive_creado_at"
+  | "accesos_cargados_at"
+  | "perfiles_rediseno_at";
 
 const VALID_STEPS: StepKey[] = [
   "carta_enviada_at",
@@ -29,6 +32,9 @@ const VALID_STEPS: StepKey[] = [
   "tareas_iniciales_at",
   "kickoff_agendado_at",
   "meet_guide_generated_at",
+  "drive_creado_at",
+  "accesos_cargados_at",
+  "perfiles_rediseno_at",
 ];
 
 export async function toggleOnboardingStep(
@@ -83,6 +89,36 @@ export async function setPagoRecibido(
     { onConflict: "cliente_id" }
   );
   if (error) return { error: error.message };
+
+  revalidatePath(`/clientes/${clientId}/onboarding`);
+  revalidatePath(`/clientes/${clientId}`);
+  return { ok: true };
+}
+
+/**
+ * Guarda el link del Drive del cliente (clients.drive_url) y, si hay link, marca
+ * el paso "Drive creado" como hecho. El link se muestra en el calendario de
+ * contenidos para abrir el Drive con un click.
+ */
+export async function setClientDriveUrl(clientId: string, url: string | null) {
+  await requireUser();
+  const admin = createAdmin();
+  const clean = url?.trim() || null;
+
+  const { error: cErr } = await admin
+    .from("clients")
+    .update({ drive_url: clean })
+    .eq("id", clientId);
+  if (cErr) return { error: cErr.message };
+
+  const { error: oErr } = await admin.from("client_onboarding").upsert(
+    {
+      cliente_id: clientId,
+      drive_creado_at: clean ? new Date().toISOString() : null,
+    },
+    { onConflict: "cliente_id" }
+  );
+  if (oErr) return { error: oErr.message };
 
   revalidatePath(`/clientes/${clientId}/onboarding`);
   revalidatePath(`/clientes/${clientId}`);

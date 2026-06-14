@@ -14,7 +14,10 @@ type StepKey =
   | "diagnostico_generado_at"
   | "tareas_iniciales_at"
   | "kickoff_agendado_at"
-  | "meet_guide_generated_at";
+  | "meet_guide_generated_at"
+  | "drive_creado_at"
+  | "accesos_cargados_at"
+  | "perfiles_rediseno_at";
 
 export function OnboardingStepToggle({
   clientId,

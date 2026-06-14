@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Megaphone } from "lucide-react";
+import { ArrowLeft, Megaphone, TrendingUp, BarChart3 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { AdsOnboardingChecklist, type AdsOnboardingState } from "@/components/ads-onboarding-checklist";
 import { ClientListEditor } from "@/components/client-list-editor";
-import { Card, CardContent } from "@/components/ui/card";
+import { MetaAdAccountField } from "@/components/meta-ad-account-field";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,7 @@ export default async function PublicidadOnboardingPage({
     admin
       .from("client_ads_onboarding")
       .select(
-        "accesos_fb_at, ads_manager_at, dolar_app_at, tarjeta_vinculada_at, campanas_definidas_at, campanas_publicadas_at, campanas_notas, notas"
+        "accesos_fb_at, ads_manager_at, dolar_app_at, tarjeta_vinculada_at, campanas_definidas_at, campanas_publicadas_at, campanas_notas, notas, meta_ad_account_id"
       )
       .eq("cliente_id", params.id)
       .maybeSingle(),
@@ -46,7 +47,11 @@ export default async function PublicidadOnboardingPage({
       .maybeSingle(),
   ]);
 
-  const state = (onboarding ?? {}) as AdsOnboardingState;
+  const onb = (onboarding ?? {}) as AdsOnboardingState & {
+    meta_ad_account_id?: string | null;
+  };
+  const state = onb as AdsOnboardingState;
+  const adAccountId = onb.meta_ad_account_id ?? null;
   const tienePauta = !!paidSvc;
 
   return (
@@ -76,6 +81,34 @@ export default async function PublicidadOnboardingPage({
       )}
 
       <AdsOnboardingChecklist clientId={client.id} initial={state} />
+
+      {/* Conexión con Paid Media */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <TrendingUp className="h-4 w-4 text-primary" /> Conexión con Paid Media
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Cargá el <b>ID de la cuenta publicitaria</b> de Meta del cliente
+            (<code>act_XXXX</code>). Con esto, la sección Paid Media trae las
+            métricas diarias y el análisis con IA de esta cuenta.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <MetaAdAccountField clientId={client.id} initial={adAccountId} />
+          <p className="text-[11px] text-muted-foreground">
+            Lo encontrás en el Administrador de anuncios de Meta, arriba a la
+            izquierda (ej: <code>act_1234567890</code>). Es opcional, pero deja
+            todo listo para medir desde el día uno.
+          </p>
+          <Link
+            href="/paid-media"
+            className="inline-flex items-center gap-1.5 rounded-md border bg-card px-3 py-1.5 text-xs font-medium transition hover:border-primary/40 hover:bg-muted"
+          >
+            <BarChart3 className="h-3.5 w-3.5 text-primary" /> Ir a Paid Media
+          </Link>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="pt-4">

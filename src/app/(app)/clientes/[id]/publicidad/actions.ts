@@ -35,6 +35,27 @@ export async function toggleAdsStep(clientId: string, step: AdsStepKey, done: bo
   return { ok: true };
 }
 
+/**
+ * Guarda el ID de la cuenta publicitaria de Meta (act_XXXX) del cliente. Es el
+ * mismo dato que usa la sección Paid Media para traer las métricas vía Marketing
+ * API: cargándolo acá, Guille deja conectada la cuenta desde el onboarding.
+ */
+export async function saveMetaAdAccountId(clientId: string, adAccountId: string) {
+  await requireUser();
+  const admin = createAdmin();
+  const value = adAccountId.trim() || null;
+  const { error } = await admin
+    .from("client_ads_onboarding")
+    .upsert(
+      { cliente_id: clientId, meta_ad_account_id: value },
+      { onConflict: "cliente_id" }
+    );
+  if (error) return { error: error.message };
+  revalidatePath(`/clientes/${clientId}/publicidad`);
+  revalidatePath("/paid-media");
+  return { ok: true };
+}
+
 export async function saveAdsNotes(
   clientId: string,
   campanas_notas: string | null,

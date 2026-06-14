@@ -2,6 +2,17 @@
 title: Novedades
 ---
 
+## 2026-06-14 — Onboarding en 3 etapas (con responsables)
+
+- 🧭 **Onboarding partido en 3 etapas**, cada una con su responsable y su propio progreso:
+  - **1 · Inicial (Dirección):** carta acuerdo, cobro, equipo, grupo de WhatsApp, mensajes de bienvenida y el **documento guía del meet**. Acá termina la parte de Dirección.
+  - **2 · Gestión de Redes (Coordinación):** la coordinadora del servicio toma la posta — conduce el meet de onboarding, carga accesos, crea el Drive, rediseña perfiles y deja la cuenta lista para producir.
+  - **3 · Publicidad (Paid Media):** acceso directo al onboarding de pauta que lleva el media buyer.
+- 📁 **Drive del cliente en el onboarding**: nuevo paso para crear la carpeta del cliente (con sus 3 subcarpetas: *Identidad visual · Calendario de contenidos · Contenido crudo*) y pegar el link. Ese link **aparece en el calendario de contenidos** para abrir el Drive con un click.
+- 🔑 **Accesos del cliente**: cargá ahí mismo, dentro del onboarding, los accesos que pase el cliente (Instagram, TikTok, Facebook y lo que haga falta). Es la misma lista que figura en la ficha.
+- 🎨 **Rediseño de perfiles y biografías**: paso nuevo para dejar registrado cuando ya se actualizaron foto, bio, links, portadas e historias destacadas.
+- 📈 **Onboarding de Publicidad ↔ Paid Media**: el media buyer ahora carga el **ID de la cuenta publicitaria de Meta (act_XXXX)** desde el onboarding de pauta y queda conectada con la sección **Paid Media** (métricas y análisis diario). También arreglamos un error al entrar a esa sección.
+
 ## 2026-06-13 — Vista tabla, organigrama y plan con historias
 
 - 🗂️ **Calendario — nueva vista "Tabla"**: en **Contenidos** sumamos un botón **Tabla** (al lado de Mes / Kanban / Lista / Agenda) con la vista clásica tipo planilla: Fecha · Formato · Contenido · Desarrollo · Copy · Estado · Referencias · TikTok · Canva/Drive. Para las que prefieren leer el mes como lista ordenada por fecha. Se acuerda de la vista que elegiste.

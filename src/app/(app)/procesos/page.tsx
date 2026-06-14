@@ -4,6 +4,8 @@ import { requireUser, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { AgencyPageDialog } from "@/components/agency-page-dialog";
+import { SectionTabs } from "@/components/section-tabs";
+import { conocimientoTabs } from "@/lib/section-tabs";
 
 export const revalidate = 60;
 
@@ -33,6 +35,7 @@ export default async function ProcesosPage() {
 
   return (
     <div className="space-y-5">
+      <SectionTabs tabs={conocimientoTabs} />
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Procesos</h1>

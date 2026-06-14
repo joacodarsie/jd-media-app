@@ -2,6 +2,8 @@ import { FileText } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { HelpTrigger } from "@/components/help-trigger";
+import { SectionTabs } from "@/components/section-tabs";
+import { conocimientoTabs } from "@/lib/section-tabs";
 import {
   TemplatesManager,
   type TemplateRow,
@@ -66,6 +68,7 @@ export default async function TemplatesPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
+      <SectionTabs tabs={conocimientoTabs} />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold">

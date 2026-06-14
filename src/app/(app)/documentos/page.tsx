@@ -4,6 +4,8 @@ import {
   DocumentsManager,
   type DocumentRow,
 } from "@/components/documents-manager";
+import { SectionTabs } from "@/components/section-tabs";
+import { conocimientoTabs } from "@/lib/section-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +24,7 @@ export default async function DocumentosPage() {
 
   return (
     <div className="space-y-5">
+      <SectionTabs tabs={conocimientoTabs} />
       <div>
         <h1 className="text-2xl font-bold">Documentos</h1>
         <p className="text-muted-foreground">

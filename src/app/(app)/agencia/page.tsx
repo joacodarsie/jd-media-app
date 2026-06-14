@@ -8,6 +8,8 @@ import { Markdown } from "@/components/markdown";
 import { AgencyPageDialog } from "@/components/agency-page-dialog";
 import { QuickLinksManager, type QuickLinkRow } from "@/components/quick-links-manager";
 import { ServicesManager } from "@/components/services-manager";
+import { SectionTabs } from "@/components/section-tabs";
+import { conocimientoTabs } from "@/lib/section-tabs";
 import type { ServiceInit } from "@/components/service-dialog";
 
 // Contenido estable de la agencia (SOPs, services). Revalida cada 60s.
@@ -41,6 +43,7 @@ export default async function AgenciaPage() {
 
   return (
     <div className="space-y-5">
+      <SectionTabs tabs={conocimientoTabs} />
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Agencia</h1>

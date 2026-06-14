@@ -1,5 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { SectionTabs } from "@/components/section-tabs";
+import { equipoTabs } from "@/lib/section-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -79,7 +81,7 @@ function OrgCard({ node, people }: { node: OrgNode; people: Map<string, Person[]
 }
 
 export default async function OrganigramaPage() {
-  await requireUser();
+  const me = await requireUser();
   const supabase = createClient();
   const { data } = await supabase
     .from("users")
@@ -103,6 +105,7 @@ export default async function OrganigramaPage() {
 
   return (
     <div className="space-y-6">
+      <SectionTabs tabs={equipoTabs(me.rol)} />
       <style>{`
         .org-wrap { overflow-x: auto; padding: 8px 4px 24px; }
         .tree { display: inline-block; min-width: 100%; text-align: center; }

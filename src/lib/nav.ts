@@ -26,6 +26,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/dashboard", label: "Mi día", icon: "Sun" },
       { href: "/tareas", label: "Tareas", icon: "ListChecks" },
+      { href: "/area", label: "Tareas por área", icon: "Users" },
       { href: "/contenidos", label: "Contenidos", icon: "Calendar" },
       {
         href: "/paid-media",
@@ -53,7 +54,6 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Equipo & clientes",
     items: [
-      { href: "/area", label: "Por área", icon: "Users" },
       {
         href: "/clientes",
         label: "Clientes",
@@ -67,20 +67,8 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "Target",
         roles: ["admin", "coordinador", "comercial", "prospecting"],
       },
+      // Equipo agrupa: Directorio, Organigrama, Personas y Capacidad (pestañas).
       { href: "/equipo", label: "Equipo", icon: "Users2" },
-      { href: "/organigrama", label: "Organigrama", icon: "Network" },
-      {
-        href: "/equipo/personas",
-        label: "Personas",
-        icon: "Users",
-        roles: ["admin", "coordinador"],
-      },
-      {
-        href: "/equipo/capacity",
-        label: "Capacidad",
-        icon: "Gauge",
-        roles: ["admin", "coordinador"],
-      },
       {
         href: "/contratos",
         label: "Contratos",
@@ -92,10 +80,8 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Conocimiento",
     items: [
+      // Documentos agrupa: Documentos, Procesos, Templates y Agencia (pestañas).
       { href: "/documentos", label: "Documentos", icon: "FolderOpen" },
-      { href: "/procesos", label: "Procesos", icon: "FileText" },
-      { href: "/templates", label: "Templates", icon: "FileText" },
-      { href: "/agencia", label: "Agencia", icon: "Sparkles" },
       { href: "/ayuda", label: "Ayuda", icon: "BookOpen" },
       { href: "/novedades", label: "Novedades", icon: "Megaphone" },
     ],
@@ -105,22 +91,11 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/global", label: "Global", icon: "BarChart3", feature: "global" },
       { href: "/finanzas", label: "Finanzas", icon: "Wallet", feature: "finanzas" },
+      // Coordinación agrupa: Panel, Sueldos y Jornadas (pestañas).
       {
         href: "/coordinacion",
         label: "Coordinación",
         icon: "SlidersHorizontal",
-        roles: ["admin"],
-      },
-      {
-        href: "/coordinacion/sueldos",
-        label: "Sueldos",
-        icon: "Banknote",
-        roles: ["admin"],
-      },
-      {
-        href: "/coordinacion/jornadas",
-        label: "Jornadas",
-        icon: "Clapperboard",
         roles: ["admin"],
       },
     ],

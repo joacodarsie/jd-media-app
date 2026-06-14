@@ -157,92 +157,48 @@ export default async function ClientDetail({
 
   const canSeeFinancials = isStaff(me.rol) || assignedToMe;
 
+  // ── Acciones de navegación de la ficha (toolbar) ──
+  const navBtn =
+    "inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-md border bg-card px-3 text-sm font-medium transition hover:bg-muted";
+  const actions: { href: string; label: string; icon: typeof Sparkles; show: boolean; blank?: boolean }[] = [
+    { href: `/clientes/${c.id}/onboarding`, label: "Onboarding", icon: Sparkles, show: me.rol === "admin" },
+    {
+      href: `/clientes/${c.id}/onboarding/redes`,
+      label: "Onboarding redes",
+      icon: Network,
+      show: (me.rol === "admin" || me.rol === "coordinador") && svcList.some((s) => s.tipo === "gestion_redes"),
+    },
+    { href: `/clientes/${c.id}/diagnostico`, label: "Diagnóstico", icon: FileBarChart, show: true },
+    { href: `/clientes/${c.id}/plan-mensual`, label: "Plan mensual", icon: CalendarDays, show: true },
+    { href: `/clientes/${c.id}/publicidad`, label: "Publicidad", icon: Megaphone, show: svcList.some((s) => s.tipo === "paid_media") },
+    { href: `/contenidos?cliente=${c.id}`, label: "Calendario", icon: CalendarDays, show: true },
+    { href: `/reporte/cliente/${c.id}`, label: "Reporte", icon: FileBarChart, show: true, blank: true },
+  ];
+
+  // Links rápidos fijos del cliente.
+  const quickLinks: { href: string; label: string; icon: typeof Globe; muted?: boolean }[] = [
+    c.calendario_url ? { href: c.calendario_url, label: "Calendario de contenidos", icon: CalendarDays } : null,
+    c.drive_url ? { href: c.drive_url, label: "Drive del cliente", icon: FolderOpen } : null,
+    c.instagram_url ? { href: c.instagram_url, label: "Instagram", icon: ExternalLink } : null,
+    c.web_url ? { href: c.web_url, label: "Web", icon: Globe } : null,
+    c.facebook_url ? { href: c.facebook_url, label: "Facebook", icon: ExternalLink } : null,
+    c.notion_url ? { href: c.notion_url, label: "Página vieja en Notion", icon: FileText, muted: true } : null,
+  ].filter(Boolean) as { href: string; label: string; icon: typeof Globe; muted?: boolean }[];
+
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-2">
-        <Link
-          href="/clientes"
-          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="mr-1 h-4 w-4" /> Volver a clientes
-        </Link>
-        <div className="flex items-center gap-2">
-          {/* Onboarding inicial (carta, cobro, etc.): solo Dirección. */}
-          {me.rol === "admin" && (
-            <Link
-              href={`/clientes/${c.id}/onboarding`}
-              className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
-            >
-              <Sparkles className="mr-2 h-4 w-4" /> Onboarding
-            </Link>
-          )}
-          {/* Onboarding de Gestión de Redes: lo da la coordinación (igual que Publicidad lo da Paid Media). */}
-          {(me.rol === "admin" || me.rol === "coordinador") &&
-            svcList.some((s) => s.tipo === "gestion_redes") && (
-              <Link
-                href={`/clientes/${c.id}/onboarding/redes`}
-                className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
-              >
-                <Network className="mr-2 h-4 w-4" /> Onboarding redes
-              </Link>
-            )}
-          <Link
-            href={`/clientes/${c.id}/diagnostico`}
-            className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
-          >
-            <FileBarChart className="mr-2 h-4 w-4" /> Diagnóstico
-          </Link>
-          <Link
-            href={`/clientes/${c.id}/plan-mensual`}
-            className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
-          >
-            <CalendarDays className="mr-2 h-4 w-4" /> Plan mensual
-          </Link>
-          {svcList.some((s) => s.tipo === "paid_media") && (
-            <Link
-              href={`/clientes/${c.id}/publicidad`}
-              className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
-            >
-              <Megaphone className="mr-2 h-4 w-4" /> Publicidad
-            </Link>
-          )}
-          <Link
-            href={`/contenidos?cliente=${c.id}`}
-            className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
-          >
-            <CalendarDays className="mr-2 h-4 w-4" /> Calendario de contenidos
-          </Link>
-          <Link
-            href={`/reporte/cliente/${c.id}`}
-            target="_blank"
-            className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
-          >
-            <FileBarChart className="mr-2 h-4 w-4" /> Reporte mensual
-          </Link>
-          {canEdit && (
-          <>
-            <ClientFormDialog
-              mode="edit"
-              client={c}
-              users={users ?? []}
-              trigger={
-                <Button variant="outline" size="sm">
-                  <Pencil className="mr-2 h-4 w-4" /> Editar
-                </Button>
-              }
-            />
-            {isStaff(me.rol) && (
-              <DeleteClientButton id={c.id} nombre={c.nombre} />
-            )}
-          </>
-          )}
-        </div>
-      </div>
+      <Link
+        href="/clientes"
+        className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="mr-1 h-4 w-4" /> Volver a clientes
+      </Link>
 
+      {/* ── Encabezado ── */}
       <div className="rounded-xl border bg-card p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-bold">{c.nombre}</h1>
               <span
                 className={cn(
@@ -260,161 +216,239 @@ export default async function ClientDetail({
             <p className="mt-1 text-sm text-muted-foreground">
               {c.rubro ?? "Sin rubro"}
               {c.cm ? ` · CM: ${c.cm.nombre}` : ""}
+              {c.fecha_inicio ? ` · Cliente desde ${fmtDate(c.fecha_inicio)}` : ""}
             </p>
           </div>
-          {c.fecha_inicio && (
-            <div className="text-right text-xs text-muted-foreground">
-              Cliente desde {fmtDate(c.fecha_inicio)}
+          {canEdit && (
+            <div className="flex shrink-0 items-center gap-2">
+              <ClientFormDialog
+                mode="edit"
+                client={c}
+                users={users ?? []}
+                trigger={
+                  <Button variant="outline" size="sm">
+                    <Pencil className="mr-2 h-4 w-4" /> Editar
+                  </Button>
+                }
+              />
+              {isStaff(me.rol) && <DeleteClientButton id={c.id} nombre={c.nombre} />}
             </div>
           )}
         </div>
 
+        {/* Toolbar de acciones — fila que envuelve sin deformarse */}
+        <div className="mt-4 flex flex-wrap gap-2 border-t pt-4">
+          {actions
+            .filter((a) => a.show)
+            .map((a) => {
+              const Icon = a.icon;
+              return (
+                <Link
+                  key={a.label}
+                  href={a.href}
+                  target={a.blank ? "_blank" : undefined}
+                  className={navBtn}
+                >
+                  <Icon className="h-4 w-4" /> {a.label}
+                </Link>
+              );
+            })}
+        </div>
       </div>
 
-      {/* Estado del cliente */}
-      <ClientStatusToggle
-        id={c.id}
-        currentStatus={c.estado}
-        fechaActivado={c.fecha_activado ?? null}
-        fechaInactivado={c.fecha_inactivado ?? null}
-      />
+      {/* ── Layout principal: contenido + columna lateral ── */}
+      <div className="grid gap-5 lg:grid-cols-3">
+        {/* Columna principal */}
+        <div className="space-y-5 lg:col-span-2">
+          {/* Servicios contratados */}
+          <Card>
+            <CardContent className="pt-6">
+              <ClientServicesEditor
+                clienteId={c.id}
+                services={svcList}
+                users={users ?? []}
+              />
+            </CardContent>
+          </Card>
 
-      {/* Servicios contratados */}
-      <Card>
-        <CardContent className="pt-6">
-          <ClientServicesEditor
-            clienteId={c.id}
-            services={(services ?? []) as ClientService[]}
-            users={users ?? []}
-          />
-        </CardContent>
-      </Card>
+          {/* Tareas */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base">
+                Tareas activas ({activas.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {activas.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Sin tareas activas para este cliente.
+                </p>
+              ) : (
+                <TaskList tasks={activas} />
+              )}
+              {completadas.length > 0 && (
+                <details className="mt-4">
+                  <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
+                    Ver completadas ({completadas.length})
+                  </summary>
+                  <div className="mt-3">
+                    <TaskList tasks={completadas} />
+                  </div>
+                </details>
+              )}
+            </CardContent>
+          </Card>
 
-      {/* Portal del cliente (link público) */}
-      <ClientPortalLink
-        clienteId={c.id}
-        initialToken={(portalToken as { token?: string } | null)?.token ?? null}
-        initialLastSeen={(portalToken as { last_seen_at?: string | null } | null)?.last_seen_at ?? null}
-      />
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="md:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-base">
-              Tareas activas ({activas.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {activas.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Sin tareas activas para este cliente.
+          {/* Documentos del cliente (IA los usa como contexto) */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Documentos del cliente</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Subí acá el informe diagnóstico, manual de marca, brief o lo que sea
+                específico de este cliente. La IA los va a usar como contexto al
+                sugerir ideas de contenido para esta cuenta.
               </p>
-            ) : (
-              <TaskList tasks={activas} />
-            )}
-            {completadas.length > 0 && (
-              <details className="mt-4">
-                <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
-                  Ver completadas ({completadas.length})
-                </summary>
-                <div className="mt-3">
-                  <TaskList tasks={completadas} />
-                </div>
-              </details>
-            )}
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent>
+              <DocumentsManager
+                initial={(clientDocs ?? []) as unknown as DocumentRow[]}
+                canEdit={isStaff(me.rol)}
+                clienteId={c.id}
+              />
+            </CardContent>
+          </Card>
 
+          {/* Links libres + Redes */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Card>
+              <CardContent className="pt-4">
+                <ClientListEditor
+                  clientId={c.id}
+                  field="links_custom"
+                  title="Links del cliente"
+                  description="Lo que necesites: brief, brand book, calendario, lo que sea."
+                  addLabel="Agregar link"
+                  initial={
+                    ((c as unknown as { links_custom?: Record<string, string>[] })
+                      .links_custom ?? []) as Record<string, string>[]
+                  }
+                  itemFields={[
+                    { name: "titulo", label: "Título", placeholder: "Ej: Brief inicial" },
+                    { name: "url", label: "URL", type: "url", placeholder: "https://…" },
+                  ]}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-4">
+                <ClientListEditor
+                  clientId={c.id}
+                  field="redes_sociales"
+                  title="Redes sociales"
+                  description="Agregá las que use el cliente."
+                  addLabel="Agregar red"
+                  initial={
+                    ((c as unknown as { redes_sociales?: Record<string, string>[] })
+                      .redes_sociales ?? []) as Record<string, string>[]
+                  }
+                  itemFields={[
+                    { name: "red", label: "Red", placeholder: "instagram / tiktok / web / linkedin…" },
+                    { name: "url", label: "URL", type: "url", placeholder: "https://…" },
+                  ]}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Credenciales — solo staff (admin/coordinación) */}
+          {isStaff(me.rol) && (
+            <Card>
+              <CardContent className="pt-4">
+                <ClientListEditor
+                  clientId={c.id}
+                  field="credenciales"
+                  title="Credenciales del cliente"
+                  description="Accesos que el cliente nos comparte (Meta, Google, plataformas). Solo admin/coordinación ven esto."
+                  addLabel="Agregar credencial"
+                  initial={
+                    ((c as unknown as { credenciales?: Record<string, string>[] })
+                      .credenciales ?? []) as Record<string, string>[]
+                  }
+                  itemFields={[
+                    { name: "servicio", label: "Servicio", placeholder: "Ej: Meta Business" },
+                    { name: "url", label: "URL (opcional)", type: "url", placeholder: "https://business.facebook.com" },
+                    { name: "usuario", label: "Usuario / Email" },
+                    { name: "password", label: "Contraseña", type: "password" },
+                    { name: "notas", label: "Notas (opcional)" },
+                  ]}
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Notas */}
+          {c.notas && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Notas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Markdown>{c.notas}</Markdown>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Columna lateral */}
         <div className="space-y-4">
+          {/* Portal del cliente (link público) */}
+          <ClientPortalLink
+            clienteId={c.id}
+            initialToken={(portalToken as { token?: string } | null)?.token ?? null}
+            initialLastSeen={(portalToken as { last_seen_at?: string | null } | null)?.last_seen_at ?? null}
+          />
+
+          {/* Estado del cliente */}
+          <ClientStatusToggle
+            id={c.id}
+            currentStatus={c.estado}
+            fechaActivado={c.fecha_activado ?? null}
+            fechaInactivado={c.fecha_inactivado ?? null}
+          />
+
+          {/* Links rápidos */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Links</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              {c.calendario_url ? (
-                <a
-                  href={c.calendario_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 rounded-md border bg-muted/30 p-2 hover:bg-muted"
-                >
-                  <CalendarDays className="h-4 w-4 text-primary" />
-                  <span className="truncate">Calendario de contenidos</span>
-                </a>
+              {quickLinks.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Sin links cargados.</p>
               ) : (
-                <p className="text-xs text-muted-foreground">
-                  Sin calendario cargado.
-                </p>
-              )}
-              {c.drive_url && (
-                <a
-                  href={c.drive_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 rounded-md border bg-muted/30 p-2 hover:bg-muted"
-                >
-                  <FolderOpen className="h-4 w-4 text-primary" />
-                  <span className="truncate">Drive del cliente</span>
-                </a>
-              )}
-              {c.instagram_url && (
-                <a
-                  href={c.instagram_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 rounded-md border bg-muted/30 p-2 hover:bg-muted"
-                >
-                  <ExternalLink className="h-4 w-4 text-primary" />
-                  <span className="truncate">Instagram</span>
-                </a>
-              )}
-              {c.web_url && (
-                <a
-                  href={c.web_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 rounded-md border bg-muted/30 p-2 hover:bg-muted"
-                >
-                  <Globe className="h-4 w-4 text-primary" />
-                  <span className="truncate">Web</span>
-                </a>
-              )}
-              {c.facebook_url && (
-                <a
-                  href={c.facebook_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 rounded-md border bg-muted/30 p-2 hover:bg-muted"
-                >
-                  <ExternalLink className="h-4 w-4 text-primary" />
-                  <span className="truncate">Facebook</span>
-                </a>
-              )}
-              {c.notion_url && (
-                <a
-                  href={c.notion_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground hover:bg-muted"
-                >
-                  <FileText className="h-3.5 w-3.5" />
-                  <span className="truncate">Página vieja en Notion</span>
-                </a>
+                quickLinks.map((l) => {
+                  const Icon = l.icon;
+                  return (
+                    <a
+                      key={l.label}
+                      href={l.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={cn(
+                        "flex items-center gap-2 rounded-md border bg-muted/30 p-2 hover:bg-muted",
+                        l.muted && "text-xs text-muted-foreground"
+                      )}
+                    >
+                      <Icon className={cn("h-4 w-4 text-primary", l.muted && "h-3.5 w-3.5")} />
+                      <span className="truncate">{l.label}</span>
+                    </a>
+                  );
+                })
               )}
             </CardContent>
           </Card>
 
-          {c.datos_facturacion && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Datos para facturar</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm">
-                <p className="whitespace-pre-line">{c.datos_facturacion}</p>
-              </CardContent>
-            </Card>
-          )}
-
+          {/* Equipo asignado */}
           {(c.cm || c.disenador || c.audiovisual) && (
             <Card>
               <CardHeader>
@@ -443,142 +477,58 @@ export default async function ClientDetail({
             </Card>
           )}
 
-          <ClientMeetingsCard events={clientEvents} />
-
+          {/* Contacto */}
           {canSeeFinancials &&
             (c.contacto_nombre || c.contacto_email || c.contacto_telefono) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Contacto</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  {c.contacto_nombre && (
+                    <div className="flex items-center gap-2">
+                      <UserIcon className="h-4 w-4 text-muted-foreground" />
+                      {c.contacto_nombre}
+                    </div>
+                  )}
+                  {c.contacto_email && (
+                    <a
+                      href={`mailto:${c.contacto_email}`}
+                      className="flex items-center gap-2 hover:underline"
+                    >
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      {c.contacto_email}
+                    </a>
+                  )}
+                  {c.contacto_telefono && (
+                    <a
+                      href={`tel:${c.contacto_telefono}`}
+                      className="flex items-center gap-2 hover:underline"
+                    >
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      {c.contacto_telefono}
+                    </a>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+          {/* Datos para facturar */}
+          {canSeeFinancials && c.datos_facturacion && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Contacto</CardTitle>
+                <CardTitle className="text-base">Datos para facturar</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                {c.contacto_nombre && (
-                  <div className="flex items-center gap-2">
-                    <UserIcon className="h-4 w-4 text-muted-foreground" />
-                    {c.contacto_nombre}
-                  </div>
-                )}
-                {c.contacto_email && (
-                  <a
-                    href={`mailto:${c.contacto_email}`}
-                    className="flex items-center gap-2 hover:underline"
-                  >
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    {c.contacto_email}
-                  </a>
-                )}
-                {c.contacto_telefono && (
-                  <a
-                    href={`tel:${c.contacto_telefono}`}
-                    className="flex items-center gap-2 hover:underline"
-                  >
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    {c.contacto_telefono}
-                  </a>
-                )}
+              <CardContent className="text-sm">
+                <p className="whitespace-pre-line">{c.datos_facturacion}</p>
               </CardContent>
             </Card>
           )}
+
+          {/* Próximas reuniones */}
+          <ClientMeetingsCard events={clientEvents} />
         </div>
       </div>
-
-      {/* Documentos del cliente (IA los usa como contexto) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            Documentos del cliente
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Subí acá el informe diagnóstico, manual de marca, brief o lo que sea
-            específico de este cliente. La IA los va a usar como contexto al
-            sugerir ideas de contenido para esta cuenta.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <DocumentsManager
-            initial={(clientDocs ?? []) as unknown as DocumentRow[]}
-            canEdit={isStaff(me.rol)}
-            clienteId={c.id}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Links libres + Redes + Credenciales */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardContent className="pt-4">
-            <ClientListEditor
-              clientId={c.id}
-              field="links_custom"
-              title="Links del cliente"
-              description="Lo que necesites: brief, brand book, calendario, lo que sea."
-              addLabel="Agregar link"
-              initial={
-                ((c as unknown as { links_custom?: Record<string, string>[] })
-                  .links_custom ?? []) as Record<string, string>[]
-              }
-              itemFields={[
-                { name: "titulo", label: "Título", placeholder: "Ej: Brief inicial" },
-                { name: "url", label: "URL", type: "url", placeholder: "https://…" },
-              ]}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-4">
-            <ClientListEditor
-              clientId={c.id}
-              field="redes_sociales"
-              title="Redes sociales"
-              description="Agregá las que use el cliente."
-              addLabel="Agregar red"
-              initial={
-                ((c as unknown as { redes_sociales?: Record<string, string>[] })
-                  .redes_sociales ?? []) as Record<string, string>[]
-              }
-              itemFields={[
-                { name: "red", label: "Red", placeholder: "instagram / tiktok / web / linkedin…" },
-                { name: "url", label: "URL", type: "url", placeholder: "https://…" },
-              ]}
-            />
-          </CardContent>
-        </Card>
-
-        <Card className="md:col-span-2">
-          <CardContent className="pt-4">
-            <ClientListEditor
-              clientId={c.id}
-              field="credenciales"
-              title="Credenciales del cliente"
-              description="Accesos que el cliente nos comparte (Meta, Google, plataformas). Solo admin/coordinación ven esto."
-              addLabel="Agregar credencial"
-              initial={
-                ((c as unknown as { credenciales?: Record<string, string>[] })
-                  .credenciales ?? []) as Record<string, string>[]
-              }
-              itemFields={[
-                { name: "servicio", label: "Servicio", placeholder: "Ej: Meta Business" },
-                { name: "url", label: "URL (opcional)", type: "url", placeholder: "https://business.facebook.com" },
-                { name: "usuario", label: "Usuario / Email" },
-                { name: "password", label: "Contraseña", type: "password" },
-                { name: "notas", label: "Notas (opcional)" },
-              ]}
-            />
-          </CardContent>
-        </Card>
-      </div>
-
-      {c.notas && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Notas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Markdown>{c.notas}</Markdown>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Globe, Copy as CopyIcon, Check, RotateCw, XCircle } from "lucide-react";
+import { Globe, Copy as CopyIcon, Check, RotateCw, XCircle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -73,10 +73,23 @@ export function ClientPortalLink({ clienteId, initialToken, initialLastSeen }: P
 
       {token && url ? (
         <div className="space-y-2">
-          <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-2 py-1.5 text-xs">
-            <span className="flex-1 truncate font-mono">{url}</span>
-            <Button variant="ghost" size="sm" onClick={copyToClipboard}>
+          <div className="flex items-center gap-1 rounded-md border bg-muted/40 px-2 py-1.5 text-xs">
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="flex-1 truncate font-mono text-primary hover:underline"
+              title="Abrir el portal del cliente en una pestaña nueva"
+            >
+              {url}
+            </a>
+            <Button variant="ghost" size="sm" onClick={copyToClipboard} title="Copiar link">
               {copied ? <Check className="h-3.5 w-3.5" /> : <CopyIcon className="h-3.5 w-3.5" />}
+            </Button>
+            <Button variant="ghost" size="sm" asChild title="Abrir en pestaña nueva">
+              <a href={url} target="_blank" rel="noreferrer">
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
             </Button>
           </div>
           {lastSeen && (

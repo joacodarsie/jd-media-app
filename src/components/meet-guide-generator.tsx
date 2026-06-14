@@ -14,6 +14,8 @@ import {
   Mic,
   Square,
   ImagePlus,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -70,6 +72,8 @@ export function MeetGuideGenerator({
   const [generating, setGenerating] = useState(false);
   const [liveMarkdown, setLiveMarkdown] = useState("");
   const [copied, setCopied] = useState(false);
+  // El documento queda colapsado por defecto (solo se usa para el meet).
+  const [showGuide, setShowGuide] = useState(false);
 
   const imgInputRef = useRef<HTMLInputElement>(null);
   const [dictating, setDictating] = useState(false);
@@ -293,6 +297,19 @@ export function MeetGuideGenerator({
               {copied ? "Copiado" : "Copiar"}
             </Button>
           )}
+          {hasGuide && !generating && (
+            <Button variant="ghost" size="sm" onClick={() => setShowGuide((s) => !s)}>
+              {showGuide ? (
+                <>
+                  <ChevronUp className="mr-1 h-3.5 w-3.5" /> Ocultar
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="mr-1 h-3.5 w-3.5" /> Ver documento
+                </>
+              )}
+            </Button>
+          )}
           <Button
             variant={hasGuide ? "outline" : "default"}
             size="sm"
@@ -491,7 +508,7 @@ export function MeetGuideGenerator({
         </div>
       )}
 
-      {(generating || hasGuide) && (
+      {(generating || (hasGuide && showGuide)) && (
         <div className="border-t px-4 py-4">
           {generating && !liveMarkdown && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">

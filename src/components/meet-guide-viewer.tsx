@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { FileText, Copy as CopyIcon, Check } from "lucide-react";
+import { FileText, Copy as CopyIcon, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/markdown";
 
@@ -19,6 +19,7 @@ export function MeetGuideViewer({
   generatedAt: string | null;
 }) {
   const [copied, setCopied] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   function copy() {
     if (!markdown) return;
@@ -53,13 +54,26 @@ export function MeetGuideViewer({
           </div>
         </div>
         {markdown && (
-          <Button variant="ghost" size="sm" onClick={copy}>
-            {copied ? <Check className="mr-1 h-3.5 w-3.5" /> : <CopyIcon className="mr-1 h-3.5 w-3.5" />}
-            {copied ? "Copiado" : "Copiar"}
-          </Button>
+          <div className="flex gap-1">
+            <Button variant="ghost" size="sm" onClick={copy}>
+              {copied ? <Check className="mr-1 h-3.5 w-3.5" /> : <CopyIcon className="mr-1 h-3.5 w-3.5" />}
+              {copied ? "Copiado" : "Copiar"}
+            </Button>
+            <Button variant={expanded ? "outline" : "default"} size="sm" onClick={() => setExpanded((e) => !e)}>
+              {expanded ? (
+                <>
+                  <ChevronUp className="mr-1 h-3.5 w-3.5" /> Ocultar
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="mr-1 h-3.5 w-3.5" /> Ver documento
+                </>
+              )}
+            </Button>
+          </div>
         )}
       </div>
-      {markdown && (
+      {markdown && expanded && (
         <div className="px-4 py-4">
           <Markdown>{markdown}</Markdown>
         </div>

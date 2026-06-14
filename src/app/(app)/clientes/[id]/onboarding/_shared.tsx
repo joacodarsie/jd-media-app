@@ -24,6 +24,7 @@ import { WelcomeMessagesDialog } from "@/components/welcome-messages-dialog";
 import { PaymentMessageDialog } from "@/components/payment-message-dialog";
 import { PagoRecibidoControl } from "@/components/pago-recibido-control";
 import { GenerateInitialTasksButton } from "@/components/generate-initial-tasks-button";
+import { MeetGuideViewer } from "@/components/meet-guide-viewer";
 
 export interface ClientLite {
   id: string;
@@ -266,7 +267,7 @@ export async function loadOnboarding(clientId: string): Promise<OnboardingData |
     {
       key: "kickoff_agendado_at",
       stage: "redes",
-      title: "Reunión de kickoff / onboarding agendada",
+      title: "Reunión de onboarding",
       done: onb.kickoff_agendado_at,
       icon: CalendarPlus,
       description:
@@ -480,14 +481,22 @@ export function OnboardingStepRow({
             <GenerateInitialTasksButton clientId={client.id} alreadyDone={isDone} />
           )}
           {step.key === "kickoff_agendado_at" && (
-            <a
-              href={calendarUrl(client)}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-xs text-primary hover:bg-primary/20"
-            >
-              <CalendarPlus className="h-3 w-3" /> Agendar en Calendar
-            </a>
+            <>
+              <a
+                href={calendarUrl(client)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-xs text-primary hover:bg-primary/20"
+              >
+                <CalendarPlus className="h-3 w-3" /> Agendar en Calendar
+              </a>
+              <div className="w-full">
+                <MeetGuideViewer
+                  markdown={onb.meet_guide_md}
+                  generatedAt={onb.meet_guide_generated_at}
+                />
+              </div>
+            </>
           )}
         </div>
       </div>

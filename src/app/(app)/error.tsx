@@ -14,31 +14,36 @@ export default function AppError({
   reset: () => void;
 }) {
   // Tras un deploy, una pestaña abierta puede tener chunks viejos y fallar al
-  // navegar (ChunkLoadError). En vez de mostrar el error, recargamos una sola
-  // vez para traer el bundle nuevo (guardado en sessionStorage para no loopear).
+  // navegar (ChunkLoadError). Recargamos con cache-busting (?_v=…) para forzar
+  // que el navegador traiga el documento + bundle nuevos del server (un reload
+  // normal puede servir el documento cacheado y re-fallar). Si tras recargar
+  // sigue fallando (no era un chunk viejo), mostramos el cartel normal.
   const isChunkError =
     error?.name === "ChunkLoadError" ||
     /loading chunk|importing a module script failed|dynamically imported module|failed to fetch dynamically/i.test(
       error?.message ?? ""
     );
 
+  const KEY = "jd:chunk-reload-at";
+  const recentlyReloaded =
+    typeof window !== "undefined" &&
+    Date.now() - Number(sessionStorage.getItem(KEY) ?? 0) < 15000;
+
   useEffect(() => {
-    if (isChunkError && typeof window !== "undefined") {
-      const KEY = "jd:chunk-reload-at";
-      const last = Number(sessionStorage.getItem(KEY) ?? 0);
-      // Solo recargar si no lo hicimos en los últimos 10s (evita bucle).
-      if (Date.now() - last > 10000) {
-        sessionStorage.setItem(KEY, String(Date.now()));
-        window.location.reload();
-        return;
-      }
+    if (isChunkError && typeof window !== "undefined" && !recentlyReloaded) {
+      sessionStorage.setItem(KEY, String(Date.now()));
+      const u = new URL(window.location.href);
+      u.searchParams.set("_v", Date.now().toString());
+      window.location.replace(u.toString());
+      return;
     }
     // En producción esto va a aparecer en Vercel runtime logs
     console.error("[app error boundary]", error);
-  }, [error, isChunkError]);
+  }, [error, isChunkError, recentlyReloaded]);
 
-  // Mientras se dispara la recarga no mostramos el cartel de error.
-  if (isChunkError) {
+  // Mientras se dispara la recarga no mostramos el cartel de error. Si ya
+  // recargamos hace poco y volvió a caer, sí mostramos el cartel (no era chunk).
+  if (isChunkError && !recentlyReloaded) {
     return (
       <div className="mx-auto max-w-xl py-10 text-center text-sm text-muted-foreground">
         Actualizando a la última versión…

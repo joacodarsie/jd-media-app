@@ -13,6 +13,15 @@ title: Novedades
 - 🎨 **Rediseño de perfiles y biografías**: paso nuevo para dejar registrado cuando ya se actualizaron foto, bio, links, portadas e historias destacadas.
 - 📈 **Onboarding de Publicidad ↔ Paid Media**: el media buyer ahora carga el **ID de la cuenta publicitaria de Meta (act_XXXX)** desde el onboarding de pauta y queda conectada con la sección **Paid Media** (métricas y análisis diario). También arreglamos un error al entrar a esa sección.
 
+## 2026-06-14 — Menú más ordenado + ficha del cliente renovada
+
+- 🧭 **Menú más corto y ordenado**: agrupamos secciones que iban sueltas en secciones con **pestañas**:
+  - **Equipo** ahora junta Directorio · Organigrama · Personas · Capacidad.
+  - **Coordinación** junta Panel · Sueldos · Jornadas.
+  - **Documentos** junta Documentos · Procesos · Templates · Agencia.
+  - "Por área" pasó a llamarse **"Tareas por área"** y está junto a Tareas (es el tablero de tareas por área).
+- 🪪 **Ficha del cliente renovada**: la barra de botones de arriba ya no se deforma, la info quedó ordenada en dos columnas (trabajo a la izquierda, datos y links a la derecha) y el **link del portal del cliente ahora es clickeable** (se abre solo en una pestaña nueva).
+
 ## 2026-06-13 — Vista tabla, organigrama y plan con historias
 
 - 🗂️ **Calendario — nueva vista "Tabla"**: en **Contenidos** sumamos un botón **Tabla** (al lado de Mes / Kanban / Lista / Agenda) con la vista clásica tipo planilla: Fecha · Formato · Contenido · Desarrollo · Copy · Estado · Referencias · TikTok · Canva/Drive. Para las que prefieren leer el mes como lista ordenada por fecha. Se acuerda de la vista que elegiste.

@@ -10,6 +10,7 @@ import {
   Globe,
   Mail,
   Megaphone,
+  Network,
   Phone,
   Pencil,
   Sparkles,
@@ -166,7 +167,7 @@ export default async function ClientDetail({
           <ArrowLeft className="mr-1 h-4 w-4" /> Volver a clientes
         </Link>
         <div className="flex items-center gap-2">
-          {/* Onboarding: admin → etapa inicial; coordinador → su etapa (Gestión de Redes). */}
+          {/* Onboarding inicial (carta, cobro, etc.): solo Dirección. */}
           {me.rol === "admin" && (
             <Link
               href={`/clientes/${c.id}/onboarding`}
@@ -175,14 +176,16 @@ export default async function ClientDetail({
               <Sparkles className="mr-2 h-4 w-4" /> Onboarding
             </Link>
           )}
-          {me.rol === "coordinador" && (
-            <Link
-              href={`/clientes/${c.id}/onboarding/redes`}
-              className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
-            >
-              <Sparkles className="mr-2 h-4 w-4" /> Onboarding
-            </Link>
-          )}
+          {/* Onboarding de Gestión de Redes: lo da la coordinación (igual que Publicidad lo da Paid Media). */}
+          {(me.rol === "admin" || me.rol === "coordinador") &&
+            svcList.some((s) => s.tipo === "gestion_redes") && (
+              <Link
+                href={`/clientes/${c.id}/onboarding/redes`}
+                className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
+              >
+                <Network className="mr-2 h-4 w-4" /> Onboarding redes
+              </Link>
+            )}
           <Link
             href={`/clientes/${c.id}/diagnostico`}
             className="inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"

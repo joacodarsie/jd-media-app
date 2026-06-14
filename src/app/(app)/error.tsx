@@ -13,10 +13,38 @@ export default function AppError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // Tras un deploy, una pestaña abierta puede tener chunks viejos y fallar al
+  // navegar (ChunkLoadError). En vez de mostrar el error, recargamos una sola
+  // vez para traer el bundle nuevo (guardado en sessionStorage para no loopear).
+  const isChunkError =
+    error?.name === "ChunkLoadError" ||
+    /loading chunk|importing a module script failed|dynamically imported module|failed to fetch dynamically/i.test(
+      error?.message ?? ""
+    );
+
   useEffect(() => {
+    if (isChunkError && typeof window !== "undefined") {
+      const KEY = "jd:chunk-reload-at";
+      const last = Number(sessionStorage.getItem(KEY) ?? 0);
+      // Solo recargar si no lo hicimos en los últimos 10s (evita bucle).
+      if (Date.now() - last > 10000) {
+        sessionStorage.setItem(KEY, String(Date.now()));
+        window.location.reload();
+        return;
+      }
+    }
     // En producción esto va a aparecer en Vercel runtime logs
     console.error("[app error boundary]", error);
-  }, [error]);
+  }, [error, isChunkError]);
+
+  // Mientras se dispara la recarga no mostramos el cartel de error.
+  if (isChunkError) {
+    return (
+      <div className="mx-auto max-w-xl py-10 text-center text-sm text-muted-foreground">
+        Actualizando a la última versión…
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-xl py-10">

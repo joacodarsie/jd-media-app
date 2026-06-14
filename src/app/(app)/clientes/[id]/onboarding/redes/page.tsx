@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle2, Megaphone, ChevronRight } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HelpTrigger } from "@/components/help-trigger";
+import { MeetGuideViewer } from "@/components/meet-guide-viewer";
 import { loadOnboarding, OnboardingStepRow } from "../_shared";
 
 export const dynamic = "force-dynamic";
@@ -54,6 +55,12 @@ export default async function OnboardingRedesPage({
           style={{ width: `${progress}%` }}
         />
       </div>
+
+      {/* Documento guía del meet (referencia para conducir la reunión) */}
+      <MeetGuideViewer
+        markdown={onb.meet_guide_md}
+        generatedAt={onb.meet_guide_generated_at}
+      />
 
       <Card>
         <CardHeader>

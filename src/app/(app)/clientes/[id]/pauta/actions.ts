@@ -30,7 +30,7 @@ export async function toggleAdsStep(clientId: string, step: AdsStepKey, done: bo
     .from("client_ads_onboarding")
     .upsert({ cliente_id: clientId, [step]: value }, { onConflict: "cliente_id" });
   if (error) return { error: error.message };
-  revalidatePath(`/clientes/${clientId}/publicidad`);
+  revalidatePath(`/clientes/${clientId}/pauta`);
   revalidatePath(`/clientes/${clientId}`);
   return { ok: true };
 }
@@ -51,7 +51,7 @@ export async function saveMetaAdAccountId(clientId: string, adAccountId: string)
       { onConflict: "cliente_id" }
     );
   if (error) return { error: error.message };
-  revalidatePath(`/clientes/${clientId}/publicidad`);
+  revalidatePath(`/clientes/${clientId}/pauta`);
   revalidatePath("/paid-media");
   return { ok: true };
 }
@@ -72,6 +72,6 @@ export async function saveAdsNotes(
     { onConflict: "cliente_id" }
   );
   if (error) return { error: error.message };
-  revalidatePath(`/clientes/${clientId}/publicidad`);
+  revalidatePath(`/clientes/${clientId}/pauta`);
   return { ok: true };
 }

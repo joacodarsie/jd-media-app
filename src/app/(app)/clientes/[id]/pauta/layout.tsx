@@ -8,8 +8,8 @@ export default function PublicidadLayout({
   params: { id: string };
 }) {
   const tabs = [
-    { href: `/clientes/${params.id}/publicidad`, label: "Setup" },
-    { href: `/clientes/${params.id}/publicidad/analisis`, label: "Análisis & IA" },
+    { href: `/clientes/${params.id}/pauta`, label: "Setup" },
+    { href: `/clientes/${params.id}/pauta/analisis`, label: "Análisis & IA" },
   ];
   return (
     <div>

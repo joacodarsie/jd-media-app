@@ -170,7 +170,7 @@ export default async function ClientDetail({
     },
     { href: `/clientes/${c.id}/diagnostico`, label: "Diagnóstico", icon: FileBarChart, show: true },
     { href: `/clientes/${c.id}/plan-mensual`, label: "Plan mensual", icon: CalendarDays, show: true },
-    { href: `/clientes/${c.id}/publicidad`, label: "Publicidad", icon: Megaphone, show: svcList.some((s) => s.tipo === "paid_media") },
+    { href: `/clientes/${c.id}/pauta`, label: "Publicidad", icon: Megaphone, show: svcList.some((s) => s.tipo === "paid_media") },
     { href: `/contenidos?cliente=${c.id}`, label: "Calendario", icon: CalendarDays, show: true },
     { href: `/reporte/cliente/${c.id}`, label: "Reporte", icon: FileBarChart, show: true, blank: true },
   ];

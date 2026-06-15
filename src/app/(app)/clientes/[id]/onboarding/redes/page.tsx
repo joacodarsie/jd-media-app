@@ -103,7 +103,7 @@ export default async function OnboardingRedesPage({
 
       {tienePauta && (
         <Link
-          href={`/clientes/${client.id}/publicidad`}
+          href={`/clientes/${client.id}/pauta`}
           className="flex items-center justify-between gap-2 rounded-lg border bg-card px-4 py-3 transition hover:border-primary/40 hover:bg-muted"
         >
           <span className="flex items-center gap-2 text-sm font-medium">

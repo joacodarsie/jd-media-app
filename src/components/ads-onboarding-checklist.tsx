@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { CheckCircle2, Circle, Loader2, Save } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { toggleAdsStep, saveAdsNotes, type AdsStepKey } from "@/app/(app)/clientes/[id]/publicidad/actions";
+import { toggleAdsStep, saveAdsNotes, type AdsStepKey } from "@/app/(app)/clientes/[id]/pauta/actions";
 import { cn } from "@/lib/utils";
 
 export interface AdsOnboardingState {

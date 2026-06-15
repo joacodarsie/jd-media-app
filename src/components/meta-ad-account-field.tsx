@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { saveMetaAdAccountId } from "@/app/(app)/clientes/[id]/publicidad/actions";
+import { saveMetaAdAccountId } from "@/app/(app)/clientes/[id]/pauta/actions";
 
 export function MetaAdAccountField({
   clientId,

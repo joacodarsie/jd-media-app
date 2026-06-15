@@ -93,7 +93,7 @@ export default async function PaidMediaAnalisisPage({
             Este cliente todavía no tiene cargada su cuenta publicitaria (<code>act_XXXX</code>).
           </p>
           <Link
-            href={`/clientes/${client.id}/publicidad`}
+            href={`/clientes/${client.id}/pauta`}
             className="mt-2 inline-flex items-center rounded-md border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted"
           >
             Ir a Setup para cargarla

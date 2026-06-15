@@ -224,6 +224,34 @@ export async function fetchAdSets(
   });
 }
 
+// ── Escritura (Fase 2: aplicar cambios) — requiere ads_management ──
+
+async function graphPost(id: string, params: Record<string, string>): Promise<void> {
+  const res = await fetch(`${GRAPH}/${id}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ ...params, access_token: token() }).toString(),
+    cache: "no-store",
+  });
+  const json = (await res.json()) as { error?: { message?: string } };
+  if (!res.ok || json.error) {
+    throw new Error(`META_API: ${json.error?.message ?? `error ${res.status}`}`);
+  }
+}
+
+/** Pausa o activa una campaña o conjunto (mismo endpoint por id). */
+export async function setEntityStatus(id: string, status: "ACTIVE" | "PAUSED"): Promise<void> {
+  await graphPost(id, { status });
+}
+
+/**
+ * Cambia el presupuesto diario de una campaña o conjunto. `dailyBudgetMajor` va
+ * en la moneda de la cuenta (ej: 6000 = ARS 6.000); Meta lo espera en centavos.
+ */
+export async function setEntityDailyBudget(id: string, dailyBudgetMajor: number): Promise<void> {
+  await graphPost(id, { daily_budget: String(Math.round(dailyBudgetMajor * 100)) });
+}
+
 /** Mensaje de error amable para mostrar en la UI. */
 export function friendlyMetaError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);

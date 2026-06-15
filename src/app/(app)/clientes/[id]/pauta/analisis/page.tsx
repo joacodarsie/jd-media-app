@@ -5,10 +5,12 @@ import { requireUser, isStaff } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { metaConfigured } from "@/lib/meta/ads";
 import { PaidMediaChat } from "@/components/paid-media-chat";
+import { PaidMediaOptimizer, type AppliedChange } from "@/components/paid-media-optimizer";
 
 export const dynamic = "force-dynamic";
 
 const ALLOWED = ["admin", "coordinador", "paid_media"];
+const CAN_APPLY = ["admin", "paid_media"];
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
@@ -28,7 +30,7 @@ export default async function PaidMediaAnalisisPage({
   if (!isStaff(me.rol) && !ALLOWED.includes(me.rol)) notFound();
 
   const admin = createAdmin();
-  const [{ data: client }, { data: ads }, { data: snap }] = await Promise.all([
+  const [{ data: client }, { data: ads }, { data: snap }, { data: changes }] = await Promise.all([
     admin.from("clients").select("id, nombre").eq("id", params.id).maybeSingle(),
     admin
       .from("client_ads_onboarding")
@@ -42,7 +44,15 @@ export default async function PaidMediaAnalisisPage({
       .order("fecha", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    admin
+      .from("paid_media_changes")
+      .select("id, tipo, nivel, target_nombre, valor_anterior, valor_nuevo, motivo, estado, aplicado_at")
+      .eq("cliente_id", params.id)
+      .order("aplicado_at", { ascending: false })
+      .limit(20),
   ]);
+  const canApply = CAN_APPLY.includes(me.rol);
+  const history = (changes ?? []) as AppliedChange[];
 
   if (!client) notFound();
   const adAccountId = (ads as { meta_ad_account_id?: string | null } | null)?.meta_ad_account_id ?? null;
@@ -120,6 +130,14 @@ export default async function PaidMediaAnalisisPage({
               </div>
             </div>
           )}
+
+          {/* Optimizaciones sugeridas (aplicar / revertir) */}
+          <PaidMediaOptimizer
+            clienteId={client.id}
+            moneda={moneda}
+            canApply={canApply}
+            initialHistory={history}
+          />
 
           {/* Chat con la IA de la cuenta */}
           <PaidMediaChat clienteId={client.id} />

@@ -181,6 +181,49 @@ export async function fetchAdAccountData(
   return { account, campaigns };
 }
 
+export interface AdSetMetrics extends AdMetrics {
+  id: string;
+  nombre: string;
+  estado: string;
+  campana: string | null;
+  daily_budget: number | null;
+}
+
+/**
+ * Trae los conjuntos de anuncios (ad sets) con sus métricas, para el análisis
+ * profundo. Se llama solo on-demand (no consume tokens; es Meta API).
+ */
+export async function fetchAdSets(
+  adAccountId: string,
+  datePreset = "last_30d"
+): Promise<AdSetMetrics[]> {
+  const acct = normalizeAccount(adAccountId);
+  const res = await graphGet<{
+    data: {
+      id: string;
+      name: string;
+      status: string;
+      daily_budget?: string;
+      campaign?: { name?: string };
+      insights?: { data: RawInsight[] };
+    }[];
+  }>(`${acct}/adsets`, {
+    fields: `id,name,status,daily_budget,campaign{name},insights.date_preset(${datePreset}){${INSIGHT_FIELDS}}`,
+    limit: "100",
+  });
+  return (res.data ?? []).map((s) => {
+    const m = s.insights?.data?.[0] ? toMetrics(s.insights.data[0]) : toMetrics({});
+    return {
+      ...m,
+      id: s.id,
+      nombre: s.name,
+      estado: s.status,
+      campana: s.campaign?.name ?? null,
+      daily_budget: s.daily_budget != null ? num(s.daily_budget) / 100 : null,
+    };
+  });
+}
+
 /** Mensaje de error amable para mostrar en la UI. */
 export function friendlyMetaError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);

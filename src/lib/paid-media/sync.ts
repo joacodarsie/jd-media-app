@@ -124,7 +124,10 @@ export async function runPaidMediaDaily(): Promise<{
   let failed = 0;
   for (const r of rows) {
     try {
-      await syncClientPaidMedia(r.cliente_id, { admin });
+      // Solo guardamos el snapshot diario (gratis). El análisis con IA NO corre
+      // automático: se dispara on-demand desde la sección Análisis & IA del cliente
+      // (para no consumir tokens todos los días).
+      await syncClientPaidMedia(r.cliente_id, { admin, withAnalysis: false });
       ok++;
     } catch {
       failed++;

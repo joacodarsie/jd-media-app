@@ -69,9 +69,11 @@ export default function AppError({
             </div>
           </div>
 
-          {error.digest && (
-            <code className="block break-all rounded bg-muted px-2 py-1.5 text-[11px] text-muted-foreground">
-              ref: {error.digest}
+          {(error.message || error.name || error.digest) && (
+            <code className="block max-h-40 overflow-auto whitespace-pre-wrap break-all rounded bg-muted px-2 py-1.5 text-[11px] text-muted-foreground">
+              {error.name ? `${error.name}: ` : ""}
+              {error.message || "(sin mensaje)"}
+              {error.digest ? `\nref: ${error.digest}` : ""}
             </code>
           )}
 

@@ -9,6 +9,7 @@ import {
   runMonthStartReports,
 } from "@/lib/director/monthly";
 import { runPaidMediaDaily } from "@/lib/paid-media/sync";
+import { runInstagramDaily } from "@/lib/social/sync";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -114,6 +115,14 @@ export async function GET(req: NextRequest) {
     paidMedia = { error: e instanceof Error ? e.message : String(e) };
   }
 
+  // Instagram: snapshot diario de seguidores/alcance de cada cliente conectado.
+  let instagram: unknown = null;
+  try {
+    instagram = await runInstagramDaily();
+  } catch (e) {
+    instagram = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   return NextResponse.json({
     ok: true,
     users: ids.length,
@@ -124,5 +133,6 @@ export async function GET(req: NextRequest) {
     month_end: monthEnd,
     month_start: monthStart,
     paid_media: paidMedia,
+    instagram,
   });
 }

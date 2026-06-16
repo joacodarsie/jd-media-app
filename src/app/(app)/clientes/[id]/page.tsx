@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
+  BarChart3,
   CalendarDays,
   ExternalLink,
   FileBarChart,
@@ -190,6 +191,14 @@ export default async function ClientDetail({
       show:
         ["admin", "coordinador", "paid_media"].includes(me.rol) &&
         svcList.some((s) => s.tipo === "paid_media" || s.tipo === "gestion_redes"),
+    },
+    // Resultados de Instagram (lo que el cliente ve como resultado final). Para
+    // todo cliente con gestión de redes; visible a quien pueda abrir la ficha.
+    {
+      href: `/clientes/${c.id}/resultados`,
+      label: "Resultados",
+      icon: BarChart3,
+      show: svcList.some((s) => s.tipo === "gestion_redes"),
     },
     { href: `/contenidos?cliente=${c.id}`, label: "Calendario", icon: CalendarDays, show: true },
     { href: `/reporte/cliente/${c.id}`, label: "Reporte", icon: FileBarChart, show: true, blank: true },

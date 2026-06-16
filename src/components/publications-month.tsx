@@ -1193,7 +1193,7 @@ function PubTableRow({
   onToggleSelect?: (id: string) => void;
 }) {
   const fecha = pub.fecha_publicacion
-    ? new Date(pub.fecha_publicacion + "T12:00:00").toLocaleDateString("es-AR", {
+    ? new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", {
         weekday: "short",
         day: "2-digit",
         month: "short",

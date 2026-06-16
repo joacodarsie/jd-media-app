@@ -41,10 +41,10 @@ export default async function PublicidadOnboardingPage({
       .maybeSingle(),
     admin
       .from("client_services")
-      .select("id, activo")
+      .select("id, tipo")
       .eq("cliente_id", params.id)
-      .eq("tipo", "paid_media")
-      .maybeSingle(),
+      .in("tipo", ["paid_media", "gestion_redes"])
+      .eq("activo", true),
   ]);
 
   const onb = (onboarding ?? {}) as AdsOnboardingState & {
@@ -52,7 +52,8 @@ export default async function PublicidadOnboardingPage({
   };
   const state = onb as AdsOnboardingState;
   const adAccountId = onb.meta_ad_account_id ?? null;
-  const tienePauta = !!paidSvc;
+  // Gestión de redes ya incluye el paid media básico en Meta Ads.
+  const tienePauta = ((paidSvc ?? []) as unknown[]).length > 0;
 
   return (
     <div className="space-y-5">

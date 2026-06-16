@@ -191,7 +191,11 @@ export async function loadOnboarding(clientId: string): Promise<OnboardingData |
   }
 
   const credenciales = (client.credenciales ?? []) as Record<string, string>[];
-  const tienePauta = services.some((s) => s.tipo === "paid_media");
+  // Gestión de redes ya incluye el paid media básico en Meta Ads, así que la
+  // etapa/sección de publicidad se muestra con cualquiera de los dos servicios.
+  const tienePauta = services.some(
+    (s) => s.tipo === "paid_media" || s.tipo === "gestion_redes"
+  );
 
   const total = services.reduce((acc, s) => acc + (Number(s.monto_mensual) || 0), 0);
   const pagoEsperado = services.reduce((acc, s) => {

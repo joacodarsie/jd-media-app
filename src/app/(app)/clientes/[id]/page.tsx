@@ -14,6 +14,7 @@ import {
   Phone,
   Pencil,
   Sparkles,
+  TrendingUp,
   User as UserIcon,
 } from "lucide-react";
 import { requireUser, isStaff } from "@/lib/auth";
@@ -171,7 +172,25 @@ export default async function ClientDetail({
     },
     { href: `/clientes/${c.id}/diagnostico`, label: "Diagnóstico", icon: FileBarChart, show: true },
     { href: `/clientes/${c.id}/plan-mensual`, label: "Plan mensual", icon: CalendarDays, show: true },
-    { href: `/clientes/${c.id}/pauta`, label: "Publicidad", icon: Megaphone, show: svcList.some((s) => s.tipo === "paid_media") },
+    // El servicio de gestión de redes ya incluye el paid media básico en Meta Ads,
+    // así que la sección de publicidad se muestra con gestión de redes O paid media.
+    // Solo para staff / media buyer (los que gestionan pauta).
+    {
+      href: `/clientes/${c.id}/pauta`,
+      label: "Onboarding publicidad",
+      icon: Megaphone,
+      show:
+        ["admin", "coordinador", "paid_media"].includes(me.rol) &&
+        svcList.some((s) => s.tipo === "paid_media" || s.tipo === "gestion_redes"),
+    },
+    {
+      href: `/clientes/${c.id}/pauta/analisis`,
+      label: "Análisis de pauta",
+      icon: TrendingUp,
+      show:
+        ["admin", "coordinador", "paid_media"].includes(me.rol) &&
+        svcList.some((s) => s.tipo === "paid_media" || s.tipo === "gestion_redes"),
+    },
     { href: `/contenidos?cliente=${c.id}`, label: "Calendario", icon: CalendarDays, show: true },
     { href: `/reporte/cliente/${c.id}`, label: "Reporte", icon: FileBarChart, show: true, blank: true },
   ];

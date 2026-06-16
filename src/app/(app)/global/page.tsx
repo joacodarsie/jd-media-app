@@ -75,9 +75,10 @@ export default async function GlobalPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Global</h1>
+        <h1 className="text-2xl font-bold">Productividad</h1>
         <p className="text-muted-foreground">
-          Indicadores generales de la agencia.
+          Métricas operativas del equipo: tareas completadas, cumplimiento de
+          plazos y carga por persona.
         </p>
       </div>
 

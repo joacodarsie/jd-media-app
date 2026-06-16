@@ -37,6 +37,7 @@ import { ClientListEditor } from "@/components/client-list-editor";
 import { DocumentsManager, type DocumentRow } from "@/components/documents-manager";
 import { ClientPortalLink } from "@/components/client-portal-link";
 import { ClientMeetingsCard } from "@/components/client-meetings-card";
+import { ScrollTopOnMount } from "@/components/scroll-top-on-mount";
 import type { ClientService } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -187,6 +188,7 @@ export default async function ClientDetail({
 
   return (
     <div className="space-y-5">
+      <ScrollTopOnMount />
       <Link
         href="/clientes"
         className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"

@@ -11,6 +11,18 @@ import { createAdmin } from "@/lib/supabase/admin";
 
 type Admin = ReturnType<typeof createAdmin>;
 
+/**
+ * Rango del mes como [primer día, primer día del mes siguiente) — exclusivo.
+ * Evita armar fechas inválidas tipo "2026-06-31" (junio tiene 30 días), que
+ * hacen fallar la consulta en Postgres (columna date).
+ */
+function monthRange(mes: string): { start: string; endExclusive: string } {
+  const [y, m] = mes.split("-").map(Number);
+  const ny = m === 12 ? y + 1 : y;
+  const nm = m === 12 ? 1 : m + 1;
+  return { start: `${mes}-01`, endExclusive: `${ny}-${String(nm).padStart(2, "0")}-01` };
+}
+
 export interface IgMonthly {
   connected: boolean; // el cliente tiene cuenta de IG conectada
   hasData: boolean; // hay al menos un snapshot en el mes
@@ -59,12 +71,13 @@ export async function paidMonthlyForReport(
   clienteId: string,
   mes: string
 ): Promise<PaidMonthly> {
+  const { start, endExclusive } = monthRange(mes);
   const { data } = await admin
     .from("paid_media_snapshots")
     .select("spend, impressions, clicks, conversions, moneda")
     .eq("cliente_id", clienteId)
-    .gte("fecha", `${mes}-01`)
-    .lte("fecha", `${mes}-31`);
+    .gte("fecha", start)
+    .lt("fecha", endExclusive);
   const rows = (data ?? []) as {
     spend: number;
     impressions: number;
@@ -108,12 +121,13 @@ export async function igMonthlyForReport(
     .maybeSingle();
   const connected = !!(client as { ig_user_id?: string | null } | null)?.ig_user_id;
 
+  const { start, endExclusive } = monthRange(mes);
   const { data } = await admin
     .from("ig_snapshots")
     .select("fecha, followers, reach, profile_views, interactions, detalle")
     .eq("cliente_id", clienteId)
-    .gte("fecha", `${mes}-01`)
-    .lte("fecha", `${mes}-31`)
+    .gte("fecha", start)
+    .lt("fecha", endExclusive)
     .order("fecha", { ascending: true });
 
   const rows = (data ?? []) as SnapRow[];

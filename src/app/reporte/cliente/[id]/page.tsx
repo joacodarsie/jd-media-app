@@ -587,14 +587,13 @@ export default async function ReporteClientePage({
             <div className="grid grid-cols-2 gap-3 rounded-lg border border-zinc-200 p-4 md:grid-cols-5">
               <MetricBox label="Seguidores" value={org.followersEnd} />
               <MetricBox label="Seguidores nuevos" value={org.seguidores_nuevos} prefix="+" />
-              <MetricBox label="Alcance (28 días)" value={org.reach} />
+              <MetricBox label="Alcance" value={org.reach} />
               <MetricBox label="Interacciones" value={org.interacciones} />
               <MetricBox label="Visitas al perfil" value={org.visitas_perfil} />
             </div>
             {igAuto && (
               <p className="mt-1.5 text-[10px] text-zinc-400">
-                Datos traídos automáticamente de Instagram. Alcance, interacciones y visitas
-                corresponden a los últimos 28 días.
+                Datos traídos automáticamente de Instagram.
               </p>
             )}
           </section>

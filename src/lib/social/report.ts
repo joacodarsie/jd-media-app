@@ -24,6 +24,9 @@ export interface IgMonthly {
 interface SnapRow {
   fecha: string;
   followers: number;
+  reach: number;
+  profile_views: number;
+  interactions: number;
   detalle: {
     month?: { reach?: number; profile_views?: number; interactions?: number };
   } | null;
@@ -107,7 +110,7 @@ export async function igMonthlyForReport(
 
   const { data } = await admin
     .from("ig_snapshots")
-    .select("fecha, followers, detalle")
+    .select("fecha, followers, reach, profile_views, interactions, detalle")
     .eq("cliente_id", clienteId)
     .gte("fecha", `${mes}-01`)
     .lte("fecha", `${mes}-31`)
@@ -120,13 +123,24 @@ export async function igMonthlyForReport(
   const last = rows[rows.length - 1];
   const month = last.detalle?.month ?? null;
 
+  // El rollup de 28 días (detalle.month) a veces vuelve en 0 según la cuenta /
+  // versión de la API. Si está vacío, caemos al mejor valor diario disponible
+  // del mes (las columnas diarias del snapshot sí traen datos).
+  const bestDaily = (key: "reach" | "profile_views" | "interactions"): number | null => {
+    let max = 0;
+    for (const r of rows) max = Math.max(max, Number(r[key] ?? 0));
+    return max > 0 ? max : null;
+  };
+  const pick = (rollup: number | undefined, key: "reach" | "profile_views" | "interactions") =>
+    rollup && rollup > 0 ? rollup : bestDaily(key);
+
   return {
     connected,
     hasData: true,
     followersEnd: last.followers,
     seguidoresNuevos: rows.length >= 2 ? last.followers - first.followers : null,
-    reach: month?.reach ?? null,
-    profileViews: month?.profile_views ?? null,
-    interactions: month?.interactions ?? null,
+    reach: pick(month?.reach, "reach"),
+    profileViews: pick(month?.profile_views, "profile_views"),
+    interactions: pick(month?.interactions, "interactions"),
   };
 }

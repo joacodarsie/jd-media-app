@@ -53,7 +53,7 @@ function buildUserText(p: ResultsReadingPayload): string {
     lines.push("Resultados de Instagram (orgánico):");
     if (p.ig.followersEnd != null) lines.push(`- Seguidores totales: ${p.ig.followersEnd}`);
     if (p.ig.seguidoresNuevos != null) lines.push(`- Seguidores nuevos en el mes: ${p.ig.seguidoresNuevos}`);
-    if (p.ig.reach != null) lines.push(`- Alcance (28 días): ${p.ig.reach}`);
+    if (p.ig.reach != null) lines.push(`- Alcance: ${p.ig.reach}`);
     if (p.ig.profileViews != null) lines.push(`- Visitas al perfil: ${p.ig.profileViews}`);
     if (p.ig.interactions != null) lines.push(`- Interacciones: ${p.ig.interactions}`);
     lines.push("");

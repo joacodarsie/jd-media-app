@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-06-16 — Onboarding de publicidad: guía de accesos + system user
+
+- 🔐 **El onboarding de publicidad ahora es una guía de accesos** ordenada en 3 bloques: **Accesos** (Facebook del cliente, página de FB, y pedirle que nos sume como **socio del Business con administración total**), **Asignar al system user** y **Pauta**.
+- ✅ **Checklist de los 3 activos al system user** (resaltado en amarillo, es lo clave): **cuenta publicitaria**, **página de Facebook** y **cuenta de Instagram**. Sin estos 3 asignados al usuario del sistema "jdmedia", la app no puede traer la pauta ni los resultados de Instagram automáticamente. Cada paso te dice exactamente dónde tocar en Meta.
+- 💡 Modelo recomendado: el **cliente es dueño** de sus activos y nos da acceso como **socio** (además de tu usuario admin). Más ordenado, escalable y prolijo el día que una cuenta entra o se va.
+
 ## 2026-06-16 — Resultados de Instagram (automáticos)
 
 - 📊 **Nueva sección "Resultados"** en cada cliente con gestión de redes: muestra los resultados de Instagram que el cliente quiere ver — **seguidores** (con su crecimiento de los últimos 30 días), **alcance**, **visitas al perfil** e **interacciones** de los últimos 28 días, más las **publicaciones destacadas** del mes.

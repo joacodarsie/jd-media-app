@@ -6,7 +6,12 @@ import { createAdmin } from "@/lib/supabase/admin";
 
 export type AdsStepKey =
   | "accesos_fb_at"
+  | "pagina_fb_at"
+  | "socio_business_at"
   | "ads_manager_at"
+  | "su_adaccount_at"
+  | "su_pagina_at"
+  | "su_ig_at"
   | "dolar_app_at"
   | "tarjeta_vinculada_at"
   | "campanas_definidas_at"
@@ -14,7 +19,12 @@ export type AdsStepKey =
 
 const VALID_STEPS: AdsStepKey[] = [
   "accesos_fb_at",
+  "pagina_fb_at",
+  "socio_business_at",
   "ads_manager_at",
+  "su_adaccount_at",
+  "su_pagina_at",
+  "su_ig_at",
   "dolar_app_at",
   "tarjeta_vinculada_at",
   "campanas_definidas_at",

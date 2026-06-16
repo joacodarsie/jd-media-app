@@ -35,7 +35,7 @@ export default async function PublicidadOnboardingPage({
     admin
       .from("client_ads_onboarding")
       .select(
-        "accesos_fb_at, ads_manager_at, dolar_app_at, tarjeta_vinculada_at, campanas_definidas_at, campanas_publicadas_at, campanas_notas, notas, meta_ad_account_id"
+        "accesos_fb_at, pagina_fb_at, socio_business_at, ads_manager_at, su_adaccount_at, su_pagina_at, su_ig_at, dolar_app_at, tarjeta_vinculada_at, campanas_definidas_at, campanas_publicadas_at, campanas_notas, notas, meta_ad_account_id"
       )
       .eq("cliente_id", params.id)
       .maybeSingle(),

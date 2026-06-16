@@ -11,7 +11,12 @@ import { cn } from "@/lib/utils";
 
 export interface AdsOnboardingState {
   accesos_fb_at?: string | null;
+  pagina_fb_at?: string | null;
+  socio_business_at?: string | null;
   ads_manager_at?: string | null;
+  su_adaccount_at?: string | null;
+  su_pagina_at?: string | null;
+  su_ig_at?: string | null;
   dolar_app_at?: string | null;
   tarjeta_vinculada_at?: string | null;
   campanas_definidas_at?: string | null;
@@ -20,36 +25,83 @@ export interface AdsOnboardingState {
   notas?: string | null;
 }
 
-const STEPS: { key: AdsStepKey; titulo: string; desc: string }[] = [
+// `grupo` agrupa visualmente los pasos. `clave` resalta los 3 pasos críticos:
+// asignar cada activo al System User (sin esto la app NO trae datos solos).
+const STEPS: {
+  key: AdsStepKey;
+  titulo: string;
+  desc: string;
+  grupo: "Accesos" | "System User" | "Pauta";
+  clave?: boolean;
+}[] = [
   {
     key: "accesos_fb_at",
     titulo: "Pedir accesos a Facebook del cliente",
-    desc: "Solicitar al cliente acceso a su cuenta / página de Facebook (como administrador).",
+    desc: "Que el cliente te dé acceso a su Facebook. Si no sabe, lo hacemos nosotros con él.",
+    grupo: "Accesos",
+  },
+  {
+    key: "pagina_fb_at",
+    titulo: "Página de Facebook lista",
+    desc: "Confirmar que el cliente tenga su página de Facebook. Si no tiene, se la creamos (la cuenta de Instagram tiene que estar vinculada a esa página).",
+    grupo: "Accesos",
+  },
+  {
+    key: "socio_business_at",
+    titulo: "Acceso como SOCIO al Business del cliente (admin total)",
+    desc: "Desde el Business del cliente: Configuración → Socios → Agregar socio → pegar el ID del Business de JD Media y darle administración total. Es además de tu usuario admin; así el equipo entra sin depender de tu cuenta personal.",
+    grupo: "Accesos",
   },
   {
     key: "ads_manager_at",
-    titulo: "Administrador de anuncios (Meta)",
-    desc: "Crear o acceder al Business Manager / Administrador de anuncios de Meta del cliente.",
+    titulo: "Business Manager / Administrador de anuncios",
+    desc: "Crear o acceder al Business Manager del cliente y a su cuenta publicitaria (act_XXXX). Cargá ese ID abajo, en 'Conexión con Paid Media'.",
+    grupo: "Accesos",
+  },
+  {
+    key: "su_adaccount_at",
+    titulo: "Asignar la CUENTA PUBLICITARIA al system user",
+    desc: "En TU Business → Configuración → Cuentas publicitarias → la del cliente → Asignar usuarios del sistema → 'jdmedia' → Administrar campañas. Sin esto, Paid Media no trae las métricas.",
+    grupo: "System User",
+    clave: true,
+  },
+  {
+    key: "su_pagina_at",
+    titulo: "Asignar la PÁGINA de Facebook al system user",
+    desc: "En TU Business → Configuración → Páginas → la del cliente → Asignar usuarios del sistema → 'jdmedia' → acceso total. Necesario para los Resultados de Instagram.",
+    grupo: "System User",
+    clave: true,
+  },
+  {
+    key: "su_ig_at",
+    titulo: "Asignar la CUENTA DE INSTAGRAM al system user",
+    desc: "En TU Business → Configuración → Cuentas de Instagram → la del cliente → asignarla al system user 'jdmedia'. Después conectala en la sección Resultados del cliente.",
+    grupo: "System User",
+    clave: true,
   },
   {
     key: "dolar_app_at",
     titulo: "Cliente descarga Dólar App",
     desc: "Pedirle al cliente que se descargue Dólar App, así no se le cobran los impuestos sobre la pauta.",
+    grupo: "Pauta",
   },
   {
     key: "tarjeta_vinculada_at",
     titulo: "Vincular tarjeta global de Dólar App",
     desc: "Vincular la tarjeta global de Dólar App con la cuenta de anuncios del cliente como medio de pago.",
+    grupo: "Pauta",
   },
   {
     key: "campanas_definidas_at",
     titulo: "Definir y armar las campañas clave",
     desc: "Definir las campañas clave para la cuenta y dejarlas armadas (objetivos, segmentación, presupuesto, creatividades).",
+    grupo: "Pauta",
   },
   {
     key: "campanas_publicadas_at",
     titulo: "Publicar las campañas",
     desc: "Publicar las campañas y dejarlas corriendo.",
+    grupo: "Pauta",
   },
 ];
 
@@ -109,46 +161,66 @@ export function AdsOnboardingChecklist({
         </div>
       </div>
 
-      {/* Pasos */}
-      <ol className="space-y-2">
-        {STEPS.map((s, i) => {
-          const val = stepVal(s.key);
-          const done = !!val;
+      {/* Pasos agrupados */}
+      <div className="space-y-5">
+        {(["Accesos", "System User", "Pauta"] as const).map((grupo) => {
+          const items = STEPS.filter((s) => s.grupo === grupo);
+          if (items.length === 0) return null;
           return (
-            <li key={s.key}>
-              <button
-                type="button"
-                onClick={() => toggle(s.key, val)}
-                disabled={pending}
-                className={cn(
-                  "flex w-full items-start gap-3 rounded-xl border bg-card p-3 text-left transition-colors hover:border-primary/40",
-                  done && "border-emerald-300/60 bg-emerald-50/40 dark:border-emerald-900/50 dark:bg-emerald-950/10"
-                )}
-              >
-                <span className="mt-0.5 shrink-0">
-                  {done ? (
-                    <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                  ) : (
-                    <Circle className="h-5 w-5 text-muted-foreground" />
-                  )}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-2">
-                    <span className="text-[11px] font-semibold text-muted-foreground">{i + 1}.</span>
-                    <span className={cn("font-medium", done && "text-emerald-800 dark:text-emerald-200")}>
-                      {s.titulo}
-                    </span>
-                    {done && val && (
-                      <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">✓ {fmtWhen(val)}</span>
-                    )}
+            <div key={grupo} className="space-y-2">
+              <div className="flex items-center gap-2 px-1">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {grupo === "System User" ? "Asignar al system user (clave)" : grupo}
+                </h3>
+                {grupo === "System User" && (
+                  <span className="text-[10px] text-muted-foreground">
+                    sin esto la app no trae datos solos
                   </span>
-                  <span className="mt-0.5 block text-xs text-muted-foreground">{s.desc}</span>
-                </span>
-              </button>
-            </li>
+                )}
+              </div>
+              <ol className="space-y-2">
+                {items.map((s) => {
+                  const val = stepVal(s.key);
+                  const done = !!val;
+                  return (
+                    <li key={s.key}>
+                      <button
+                        type="button"
+                        onClick={() => toggle(s.key, val)}
+                        disabled={pending}
+                        className={cn(
+                          "flex w-full items-start gap-3 rounded-xl border bg-card p-3 text-left transition-colors hover:border-primary/40",
+                          s.clave && !done && "border-amber-300/70 bg-amber-50/40 dark:border-amber-900/50 dark:bg-amber-950/10",
+                          done && "border-emerald-300/60 bg-emerald-50/40 dark:border-emerald-900/50 dark:bg-emerald-950/10"
+                        )}
+                      >
+                        <span className="mt-0.5 shrink-0">
+                          {done ? (
+                            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                          ) : (
+                            <Circle className={cn("h-5 w-5 text-muted-foreground", s.clave && "text-amber-500")} />
+                          )}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center gap-2">
+                            <span className={cn("font-medium", done && "text-emerald-800 dark:text-emerald-200")}>
+                              {s.titulo}
+                            </span>
+                            {done && val && (
+                              <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">✓ {fmtWhen(val)}</span>
+                            )}
+                          </span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">{s.desc}</span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
           );
         })}
-      </ol>
+      </div>
 
       {/* Notas */}
       <div className="space-y-3 rounded-xl border bg-card p-4">

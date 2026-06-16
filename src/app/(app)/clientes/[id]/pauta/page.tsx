@@ -7,6 +7,7 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { AdsOnboardingChecklist, type AdsOnboardingState } from "@/components/ads-onboarding-checklist";
 import { ClientListEditor } from "@/components/client-list-editor";
 import { MetaAdAccountField } from "@/components/meta-ad-account-field";
+import { JdMediaPartnerCard } from "@/components/jdmedia-partner-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
@@ -80,6 +81,8 @@ export default async function PublicidadOnboardingPage({
           servicio en su ficha.
         </div>
       )}
+
+      <JdMediaPartnerCard />
 
       <AdsOnboardingChecklist clientId={client.id} initial={state} />
 

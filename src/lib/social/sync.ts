@@ -49,7 +49,12 @@ export async function syncClientInstagram(
       reach: r.day.reach,
       profile_views: r.day.profile_views,
       interactions: r.day.interactions,
-      detalle: { month: r.month, top_media: r.topMedia, profile: r.profile },
+      detalle: {
+        month: r.month,
+        top_media: r.topMedia,
+        media: r.monthMedia,
+        profile: r.profile,
+      },
     },
     { onConflict: "cliente_id,fecha" }
   );

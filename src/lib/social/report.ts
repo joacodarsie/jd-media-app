@@ -8,6 +8,7 @@
  * cargado a mano (la sección orgánica sigue editable para clientes sin IG conectado).
  */
 import { createAdmin } from "@/lib/supabase/admin";
+import type { IgMedia } from "@/lib/meta/instagram";
 
 type Admin = ReturnType<typeof createAdmin>;
 
@@ -31,6 +32,7 @@ export interface IgMonthly {
   reach: number | null; // alcance (28 días) al cierre del mes
   profileViews: number | null; // visitas al perfil (28 días)
   interactions: number | null; // interacciones (28 días)
+  media: IgMedia[]; // todo el feed publicado en el mes
 }
 
 interface SnapRow {
@@ -41,6 +43,7 @@ interface SnapRow {
   interactions: number;
   detalle: {
     month?: { reach?: number; profile_views?: number; interactions?: number };
+    media?: IgMedia[];
   } | null;
 }
 
@@ -52,6 +55,7 @@ const EMPTY: IgMonthly = {
   reach: null,
   profileViews: null,
   interactions: null,
+  media: [],
 };
 
 export interface PaidMonthly {
@@ -156,5 +160,6 @@ export async function igMonthlyForReport(
     reach: pick(month?.reach, "reach"),
     profileViews: pick(month?.profile_views, "profile_views"),
     interactions: pick(month?.interactions, "interactions"),
+    media: last.detalle?.media ?? [],
   };
 }

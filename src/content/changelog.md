@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-06-16 — El reporte muestra todo el contenido publicado en Instagram
+
+- 🖼️ **Nueva sección "Contenido publicado en Instagram"** en el reporte mensual: trae **automáticamente** todos los posteos, reels y carruseles que se subieron a Instagram en el mes, con miniatura, fecha, alcance y likes. Arriba muestra el conteo (ej: "8 reels · 5 posts · 2 carruseles").
+- Se actualiza solo con el sync diario (o tocando "Actualizar ahora" en Resultados).
+- ℹ️ Las **historias** todavía no entran (Instagram solo deja ver las activas de las últimas 24 hs); las sumamos más adelante con captura diaria.
+
 ## 2026-06-16 — Resultados en el portal + lectura del mes con IA
 
 - 👀 **El cliente ve sus resultados en el portal**: nueva tarjeta "Resultados de este mes" en el portal del cliente con seguidores, alcance, interacciones y, si hay pauta, inversión, conversiones y clicks — todo en vivo, automático.

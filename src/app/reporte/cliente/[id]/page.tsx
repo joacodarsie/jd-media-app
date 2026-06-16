@@ -402,6 +402,14 @@ export default async function ReporteClientePage({
       (v) => v != null
     );
 
+  // Contenido del feed publicado en Instagram durante el mes (automático).
+  const igMedia = ig.media;
+  const igReels = igMedia.filter((m) => m.media_type === "VIDEO").length;
+  const igCarruseles = igMedia.filter((m) => m.media_type === "CAROUSEL_ALBUM").length;
+  const igPosts = igMedia.length - igReels - igCarruseles;
+  const mediaTipo = (t: string) =>
+    t === "VIDEO" ? "Reel" : t === "CAROUSEL_ALBUM" ? "Carrusel" : "Post";
+
   return (
     <div className="min-h-screen bg-white text-zinc-900">
       {/* Toolbar (no se imprime) */}
@@ -596,6 +604,67 @@ export default async function ReporteClientePage({
                 Datos traídos automáticamente de Instagram.
               </p>
             )}
+          </section>
+        )}
+
+        {/* Contenido publicado en Instagram este mes (automático, traído de IG) */}
+        {igMedia.length > 0 && (
+          <section className="mt-8 break-inside-avoid">
+            <h2 className="mb-1 flex items-center gap-2 text-base font-semibold text-zinc-900">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              Contenido publicado en Instagram ({igMedia.length})
+            </h2>
+            <p className="mb-3 text-xs text-zinc-500">
+              {[
+                igReels ? `${igReels} reels` : null,
+                igPosts ? `${igPosts} posts` : null,
+                igCarruseles ? `${igCarruseles} carruseles` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+              {igMedia.map((m) => (
+                <a
+                  key={m.id}
+                  href={m.permalink ?? "#"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="overflow-hidden rounded-lg border border-zinc-200 transition hover:border-emerald-300"
+                >
+                  <div className="relative aspect-square bg-zinc-100">
+                    {m.thumbnail_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={m.thumbnail_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-[10px] text-zinc-400">
+                        {mediaTipo(m.media_type)}
+                      </div>
+                    )}
+                    <span className="absolute right-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                      {mediaTipo(m.media_type)}
+                    </span>
+                  </div>
+                  <div className="space-y-1 p-2">
+                    {m.caption && (
+                      <p className="line-clamp-2 text-[11px] text-zinc-600">{m.caption}</p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-zinc-500">
+                      {m.timestamp && (
+                        <span className="tabular-nums">
+                          {new Date(m.timestamp).toLocaleDateString("es-AR", {
+                            day: "2-digit",
+                            month: "short",
+                          })}
+                        </span>
+                      )}
+                      {m.reach != null && m.reach > 0 && <span>· {m.reach.toLocaleString("es-AR")} alcance</span>}
+                      {m.like_count > 0 && <span>· {m.like_count.toLocaleString("es-AR")} ♥</span>}
+                    </div>
+                  </div>
+                </a>
+              ))}
+            </div>
           </section>
         )}
 

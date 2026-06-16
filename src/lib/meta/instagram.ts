@@ -130,6 +130,8 @@ export interface IgResults {
   /** Métricas acumuladas de los últimos 28 días: para el reporte mensual. */
   month: IgRollup;
   topMedia: IgMedia[];
+  /** Todo el feed publicado en el mes en curso (para el reporte). */
+  monthMedia: IgMedia[];
 }
 
 /** Datos del perfil (seguidores, etc.) directo del nodo del usuario. */
@@ -201,65 +203,91 @@ async function fetchIgRollup(igUserId: string, period: "day" | "days_28"): Promi
   };
 }
 
-/** Top publicaciones del último ~mes, ordenadas por alcance. */
-export async function fetchIgTopMedia(igUserId: string, limit = 12): Promise<IgMedia[]> {
-  const res = await graphGetSoft<{
-    data: {
-      id: string;
-      caption?: string;
-      media_type?: string;
-      permalink?: string;
-      thumbnail_url?: string;
-      media_url?: string;
-      timestamp?: string;
-      like_count?: number;
-      comments_count?: number;
-      insights?: { data: RawInsightItem[] };
-    }[];
-  }>(`${igUserId}/media`, {
-    fields:
-      "id,caption,media_type,permalink,thumbnail_url,media_url,timestamp,like_count,comments_count,insights.metric(reach,saved){values}",
-    limit: "25",
-  });
-  if (!res) return [];
+interface RawMedia {
+  id: string;
+  caption?: string;
+  media_type?: string;
+  permalink?: string;
+  thumbnail_url?: string;
+  media_url?: string;
+  timestamp?: string;
+  like_count?: number;
+  comments_count?: number;
+  insights?: { data: RawInsightItem[] };
+}
 
-  const cutoff = Date.now() - 35 * 86400_000; // últimos ~35 días
-  const items = (res.data ?? [])
-    .filter((m) => {
-      if (!m.timestamp) return true;
-      return new Date(m.timestamp).getTime() >= cutoff;
-    })
-    .map<IgMedia>((m) => {
-      const ins = m.insights?.data ?? [];
-      const reachIt = ins.find((i) => i.name === "reach");
-      const savedIt = ins.find((i) => i.name === "saved");
-      return {
-        id: m.id,
-        caption: m.caption?.trim() ? m.caption.trim() : null,
-        media_type: m.media_type ?? "IMAGE",
-        permalink: m.permalink ?? null,
-        thumbnail_url: m.thumbnail_url ?? m.media_url ?? null,
-        timestamp: m.timestamp ?? null,
-        like_count: num(m.like_count),
-        comments_count: num(m.comments_count),
-        reach: reachIt ? num(reachIt.values?.[0]?.value) : null,
-        saved: savedIt ? num(savedIt.values?.[0]?.value) : null,
-      };
-    });
+const MEDIA_FIELDS =
+  "id,caption,media_type,permalink,thumbnail_url,media_url,timestamp,like_count,comments_count,insights.metric(reach,saved){values}";
 
-  items.sort((a, b) => (b.reach ?? 0) - (a.reach ?? 0));
-  return items.slice(0, limit);
+function mapMedia(m: RawMedia): IgMedia {
+  const ins = m.insights?.data ?? [];
+  const reachIt = ins.find((i) => i.name === "reach");
+  const savedIt = ins.find((i) => i.name === "saved");
+  const caption = m.caption?.trim() ? m.caption.trim() : null;
+  return {
+    id: m.id,
+    caption: caption && caption.length > 300 ? caption.slice(0, 300) + "…" : caption,
+    media_type: m.media_type ?? "IMAGE",
+    permalink: m.permalink ?? null,
+    thumbnail_url: m.thumbnail_url ?? m.media_url ?? null,
+    timestamp: m.timestamp ?? null,
+    like_count: num(m.like_count),
+    comments_count: num(m.comments_count),
+    reach: reachIt ? num(reachIt.values?.[0]?.value) : null,
+    saved: savedIt ? num(savedIt.values?.[0]?.value) : null,
+  };
+}
+
+/**
+ * Trae TODAS las publicaciones del feed (posts/reels/carruseles) entre dos
+ * fechas (Unix segundos), paginando. Para listar el contenido del mes en el
+ * reporte. (Las historias NO entran: la API solo expone las activas de 24h.)
+ */
+export async function fetchIgMediaRange(
+  igUserId: string,
+  sinceUnix: number,
+  untilUnix: number
+): Promise<IgMedia[]> {
+  const out: IgMedia[] = [];
+  let params: Record<string, string> = {
+    fields: MEDIA_FIELDS,
+    since: String(sinceUnix),
+    until: String(untilUnix),
+    limit: "50",
+  };
+  for (let page = 0; page < 5; page++) {
+    const res = await graphGetSoft<{
+      data: RawMedia[];
+      paging?: { cursors?: { after?: string } };
+    }>(`${igUserId}/media`, params);
+    if (!res) break;
+    const data = res.data ?? [];
+    for (const m of data) out.push(mapMedia(m));
+    const after = res.paging?.cursors?.after;
+    if (!after || data.length === 0) break;
+    params = { ...params, after };
+  }
+  // Más nuevas primero.
+  out.sort(
+    (a, b) => new Date(b.timestamp ?? 0).getTime() - new Date(a.timestamp ?? 0).getTime()
+  );
+  return out;
 }
 
 /** Trae el paquete completo de resultados de IG de un cliente (para el sync). */
 export async function fetchIgResults(igUserId: string): Promise<IgResults> {
-  const [profile, day, month, topMedia] = await Promise.all([
+  const now = new Date();
+  const since = Math.floor(new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000);
+  const until = Math.floor(now.getTime() / 1000);
+  const [profile, day, month, monthMedia] = await Promise.all([
     fetchIgProfile(igUserId),
     fetchIgRollup(igUserId, "day"),
     fetchIgRollup(igUserId, "days_28"),
-    fetchIgTopMedia(igUserId),
+    fetchIgMediaRange(igUserId, since, until),
   ]);
-  return { profile, day, month, topMedia };
+  // Top 12 por alcance, para la vista interna "destacadas".
+  const topMedia = [...monthMedia].sort((a, b) => (b.reach ?? 0) - (a.reach ?? 0)).slice(0, 12);
+  return { profile, day, month, topMedia, monthMedia };
 }
 
 /** Mensaje de error amable para la UI. */

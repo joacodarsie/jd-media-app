@@ -39,6 +39,59 @@ const EMPTY: IgMonthly = {
   interactions: null,
 };
 
+export interface PaidMonthly {
+  hasData: boolean;
+  moneda: string;
+  spend: number;
+  conversions: number;
+  costPerConv: number | null;
+  impressions: number;
+  clicks: number;
+  ctr: number | null;
+}
+
+/** Agrega los snapshots diarios de paid media del mes. `mes` = YYYY-MM. */
+export async function paidMonthlyForReport(
+  admin: Admin,
+  clienteId: string,
+  mes: string
+): Promise<PaidMonthly> {
+  const { data } = await admin
+    .from("paid_media_snapshots")
+    .select("spend, impressions, clicks, conversions, moneda")
+    .eq("cliente_id", clienteId)
+    .gte("fecha", `${mes}-01`)
+    .lte("fecha", `${mes}-31`);
+  const rows = (data ?? []) as {
+    spend: number;
+    impressions: number;
+    clicks: number;
+    conversions: number;
+    moneda: string;
+  }[];
+  const agg = rows.reduce(
+    (acc, r) => ({
+      spend: acc.spend + Number(r.spend),
+      impressions: acc.impressions + Number(r.impressions),
+      clicks: acc.clicks + Number(r.clicks),
+      conversions: acc.conversions + Number(r.conversions),
+      moneda: r.moneda || acc.moneda,
+    }),
+    { spend: 0, impressions: 0, clicks: 0, conversions: 0, moneda: "ARS" }
+  );
+  const hasData = rows.length > 0 && (agg.spend > 0 || agg.conversions > 0);
+  return {
+    hasData,
+    moneda: agg.moneda,
+    spend: agg.spend,
+    conversions: agg.conversions,
+    costPerConv: agg.conversions > 0 ? Math.round(agg.spend / agg.conversions) : null,
+    impressions: agg.impressions,
+    clicks: agg.clicks,
+    ctr: agg.impressions > 0 ? Math.round((agg.clicks / agg.impressions) * 10000) / 100 : null,
+  };
+}
+
 /** `mes` en formato YYYY-MM. */
 export async function igMonthlyForReport(
   admin: Admin,

@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-06-16 — Resultados en el portal + lectura del mes con IA
+
+- 👀 **El cliente ve sus resultados en el portal**: nueva tarjeta "Resultados de este mes" en el portal del cliente con seguidores, alcance, interacciones y, si hay pauta, inversión, conversiones y clicks — todo en vivo, automático.
+- 🧠 **Lectura del mes con IA**: en el reporte mensual hay un botón **"Lectura IA"** (equipo) que interpreta los números reales de Instagram + pauta y escribe un texto cálido para el cliente, conectando lo orgánico con lo pago. Se muestra en el reporte y también en el portal.
+- La lectura es **on-demand** (la generás cuando querés) para no gastar tokens de más, y se puede **regenerar**.
+
 ## 2026-06-16 — Onboarding de publicidad: guía de accesos + system user
 
 - 🔐 **El onboarding de publicidad ahora es una guía de accesos** ordenada en 3 bloques: **Accesos** (Facebook del cliente, página de FB, y pedirle que nos sume como **socio del Business con administración total**), **Asignar al system user** y **Pauta**.

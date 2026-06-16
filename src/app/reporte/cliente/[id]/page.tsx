@@ -22,7 +22,8 @@ import { Markdown } from "@/components/markdown";
 import { PrintButton } from "@/components/print-button";
 import { ReportMonthPicker } from "@/components/report-month-picker";
 import { MonthlyReportEditor } from "@/components/monthly-report-editor";
-import { igMonthlyForReport } from "@/lib/social/report";
+import { igMonthlyForReport, paidMonthlyForReport } from "@/lib/social/report";
+import { ResultsReadingButton } from "@/components/results-reading-button";
 import type { MonthlyMetrics } from "@/app/reporte/cliente/[id]/actions";
 
 export const dynamic = "force-dynamic";
@@ -211,7 +212,7 @@ export default async function ReporteClientePage({
       .limit(8),
     supabase
       .from("client_monthly_reports")
-      .select("nota, metricas")
+      .select("nota, metricas, ai_resultados")
       .eq("cliente_id", params.id)
       .eq("year_month", mes)
       .maybeSingle(),
@@ -229,9 +230,10 @@ export default async function ReporteClientePage({
   ]);
 
   const monthlyReport = (monthly ?? null) as
-    | { nota: string | null; metricas: MonthlyMetrics }
+    | { nota: string | null; metricas: MonthlyMetrics; ai_resultados: string | null }
     | null;
   const nota = monthlyReport?.nota ?? null;
+  const aiResultados = monthlyReport?.ai_resultados ?? null;
   const metricas: MonthlyMetrics = monthlyReport?.metricas ?? {};
   const hasOrganicMetrics = [
     metricas.seguidores_nuevos,
@@ -378,34 +380,8 @@ export default async function ReporteClientePage({
   // Paid media + resultados de Instagram del mes (snapshots diarios agregados).
   // Tablas RLS-only → admin.
   const admin = createAdmin();
-  const { data: pmSnaps } = await admin
-    .from("paid_media_snapshots")
-    .select("spend, impressions, clicks, conversions, moneda")
-    .eq("cliente_id", params.id)
-    .gte("fecha", `${mes}-01`)
-    .lte("fecha", `${mes}-31`);
-  const pmRows = (pmSnaps ?? []) as {
-    spend: number;
-    impressions: number;
-    clicks: number;
-    conversions: number;
-    moneda: string;
-  }[];
-  const paid = pmRows.reduce(
-    (acc, r) => ({
-      spend: acc.spend + Number(r.spend),
-      impressions: acc.impressions + Number(r.impressions),
-      clicks: acc.clicks + Number(r.clicks),
-      conversions: acc.conversions + Number(r.conversions),
-      moneda: r.moneda || acc.moneda,
-    }),
-    { spend: 0, impressions: 0, clicks: 0, conversions: 0, moneda: "ARS" }
-  );
-  const hasPaid = pmRows.length > 0 && (paid.spend > 0 || paid.conversions > 0);
-  const paidCostPerConv =
-    paid.conversions > 0 ? Math.round(paid.spend / paid.conversions) : null;
-  const paidCtr =
-    paid.impressions > 0 ? Math.round((paid.clicks / paid.impressions) * 10000) / 100 : null;
+  const paid = await paidMonthlyForReport(admin, params.id, mes);
+  const hasPaid = paid.hasData;
 
   // Resultados de Instagram del mes (automático, desde ig_snapshots).
   const ig = await igMonthlyForReport(admin, params.id, mes);
@@ -439,6 +415,13 @@ export default async function ReporteClientePage({
           </Link>
           <div className="flex items-center gap-2">
             <ReportMonthPicker currentMes={mes} clientId={params.id} />
+            {canEdit && (
+              <ResultsReadingButton
+                clienteId={params.id}
+                mes={mes}
+                hasReading={!!aiResultados}
+              />
+            )}
             {canEdit && (
               <MonthlyReportEditor
                 clienteId={params.id}
@@ -636,12 +619,25 @@ export default async function ReporteClientePage({
               <MetricBox label="Conversiones" value={paid.conversions} />
               <MetricBox
                 label="Costo por conversión"
-                value={paidCostPerConv}
+                value={paid.costPerConv}
                 prefix={`${paid.moneda} `}
               />
               <MetricBox label="Impresiones" value={paid.impressions} />
               <MetricBox label="Clicks" value={paid.clicks} />
-              <MetricBox label="CTR" value={paidCtr} suffix="%" decimals={2} />
+              <MetricBox label="CTR" value={paid.ctr} suffix="%" decimals={2} />
+            </div>
+          </section>
+        )}
+
+        {/* Lectura del mes (IA) — interpreta los resultados */}
+        {aiResultados && (
+          <section className="mt-8 break-inside-avoid rounded-lg border border-zinc-200 bg-zinc-50/40 p-5">
+            <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+              <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
+              Lectura del mes
+            </div>
+            <div className="prose prose-sm max-w-none text-zinc-800">
+              <Markdown>{aiResultados}</Markdown>
             </div>
           </section>
         )}

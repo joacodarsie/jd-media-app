@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createAdmin } from "@/lib/supabase/admin";
+import { igMonthlyForReport, paidMonthlyForReport } from "@/lib/social/report";
 import { AGENCY } from "@/lib/agency";
 import type { MonthlyContentPlan } from "@/lib/content-plans/schema";
 import { PortalReviewCard } from "@/components/portal-review-card";
@@ -85,6 +86,38 @@ export default async function PortalPage({ params }: { params: { token: string }
   ]);
 
   if (!client) return notFound();
+
+  // Resultados del mes en curso (Instagram + paid) + lectura IA, si hay.
+  const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const [igM, paidM, { data: monthlyRow }] = await Promise.all([
+    igMonthlyForReport(admin, cliente_id, mesActual),
+    paidMonthlyForReport(admin, cliente_id, mesActual),
+    admin
+      .from("client_monthly_reports")
+      .select("ai_resultados")
+      .eq("cliente_id", cliente_id)
+      .eq("year_month", mesActual)
+      .maybeSingle(),
+  ]);
+  const aiResultados = (monthlyRow as { ai_resultados?: string | null } | null)?.ai_resultados ?? null;
+  const fmtN = (n: number) => Math.round(n).toLocaleString("es-AR");
+  const igCells = igM.hasData
+    ? ([
+        igM.followersEnd != null ? { lbl: "Seguidores", val: fmtN(igM.followersEnd) } : null,
+        igM.seguidoresNuevos != null ? { lbl: "Nuevos", val: `+${fmtN(igM.seguidoresNuevos)}` } : null,
+        igM.reach != null ? { lbl: "Alcance", val: fmtN(igM.reach) } : null,
+        igM.interactions != null ? { lbl: "Interacciones", val: fmtN(igM.interactions) } : null,
+      ].filter(Boolean) as { lbl: string; val: string }[])
+    : [];
+  const paidCells = paidM.hasData
+    ? ([
+        { lbl: "Inversión", val: `${paidM.moneda} ${fmtN(paidM.spend)}` },
+        { lbl: "Conversiones", val: fmtN(paidM.conversions) },
+        paidM.costPerConv != null ? { lbl: "Costo/conv", val: `${paidM.moneda} ${fmtN(paidM.costPerConv)}` } : null,
+        { lbl: "Clicks", val: fmtN(paidM.clicks) },
+      ].filter(Boolean) as { lbl: string; val: string }[])
+    : [];
+  const hayResultados = igCells.length > 0 || paidCells.length > 0 || !!aiResultados;
 
   const planContent: MonthlyContentPlan | null = plan?.content
     ? (plan.content as MonthlyContentPlan)
@@ -216,6 +249,49 @@ export default async function PortalPage({ params }: { params: { token: string }
                 <PortalReviewCard key={p.id} pub={p} token={params.token} />
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Resultados del mes — Instagram + pauta, en vivo */}
+        {hayResultados && (
+          <div className="card">
+            <div className="card-label">Resultados de este mes</div>
+            <h2 className="card-title">Cómo venís</h2>
+            {igCells.length > 0 && (
+              <>
+                <p style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 8px" }}>
+                  Instagram
+                </p>
+                <div className="cadencia" style={{ marginBottom: paidCells.length > 0 ? 16 : 0 }}>
+                  {igCells.map((c) => (
+                    <div key={c.lbl} className="cadencia-cell">
+                      <div className="lbl">{c.lbl}</div>
+                      <div className="val">{c.val}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            {paidCells.length > 0 && (
+              <>
+                <p style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 8px" }}>
+                  Publicidad
+                </p>
+                <div className="cadencia">
+                  {paidCells.map((c) => (
+                    <div key={c.lbl} className="cadencia-cell">
+                      <div className="lbl">{c.lbl}</div>
+                      <div className="val">{c.val}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            {aiResultados && (
+              <div style={{ marginTop: 16, fontSize: 14, lineHeight: 1.6, color: "#444", whiteSpace: "pre-line" }}>
+                {aiResultados}
+              </div>
+            )}
           </div>
         )}
 

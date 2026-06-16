@@ -7,6 +7,7 @@ title: Novedades
 - 📊 **Nueva sección "Resultados"** en cada cliente con gestión de redes: muestra los resultados de Instagram que el cliente quiere ver — **seguidores** (con su crecimiento de los últimos 30 días), **alcance**, **visitas al perfil** e **interacciones** de los últimos 28 días, más las **publicaciones destacadas** del mes.
 - 🔌 **Conexión en un click**: tocá "Detectar cuentas" y elegí la cuenta de Instagram del cliente (de las que maneja la agencia). También se puede pegar el ID a mano.
 - 🔄 **Se actualizan solos cada día**: la app trae los datos de Instagram automáticamente. Igual tenés el botón **"Actualizar ahora"** para refrescar en el momento.
+- 🧾 **Todo entra solo al Reporte mensual**: el reporte que le mandás al cliente ahora muestra los **Resultados de Instagram** (seguidores, alcance, interacciones, visitas) y la **Publicidad / Paid Media** (inversión, conversiones, impresiones, clicks, CTR) **automáticamente**, sin cargar nada a mano. Si un cliente no tiene la cuenta conectada, podés seguir cargando esos números manualmente como antes.
 - ℹ️ Requisitos: la cuenta del cliente debe ser **Business/Creator** vinculada a una página de Facebook de la agencia, y el token de Meta tiene que tener los permisos de Instagram (lo configura el admin una sola vez).
 
 ## 2026-06-14 — Onboarding en 3 etapas (con responsables)

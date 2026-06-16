@@ -22,6 +22,7 @@ import { Markdown } from "@/components/markdown";
 import { PrintButton } from "@/components/print-button";
 import { ReportMonthPicker } from "@/components/report-month-picker";
 import { MonthlyReportEditor } from "@/components/monthly-report-editor";
+import { igMonthlyForReport } from "@/lib/social/report";
 import type { MonthlyMetrics } from "@/app/reporte/cliente/[id]/actions";
 
 export const dynamic = "force-dynamic";
@@ -374,8 +375,10 @@ export default async function ReporteClientePage({
   );
   const monedaContratado = serviceList[0]?.moneda ?? "ARS";
 
-  // Paid media del mes (snapshots diarios agregados). Tabla RLS-only → admin.
-  const { data: pmSnaps } = await createAdmin()
+  // Paid media + resultados de Instagram del mes (snapshots diarios agregados).
+  // Tablas RLS-only → admin.
+  const admin = createAdmin();
+  const { data: pmSnaps } = await admin
     .from("paid_media_snapshots")
     .select("spend, impressions, clicks, conversions, moneda")
     .eq("cliente_id", params.id)
@@ -401,6 +404,27 @@ export default async function ReporteClientePage({
   const hasPaid = pmRows.length > 0 && (paid.spend > 0 || paid.conversions > 0);
   const paidCostPerConv =
     paid.conversions > 0 ? Math.round(paid.spend / paid.conversions) : null;
+  const paidCtr =
+    paid.impressions > 0 ? Math.round((paid.clicks / paid.impressions) * 10000) / 100 : null;
+
+  // Resultados de Instagram del mes (automático, desde ig_snapshots).
+  const ig = await igMonthlyForReport(admin, params.id, mes);
+  // Orgánico: preferimos el dato automático de IG; si no hay, caemos al manual.
+  const org = {
+    followersEnd: ig.followersEnd,
+    seguidores_nuevos: ig.seguidoresNuevos ?? metricas.seguidores_nuevos ?? null,
+    reach: ig.reach ?? metricas.reach ?? null,
+    interacciones: ig.interactions ?? metricas.interacciones ?? null,
+    visitas_perfil: ig.profileViews ?? metricas.visitas_perfil ?? null,
+    impresiones: metricas.impresiones ?? null, // Meta ya no expone impresiones orgánicas
+  };
+  const igAuto = ig.hasData;
+  const hasOrganic =
+    hasOrganicMetrics ||
+    igAuto ||
+    [org.followersEnd, org.seguidores_nuevos, org.reach, org.interacciones, org.visitas_perfil].some(
+      (v) => v != null
+    );
 
   return (
     <div className="min-h-screen bg-white text-zinc-900">
@@ -565,31 +589,45 @@ export default async function ReporteClientePage({
           </div>
         </section>
 
-        {/* Métricas orgánicas */}
-        {hasOrganicMetrics && (
+        {/* Resultados de Instagram del mes (automático si la cuenta está conectada) */}
+        {hasOrganic && (
           <section className="mt-8 break-inside-avoid">
             <h2 className="mb-2 flex items-center gap-2 text-base font-semibold text-zinc-900">
               <TrendingUp className="h-4 w-4 text-emerald-600" />
-              Métricas del mes (orgánico)
+              Resultados de Instagram
+              {igAuto && (
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-emerald-700">
+                  Automático
+                </span>
+              )}
             </h2>
             <div className="grid grid-cols-2 gap-3 rounded-lg border border-zinc-200 p-4 md:grid-cols-5">
-              <MetricBox label="Seguidores nuevos" value={metricas.seguidores_nuevos} prefix="+" />
-              <MetricBox label="Alcance" value={metricas.reach} />
-              <MetricBox label="Impresiones" value={metricas.impresiones} />
-              <MetricBox label="Interacciones" value={metricas.interacciones} />
-              <MetricBox label="Visitas al perfil" value={metricas.visitas_perfil} />
+              <MetricBox label="Seguidores" value={org.followersEnd} />
+              <MetricBox label="Seguidores nuevos" value={org.seguidores_nuevos} prefix="+" />
+              <MetricBox label="Alcance (28 días)" value={org.reach} />
+              <MetricBox label="Interacciones" value={org.interacciones} />
+              <MetricBox label="Visitas al perfil" value={org.visitas_perfil} />
             </div>
+            {igAuto && (
+              <p className="mt-1.5 text-[10px] text-zinc-400">
+                Datos traídos automáticamente de Instagram. Alcance, interacciones y visitas
+                corresponden a los últimos 28 días.
+              </p>
+            )}
           </section>
         )}
 
-        {/* Paid Media del mes */}
+        {/* Paid Media del mes (automático, desde las métricas diarias de Meta) */}
         {hasPaid && (
           <section className="mt-8 break-inside-avoid">
             <h2 className="mb-2 flex items-center gap-2 text-base font-semibold text-zinc-900">
-              <TrendingUp className="h-4 w-4 text-blue-600" />
+              <Megaphone className="h-4 w-4 text-blue-600" />
               Publicidad (Paid Media)
+              <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-blue-700">
+                Automático
+              </span>
             </h2>
-            <div className="grid grid-cols-2 gap-3 rounded-lg border border-zinc-200 p-4 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 rounded-lg border border-blue-200 bg-blue-50/30 p-4 md:grid-cols-3">
               <MetricBox
                 label="Inversión"
                 value={Math.round(paid.spend)}
@@ -601,7 +639,9 @@ export default async function ReporteClientePage({
                 value={paidCostPerConv}
                 prefix={`${paid.moneda} `}
               />
+              <MetricBox label="Impresiones" value={paid.impressions} />
               <MetricBox label="Clicks" value={paid.clicks} />
+              <MetricBox label="CTR" value={paidCtr} suffix="%" decimals={2} />
             </div>
           </section>
         )}
@@ -663,8 +703,8 @@ export default async function ReporteClientePage({
           </section>
         )}
 
-        {/* Meta Ads */}
-        {hasAdsMetrics && (
+        {/* Meta Ads cargado a mano: solo si NO hay datos automáticos (fallback) */}
+        {hasAdsMetrics && !hasPaid && (
           <section className="mt-8 break-inside-avoid">
             <h2 className="mb-2 flex items-center gap-2 text-base font-semibold text-zinc-900">
               <Megaphone className="h-4 w-4 text-blue-600" />

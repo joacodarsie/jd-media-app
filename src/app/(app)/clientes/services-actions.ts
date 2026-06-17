@@ -37,7 +37,9 @@ function clean(input: ServiceInput) {
     tipo: input.tipo,
     pack: input.pack?.trim() || null,
     fecha_inicio: input.fecha_inicio || null,
-    fecha_fin: input.fecha_fin || null,
+    // Un servicio activo no tiene fecha de baja; al desactivarlo, si no se cargó
+    // una, la completa updateService con la fecha del día (para el MRR histórico).
+    fecha_fin: input.activo ? null : input.fecha_fin || null,
     monto_mensual:
       input.monto_mensual === null || Number.isNaN(input.monto_mensual)
         ? null
@@ -113,19 +115,26 @@ export async function createService(input: ServiceInput) {
 export async function updateService(id: string, input: ServiceInput) {
   const { supabase, userId } = await ctx();
 
-  // Responsables previos, para notificar solo a los recién agregados.
+  // Responsables + estado previos, para notificar solo a los recién agregados
+  // y para detectar la baja (activo true→false).
   const { data: prev } = await supabase
     .from("client_services")
-    .select("responsables")
+    .select("responsables, activo")
     .eq("id", id)
     .maybeSingle();
-  const prevResp = new Set(
-    ((prev as { responsables?: string[] } | null)?.responsables ?? []).filter(Boolean)
-  );
+  const prevTyped = prev as { responsables?: string[]; activo?: boolean } | null;
+  const prevResp = new Set((prevTyped?.responsables ?? []).filter(Boolean));
+
+  const payload = clean(input);
+  // Si se está dando de baja y no se cargó fecha de fin, la registramos hoy
+  // para que el MRR histórico pueda descontar la cuenta a partir de acá.
+  if (prevTyped?.activo === true && !input.activo && !payload.fecha_fin) {
+    payload.fecha_fin = new Date().toISOString().slice(0, 10);
+  }
 
   const { error } = await supabase
     .from("client_services")
-    .update(clean(input))
+    .update(payload)
     .eq("id", id);
   if (error) return { error: error.message };
 

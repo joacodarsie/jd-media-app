@@ -143,15 +143,24 @@ export default async function ProyeccionPage() {
   const arpa = cuentas > 0 ? mrrHoy / cuentas : 0;
 
   // ===== 2) Evolución del MRR (ramp a precios de hoy) =====
-  // Una cuenta suma su monto actual a un mes M si arrancó en/antes de M y no terminó antes.
+  // Para el histórico también contamos las cuentas dadas de baja que tengan
+  // fecha_fin registrada, ubicándolas en los meses que estuvieron activas → así
+  // el ramp refleja el churn (la caída cuando se fueron), no solo el crecimiento.
+  const trendSvcs = svcs.filter(
+    (s) =>
+      s.monto_mensual != null &&
+      (s.facturacion ?? "mensual") === "mensual" &&
+      (s.activo || s.fecha_fin) // activas, o bajas con fecha de fin conocida
+  );
   const monthEnd = (m: string) => `${nextPeriod(m)}-01`; // exclusivo
   const trend = backMonths.map((m) => {
     const end = monthEnd(m);
     let mrr = 0;
-    for (const s of recurring) {
+    for (const s of trendSvcs) {
       const inicio = s.fecha_inicio ?? clientById.get(s.cliente_id)?.fecha_inicio ?? null;
       // Si no hay fecha de inicio, asumimos que ya estaba (cuenta vieja).
       const arrancoAntes = !inicio || inicio < end;
+      // Activa: sigue contando. Baja: cuenta hasta su fecha_fin.
       const terminoDespues = !s.fecha_fin || s.fecha_fin >= `${m}-01`;
       if (arrancoAntes && terminoDespues) {
         mrr += toARS(Number(s.monto_mensual), s.moneda, rates);
@@ -364,9 +373,10 @@ export default async function ProyeccionPage() {
           ))}
         </div>
         <p className="mt-3 text-[11px] text-muted-foreground">
-          MRR reconstruido con las cuentas <b>activas hoy</b>, ubicadas según cuándo
-          arrancó cada una y a precios actuales. Muestra el crecimiento de la cartera;
-          no descuenta cuentas que se dieron de baja en el pasado.
+          MRR reconstruido a precios de hoy, ubicando cada cuenta entre su fecha de
+          alta y de baja. Incluye las cuentas que se dieron de baja (con fecha de fin
+          registrada), así que la caída del churn se ve reflejada. Las bajas viejas sin
+          fecha de fin cargada no se descuentan.
         </p>
       </div>
 

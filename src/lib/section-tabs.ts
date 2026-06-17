@@ -22,6 +22,7 @@ export function equipoTabs(rol: UserRole): SectionTab[] {
 export const coordinacionTabs: SectionTab[] = [
   { href: "/coordinacion", label: "Panel" },
   { href: "/coordinacion/riesgo", label: "Riesgo" },
+  { href: "/coordinacion/comercial", label: "Comercial" },
   { href: "/coordinacion/sueldos", label: "Sueldos" },
   { href: "/coordinacion/jornadas", label: "Jornadas" },
 ];

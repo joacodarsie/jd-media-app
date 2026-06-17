@@ -8,21 +8,10 @@
  * cargado a mano (la sección orgánica sigue editable para clientes sin IG conectado).
  */
 import { createAdmin } from "@/lib/supabase/admin";
+import { monthRange } from "@/lib/finanzas";
 import type { IgMedia } from "@/lib/meta/instagram";
 
 type Admin = ReturnType<typeof createAdmin>;
-
-/**
- * Rango del mes como [primer día, primer día del mes siguiente) — exclusivo.
- * Evita armar fechas inválidas tipo "2026-06-31" (junio tiene 30 días), que
- * hacen fallar la consulta en Postgres (columna date).
- */
-function monthRange(mes: string): { start: string; endExclusive: string } {
-  const [y, m] = mes.split("-").map(Number);
-  const ny = m === 12 ? y + 1 : y;
-  const nm = m === 12 ? 1 : m + 1;
-  return { start: `${mes}-01`, endExclusive: `${ny}-${String(nm).padStart(2, "0")}-01` };
-}
 
 export interface IgMonthly {
   connected: boolean; // el cliente tiene cuenta de IG conectada

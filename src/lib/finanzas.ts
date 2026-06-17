@@ -17,6 +17,15 @@ export function prevPeriod(p: string): string {
   return `${y}-${String(m - 1).padStart(2, "0")}`;
 }
 
+/**
+ * Rango de un mes como [primer día, primer día del mes siguiente) — exclusivo.
+ * Evita armar fechas inválidas tipo "2026-06-31" (junio tiene 30 días) que hacen
+ * fallar las consultas a columnas `date` en Postgres. `mes` = YYYY-MM.
+ */
+export function monthRange(mes: string): { start: string; endExclusive: string } {
+  return { start: `${mes}-01`, endExclusive: `${nextPeriod(mes)}-01` };
+}
+
 export function periodLabel(p: string): string {
   const [y, m] = p.split("-").map(Number);
   const date = new Date(y, m - 1, 1);

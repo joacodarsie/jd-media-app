@@ -23,6 +23,7 @@ import { PrintButton } from "@/components/print-button";
 import { ReportMonthPicker } from "@/components/report-month-picker";
 import { MonthlyReportEditor } from "@/components/monthly-report-editor";
 import { igMonthlyForReport, paidMonthlyForReport, igStoriesForReport } from "@/lib/social/report";
+import { prevPeriod } from "@/lib/finanzas";
 import { ResultsReadingButton } from "@/components/results-reading-button";
 import type { MonthlyMetrics } from "@/app/reporte/cliente/[id]/actions";
 
@@ -386,6 +387,18 @@ export default async function ReporteClientePage({
   // Resultados de Instagram del mes (automático, desde ig_snapshots).
   const ig = await igMonthlyForReport(admin, params.id, mes);
   const igStories = await igStoriesForReport(admin, params.id, mes);
+  // Mes anterior, para la comparativa ("+340 seguidores vs mes pasado").
+  const igPrev = await igMonthlyForReport(admin, params.id, prevPeriod(mes));
+  const delta = (cur: number | null, prev: number | null): number | null =>
+    cur != null && prev != null ? cur - prev : null;
+  const igDelta = igPrev.hasData
+    ? {
+        followers: delta(ig.followersEnd, igPrev.followersEnd),
+        reach: delta(ig.reach, igPrev.reach),
+        interactions: delta(ig.interactions, igPrev.interactions),
+        profileViews: delta(ig.profileViews, igPrev.profileViews),
+      }
+    : { followers: null, reach: null, interactions: null, profileViews: null };
   // Orgánico: preferimos el dato automático de IG; si no hay, caemos al manual.
   const org = {
     followersEnd: ig.followersEnd,
@@ -594,11 +607,11 @@ export default async function ReporteClientePage({
               )}
             </h2>
             <div className="grid grid-cols-2 gap-3 rounded-lg border border-zinc-200 p-4 md:grid-cols-5">
-              <MetricBox label="Seguidores" value={org.followersEnd} />
+              <MetricBox label="Seguidores" value={org.followersEnd} delta={igDelta.followers} />
               <MetricBox label="Seguidores nuevos" value={org.seguidores_nuevos} prefix="+" />
-              <MetricBox label="Alcance" value={org.reach} />
-              <MetricBox label="Interacciones" value={org.interacciones} />
-              <MetricBox label="Visitas al perfil" value={org.visitas_perfil} />
+              <MetricBox label="Alcance" value={org.reach} delta={igDelta.reach} />
+              <MetricBox label="Interacciones" value={org.interacciones} delta={igDelta.interactions} />
+              <MetricBox label="Visitas al perfil" value={org.visitas_perfil} delta={igDelta.profileViews} />
             </div>
             {igAuto && (
               <p className="mt-1.5 text-[10px] text-zinc-400">
@@ -1113,12 +1126,15 @@ function MetricBox({
   prefix,
   suffix,
   decimals = 0,
+  delta,
 }: {
   label: string;
   value: number | null | undefined;
   prefix?: string;
   suffix?: string;
   decimals?: number;
+  /** Variación vs el mes anterior (null = no hay con qué comparar). */
+  delta?: number | null;
 }) {
   const display =
     value == null
@@ -1127,6 +1143,7 @@ function MetricBox({
           minimumFractionDigits: decimals,
           maximumFractionDigits: decimals,
         })}${suffix ?? ""}`;
+  const showDelta = delta != null && delta !== 0;
   return (
     <div>
       <div className="text-xl font-bold leading-none tabular-nums text-zinc-900">
@@ -1135,6 +1152,20 @@ function MetricBox({
       <div className="mt-1 text-[10px] uppercase tracking-wider text-zinc-500">
         {label}
       </div>
+      {showDelta && (
+        <div
+          className={`mt-0.5 text-[10px] font-semibold tabular-nums ${
+            delta! > 0 ? "text-emerald-600" : "text-rose-600"
+          }`}
+        >
+          {delta! > 0 ? "▲ +" : "▼ "}
+          {Number(delta).toLocaleString("es-AR", {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals,
+          })}{" "}
+          <span className="font-normal text-zinc-400">vs mes ant.</span>
+        </div>
+      )}
     </div>
   );
 }

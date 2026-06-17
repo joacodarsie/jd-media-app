@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-06-16 — Comparativa mes a mes en el reporte
+
+- 📈 **Los Resultados de Instagram ahora muestran la evolución** vs el mes anterior: al lado de seguidores, alcance, interacciones y visitas aparece la variación (ej: **▲ +340 vs mes ant.** en verde, o en rojo si bajó).
+- Así el cliente ve de un vistazo si la cuenta **viene creciendo**, no solo el número del mes.
+- Aparece automáticamente cuando hay datos de dos meses para comparar (se empieza a ver a partir del segundo mes con la cuenta conectada).
+
 ## 2026-06-16 — Riesgo de cuentas: detectá churn antes de que pase
 
 - 🛡️ **Nueva pestaña Coordinación → "Riesgo"**: ordena los clientes por **riesgo de irse**, cruzando señales reales — **cobros vencidos**, **producción atrasada** vs el pack, **caída de seguidores** y **cambios pedidos** del mes. Cada cuenta muestra sus señales concretas y un nivel (Alto / Medio / OK).

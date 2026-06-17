@@ -1,3 +1,5 @@
+import { withSentryConfig } from "@sentry/nextjs";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -6,6 +8,9 @@ const nextConfig = {
   // lucide-react es la que mas pesa: importamos solo iconos pero el bundler
   // incluia todo si no lo declaramos aqui.
   experimental: {
+    // Necesario en Next 14.2 para que corra src/instrumentation.ts (carga Sentry).
+    instrumentationHook: true,
+
     optimizePackageImports: [
       "lucide-react",
       "date-fns",
@@ -51,4 +56,13 @@ const nextConfig = {
   poweredByHeader: false,
 };
 
-export default nextConfig;
+// Envoltura de Sentry. Por ahora SIN subida de source maps (no depende de tokens,
+// así el build nunca falla por eso). Para activar source maps legibles más
+// adelante: setear SENTRY_AUTH_TOKEN + SENTRY_ORG + SENTRY_PROJECT y quitar
+// `sourcemaps.disable`.
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  sourcemaps: { disable: true },
+  // Evita que el SDK toque rutas con adblockers (mismo aprendizaje que /pauta):
+  // el tunnel se deja sin setear a propósito.
+});

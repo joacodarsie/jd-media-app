@@ -424,6 +424,15 @@ export default async function FinanzasPage() {
             Ingresos, costos y margen mes a mes (últimos 12).
           </div>
         </Link>
+        <Link
+          href="/finanzas/proyeccion"
+          className="rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40"
+        >
+          <div className="font-semibold">Proyección →</div>
+          <div className="text-xs text-muted-foreground">
+            MRR, LTV y caja proyectada de los próximos meses.
+          </div>
+        </Link>
       </div>
     </div>
   );

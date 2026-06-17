@@ -316,3 +316,132 @@ export async function generateMonthlyPayments(periodo: string) {
   invalidate();
   return { ok: true, created: data as number };
 }
+
+// ===========================
+// Carga rápida (widget flotante, solo admin)
+// ===========================
+
+export interface QuickPendingItem {
+  id: string;
+  concepto: string;
+  monto: number;
+  moneda: string;
+  fecha: string | null; // vencimiento (cobros) / programada (pagos)
+}
+
+/** Facturas pendientes de cobro de un cliente, para saldar en un toque. */
+export async function quickClientPending(
+  cliente_id: string
+): Promise<QuickPendingItem[]> {
+  const { supabase } = await ctx();
+  const { data } = await supabase
+    .from("client_invoices")
+    .select("id, concepto, monto, moneda, fecha_vencimiento")
+    .eq("cliente_id", cliente_id)
+    .is("fecha_cobro", null)
+    .order("fecha_vencimiento", { ascending: true, nullsFirst: false });
+  return (data ?? []).map((i) => ({
+    id: i.id as string,
+    concepto: i.concepto as string,
+    monto: Number(i.monto),
+    moneda: i.moneda as string,
+    fecha: (i.fecha_vencimiento as string | null) ?? null,
+  }));
+}
+
+/** Pagos pendientes a una persona del equipo, para saldar en un toque. */
+export async function quickUserPending(
+  user_id: string
+): Promise<QuickPendingItem[]> {
+  const { supabase } = await ctx();
+  const { data } = await supabase
+    .from("team_payments")
+    .select("id, concepto, monto, moneda, fecha_programada")
+    .eq("user_id", user_id)
+    .is("fecha_pago", null)
+    .order("fecha_programada", { ascending: true });
+  return (data ?? []).map((p) => ({
+    id: p.id as string,
+    concepto: p.concepto as string,
+    monto: Number(p.monto),
+    moneda: p.moneda as string,
+    fecha: (p.fecha_programada as string | null) ?? null,
+  }));
+}
+
+/** Registra un cobro nuevo ya cobrado (entra al cashflow del día). */
+export async function quickIncome(input: {
+  cliente_id: string;
+  monto: number;
+  moneda: string;
+  concepto: string;
+  fecha: string;
+}) {
+  const { supabase, userId } = await ctx();
+  if (!Number.isFinite(input.monto) || input.monto <= 0)
+    return { error: "Monto inválido." };
+  const { error } = await supabase.from("client_invoices").insert({
+    cliente_id: input.cliente_id,
+    periodo: input.fecha.slice(0, 7),
+    concepto: input.concepto.trim() || "Cobro",
+    monto: input.monto,
+    moneda: input.moneda || "ARS",
+    fecha_emision: input.fecha,
+    fecha_cobro: input.fecha, // ya cobrado
+    creado_por_id: userId,
+  });
+  if (error) return { error: error.message };
+  invalidate();
+  return { ok: true };
+}
+
+/** Registra un pago nuevo al equipo, ya pagado. */
+export async function quickTeamPay(input: {
+  user_id: string;
+  monto: number;
+  moneda: string;
+  concepto: string;
+  fecha: string;
+}) {
+  const { supabase, userId } = await ctx();
+  if (!Number.isFinite(input.monto) || input.monto <= 0)
+    return { error: "Monto inválido." };
+  const { error } = await supabase.from("team_payments").insert({
+    user_id: input.user_id,
+    periodo: input.fecha.slice(0, 7),
+    concepto: input.concepto.trim() || "Pago",
+    monto: input.monto,
+    moneda: input.moneda || "ARS",
+    fecha_programada: input.fecha,
+    fecha_pago: input.fecha, // ya pagado
+    creado_por_id: userId,
+  });
+  if (error) return { error: error.message };
+  invalidate();
+  return { ok: true };
+}
+
+/** Registra un gasto nuevo, ya pagado. */
+export async function quickExpensePaid(input: {
+  categoria: ExpenseCategory;
+  proveedor?: string | null;
+  concepto: string;
+  monto: number;
+  moneda: string;
+  fecha: string;
+  cliente_id?: string | null;
+}) {
+  if (!Number.isFinite(input.monto) || input.monto <= 0)
+    return { error: "Monto inválido." };
+  return createExpense({
+    categoria: input.categoria,
+    proveedor: input.proveedor ?? null,
+    concepto: input.concepto.trim() || "Gasto",
+    monto: input.monto,
+    moneda: input.moneda || "ARS",
+    periodo: input.fecha.slice(0, 7),
+    fecha_programada: input.fecha,
+    fecha_pago: input.fecha, // ya pagado
+    cliente_id: input.cliente_id ?? null,
+  });
+}

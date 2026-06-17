@@ -4,6 +4,8 @@ import type { Notification } from "@/lib/types";
 import { AppShell } from "@/components/app-shell";
 import { NotificationBell } from "@/components/notification-bell";
 import { AIChatLauncher } from "@/components/ai-chat-launcher";
+import { QuickCashLauncher } from "@/components/quick-cash-launcher";
+import { getActiveClients, getActiveUsers } from "@/lib/cache";
 import { RealtimeBadgesSync } from "@/components/realtime-badges-sync";
 import { WelcomeTour } from "@/components/welcome-tour";
 import type { QuickLinkRow } from "@/components/quick-links-manager";
@@ -76,6 +78,12 @@ export default async function AppLayout({
     !!process.env.JDMEDIA_LIVE_OWNER_EMAIL &&
     user.email === process.env.JDMEDIA_LIVE_OWNER_EMAIL;
 
+  // Carga rápida de plata: widget flotante solo para admin.
+  const isAdmin = user.rol === "admin";
+  const [quickClients, quickUsers] = isAdmin
+    ? await Promise.all([getActiveClients(), getActiveUsers()])
+    : [[], []];
+
   return (
     <AppShell
       user={user}
@@ -88,6 +96,12 @@ export default async function AppLayout({
       <RealtimeBadgesSync userId={user.id} />
       {children}
       <AIChatLauncher />
+      {isAdmin && (
+        <QuickCashLauncher
+          clients={quickClients.map((c) => ({ id: c.id, nombre: c.nombre }))}
+          users={quickUsers.map((u) => ({ id: u.id, nombre: u.nombre }))}
+        />
+      )}
       <WelcomeTour userRol={user.rol} userName={user.nombre} />
     </AppShell>
   );

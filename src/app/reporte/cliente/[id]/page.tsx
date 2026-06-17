@@ -22,7 +22,7 @@ import { Markdown } from "@/components/markdown";
 import { PrintButton } from "@/components/print-button";
 import { ReportMonthPicker } from "@/components/report-month-picker";
 import { MonthlyReportEditor } from "@/components/monthly-report-editor";
-import { igMonthlyForReport, paidMonthlyForReport } from "@/lib/social/report";
+import { igMonthlyForReport, paidMonthlyForReport, igStoriesForReport } from "@/lib/social/report";
 import { ResultsReadingButton } from "@/components/results-reading-button";
 import type { MonthlyMetrics } from "@/app/reporte/cliente/[id]/actions";
 
@@ -385,6 +385,7 @@ export default async function ReporteClientePage({
 
   // Resultados de Instagram del mes (automático, desde ig_snapshots).
   const ig = await igMonthlyForReport(admin, params.id, mes);
+  const igStories = await igStoriesForReport(admin, params.id, mes);
   // Orgánico: preferimos el dato automático de IG; si no hay, caemos al manual.
   const org = {
     followersEnd: ig.followersEnd,
@@ -663,6 +664,48 @@ export default async function ReporteClientePage({
                     </div>
                   </div>
                 </a>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Historias publicadas este mes (capturadas a diario) */}
+        {igStories.count > 0 && (
+          <section className="mt-8 break-inside-avoid">
+            <h2 className="mb-1 flex items-center gap-2 text-base font-semibold text-zinc-900">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              Historias publicadas ({igStories.count})
+            </h2>
+            <p className="mb-3 text-xs text-zinc-500">
+              {[
+                igStories.reach != null ? `${igStories.reach.toLocaleString("es-AR")} de alcance` : null,
+                igStories.replies != null ? `${igStories.replies.toLocaleString("es-AR")} respuestas` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ") || "Sumadas a lo largo del mes."}
+            </p>
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+              {igStories.stories.map((s) => (
+                <div key={s.story_id} className="overflow-hidden rounded-lg border border-zinc-200">
+                  <div className="relative aspect-[9/16] bg-zinc-100">
+                    {s.thumbnail_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={s.thumbnail_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-[10px] text-zinc-400">
+                        Historia
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-0.5 p-1.5 text-[10px] text-zinc-500">
+                    {s.posted_at && (
+                      <div className="tabular-nums">
+                        {new Date(s.posted_at).toLocaleDateString("es-AR", { day: "2-digit", month: "short" })}
+                      </div>
+                    )}
+                    {s.reach != null && s.reach > 0 && <div>{s.reach.toLocaleString("es-AR")} alcance</div>}
+                  </div>
+                </div>
               ))}
             </div>
           </section>

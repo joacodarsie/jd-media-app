@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-06-16 — Historias de Instagram en el reporte
+
+- 🟣 **Las historias ahora también figuran en el reporte**: la app captura cada día las historias activas de Instagram (con su alcance y respuestas) y las va acumulando. En el reporte aparece la sección **"Historias publicadas"** con el total del mes, el alcance sumado, las respuestas y una grilla con las miniaturas.
+- ⏱️ Como Instagram solo deja ver las historias de las últimas 24 hs, esto **acumula hacia adelante**: empieza a juntar historias desde ahora (las de antes no se pueden recuperar).
+
 ## 2026-06-16 — El reporte muestra todo el contenido publicado en Instagram
 
 - 🖼️ **Nueva sección "Contenido publicado en Instagram"** en el reporte mensual: trae **automáticamente** todos los posteos, reels y carruseles que se subieron a Instagram en el mes, con miniatura, fecha, alcance y likes. Arriba muestra el conteo (ej: "8 reels · 5 posts · 2 carruseles").

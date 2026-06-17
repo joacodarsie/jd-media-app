@@ -58,6 +58,61 @@ const EMPTY: IgMonthly = {
   media: [],
 };
 
+export interface IgStoryLite {
+  story_id: string;
+  media_type: string | null;
+  permalink: string | null;
+  thumbnail_url: string | null;
+  posted_at: string | null;
+  reach: number | null;
+  replies: number | null;
+}
+
+export interface IgStoriesMonthly {
+  count: number;
+  reach: number | null; // suma de alcance de las historias del mes
+  replies: number | null; // suma de respuestas
+  stories: IgStoryLite[];
+}
+
+/** Historias de IG capturadas en el mes. `mes` = YYYY-MM. */
+export async function igStoriesForReport(
+  admin: Admin,
+  clienteId: string,
+  mes: string
+): Promise<IgStoriesMonthly> {
+  const { start, endExclusive } = monthRange(mes);
+  const { data } = await admin
+    .from("ig_stories")
+    .select("story_id, media_type, permalink, thumbnail_url, posted_at, reach, replies")
+    .eq("cliente_id", clienteId)
+    .gte("posted_at", start)
+    .lt("posted_at", endExclusive)
+    .order("posted_at", { ascending: false });
+  const stories = (data ?? []) as IgStoryLite[];
+  if (stories.length === 0) return { count: 0, reach: null, replies: null, stories: [] };
+  let reach = 0;
+  let replies = 0;
+  let hasReach = false;
+  let hasReplies = false;
+  for (const s of stories) {
+    if (s.reach != null) {
+      reach += Number(s.reach);
+      hasReach = true;
+    }
+    if (s.replies != null) {
+      replies += Number(s.replies);
+      hasReplies = true;
+    }
+  }
+  return {
+    count: stories.length,
+    reach: hasReach ? reach : null,
+    replies: hasReplies ? replies : null,
+    stories,
+  };
+}
+
 export interface PaidMonthly {
   hasData: boolean;
   moneda: string;

@@ -7,7 +7,7 @@
  * seguidores se reconstruye a partir del histórico de snapshots.
  */
 import { createAdmin } from "@/lib/supabase/admin";
-import { fetchIgResults, metaConfigured } from "@/lib/meta/instagram";
+import { fetchIgResults, fetchIgStories, metaConfigured } from "@/lib/meta/instagram";
 
 type Admin = ReturnType<typeof createAdmin>;
 
@@ -63,6 +63,31 @@ export async function syncClientInstagram(
   const cachedUser = (client as { ig_username?: string | null }).ig_username ?? null;
   if (r.profile.username && r.profile.username !== cachedUser) {
     await admin.from("clients").update({ ig_username: r.profile.username }).eq("id", clienteId);
+  }
+
+  // Historias activas (24h): se acumulan en su propia tabla, dedupe por story_id.
+  // Best-effort: si falla no rompe el snapshot.
+  try {
+    const stories = await fetchIgStories(igUserId);
+    if (stories.length > 0) {
+      await admin.from("ig_stories").upsert(
+        stories.map((s) => ({
+          cliente_id: clienteId,
+          story_id: s.id,
+          media_type: s.media_type,
+          permalink: s.permalink,
+          thumbnail_url: s.thumbnail_url,
+          media_url: s.media_url,
+          posted_at: s.timestamp,
+          reach: s.reach,
+          replies: s.replies,
+          updated_at: new Date().toISOString(),
+        })),
+        { onConflict: "cliente_id,story_id" }
+      );
+    }
+  } catch {
+    /* historias best-effort */
   }
 
   return { ok: true, followers: r.profile.followers, reach: r.day.reach };

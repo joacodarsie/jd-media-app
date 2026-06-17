@@ -274,6 +274,58 @@ export async function fetchIgMediaRange(
   return out;
 }
 
+export interface IgStory {
+  id: string;
+  media_type: string;
+  permalink: string | null;
+  thumbnail_url: string | null;
+  media_url: string | null;
+  timestamp: string | null;
+  reach: number | null;
+  replies: number | null;
+}
+
+/**
+ * Trae las historias ACTIVAS (últimas 24h) con su alcance y respuestas. Las
+ * insights de cada historia se piden best-effort (pueden no estar disponibles).
+ * Se llama a diario desde el sync para ir acumulando (la API no da las viejas).
+ */
+export async function fetchIgStories(igUserId: string): Promise<IgStory[]> {
+  const res = await graphGetSoft<{
+    data: {
+      id: string;
+      media_type?: string;
+      permalink?: string;
+      thumbnail_url?: string;
+      media_url?: string;
+      timestamp?: string;
+    }[];
+  }>(`${igUserId}/stories`, {
+    fields: "id,media_type,permalink,thumbnail_url,media_url,timestamp",
+    limit: "50",
+  });
+  if (!res) return [];
+
+  const out: IgStory[] = [];
+  for (const s of res.data ?? []) {
+    const ins = await graphGetSoft<{ data: RawInsightItem[] }>(`${s.id}/insights`, {
+      metric: "reach,replies",
+    });
+    const data = ins?.data ?? null;
+    out.push({
+      id: s.id,
+      media_type: s.media_type ?? "IMAGE",
+      permalink: s.permalink ?? null,
+      thumbnail_url: s.thumbnail_url ?? s.media_url ?? null,
+      media_url: s.media_url ?? null,
+      timestamp: s.timestamp ?? null,
+      reach: data ? readInsight(data, "reach") : null,
+      replies: data ? readInsight(data, "replies") : null,
+    });
+  }
+  return out;
+}
+
 /** Trae el paquete completo de resultados de IG de un cliente (para el sync). */
 export async function fetchIgResults(igUserId: string): Promise<IgResults> {
   const now = new Date();

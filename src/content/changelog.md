@@ -2,6 +2,13 @@
 title: Novedades
 ---
 
+## 2026-06-16 — Alertas de cuentas: te avisamos cuando algo se cae
+
+- 🔔 **La app ahora te avisa solo cuando una cuenta da señales malas**, sin que tengas que revisar una por una:
+  - 📉 **Instagram perdiendo seguidores** en la semana (cuando la baja es significativa).
+  - 💸 **Pauta gastando sin conversiones** los últimos 3 días (para revisar campañas o confirmar el objetivo).
+- Las alertas le llegan por notificación a Dirección y al responsable de la cuenta (CM o media buyer), con link directo a los Resultados del cliente. Sin spam: una por tema por día.
+
 ## 2026-06-16 — Comparativa mes a mes en el reporte
 
 - 📈 **Los Resultados de Instagram ahora muestran la evolución** vs el mes anterior: al lado de seguidores, alcance, interacciones y visitas aparece la variación (ej: **▲ +340 vs mes ant.** en verde, o en rojo si bajó).

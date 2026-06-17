@@ -10,6 +10,7 @@ import {
 } from "@/lib/director/monthly";
 import { runPaidMediaDaily } from "@/lib/paid-media/sync";
 import { runInstagramDaily } from "@/lib/social/sync";
+import { runAccountAlerts } from "@/lib/social/alerts";
 import { checkMetaToken } from "@/lib/meta/health";
 
 export const dynamic = "force-dynamic";
@@ -169,6 +170,15 @@ export async function GET(req: NextRequest) {
     metaToken = { error: e instanceof Error ? e.message : String(e) };
   }
 
+  // Alertas de cuentas: IG perdiendo seguidores, pauta sin conversiones.
+  // Va después de los syncs (usa los snapshots recién guardados).
+  let accountAlerts: unknown = null;
+  try {
+    accountAlerts = await runAccountAlerts(admin);
+  } catch (e) {
+    accountAlerts = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   return NextResponse.json({
     ok: true,
     users: ids.length,
@@ -181,5 +191,6 @@ export async function GET(req: NextRequest) {
     paid_media: paidMedia,
     instagram,
     meta_token: metaToken,
+    account_alerts: accountAlerts,
   });
 }

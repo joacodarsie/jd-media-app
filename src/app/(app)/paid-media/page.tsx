@@ -1,6 +1,7 @@
 import { requireRole } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { metaConfigured } from "@/lib/meta/ads";
+import { MetaTokenStatus } from "@/components/meta-token-status";
 import {
   PaidMediaPanel,
   type PaidClient,
@@ -27,6 +28,7 @@ export default async function PaidMediaPage() {
     return (
       <div className="space-y-5">
         <Header configured={metaConfigured()} />
+        <MetaTokenStatus />
         <p className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
           No hay clientes con servicio de pauta activo.
         </p>
@@ -112,6 +114,7 @@ export default async function PaidMediaPage() {
   return (
     <div className="space-y-5">
       <Header configured={metaConfigured()} />
+      <MetaTokenStatus />
       <PaidMediaPanel clients={paidClients} metaConfigured={metaConfigured()} />
     </div>
   );

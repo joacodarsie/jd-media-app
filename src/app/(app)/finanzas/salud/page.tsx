@@ -140,6 +140,8 @@ export default async function SaludAgenciaPage({
   const totPct = tot.mrr > 0 ? (tot.margen / tot.mrr) * 100 : 0;
   const enRojo = rows.filter((r) => r.margen < 0).length;
   const enRiesgo = rows.filter((r) => r.margen >= 0 && r.margenPct != null && r.margenPct < 30).length;
+  const arpa = rows.length > 0 ? tot.mrr / rows.length : 0; // ingreso promedio por cuenta
+  const proyAnual = tot.mrr * 12; // proyección de ingreso anual al ritmo actual
 
   const esMesActual = period === currentPeriod();
 
@@ -192,9 +194,29 @@ export default async function SaludAgenciaPage({
         </div>
       )}
 
-      {/* KPIs */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi label="Ingreso mensual (MRR)" value={tot.mrr} icon={TrendingUp} color="emerald" />
+      {/* KPIs — vista de agencia */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Kpi
+          label="Ingreso mensual (MRR)"
+          value={tot.mrr}
+          icon={TrendingUp}
+          color="emerald"
+          subtitle={`${rows.length} cuentas activas`}
+        />
+        <Kpi
+          label="Ingreso promedio / cuenta"
+          value={arpa}
+          icon={Wallet}
+          color="primary"
+          subtitle="ARPA"
+        />
+        <Kpi
+          label="Proyección anual"
+          value={proyAnual}
+          icon={TrendingUp}
+          color="emerald"
+          subtitle="al ritmo de MRR actual"
+        />
         <Kpi label="Costo de producción" value={tot.costo} icon={TrendingDown} color="amber" />
         <Kpi
           label="Margen real"

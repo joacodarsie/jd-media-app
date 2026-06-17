@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-06-16 — Vista de agencia + aviso si se cae la conexión con Meta
+
+- 📈 **Salud de la agencia, más completa**: ahora arriba muestra **MRR**, **ingreso promedio por cuenta (ARPA)**, **proyección anual**, costo de producción, margen real y cuentas a revisar — la foto de "cómo viene el negocio" de un vistazo.
+- 🛡️ **Aviso automático si se cae Meta**: la app ahora chequea todos los días el token de Meta (el que hace andar Paid Media y Resultados). Si dejó de funcionar, le **faltan permisos** o está **por vencer**, te avisa por notificación y lo muestra con un cartel en la sección Paid Media. Antes, si se caía, te enterabas de casualidad.
+
 ## 2026-06-16 — Salud de la agencia: margen REAL por cliente
 
 - 💰 **Nueva sección Finanzas → "Salud de la agencia"**: muestra el margen **real** de cada cliente = ingreso mensual contratado **menos el costo de producción**, calculado automáticamente con las **piezas publicadas del mes × tus tarifas internas** (CM por pack + diseño/edición por pieza + media buyer si tiene pauta).

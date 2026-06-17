@@ -10,6 +10,7 @@ import {
 } from "@/lib/director/monthly";
 import { runPaidMediaDaily } from "@/lib/paid-media/sync";
 import { runInstagramDaily } from "@/lib/social/sync";
+import { checkMetaToken } from "@/lib/meta/health";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -123,6 +124,51 @@ export async function GET(req: NextRequest) {
     instagram = { error: e instanceof Error ? e.message : String(e) };
   }
 
+  // Salud del token de Meta (punto único de falla de Paid Media + Resultados).
+  // Si está caído o vence pronto, avisamos a los admins (deduplicado 20h).
+  let metaToken: unknown = null;
+  try {
+    const status = await checkMetaToken();
+    metaToken = status;
+    const problema =
+      status.configured &&
+      (!status.ok || (status.daysToExpiry != null && status.daysToExpiry <= 7));
+    if (problema) {
+      const msg = !status.ok
+        ? `⚠️ Meta: el token dejó de funcionar (${status.error ?? "error"}). Regeneralo, si no Paid Media y Resultados no traen datos.`
+        : `⚠️ Meta: el token vence en ${status.daysToExpiry} días. Conviene regenerarlo pronto.`;
+      const { data: adminsRaw } = await admin
+        .from("users")
+        .select("id")
+        .eq("activo", true)
+        .eq("rol", "admin");
+      const adminIds = ((adminsRaw ?? []) as { id: string }[]).map((a) => a.id);
+      if (adminIds.length > 0) {
+        const since = new Date(Date.now() - 20 * 3600 * 1000).toISOString();
+        const { data: existing } = await admin
+          .from("notifications")
+          .select("user_id")
+          .like("mensaje", "⚠️ Meta:%")
+          .gte("created_at", since);
+        const already = new Set(
+          ((existing ?? []) as { user_id: string }[]).map((n) => n.user_id)
+        );
+        const rows = adminIds
+          .filter((id) => !already.has(id))
+          .map((id) => ({
+            user_id: id,
+            tipo: "recordatorio" as const,
+            mensaje: msg,
+            leida: false,
+            link: "/paid-media",
+          }));
+        if (rows.length > 0) await admin.from("notifications").insert(rows);
+      }
+    }
+  } catch (e) {
+    metaToken = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   return NextResponse.json({
     ok: true,
     users: ids.length,
@@ -134,5 +180,6 @@ export async function GET(req: NextRequest) {
     month_start: monthStart,
     paid_media: paidMedia,
     instagram,
+    meta_token: metaToken,
   });
 }

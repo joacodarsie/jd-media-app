@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -11,10 +11,17 @@ import {
   ArrowUpCircle,
   Check,
   Plus,
+  Search,
+  ChevronsUpDown,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -48,6 +55,102 @@ function fmt(n: number, moneda: string) {
   return `${moneda} ${Math.round(n).toLocaleString("es-AR")}`;
 }
 
+/** Selector con búsqueda (combobox) para listas que pueden crecer. */
+function Combo({
+  items,
+  value,
+  onChange,
+  placeholder,
+  clearable,
+}: {
+  items: Mini[];
+  value: string;
+  onChange: (id: string) => void;
+  placeholder: string;
+  clearable?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const selected = items.find((i) => i.id === value);
+  const filtered = useMemo(() => {
+    const qq = q.trim().toLowerCase();
+    if (!qq) return items;
+    return items.filter((i) => i.nombre.toLowerCase().includes(qq));
+  }, [items, q]);
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) setQ("");
+      }}
+    >
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="flex h-9 w-full items-center justify-between gap-2 rounded-md border bg-transparent px-3 text-sm"
+        >
+          <span className={cn("truncate", !selected && "text-muted-foreground")}>
+            {selected ? selected.nombre : placeholder}
+          </span>
+          <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-[--radix-popover-trigger-width] p-0"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <div className="flex items-center gap-2 border-b px-3 py-2">
+          <Search className="h-3.5 w-3.5 text-muted-foreground" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar…"
+            autoFocus
+            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          />
+        </div>
+        <div className="max-h-56 overflow-y-auto py-1">
+          {clearable && (
+            <button
+              type="button"
+              onClick={() => {
+                onChange("");
+                setOpen(false);
+              }}
+              className="block w-full px-3 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted/50"
+            >
+              Sin cliente
+            </button>
+          )}
+          {filtered.length === 0 ? (
+            <div className="px-3 py-4 text-center text-xs text-muted-foreground">
+              Sin coincidencias.
+            </div>
+          ) : (
+            filtered.map((i) => (
+              <button
+                key={i.id}
+                type="button"
+                onClick={() => {
+                  onChange(i.id);
+                  setOpen(false);
+                }}
+                className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-muted/50"
+              >
+                <span className="truncate">{i.nombre}</span>
+                {i.id === value && <Check className="h-3.5 w-3.5 text-emerald-600" />}
+              </button>
+            ))
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function QuickCashLauncher({
   clients,
   users,
@@ -77,6 +180,7 @@ export function QuickCashLauncher({
   // Solo gasto
   const [categoria, setCategoria] = useState<ExpenseCategory>("plataformas");
   const [proveedor, setProveedor] = useState("");
+  const [gastoClienteId, setGastoClienteId] = useState(""); // imputar a cliente (opcional)
 
   // Cerrar al clickear afuera / Esc
   useEffect(() => {
@@ -124,6 +228,7 @@ export function QuickCashLauncher({
     setMonto("");
     setConcepto("");
     setProveedor("");
+    setGastoClienteId("");
     setFecha(today());
   }
 
@@ -205,7 +310,7 @@ export function QuickCashLauncher({
           monto: m,
           moneda,
           fecha,
-          cliente_id: null,
+          cliente_id: gastoClienteId || null,
         });
         if (res?.error) {
           toast.error(res.error);
@@ -305,35 +410,23 @@ export function QuickCashLauncher({
         {entrada && (
           <div>
             <Label className="text-xs">¿Quién te pagó?</Label>
-            <Select value={clienteId} onValueChange={setClienteId}>
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Elegí cliente" />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.nombre}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combo
+              items={clients}
+              value={clienteId}
+              onChange={setClienteId}
+              placeholder="Elegí cliente"
+            />
           </div>
         )}
         {!entrada && salida === "equipo" && (
           <div>
             <Label className="text-xs">¿A quién le pagaste?</Label>
-            <Select value={userId} onValueChange={setUserId}>
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Elegí persona" />
-              </SelectTrigger>
-              <SelectContent>
-                {users.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.nombre}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combo
+              items={users}
+              value={userId}
+              onChange={setUserId}
+              placeholder="Elegí persona"
+            />
           </div>
         )}
 
@@ -400,6 +493,21 @@ export function QuickCashLauncher({
                 placeholder="Ej: Notion, AFIP, Estudio contable"
                 className="h-9"
               />
+            </div>
+            <div>
+              <Label className="text-xs">Imputar a cliente (opcional)</Label>
+              <Combo
+                items={clients}
+                value={gastoClienteId}
+                onChange={setGastoClienteId}
+                placeholder="Sin cliente (gasto general)"
+                clearable
+              />
+              {gastoClienteId && (
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  Se descuenta de la rentabilidad de ese cliente.
+                </p>
+              )}
             </div>
           </div>
         )}

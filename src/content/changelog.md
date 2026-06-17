@@ -2,6 +2,14 @@
 title: Novedades
 ---
 
+## 2026-06-17 — Proyección financiera: MRR, LTV y caja a futuro
+
+- 🔮 **Nueva sección Finanzas → "Proyección"** que mira hacia adelante, no solo el mes actual:
+  - 📈 **MRR** (ingreso mensual recurrente) y cómo **creció la cartera** mes a mes.
+  - 👥 **Valor de cada cuenta**: antigüedad promedio y LTV estimado, más una tabla con el valor acumulado por cliente.
+  - 💵 **Proyección de caja a 3 meses**: lo que está por **cobrar** (facturas pendientes) contra lo que hay que **pagar** (equipo + gastos + renovación de suscripciones), con el **neto y el saldo acumulado** de cada mes.
+- La idea: anticipar los meses flojos y ver el negocio a futuro, no solo la foto de hoy.
+
 ## 2026-06-16 — Alertas de cuentas: te avisamos cuando algo se cae
 
 - 🔔 **La app ahora te avisa solo cuando una cuenta da señales malas**, sin que tengas que revisar una por una:

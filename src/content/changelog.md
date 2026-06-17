@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-06-16 — Salud de la agencia: margen REAL por cliente
+
+- 💰 **Nueva sección Finanzas → "Salud de la agencia"**: muestra el margen **real** de cada cliente = ingreso mensual contratado **menos el costo de producción**, calculado automáticamente con las **piezas publicadas del mes × tus tarifas internas** (CM por pack + diseño/edición por pieza + media buyer si tiene pauta).
+- 🚦 Marca en rojo las cuentas que dan pérdida y en ámbar las de margen bajo (< 30%), para decisiones tipo "¿esta cuenta conviene?".
+- 📅 Selector de mes para ver cualquier período cerrado.
+
 ## 2026-06-16 — Historias de Instagram en el reporte
 
 - 🟣 **Las historias ahora también figuran en el reporte**: la app captura cada día las historias activas de Instagram (con su alcance y respuestas) y las va acumulando. En el reporte aparece la sección **"Historias publicadas"** con el total del mes, el alcance sumado, las respuestas y una grilla con las miniaturas.

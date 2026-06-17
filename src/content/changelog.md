@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-06-16 — Riesgo de cuentas: detectá churn antes de que pase
+
+- 🛡️ **Nueva pestaña Coordinación → "Riesgo"**: ordena los clientes por **riesgo de irse**, cruzando señales reales — **cobros vencidos**, **producción atrasada** vs el pack, **caída de seguidores** y **cambios pedidos** del mes. Cada cuenta muestra sus señales concretas y un nivel (Alto / Medio / OK).
+- La idea: actuar **antes** de perder al cliente, no enterarte cuando ya se fue.
+
 ## 2026-06-16 — Vista de agencia + aviso si se cae la conexión con Meta
 
 - 📈 **Salud de la agencia, más completa**: ahora arriba muestra **MRR**, **ingreso promedio por cuenta (ARPA)**, **proyección anual**, costo de producción, margen real y cuentas a revisar — la foto de "cómo viene el negocio" de un vistazo.

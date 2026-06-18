@@ -4,7 +4,12 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { requireUser, isStaff } from "@/lib/auth";
-import { igMonthlyForReport, paidMonthlyForReport } from "@/lib/social/report";
+import {
+  igMonthlyForReport,
+  paidMonthlyForReport,
+  igStoriesForReport,
+  contentForReport,
+} from "@/lib/social/report";
 import { generateResultsReading as genReading } from "@/lib/social/insight";
 
 export interface MonthlyMetrics {
@@ -134,12 +139,14 @@ export async function generateResultsReading(clienteId: string, mes: string) {
   }
   const admin = createAdmin();
 
-  const [{ data: cli }, ig, paid] = await Promise.all([
+  const [{ data: cli }, ig, paid, historias, contenido] = await Promise.all([
     admin.from("clients").select("nombre").eq("id", clienteId).maybeSingle(),
     igMonthlyForReport(admin, clienteId, mes),
     paidMonthlyForReport(admin, clienteId, mes),
+    igStoriesForReport(admin, clienteId, mes),
+    contentForReport(admin, clienteId, mes),
   ]);
-  if (!ig.hasData && !paid.hasData) {
+  if (!ig.hasData && !paid.hasData && historias.count === 0) {
     return {
       error:
         "Todavía no hay datos automáticos de resultados este mes (conectá Instagram y/o la cuenta de pauta).",
@@ -166,6 +173,19 @@ export async function generateResultsReading(clienteId: string, mes: string) {
       impressions: paid.impressions,
       clicks: paid.clicks,
       ctr: paid.ctr,
+    },
+    contenido: {
+      total: contenido.total,
+      posts: contenido.posts,
+      reels: contenido.reels,
+      carruseles: contenido.carruseles,
+      historias: contenido.historias,
+      titulos: contenido.titulos,
+    },
+    historias: {
+      count: historias.count,
+      reach: historias.reach,
+      replies: historias.replies,
     },
   });
   if (!texto) return { error: "No se pudo generar la lectura. Reintentá en un rato." };

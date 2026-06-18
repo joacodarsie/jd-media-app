@@ -102,6 +102,49 @@ export async function igStoriesForReport(
   };
 }
 
+export interface ContentMonthly {
+  total: number;
+  posts: number;
+  reels: number;
+  carruseles: number;
+  historias: number;
+  titulos: string[]; // títulos representativos de lo publicado
+}
+
+/**
+ * Resumen del CONTENIDO publicado en el mes (lo que produjo el equipo), para
+ * darle contexto a la lectura con IA: cuántas piezas y de qué tipo. `mes` = YYYY-MM.
+ */
+export async function contentForReport(
+  admin: Admin,
+  clienteId: string,
+  mes: string
+): Promise<ContentMonthly> {
+  const { start, endExclusive } = monthRange(mes);
+  const { data } = await admin
+    .from("publications")
+    .select("tipo, titulo")
+    .eq("cliente_id", clienteId)
+    .eq("estado", "publicado")
+    .gte("fecha_publicacion", start)
+    .lt("fecha_publicacion", endExclusive)
+    .order("fecha_publicacion", { ascending: true });
+  const rows = (data ?? []) as { tipo: string; titulo: string | null }[];
+  let posts = 0,
+    reels = 0,
+    carruseles = 0,
+    historias = 0;
+  const titulos: string[] = [];
+  for (const r of rows) {
+    if (r.tipo === "reel" || r.tipo === "video") reels++;
+    else if (r.tipo === "carrusel") carruseles++;
+    else if (r.tipo === "historia") historias++;
+    else posts++; // post / otro
+    if (r.tipo !== "historia" && r.titulo && titulos.length < 10) titulos.push(r.titulo);
+  }
+  return { total: rows.length, posts, reels, carruseles, historias, titulos };
+}
+
 export interface PaidMonthly {
   hasData: boolean;
   moneda: string;

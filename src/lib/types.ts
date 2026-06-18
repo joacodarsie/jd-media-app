@@ -149,6 +149,7 @@ export interface Client {
   audiovisual_id: string | null;
   media_buyer_id: string | null;
   coordinador_id: string | null;
+  cerrado_por_id: string | null;
   created_at: string;
   updated_at: string;
 }

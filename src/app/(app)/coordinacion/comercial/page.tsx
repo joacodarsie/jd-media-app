@@ -34,68 +34,87 @@ export default async function ComercialPage() {
   const admin = createAdmin();
   const rates = await getExchangeRates();
 
-  const [{ data: usersRaw }, { data: leadsRaw }] = await Promise.all([
-    admin.from("users").select("id, nombre, rol").eq("rol", "comercial"),
-    admin
-      .from("leads")
-      .select("asignado_a_id, ganado_cliente_id")
-      .not("ganado_cliente_id", "is", null),
-  ]);
+  const [{ data: usersRaw }, { data: leadsRaw }, { data: clientsRaw }] =
+    await Promise.all([
+      admin.from("users").select("id, nombre, rol").eq("rol", "comercial"),
+      admin
+        .from("leads")
+        .select("asignado_a_id, ganado_cliente_id")
+        .not("ganado_cliente_id", "is", null),
+      admin
+        .from("clients")
+        .select("id, nombre, estado, cerrado_por_id")
+        .eq("es_interno", false),
+    ]);
 
-  const comerciales = (usersRaw ?? []) as { id: string; nombre: string }[];
+  const comercialUsers = (usersRaw ?? []) as { id: string; nombre: string }[];
   const leads = (leadsRaw ?? []) as {
     asignado_a_id: string | null;
     ganado_cliente_id: string | null;
   }[];
-
-  // cliente → comercial que lo cerró (primer lead ganado asignado a un comercial)
-  const comercialIds = new Set(comerciales.map((c) => c.id));
-  const clientToComercial = new Map<string, string>();
-  for (const l of leads) {
-    if (!l.ganado_cliente_id || !l.asignado_a_id) continue;
-    if (!comercialIds.has(l.asignado_a_id)) continue;
-    if (!clientToComercial.has(l.ganado_cliente_id)) {
-      clientToComercial.set(l.ganado_cliente_id, l.asignado_a_id);
-    }
-  }
-  const wonClientIds = [...clientToComercial.keys()];
-
-  // Datos de esos clientes + servicios + cobros, y pagos a los comerciales.
-  const [{ data: clientsRaw }, { data: svcRaw }, { data: invRaw }, { data: payRaw }] =
-    await Promise.all([
-      wonClientIds.length
-        ? admin.from("clients").select("id, nombre, estado").in("id", wonClientIds)
-        : Promise.resolve({ data: [] }),
-      wonClientIds.length
-        ? admin
-            .from("client_services")
-            .select("cliente_id, monto_mensual, moneda, activo, facturacion")
-            .in("cliente_id", wonClientIds)
-        : Promise.resolve({ data: [] }),
-      wonClientIds.length
-        ? admin
-            .from("client_invoices")
-            .select("cliente_id, monto, moneda, fecha_cobro")
-            .in("cliente_id", wonClientIds)
-            .not("fecha_cobro", "is", null)
-        : Promise.resolve({ data: [] }),
-      comerciales.length
-        ? admin
-            .from("team_payments")
-            .select("user_id, monto, moneda, fecha_pago")
-            .in(
-              "user_id",
-              comerciales.map((c) => c.id)
-            )
-            .not("fecha_pago", "is", null)
-        : Promise.resolve({ data: [] }),
-    ]);
-
   const clients = (clientsRaw ?? []) as {
     id: string;
     nombre: string;
     estado: string;
+    cerrado_por_id: string | null;
   }[];
+
+  // Atribución por lead ganado (fallback): cliente → comercial.
+  const leadAttribution = new Map<string, string>();
+  for (const l of leads) {
+    if (!l.ganado_cliente_id || !l.asignado_a_id) continue;
+    if (!leadAttribution.has(l.ganado_cliente_id)) {
+      leadAttribution.set(l.ganado_cliente_id, l.asignado_a_id);
+    }
+  }
+
+  // cliente → quien lo cerró: campo directo cerrado_por_id, o el lead ganado.
+  const clientToComercial = new Map<string, string>();
+  for (const c of clients) {
+    const closer = c.cerrado_por_id ?? leadAttribution.get(c.id) ?? null;
+    if (closer) clientToComercial.set(c.id, closer);
+  }
+  const wonClientIds = [...clientToComercial.keys()];
+
+  // Usuarios a mostrar: los de rol comercial + cualquiera atribuido como closer.
+  const userIds = new Set<string>([
+    ...comercialUsers.map((u) => u.id),
+    ...clientToComercial.values(),
+  ]);
+  const { data: namesRaw } = userIds.size
+    ? await admin.from("users").select("id, nombre").in("id", [...userIds])
+    : { data: [] };
+  const nombreById = new Map(
+    ((namesRaw ?? []) as { id: string; nombre: string }[]).map((u) => [u.id, u.nombre])
+  );
+  const comerciales = [...userIds].map((id) => ({
+    id,
+    nombre: nombreById.get(id) ?? "—",
+  }));
+
+  // Servicios + cobros de los clientes atribuidos, y pagos a los closers.
+  const [{ data: svcRaw }, { data: invRaw }, { data: payRaw }] = await Promise.all([
+    wonClientIds.length
+      ? admin
+          .from("client_services")
+          .select("cliente_id, monto_mensual, moneda, activo, facturacion")
+          .in("cliente_id", wonClientIds)
+      : Promise.resolve({ data: [] }),
+    wonClientIds.length
+      ? admin
+          .from("client_invoices")
+          .select("cliente_id, monto, moneda, fecha_cobro")
+          .in("cliente_id", wonClientIds)
+          .not("fecha_cobro", "is", null)
+      : Promise.resolve({ data: [] }),
+    userIds.size
+      ? admin
+          .from("team_payments")
+          .select("user_id, monto, moneda, fecha_pago")
+          .in("user_id", [...userIds])
+          .not("fecha_pago", "is", null)
+      : Promise.resolve({ data: [] }),
+  ]);
   const svcs = (svcRaw ?? []) as {
     cliente_id: string;
     monto_mensual: number | null;
@@ -276,7 +295,8 @@ export default async function ComercialPage() {
                 <CardContent className="p-0">
                   {r.clientes.length === 0 ? (
                     <p className="p-6 text-center text-sm text-muted-foreground">
-                      Todavía no tiene clientes cerrados cargados (leads ganados).
+                      Sin clientes atribuidos. Cargá &quot;Cerrado por&quot; en la ficha
+                      de cada cliente que trajo.
                     </p>
                   ) : (
                     <div className="overflow-x-auto">
@@ -338,11 +358,11 @@ export default async function ComercialPage() {
       )}
 
       <p className="text-xs text-muted-foreground">
-        💡 La atribución sale de los <b>leads ganados</b> asignados a cada comercial
-        (cada cliente se cuenta una vez, para quien lo cerró primero). El costo son los{" "}
-        <b>pagos reales</b> registrados (sueldo + comisiones). &quot;Facturado total&quot;
-        es lo cobrado a esos clientes en toda la relación, así que crece con el tiempo
-        aunque el cliente ya no esté.
+        💡 La atribución sale del campo <b>&quot;Cerrado por&quot;</b> de la ficha del
+        cliente (con respaldo en los leads ganados si no está cargado). Taggeá ahí quién
+        trajo cada cuenta. El costo son los <b>pagos reales</b> registrados (sueldo +
+        comisiones). &quot;Facturado total&quot; es lo cobrado a esos clientes en toda la
+        relación, así que crece con el tiempo aunque el cliente ya no esté.
       </p>
     </div>
   );

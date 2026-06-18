@@ -80,6 +80,9 @@ export function ClientFormDialog({
   const [coordinadorId, setCoordinadorId] = useState<string>(
     client?.coordinador_id ?? NONE
   );
+  const [cerradoPorId, setCerradoPorId] = useState<string>(
+    client?.cerrado_por_id ?? NONE
+  );
   const [contactoNombre, setContactoNombre] = useState(
     client?.contacto_nombre ?? ""
   );
@@ -189,6 +192,7 @@ export function ClientFormDialog({
       audiovisual_id: audiovisualId === NONE ? null : audiovisualId,
       media_buyer_id: mediaBuyerId === NONE ? null : mediaBuyerId,
       coordinador_id: coordinadorId === NONE ? null : coordinadorId,
+      cerrado_por_id: cerradoPorId === NONE ? null : cerradoPorId,
     };
     const servicesPayload: NewClientServiceInput[] = draftServices
       .filter((s) => s.tipo)
@@ -298,6 +302,22 @@ export function ClientFormDialog({
                 value={fechaInicio ? fechaInicio.slice(0, 10) : ""}
                 onChange={(e) => setFechaInicio(e.target.value)}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Cerrado por (comercial)</Label>
+              <Select value={cerradoPorId} onValueChange={setCerradoPorId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="—" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Sin asignar</SelectItem>
+                  {users.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             {mode === "edit" && (
               <div className="space-y-2">

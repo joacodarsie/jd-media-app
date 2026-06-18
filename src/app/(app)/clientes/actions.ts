@@ -52,6 +52,7 @@ export interface ClientInput {
   audiovisual_id: string | null;
   media_buyer_id: string | null;
   coordinador_id: string | null;
+  cerrado_por_id: string | null;
 }
 
 function clean(input: ClientInput) {
@@ -83,6 +84,7 @@ function clean(input: ClientInput) {
     audiovisual_id: input.audiovisual_id || null,
     media_buyer_id: input.media_buyer_id || null,
     coordinador_id: input.coordinador_id || null,
+    cerrado_por_id: input.cerrado_por_id || null,
   };
 }
 

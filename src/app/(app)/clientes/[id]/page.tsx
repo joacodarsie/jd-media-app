@@ -139,9 +139,8 @@ export default async function ClientDetail({
   const allTasks = (tasks ?? []) as TaskWithRels[];
   const activas = allTasks.filter((t) => t.estado !== "completada");
   const completadas = allTasks.filter((t) => t.estado === "completada");
-  // Solo staff (admin/coordinación) edita la ficha del cliente (datos + pack).
-  // Las CM no editan al cliente, aunque sea su cuenta asignada.
-  const canEdit = isStaff(me.rol);
+  // Solo el admin edita/elimina la ficha del cliente y sus servicios.
+  const canEdit = me.rol === "admin";
   // canSeeFinancials = staff o cualquier persona asignada a la cuenta.
   // Las chicas que no esten asignadas pueden ver la ficha pero no datos privados
   // (contacto, monto, CBU, finanzas).
@@ -261,7 +260,7 @@ export default async function ClientDetail({
                   </Button>
                 }
               />
-              {isStaff(me.rol) && <DeleteClientButton id={c.id} nombre={c.nombre} />}
+              {me.rol === "admin" && <DeleteClientButton id={c.id} nombre={c.nombre} />}
             </div>
           )}
         </div>
@@ -297,6 +296,7 @@ export default async function ClientDetail({
                 clienteId={c.id}
                 services={svcList}
                 users={users ?? []}
+                canEdit={me.rol === "admin"}
               />
             </CardContent>
           </Card>

@@ -3,15 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
+import { requireUser } from "@/lib/auth";
 import { SERVICE_TYPE_LABEL } from "@/lib/constants";
 
+// Solo un administrador puede crear/editar/eliminar servicios de un cliente.
 async function ctx() {
+  const me = await requireUser();
+  if (me.rol !== "admin") {
+    throw new Error("Solo un administrador puede modificar los servicios del cliente.");
+  }
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("No autenticado");
-  return { supabase, userId: user.id };
+  return { supabase, userId: me.id };
 }
 
 export interface ServiceInput {

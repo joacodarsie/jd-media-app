@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/auth";
 
 async function ctx() {
   const supabase = createClient();
@@ -10,6 +11,17 @@ async function ctx() {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("No autenticado");
   return { supabase, userId: user.id };
+}
+
+// Quién puede EDITAR el calendario (crear/editar/mover fecha/borrar publicaciones).
+// El resto del equipo (diseño, audiovisual) solo comenta y marca el contenido
+// como hecho / sube su pieza.
+const CALENDAR_EDITORS = ["admin", "coordinador", "community_manager"];
+async function ensureCalendarEditor(): Promise<string | null> {
+  const me = await requireUser();
+  return CALENDAR_EDITORS.includes(me.rol)
+    ? null
+    : "Solo el CM, la coordinación o la dirección pueden editar el calendario. Vos podés comentar y marcar el contenido como hecho.";
 }
 
 export interface PublicationInput {
@@ -59,6 +71,8 @@ function invalidate(clienteId?: string | null) {
 }
 
 export async function createPublication(input: PublicationInput) {
+  const gate = await ensureCalendarEditor();
+  if (gate) return { error: gate };
   const { supabase, userId } = await ctx();
   const { data, error } = await supabase
     .from("publications")
@@ -93,6 +107,8 @@ export async function createPublication(input: PublicationInput) {
 }
 
 export async function updatePublication(id: string, input: PublicationInput) {
+  const gate = await ensureCalendarEditor();
+  if (gate) return { error: gate };
   const { supabase } = await ctx();
   const payload: Record<string, unknown> = clean(input);
   if (input.estado) payload.estado = input.estado;
@@ -127,6 +143,8 @@ export async function changePublicationStatus(id: string, estado: string, notas?
  * date debe venir en YYYY-MM-DD (o null para "sin fecha").
  */
 export async function updatePublicationDate(id: string, date: string | null) {
+  const gate = await ensureCalendarEditor();
+  if (gate) return { error: gate };
   const { supabase } = await ctx();
   let fechaIso: string | null = null;
   if (date) {
@@ -208,6 +226,8 @@ export async function setPublicationAsset(id: string, url: string) {
 }
 
 export async function deletePublication(id: string) {
+  const gate = await ensureCalendarEditor();
+  if (gate) return { error: gate };
   const { supabase } = await ctx();
   const { data, error } = await supabase
     .from("publications")
@@ -222,6 +242,8 @@ export async function deletePublication(id: string) {
 
 export async function bulkDeletePublications(ids: string[]) {
   if (!ids.length) return { ok: true, deleted: 0 };
+  const gate = await ensureCalendarEditor();
+  if (gate) return { error: gate };
   const { supabase } = await ctx();
   const { error } = await supabase
     .from("publications")
@@ -235,6 +257,8 @@ export async function bulkDeletePublications(ids: string[]) {
 
 export async function bulkChangePublicationStatus(ids: string[], estado: string) {
   if (!ids.length) return { ok: true };
+  const gate = await ensureCalendarEditor();
+  if (gate) return { error: gate };
   const { supabase } = await ctx();
   const { error } = await supabase
     .from("publications")

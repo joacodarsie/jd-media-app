@@ -84,12 +84,15 @@ export function PublicationsMonth({
   users,
   defaultClientId,
   unseenByPub,
+  canEdit = true,
 }: {
   publications: PublicationWithRels[];
   clients: ClientForPub[];
   users: Pick<AppUser, "id" | "nombre">[];
   defaultClientId?: string;
   unseenByPub?: Record<string, number>;
+  /** Solo CM/coordinación/admin editan (crear, mover fecha, borrar). */
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const [, startMove] = useTransition();
@@ -137,6 +140,7 @@ export function PublicationsMonth({
   function moveTo(id: string, date: string | null) {
     setHoverKey(null);
     setDraggingId(null);
+    if (!canEdit) return; // diseño/audiovisual no mueven fechas
     startMove(async () => {
       const res = await updatePublicationDate(id, date);
       if (res?.error) {
@@ -384,7 +388,7 @@ export function PublicationsMonth({
             <ModeBtn icon={KanbanSquare} label="Kanban" active={mode === "kanban"} onClick={() => setMode("kanban")} />
             <ModeBtn icon={TableIcon} label="Tabla" active={mode === "tabla"} onClick={() => setMode("tabla")} />
           </div>
-          {mode === "tabla" && (
+          {canEdit && mode === "tabla" && (
             <Button
               variant={selectMode ? "secondary" : "outline"}
               size="sm"
@@ -400,6 +404,7 @@ export function PublicationsMonth({
               )}
             </Button>
           )}
+          {canEdit && (
           <PublicationFormDialog
             mode="create"
             clients={clients}
@@ -411,6 +416,7 @@ export function PublicationsMonth({
               </Button>
             }
           />
+          )}
         </div>
       </div>
 

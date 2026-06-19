@@ -46,25 +46,29 @@ export function ClientServicesEditor({
   clienteId,
   services,
   users = [],
+  canEdit = false,
 }: {
   clienteId: string;
   services: ClientService[];
   users?: UserLite[];
+  canEdit?: boolean;
 }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold">Servicios contratados</h4>
-        <ServiceDialog
-          clienteId={clienteId}
-          mode="create"
-          users={users}
-          trigger={
-            <Button size="sm" variant="outline">
-              <Plus className="mr-1 h-3 w-3" /> Agregar servicio
-            </Button>
-          }
-        />
+        {canEdit && (
+          <ServiceDialog
+            clienteId={clienteId}
+            mode="create"
+            users={users}
+            trigger={
+              <Button size="sm" variant="outline">
+                <Plus className="mr-1 h-3 w-3" /> Agregar servicio
+              </Button>
+            }
+          />
+        )}
       </div>
 
       {services.length === 0 ? (
@@ -74,7 +78,7 @@ export function ClientServicesEditor({
       ) : (
         <div className="space-y-2">
           {services.map((s) => (
-            <ServiceRow key={s.id} service={s} clienteId={clienteId} users={users} />
+            <ServiceRow key={s.id} service={s} clienteId={clienteId} users={users} canEdit={canEdit} />
           ))}
         </div>
       )}
@@ -90,10 +94,12 @@ function ServiceRow({
   service,
   clienteId,
   users,
+  canEdit,
 }: {
   service: ClientService;
   clienteId: string;
   users: UserLite[];
+  canEdit: boolean;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -181,27 +187,29 @@ function ServiceRow({
             <div className="mt-1 text-xs text-muted-foreground">{service.notas}</div>
           )}
         </div>
-        <div className="flex items-center gap-1">
-          <ServiceDialog
-            clienteId={clienteId}
-            service={service}
-            mode="edit"
-            users={users}
-            trigger={
-              <Button variant="ghost" size="icon">
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
-            }
-          />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onDelete}
-            disabled={pending}
-          >
-            <Trash2 className="h-3.5 w-3.5 text-red-600" />
-          </Button>
-        </div>
+        {canEdit && (
+          <div className="flex items-center gap-1">
+            <ServiceDialog
+              clienteId={clienteId}
+              service={service}
+              mode="edit"
+              users={users}
+              trigger={
+                <Button variant="ghost" size="icon">
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              }
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onDelete}
+              disabled={pending}
+            >
+              <Trash2 className="h-3.5 w-3.5 text-red-600" />
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

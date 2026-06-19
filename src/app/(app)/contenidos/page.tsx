@@ -97,6 +97,7 @@ export default async function ContenidosPage({
         users={users}
         unseenByPub={unseenByPub}
         defaultClientId={clienteFiltro}
+        canEdit={["admin", "coordinador", "community_manager"].includes(me.rol)}
       />
     </div>
   );

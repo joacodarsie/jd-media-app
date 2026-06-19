@@ -8,6 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { saveAdAccountId, syncPaidMedia } from "@/app/(app)/paid-media/actions";
+import {
+  PaidMediaOptimizer,
+  type AppliedChange,
+} from "@/components/paid-media-optimizer";
 
 export interface PaidSuggestion {
   accion: string;
@@ -19,6 +23,7 @@ export interface PaidClient {
   id: string;
   nombre: string;
   adAccountId: string | null;
+  history: AppliedChange[];
   snapshot: {
     fecha: string;
     spend: number;
@@ -55,20 +60,22 @@ function fmtFecha(iso: string) {
 
 export function PaidMediaPanel({
   clients,
+  canApply,
 }: {
   clients: PaidClient[];
   metaConfigured: boolean;
+  canApply: boolean;
 }) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       {clients.map((c) => (
-        <ClientCard key={c.id} client={c} />
+        <ClientCard key={c.id} client={c} canApply={canApply} />
       ))}
     </div>
   );
 }
 
-function ClientCard({ client }: { client: PaidClient }) {
+function ClientCard({ client, canApply }: { client: PaidClient; canApply: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [editing, setEditing] = useState(!client.adAccountId);
@@ -194,6 +201,15 @@ function ClientCard({ client }: { client: PaidClient }) {
               </ul>
             )}
           </div>
+        )}
+
+        {client.adAccountId && (
+          <PaidMediaOptimizer
+            clienteId={client.id}
+            moneda={s?.moneda ?? "ARS"}
+            canApply={canApply}
+            initialHistory={client.history}
+          />
         )}
       </div>
     </div>

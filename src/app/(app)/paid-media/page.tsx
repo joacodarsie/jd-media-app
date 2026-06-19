@@ -7,11 +7,13 @@ import {
   type PaidClient,
   type PaidSuggestion,
 } from "@/components/paid-media-panel";
+import type { AppliedChange } from "@/components/paid-media-optimizer";
 
 export const dynamic = "force-dynamic";
 
 export default async function PaidMediaPage() {
-  await requireRole(["admin", "coordinador", "paid_media"]);
+  const me = await requireRole(["admin", "coordinador", "paid_media"]);
+  const canApply = ["admin", "paid_media"].includes(me.rol);
   const admin = createAdmin();
 
   // Clientes con servicio de pauta activo.
@@ -36,8 +38,13 @@ export default async function PaidMediaPage() {
     );
   }
 
-  const [{ data: clientsRaw }, { data: adsRaw }, { data: snapsRaw }, { data: anaRaw }] =
-    await Promise.all([
+  const [
+    { data: clientsRaw },
+    { data: adsRaw },
+    { data: snapsRaw },
+    { data: anaRaw },
+    { data: changesRaw },
+  ] = await Promise.all([
       admin.from("clients").select("id, nombre").in("id", clienteIds),
       admin
         .from("client_ads_onboarding")
@@ -55,6 +62,13 @@ export default async function PaidMediaPage() {
         .select("cliente_id, fecha, resumen, sugerencias")
         .in("cliente_id", clienteIds)
         .order("fecha", { ascending: false }),
+      admin
+        .from("paid_media_changes")
+        .select(
+          "id, cliente_id, tipo, nivel, target_nombre, valor_anterior, valor_nuevo, motivo, estado, aplicado_at"
+        )
+        .in("cliente_id", clienteIds)
+        .order("aplicado_at", { ascending: false }),
     ]);
 
   const clients = (clientsRaw ?? []) as { id: string; nombre: string }[];
@@ -76,6 +90,24 @@ export default async function PaidMediaPage() {
     if (!latestAna.has(id)) latestAna.set(id, a);
   }
 
+  // Historial de cambios aplicados por cliente (para el optimizador).
+  const historyByClient = new Map<string, AppliedChange[]>();
+  for (const ch of (changesRaw ?? []) as (AppliedChange & { cliente_id: string })[]) {
+    const arr = historyByClient.get(ch.cliente_id) ?? [];
+    arr.push({
+      id: ch.id,
+      tipo: ch.tipo,
+      nivel: ch.nivel,
+      target_nombre: ch.target_nombre,
+      valor_anterior: ch.valor_anterior,
+      valor_nuevo: ch.valor_nuevo,
+      motivo: ch.motivo,
+      estado: ch.estado,
+      aplicado_at: ch.aplicado_at,
+    });
+    historyByClient.set(ch.cliente_id, arr);
+  }
+
   const paidClients: PaidClient[] = clients
     .map((c) => {
       const s = latestSnap.get(c.id);
@@ -84,6 +116,7 @@ export default async function PaidMediaPage() {
         id: c.id,
         nombre: c.nombre,
         adAccountId: adById.get(c.id) ?? null,
+        history: historyByClient.get(c.id) ?? [],
         snapshot: s
           ? {
               fecha: s.fecha as string,
@@ -115,7 +148,11 @@ export default async function PaidMediaPage() {
     <div className="space-y-5">
       <Header configured={metaConfigured()} />
       <MetaTokenStatus />
-      <PaidMediaPanel clients={paidClients} metaConfigured={metaConfigured()} />
+      <PaidMediaPanel
+        clients={paidClients}
+        metaConfigured={metaConfigured()}
+        canApply={canApply}
+      />
     </div>
   );
 }

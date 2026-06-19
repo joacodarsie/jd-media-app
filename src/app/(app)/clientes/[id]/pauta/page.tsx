@@ -7,8 +7,10 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { AdsOnboardingChecklist, type AdsOnboardingState } from "@/components/ads-onboarding-checklist";
 import { ClientListEditor } from "@/components/client-list-editor";
 import { MetaAdAccountField } from "@/components/meta-ad-account-field";
+import { IgConnect } from "@/components/ig-connect";
 import { JdMediaPartnerCard } from "@/components/jdmedia-partner-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AtSign } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +25,13 @@ export default async function PublicidadOnboardingPage({
 
   const { data: client } = await supabase
     .from("clients")
-    .select("id, nombre, credenciales")
+    .select("id, nombre, credenciales, ig_user_id, ig_username")
     .eq("id", params.id)
     .maybeSingle();
   if (!client) notFound();
+
+  const igUserId = (client as { ig_user_id?: string | null }).ig_user_id ?? null;
+  const igUsername = (client as { ig_username?: string | null }).ig_username ?? null;
 
   const credenciales =
     ((client as unknown as { credenciales?: Record<string, string>[] }).credenciales ??
@@ -111,6 +116,36 @@ export default async function PublicidadOnboardingPage({
           >
             <BarChart3 className="h-3.5 w-3.5 text-primary" /> Ir a Paid Media
           </Link>
+        </CardContent>
+      </Card>
+
+      {/* Conexión con Instagram (Resultados orgánicos) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <AtSign className="h-4 w-4 text-primary" /> Conexión con Instagram
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Vinculá la cuenta de Instagram del cliente para que los{" "}
+            <b>resultados orgánicos</b> (seguidores, alcance, interacciones)
+            aparezcan automáticamente en el reporte. Requiere que la cuenta de IG
+            esté asignada al system user <code>jdmedia</code> (paso del checklist).
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <IgConnect
+            clientId={client.id}
+            connected={!!igUserId}
+            username={igUsername}
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Tocá <b>Detectar cuentas</b> para elegirla de la lista, o pegá el ID a
+            mano. También podés gestionarla desde la sección{" "}
+            <Link href={`/clientes/${client.id}/resultados`} className="underline">
+              Resultados
+            </Link>{" "}
+            del cliente.
+          </p>
         </CardContent>
       </Card>
 

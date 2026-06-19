@@ -352,12 +352,17 @@ export function CoordinacionPanel({
           {packs.map((p) => (
             <div key={p.id} className="rounded-lg border p-3">
               <div className="mb-2 font-medium">{p.id}</div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
                 <Field label="Precio cliente"><NumInput prefix="$" value={p.precio} onChange={(n) => patchPack(p.id, "precio", n)} /></Field>
                 <Field label="Reels"><NumInput value={p.reels} onChange={(n) => patchPack(p.id, "reels", n)} /></Field>
+                <Field label="Portadas"><NumInput value={p.portadas ?? p.reels} onChange={(n) => patchPack(p.id, "portadas", n)} /></Field>
                 <Field label="Posts"><NumInput value={p.posts} onChange={(n) => patchPack(p.id, "posts", n)} /></Field>
                 <Field label="Días stories"><NumInput value={p.stories} onChange={(n) => patchPack(p.id, "stories", n)} /></Field>
               </div>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Portadas = cuántos reels llevan portada (la hace la diseñadora, {fmt(rates.portada_reel ?? 0)} c/u).
+                Por defecto una por reel; bajala si algún reel va sin portada.
+              </p>
             </div>
           ))}
         </div>

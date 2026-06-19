@@ -12,6 +12,11 @@ export interface PackParam {
   posts: number;
   /** Días al mes con contenido en stories. */
   stories: number;
+  /**
+   * Cantidad de portadas de reel del pack (la hace la diseñadora). Por defecto
+   * igual a `reels`; se baja si algún reel va sin portada, para costear bien.
+   */
+  portadas?: number;
 }
 
 export interface AgencyRates {
@@ -48,9 +53,9 @@ export interface AgencySettings {
 
 export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
   packs: [
-    { id: "Presencia", precio: 350000, reels: 4, posts: 4, stories: 8 },
-    { id: "Crecimiento", precio: 500000, reels: 8, posts: 8, stories: 12 },
-    { id: "Escala", precio: 700000, reels: 12, posts: 12, stories: 20 },
+    { id: "Presencia", precio: 350000, reels: 4, posts: 4, stories: 8, portadas: 4 },
+    { id: "Crecimiento", precio: 500000, reels: 8, posts: 8, stories: 12, portadas: 8 },
+    { id: "Escala", precio: 700000, reels: 12, posts: 12, stories: 20, portadas: 12 },
   ],
   rates: {
     diseno_pieza: 10000,
@@ -95,12 +100,15 @@ export function productionBase(
   pack: RatePack,
   posts: number,
   reels: number,
-  rates: AgencyRates
+  rates: AgencyRates,
+  /** Portadas de reel a costear. Por defecto, una por reel. */
+  portadas: number = reels
 ): number {
   return (
     (rates.cm[pack] ?? 0) +
     posts * rates.diseno_pieza +
-    reels * (rates.edicion_reel + (rates.portada_reel ?? 0))
+    reels * rates.edicion_reel +
+    portadas * (rates.portada_reel ?? 0)
   );
 }
 
@@ -111,5 +119,8 @@ export function mbCost(pack: RatePack, rates: AgencyRates): number {
 
 /** Costo de un pack estándar (incluye pauta: escenario de lista full-service). */
 export function packCost(pack: PackParam, rates: AgencyRates): number {
-  return productionBase(pack.id, pack.posts, pack.reels, rates) + mbCost(pack.id, rates);
+  return (
+    productionBase(pack.id, pack.posts, pack.reels, rates, pack.portadas ?? pack.reels) +
+    mbCost(pack.id, rates)
+  );
 }

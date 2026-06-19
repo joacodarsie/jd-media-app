@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { Loader2, RefreshCw, Check, Pencil, TrendingUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { saveAdAccountId, syncPaidMedia } from "@/app/(app)/paid-media/actions";
 import {
   PaidMediaOptimizer,
@@ -41,12 +40,6 @@ export interface PaidClient {
     sugerencias: PaidSuggestion[];
   } | null;
 }
-
-const PRIO: Record<string, string> = {
-  alta: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
-  media: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
-  baja: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
-};
 
 function money(n: number, m: string) {
   return `${m} ${Math.round(n).toLocaleString("es-AR")}`;
@@ -169,37 +162,12 @@ function ClientCard({ client, canApply }: { client: PaidClient; canApply: boolea
           </p>
         )}
 
-        {a && (
+        {a && a.resumen && (
           <div className="rounded-lg border bg-muted/30 p-3">
             <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              <TrendingUp className="h-3.5 w-3.5" /> Análisis IA · {fmtFecha(a.fecha)}
+              <TrendingUp className="h-3.5 w-3.5" /> Diagnóstico IA · {fmtFecha(a.fecha)}
             </div>
-            {a.resumen && <p className="text-sm">{a.resumen}</p>}
-            {a.sugerencias.length > 0 && (
-              <ul className="mt-2 space-y-1.5">
-                {a.sugerencias.map((sug, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm">
-                    <span
-                      className={cn(
-                        "mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase",
-                        PRIO[sug.prioridad] ?? PRIO.media
-                      )}
-                    >
-                      {sug.prioridad}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="font-medium">{sug.accion}</span>
-                      {sug.campana && (
-                        <span className="text-muted-foreground"> · {sug.campana}</span>
-                      )}
-                      {sug.motivo && (
-                        <span className="block text-xs text-muted-foreground">{sug.motivo}</span>
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <p className="text-sm">{a.resumen}</p>
           </div>
         )}
 

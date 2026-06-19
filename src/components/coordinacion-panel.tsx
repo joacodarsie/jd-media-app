@@ -246,11 +246,11 @@ export function CoordinacionPanel({
           <div className="flex flex-wrap gap-x-5 gap-y-2">
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={simCloser} onChange={(e) => setSimCloser(e.target.checked)} className="h-4 w-4 accent-primary" />
-              Comisión closer · 10% (<span className="font-medium">{fmt(sim.closerFull)}</span>)
+              Comisión closer · {Math.round((rates.comision_cierre ?? 0) * 100)}% (<span className="font-medium">{fmt(sim.closerFull)}</span>)
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={simReferido} onChange={(e) => setSimReferido(e.target.checked)} className="h-4 w-4 accent-primary" />
-              Lead referido por el equipo · 5% (<span className="font-medium">{fmt(sim.referidoFull)}</span>)
+              Lead referido por el equipo · {Math.round((rates.comision_lead_propio ?? 0) * 100)}% (<span className="font-medium">{fmt(sim.referidoFull)}</span>)
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={simManual} onChange={(e) => setSimManual(e.target.checked)} className="h-4 w-4 accent-primary" />
@@ -435,8 +435,8 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
         <div className="flex flex-wrap gap-x-5 gap-y-2">
           <Check label="Incluye pauta (media buyer)" checked={incluyePauta} onChange={setIncluyePauta} />
           <Check label={`Manual de marca 1er mes (${fmt(rates.manual_marca)})`} checked={conManual} onChange={setConManual} />
-          <Check label="Comisión cierre 10% (1er mes)" checked={conCloser} onChange={setConCloser} />
-          <Check label="Comisión lead propio 5% (1er mes)" checked={conReferido} onChange={setConReferido} />
+          <Check label={`Comisión cierre ${Math.round((rates.comision_cierre ?? 0) * 100)}% (1er mes)`} checked={conCloser} onChange={setConCloser} />
+          <Check label={`Comisión lead propio ${Math.round((rates.comision_lead_propio ?? 0) * 100)}% (1er mes)`} checked={conReferido} onChange={setConReferido} />
         </div>
 
         <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-4">

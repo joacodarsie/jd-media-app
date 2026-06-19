@@ -392,18 +392,29 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
   const [reels, setReels] = useState(4);
   const [stories, setStories] = useState(8);
   const [incluyePauta, setIncluyePauta] = useState(false);
+  const [incluyeCoord, setIncluyeCoord] = useState(true);
   const [margenObjetivo, setMargenObjetivo] = useState(40);
   // Costos posibles del primer mes (one-time)
   const [conManual, setConManual] = useState(false);
   const [conCloser, setConCloser] = useState(false);
   const [conReferido, setConReferido] = useState(false);
 
-  const costo =
+  // Costo fijo de producción (no depende del precio).
+  const costoFijo =
     productionBase("Personalizado", posts, reels, rates) +
     (incluyePauta ? mbCost("Personalizado", rates) : 0);
 
-  const precioAt = (m: number) => (m >= 100 ? costo : Math.round(costo / (1 - m / 100)));
+  // La coordinación es un % del abono (del propio precio): entra en el
+  // denominador para que el precio sugerido ya la cubra.
+  const coordPct = incluyeCoord ? rates.comision_coordinacion ?? 0 : 0;
+  const precioAt = (m: number) => {
+    const denom = 1 - coordPct - m / 100;
+    return denom <= 0 ? costoFijo : Math.round(costoFijo / denom);
+  };
   const precioObjetivo = precioAt(margenObjetivo);
+  const coordMonto = Math.round(precioObjetivo * coordPct);
+  // Costo recurrente real al precio sugerido (incluye coordinación).
+  const costo = costoFijo + coordMonto;
   const margenObjetivoMonto = precioObjetivo - costo;
 
   // One-time del 1er mes: manual de marca + comisiones (% del precio sugerido).
@@ -421,7 +432,8 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
         <p className="text-xs text-muted-foreground">
           Armá un pack a medida y estimá cuánto deberías y podrías cobrar. Usa la
           misma lógica de costo que los packs: CM base + diseño por pieza +
-          edición por reel (+ media buyer si incluís pauta).
+          edición y portada por reel (+ media buyer si incluís pauta, + comisión
+          de coordinación).
         </p>
       </div>
       <div className="space-y-4 p-4">
@@ -434,13 +446,19 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
 
         <div className="flex flex-wrap gap-x-5 gap-y-2">
           <Check label="Incluye pauta (media buyer)" checked={incluyePauta} onChange={setIncluyePauta} />
+          <Check label={`Incluye coordinación (${Math.round((rates.comision_coordinacion ?? 0) * 100)}% del abono)`} checked={incluyeCoord} onChange={setIncluyeCoord} />
           <Check label={`Manual de marca 1er mes (${fmt(rates.manual_marca)})`} checked={conManual} onChange={setConManual} />
           <Check label={`Comisión cierre ${Math.round((rates.comision_cierre ?? 0) * 100)}% (1er mes)`} checked={conCloser} onChange={setConCloser} />
           <Check label={`Comisión lead propio ${Math.round((rates.comision_lead_propio ?? 0) * 100)}% (1er mes)`} checked={conReferido} onChange={setConReferido} />
         </div>
 
         <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-4">
-          <Stat label="Costo producción" value={fmt(costo)} sub="por mes" muted />
+          <Stat
+            label="Costo mensual"
+            value={fmt(costo)}
+            sub={coordMonto > 0 ? `incl. coord. ${fmt(coordMonto)}` : "por mes"}
+            muted
+          />
           <Stat
             label={`Precio sugerido · ${margenObjetivo}%`}
             value={fmt(precioObjetivo)}
@@ -464,10 +482,11 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
         )}
 
         <p className="text-[11px] text-muted-foreground">
-          El precio sugerido = costo ÷ (1 − margen). Los packs actuales rinden
-          entre 24% y 40%; bajar del 25% deja la cuenta muy fina. Las historias
-          las hace la CM (ya incluidas en su tarifa, no suman costo). El manual y
-          la comisión son costos de una sola vez del primer mes.
+          El precio sugerido cubre el costo fijo de producción y, si la incluís,
+          la comisión de la coordinadora (un % del abono). Los packs actuales
+          rinden entre 24% y 40%; bajar del 25% deja la cuenta muy fina. Las
+          historias las hace la CM (ya incluidas en su tarifa). El manual y la
+          comisión del closer son costos de una sola vez del primer mes.
         </p>
       </div>
     </section>

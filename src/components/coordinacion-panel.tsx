@@ -391,9 +391,8 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
   const [posts, setPosts] = useState(4);
   const [reels, setReels] = useState(4);
   const [stories, setStories] = useState(8);
+  const [precio, setPrecio] = useState(400000);
   const [incluyePauta, setIncluyePauta] = useState(false);
-  const [incluyeCoord, setIncluyeCoord] = useState(true);
-  const [margenObjetivo, setMargenObjetivo] = useState(40);
   // Costos posibles del primer mes (one-time)
   const [conManual, setConManual] = useState(false);
   const [conCloser, setConCloser] = useState(false);
@@ -404,25 +403,17 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
     productionBase("Personalizado", posts, reels, rates) +
     (incluyePauta ? mbCost("Personalizado", rates) : 0);
 
-  // La coordinación es un % del abono (del propio precio): entra en el
-  // denominador para que el precio sugerido ya la cubra.
-  const coordPct = incluyeCoord ? rates.comision_coordinacion ?? 0 : 0;
-  const precioAt = (m: number) => {
-    const denom = 1 - coordPct - m / 100;
-    return denom <= 0 ? costoFijo : Math.round(costoFijo / denom);
-  };
-  const precioObjetivo = precioAt(margenObjetivo);
-  const coordMonto = Math.round(precioObjetivo * coordPct);
-  // Costo recurrente real al precio sugerido (incluye coordinación).
-  const costo = costoFijo + coordMonto;
-  const margenObjetivoMonto = precioObjetivo - costo;
+  // Coordinación: SIEMPRE se cuenta (la coordinadora cobra un % del abono).
+  const coordMonto = Math.round(precio * (rates.comision_coordinacion ?? 0));
+  const costo = costoFijo + coordMonto; // costo recurrente mensual real
+  const margenRec = precio - costo;
 
-  // One-time del 1er mes: manual de marca + comisiones (% del precio sugerido).
+  // One-time del 1er mes: manual de marca + comisiones (% del precio cotizado).
   const oneTime =
     (conManual ? rates.manual_marca : 0) +
-    (conCloser ? Math.round(precioObjetivo * (rates.comision_cierre ?? 0.1)) : 0) +
-    (conReferido ? Math.round(precioObjetivo * (rates.comision_lead_propio ?? 0.05)) : 0);
-  const margenMes1 = margenObjetivoMonto - oneTime;
+    (conCloser ? Math.round(precio * (rates.comision_cierre ?? 0.1)) : 0) +
+    (conReferido ? Math.round(precio * (rates.comision_lead_propio ?? 0.05)) : 0);
+  const margenMes1 = margenRec - oneTime;
   const hayOneTime = oneTime > 0;
 
   return (
@@ -430,10 +421,10 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
       <div className="border-b px-4 py-3">
         <h2 className="text-base font-semibold">Cotizador de pack personalizado</h2>
         <p className="text-xs text-muted-foreground">
-          Armá un pack a medida y estimá cuánto deberías y podrías cobrar. Usa la
-          misma lógica de costo que los packs: CM base + diseño por pieza +
-          edición y portada por reel (+ media buyer si incluís pauta, + comisión
-          de coordinación).
+          Armá un pack a medida, poné el <b>precio que le cotizarías al cliente</b> y
+          mirá tus costos y tu ganancia. El costo usa la misma lógica que los packs
+          (CM + diseño por pieza + edición y portada por reel + media buyer si
+          incluís pauta) y <b>siempre</b> descuenta la comisión de coordinación.
         </p>
       </div>
       <div className="space-y-4 p-4">
@@ -441,52 +432,54 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
           <Field label="Posts / carruseles"><NumInput value={posts} onChange={setPosts} /></Field>
           <Field label="Reels"><NumInput value={reels} onChange={setReels} /></Field>
           <Field label="Días stories"><NumInput value={stories} onChange={setStories} /></Field>
-          <Field label="Margen objetivo %"><NumInput value={margenObjetivo} onChange={setMargenObjetivo} /></Field>
+          <Field label="Precio cotizado al cliente"><NumInput prefix="$" value={precio} onChange={setPrecio} /></Field>
         </div>
 
         <div className="flex flex-wrap gap-x-5 gap-y-2">
           <Check label="Incluye pauta (media buyer)" checked={incluyePauta} onChange={setIncluyePauta} />
-          <Check label={`Incluye coordinación (${Math.round((rates.comision_coordinacion ?? 0) * 100)}% del abono)`} checked={incluyeCoord} onChange={setIncluyeCoord} />
           <Check label={`Manual de marca 1er mes (${fmt(rates.manual_marca)})`} checked={conManual} onChange={setConManual} />
           <Check label={`Comisión cierre ${Math.round((rates.comision_cierre ?? 0) * 100)}% (1er mes)`} checked={conCloser} onChange={setConCloser} />
           <Check label={`Comisión lead propio ${Math.round((rates.comision_lead_propio ?? 0) * 100)}% (1er mes)`} checked={conReferido} onChange={setConReferido} />
         </div>
 
-        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-3">
           <Stat
             label="Costo mensual"
             value={fmt(costo)}
-            sub={coordMonto > 0 ? `incl. coord. ${fmt(coordMonto)}` : "por mes"}
+            sub={`incl. coordinación ${fmt(coordMonto)}`}
             muted
           />
           <Stat
-            label={`Precio sugerido · ${margenObjetivo}%`}
-            value={fmt(precioObjetivo)}
-            sub={`margen ${fmt(margenObjetivoMonto)}/mes`}
-            tone="good"
+            label="Ganancia recurrente"
+            value={fmt(margenRec)}
+            sub="por mes"
+            tone={margenRec >= 0 ? "good" : "bad"}
           />
-          <Stat label="Mínimo sano · 25%" value={fmt(precioAt(25))} sub="cobrá al menos esto" />
-          <Stat label="Premium · 50%" value={fmt(precioAt(50))} sub="techo cómodo" />
+          <Stat
+            label="Margen %"
+            value={`${pctOf(margenRec, precio)}%`}
+            tone={margenRec >= 0 ? "good" : "bad"}
+          />
         </div>
 
         {hayOneTime && (
           <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2">
             <Stat label="Costos 1er mes" value={fmt(oneTime)} sub="una vez (manual + comisión)" muted />
             <Stat
-              label="Margen 1er mes"
+              label="Ganancia 1er mes"
               value={fmt(margenMes1)}
-              sub={`${pctOf(margenMes1, precioObjetivo)}% del 1er mes`}
+              sub={`${pctOf(margenMes1, precio)}% del 1er mes`}
               tone={margenMes1 >= 0 ? "good" : "bad"}
             />
           </div>
         )}
 
         <p className="text-[11px] text-muted-foreground">
-          El precio sugerido cubre el costo fijo de producción y, si la incluís,
-          la comisión de la coordinadora (un % del abono). Los packs actuales
-          rinden entre 24% y 40%; bajar del 25% deja la cuenta muy fina. Las
-          historias las hace la CM (ya incluidas en su tarifa). El manual y la
-          comisión del closer son costos de una sola vez del primer mes.
+          La ganancia recurrente = precio − costo mensual (producción + coordinación,
+          siempre incluida + pauta si la marcás). Como referencia, los packs rinden
+          entre 24% y 40%; bajar del 25% deja la cuenta muy fina. Las historias las
+          hace la CM (ya incluidas en su tarifa). El manual y la comisión del closer
+          son costos de una sola vez del primer mes.
         </p>
       </div>
     </section>

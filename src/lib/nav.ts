@@ -26,7 +26,6 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/dashboard", label: "Mi día", icon: "Sun" },
       { href: "/tareas", label: "Tareas", icon: "ListChecks" },
-      { href: "/area", label: "Tareas por área", icon: "Users" },
       { href: "/contenidos", label: "Contenidos", icon: "Calendar" },
       {
         href: "/paid-media",

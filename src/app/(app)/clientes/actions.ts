@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { invalidateClientsCache } from "@/lib/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
+import { requireUser, isStaff } from "@/lib/auth";
 import { SERVICE_TYPE_LABEL } from "@/lib/constants";
 
 async function ctx() {
@@ -181,6 +182,10 @@ async function notifyClientServiceAssignees(
 }
 
 export async function updateClientRow(id: string, input: ClientInput) {
+  const me = await requireUser();
+  if (!isStaff(me.rol)) {
+    return { error: "No tenés permiso para editar la ficha del cliente." };
+  }
   const { supabase } = await ctx();
   const { error } = await supabase.from("clients").update(clean(input)).eq("id", id);
   if (error) return { error: error.message };

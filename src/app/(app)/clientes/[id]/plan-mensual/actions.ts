@@ -258,7 +258,7 @@ export async function applyTemaToCalendar(
     .eq("id", planId)
     .maybeSingle();
   if (!plan) return { ok: false, error: "Plan no encontrado." };
-  if (plan.status !== "active") return { ok: false, error: "El plan tiene que estar aprobado." };
+  if (plan.status === "archived") return { ok: false, error: "El plan está archivado." };
 
   const applied: number[] = Array.isArray(plan.applied_temas_indices)
     ? plan.applied_temas_indices
@@ -333,7 +333,7 @@ export async function applyAllTemasToCalendar(
     .eq("id", planId)
     .maybeSingle();
   if (!plan) return { ok: false, error: "Plan no encontrado." };
-  if (plan.status !== "active") return { ok: false, error: "El plan tiene que estar aprobado." };
+  if (plan.status === "archived") return { ok: false, error: "El plan está archivado." };
 
   const content = plan.content as unknown as MonthlyContentPlan;
   const temas = Array.isArray(content?.temas_destacados) ? content.temas_destacados : [];

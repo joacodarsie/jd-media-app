@@ -139,9 +139,9 @@ export default async function ClientDetail({
   const allTasks = (tasks ?? []) as TaskWithRels[];
   const activas = allTasks.filter((t) => t.estado !== "completada");
   const completadas = allTasks.filter((t) => t.estado === "completada");
-  const canEdit =
-    isStaff(me.rol) ||
-    (c as unknown as { cm_id?: string | null }).cm_id === me.id;
+  // Solo staff (admin/coordinación) edita la ficha del cliente (datos + pack).
+  // Las CM no editan al cliente, aunque sea su cuenta asignada.
+  const canEdit = isStaff(me.rol);
   // canSeeFinancials = staff o cualquier persona asignada a la cuenta.
   // Las chicas que no esten asignadas pueden ver la ficha pero no datos privados
   // (contacto, monto, CBU, finanzas).

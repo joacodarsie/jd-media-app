@@ -31,9 +31,11 @@ import {
 } from "@/app/(app)/clientes/[id]/plan-mensual/actions";
 import Link from "next/link";
 import type { ContentPlanRow, MonthlyContentPlan, TemaDestacado } from "@/lib/content-plans/schema";
+import { PACK_QUOTAS } from "@/lib/content-plans/packs";
 
 interface Props {
   clienteId: string;
+  pack: string | null;
   active: ContentPlanRow | null;
   draft: ContentPlanRow | null;
   history: ContentPlanRow[];
@@ -44,6 +46,7 @@ type Phase = "idle" | "generating" | "saving";
 
 export function ContentPlanWorkspace({
   clienteId,
+  pack,
   active,
   draft,
   history,
@@ -185,9 +188,9 @@ export function ContentPlanWorkspace({
   }
 
   async function handleApplyAll() {
-    if (!active) return;
-    const total = active.content?.temas_destacados?.length ?? 0;
-    const ya = active.applied_temas_indices?.length ?? 0;
+    if (!visible) return;
+    const total = visible.content?.temas_destacados?.length ?? 0;
+    const ya = visible.applied_temas_indices?.length ?? 0;
     const pendientes = total - ya;
     if (pendientes <= 0) {
       toast.error("Todos los temas ya fueron aplicados.");
@@ -195,7 +198,7 @@ export function ContentPlanWorkspace({
     }
     if (!confirm(`¿Aplicar los ${pendientes} temas pendientes al calendario? La IA va a auto-generar copy + hashtags para cada uno (puede tardar 30-60s).`)) return;
     setPending(true);
-    const r = await applyAllTemasToCalendar(active.id);
+    const r = await applyAllTemasToCalendar(visible.id);
     setPending(false);
     if (!r.ok) toast.error(r.error);
     else {
@@ -389,7 +392,7 @@ export function ContentPlanWorkspace({
           <PlanViewer
             plan={visible.content}
             planRow={visible}
-            isActive={!isDraft}
+            pack={pack}
             onApplyAll={handleApplyAll}
             pending={pending}
             setPending={setPending}
@@ -432,16 +435,26 @@ export function ContentPlanWorkspace({
 interface PlanViewerProps {
   plan: MonthlyContentPlan;
   planRow: ContentPlanRow;
-  isActive: boolean;
+  pack: string | null;
   clienteId: string;
   onApplyAll: () => void;
   pending: boolean;
   setPending: (b: boolean) => void;
 }
 
-function consolidateCadencia(mix: MonthlyContentPlan["mix_por_red"]): Record<string, number> {
-  // Sumamos las cantidades de la red PRINCIPAL únicamente.
-  // (Las réplicas tienen las mismas cantidades, no se duplican.)
+/**
+ * La cadencia mensual se basa en el PACK contratado (cuota contractual), no en
+ * lo que invente la IA. Para packs estándar usamos las cuotas fijas; para
+ * Personalizado/desconocido caemos a lo que armó la IA en el mix.
+ */
+function cadenciaFromPack(
+  pack: string | null,
+  mix: MonthlyContentPlan["mix_por_red"]
+): Record<string, number> {
+  if (pack && pack in PACK_QUOTAS) {
+    const q = PACK_QUOTAS[pack as keyof typeof PACK_QUOTAS];
+    return { reel: q.reels, post: q.posts, story: q.dias_stories };
+  }
   const principal = mix?.find((m) => m.rol === "principal") ?? mix?.[0];
   return (principal?.cadencia ?? {}) as Record<string, number>;
 }
@@ -459,13 +472,13 @@ const FORMATO_LABEL: Record<string, string> = {
 function PlanViewer({
   plan,
   planRow,
-  isActive,
+  pack,
   clienteId,
   onApplyAll,
   pending,
   setPending,
 }: PlanViewerProps) {
-  const cadencia = consolidateCadencia(plan.mix_por_red);
+  const cadencia = cadenciaFromPack(pack, plan.mix_por_red);
   const redes = plan.mix_por_red?.map((m) => m.red) ?? [];
   const redesText = redes.length > 0 ? redes.join(" · ") : "—";
 
@@ -508,7 +521,10 @@ function PlanViewer({
               ))}
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
-              Cada pieza se publica en <strong>{redesText}</strong>. Las cantidades son piezas únicas (no se duplican por cada red).
+              {pack && pack in PACK_QUOTAS ? (
+                <>Cantidades según el <strong>Pack {pack}</strong> contratado. </>
+              ) : null}
+              Cada pieza se publica en <strong>{redesText}</strong>. Son piezas únicas (no se duplican por cada red).
             </p>
           </CardContent>
         </Card>
@@ -562,19 +578,17 @@ function PlanViewer({
                 applied={(planRow.applied_temas_indices ?? []).includes(i)}
                 planId={planRow.id}
                 clienteId={clienteId}
-                canAct={isActive}
+                canAct
                 pending={pending}
                 setPending={setPending}
               />
             ))}
 
-            {isActive && (
-              <div className="flex justify-end border-t pt-3">
-                <Button onClick={onApplyAll} disabled={pending}>
-                  <CalendarPlus className="mr-1 h-4 w-4" /> Aplicar todos los pendientes al calendario
-                </Button>
-              </div>
-            )}
+            <div className="flex justify-end border-t pt-3">
+              <Button onClick={onApplyAll} disabled={pending}>
+                <CalendarPlus className="mr-1 h-4 w-4" /> Aplicar todos los pendientes al calendario
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

@@ -43,7 +43,7 @@ export default async function PlanMensualPage({
 
   const { data: client } = await supabase
     .from("clients")
-    .select("id, nombre")
+    .select("id, nombre, pack")
     .eq("id", params.id)
     .maybeSingle();
   if (!client) notFound();
@@ -80,6 +80,7 @@ export default async function PlanMensualPage({
 
       <ContentPlanWorkspace
         clienteId={params.id}
+        pack={(client as { pack?: string | null }).pack ?? null}
         active={active}
         draft={draft}
         history={history}

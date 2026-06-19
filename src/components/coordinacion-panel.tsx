@@ -306,6 +306,7 @@ export function CoordinacionPanel({
         <div className="space-y-4 p-4">
           <div className="grid gap-3 sm:grid-cols-3">
             <Field label="Diseño · por pieza"><NumInput prefix="$" value={rates.diseno_pieza} onChange={(n) => patchRate("diseno_pieza", n)} /></Field>
+            <Field label="Diseño · portada de reel"><NumInput prefix="$" value={rates.portada_reel ?? 0} onChange={(n) => patchRate("portada_reel", n)} /></Field>
             <Field label="Edición · por reel"><NumInput prefix="$" value={rates.edicion_reel} onChange={(n) => patchRate("edicion_reel", n)} /></Field>
             <Field label="Manual de marca (único)"><NumInput prefix="$" value={rates.manual_marca} onChange={(n) => patchRate("manual_marca", n)} /></Field>
           </div>

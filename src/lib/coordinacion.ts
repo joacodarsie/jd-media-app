@@ -17,6 +17,8 @@ export interface PackParam {
 export interface AgencyRates {
   /** Diseño gráfico: por pieza (post/carrusel). */
   diseno_pieza: number;
+  /** Diseño de la portada de cada reel (la hace la diseñadora). */
+  portada_reel: number;
   /** Edición audiovisual: por reel. */
   edicion_reel: number;
   /** Manual de marca básico (documento de inicio): pago único. */
@@ -52,6 +54,7 @@ export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
   ],
   rates: {
     diseno_pieza: 10000,
+    portada_reel: 2000,
     edicion_reel: 17900,
     manual_marca: 50000,
     closer: 0,
@@ -97,7 +100,7 @@ export function productionBase(
   return (
     (rates.cm[pack] ?? 0) +
     posts * rates.diseno_pieza +
-    reels * rates.edicion_reel
+    reels * (rates.edicion_reel + (rates.portada_reel ?? 0))
   );
 }
 

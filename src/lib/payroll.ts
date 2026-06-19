@@ -124,6 +124,16 @@ export function computeAutoPayroll(
             monto: reels * rates.edicion_reel,
             kind: "edicion",
           });
+          // La diseñadora cobra la portada de cada reel.
+          if (rates.portada_reel > 0) {
+            add(c.disenador_id, {
+              clienteId: c.id,
+              cliente: c.nombre,
+              concepto: `Portadas · ${reels} ${reels === 1 ? "reel" : "reels"}`,
+              monto: reels * rates.portada_reel,
+              kind: "diseno",
+            });
+          }
         }
       }
     }

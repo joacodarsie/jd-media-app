@@ -23,7 +23,6 @@ const ORG: OrgNode = {
   area: "Estrategia/Dirección",
   children: [
     { title: "Comercial", area: "Comercial", note: "Cierre de ventas" },
-    { title: "Prospecting", area: "Prospecting", note: "Generación de leads" },
     {
       title: "Coordinación · Gestión de Redes",
       area: "Coordinación",
@@ -85,19 +84,29 @@ export default async function OrganigramaPage() {
   const supabase = createClient();
   const { data } = await supabase
     .from("users")
-    .select("id, nombre, area")
+    .select("id, nombre, area, permisos")
     .eq("activo", true)
     .order("nombre");
 
-  const people = new Map<string, Person[]>();
-  for (const u of (data ?? []) as Array<{
+  const rows = (data ?? []) as Array<{
     id: string;
     nombre: string;
     area: string | null;
-  }>) {
-    const area = u.area ?? "Sin área";
+    permisos: Record<string, boolean> | null;
+  }>;
+
+  const people = new Map<string, Person[]>();
+  const push = (area: string, p: Person) => {
     if (!people.has(area)) people.set(area, []);
-    people.get(area)!.push({ id: u.id, nombre: u.nombre });
+    if (!people.get(area)!.some((x) => x.id === p.id)) people.get(area)!.push(p);
+  };
+  for (const u of rows) {
+    push(u.area ?? "Sin área", { id: u.id, nombre: u.nombre });
+  }
+  // Quienes tienen el permiso "comercial" (aunque su área sea otra) también
+  // aparecen en Comercial: venden los servicios de la agencia.
+  for (const u of rows) {
+    if (u.permisos?.comercial) push("Comercial", { id: u.id, nombre: u.nombre });
   }
 
   // Brisa (Diseño) también lleva las cuentas propias de JD Media.
@@ -107,8 +116,14 @@ export default async function OrganigramaPage() {
     <div className="space-y-6">
       <SectionTabs tabs={equipoTabs(me.rol)} />
       <style>{`
+        /* Se ajusta para verse completo sin barra horizontal en pantallas
+           normales; en muy chicas, permite scroll como último recurso. */
         .org-wrap { overflow-x: auto; padding: 8px 4px 24px; }
         .tree { display: inline-block; min-width: 100%; text-align: center; }
+        @media (min-width: 768px) {
+          .org-wrap { overflow-x: visible; }
+          .tree { display: block; }
+        }
         .tree ul {
           display: flex;
           justify-content: center;
@@ -124,7 +139,7 @@ export default async function OrganigramaPage() {
           align-items: center;
           list-style: none;
           position: relative;
-          padding: 22px 10px 0;
+          padding: 22px 5px 0;
           transition: all .3s;
         }
         /* Conectores */
@@ -166,8 +181,8 @@ export default async function OrganigramaPage() {
           border: 1px solid hsl(var(--border));
           background: hsl(var(--card));
           border-radius: 12px;
-          padding: 12px 16px;
-          min-width: 170px;
+          padding: 10px 12px;
+          min-width: 148px;
           box-shadow: 0 1px 2px rgba(0,0,0,.04);
         }
         .org-title {
@@ -199,8 +214,8 @@ export default async function OrganigramaPage() {
           border-top: 1px dashed hsl(var(--border));
           padding-top: 5px;
           margin-top: 1px;
-          max-width: 220px;
-          line-height: 1.4;
+          max-width: 170px;
+          line-height: 1.35;
         }
         .org-root > .org-card {
           border-color: #FFD400;

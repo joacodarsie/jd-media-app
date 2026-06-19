@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Plus, Sparkles } from "lucide-react";
-import { requireRole } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { requireUser, userHas } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { LeadKanban, type LeadRow } from "@/components/lead-kanban";
@@ -11,8 +12,13 @@ import { DismissibleHint } from "@/components/dismissible-hint";
 
 export const dynamic = "force-dynamic";
 
+const COMERCIAL_ROLES = ["admin", "coordinador", "comercial", "prospecting"];
+
 export default async function ComercialPage() {
-  await requireRole(["admin", "coordinador", "comercial", "prospecting"]);
+  const me = await requireUser();
+  if (!COMERCIAL_ROLES.includes(me.rol) && !userHas(me, "comercial")) {
+    redirect("/dashboard");
+  }
   const supabase = createClient();
 
   const [{ data: leads }, { data: services }, { data: users }] =

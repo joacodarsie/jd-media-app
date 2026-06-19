@@ -65,6 +65,7 @@ export const NAV_GROUPS: NavGroup[] = [
         label: "Comercial",
         icon: "Target",
         roles: ["admin", "coordinador", "comercial", "prospecting"],
+        feature: "comercial",
       },
       // Equipo agrupa: Directorio, Organigrama, Personas y Capacidad (pestañas).
       { href: "/equipo", label: "Equipo", icon: "Users2" },
@@ -118,9 +119,12 @@ function userHasFeature(user: AppUser, feature: Feature): boolean {
 }
 
 function itemVisible(user: AppUser, i: NavItem, isLiveOwner = false) {
+  if (i.liveOwnerOnly && !isLiveOwner) return false;
+  // Si el item declara una feature y el usuario la tiene, le damos acceso
+  // aunque su rol no esté en la lista (permiso puntual, ej: "comercial").
+  if (i.feature && userHasFeature(user, i.feature)) return true;
   if (i.roles && !i.roles.includes(user.rol)) return false;
   if (i.feature && !userHasFeature(user, i.feature)) return false;
-  if (i.liveOwnerOnly && !isLiveOwner) return false;
   return true;
 }
 

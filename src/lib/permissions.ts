@@ -9,6 +9,7 @@ export const FEATURES = [
   "equipo_compensacion", // ver compensaciones del equipo en /equipo
   "clientes_credenciales", // ver credenciales del cliente en su detalle
   "documentos_globales", // crear/editar documentos generales en /documentos
+  "comercial",           // acceso al pipeline comercial (vender) sin ser del rol comercial
 ] as const;
 
 export type Feature = (typeof FEATURES)[number];
@@ -19,6 +20,7 @@ export const FEATURE_LABEL: Record<Feature, string> = {
   equipo_compensacion: "Ver compensaciones del equipo",
   clientes_credenciales: "Ver credenciales de los clientes",
   documentos_globales: "Editar documentos generales de la agencia",
+  comercial: "Vender (pipeline comercial)",
 };
 
 export const FEATURE_DESCRIPTION: Record<Feature, string> = {
@@ -31,4 +33,6 @@ export const FEATURE_DESCRIPTION: Record<Feature, string> = {
     "Ver las contraseñas y accesos guardados en cada ficha de cliente.",
   documentos_globales:
     "Subir/eliminar los documentos generales de la agencia (manuales, plantillas).",
+  comercial:
+    "Permite usar el pipeline comercial y cerrar ventas, aunque su rol principal sea otro.",
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -34,6 +34,16 @@ export function OnboardingContractForm({
   const [form, setForm] = useState<Initial>(initial);
   const [pending, start] = useTransition();
   const router = useRouter();
+
+  // El nº de contrato se asigna desde un botón aparte (router.refresh()): cuando
+  // cambia en el server, lo reflejamos en el form sin pisar los demás campos.
+  useEffect(() => {
+    setForm((f) =>
+      f.contrato_numero === initial.contrato_numero
+        ? f
+        : { ...f, contrato_numero: initial.contrato_numero }
+    );
+  }, [initial.contrato_numero]);
 
   function set<K extends keyof Initial>(key: K, value: Initial[K]) {
     setForm((f) => ({ ...f, [key]: value }));

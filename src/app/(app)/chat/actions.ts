@@ -145,6 +145,7 @@ export async function sendMessage(
       user_id: uid,
       tipo: "mencion" as const,
       mensaje,
+      link: `/chat?c=${channelId}`,
     }));
     // Usar admin client: RLS de notifications restringe INSERT a auth.uid(),
     // entonces el cliente normal del sender no puede crear notifs para

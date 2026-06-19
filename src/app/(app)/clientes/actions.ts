@@ -105,6 +105,7 @@ export async function createClientRow(
   const clienteId = data.id as string;
 
   // Servicios cargados desde el alta (opcional).
+  const notified = new Set<string>();
   const validServices = (services ?? []).filter((s) => s.tipo);
   if (validServices.length > 0) {
     const rows = validServices.map((s) => ({
@@ -135,23 +136,63 @@ export async function createClientRow(
     }
 
     // Notificar a los responsables de cada servicio (dedup por persona+servicio).
-    await notifyClientServiceAssignees(clienteId, input.nombre, validServices, userId);
+    const ids = await notifyClientServiceAssignees(clienteId, input.nombre, validServices, userId);
+    ids.forEach((i) => notified.add(i));
   }
+
+  // Notificar a TODO el equipo asignado a la cuenta (cm, diseño, audiovisual,
+  // media buyer, coordinación) que no haya recibido ya un aviso de servicio.
+  await notifyNewClientTeam(clienteId, input.nombre, cleaned, notified, userId);
 
   revalidatePath("/clientes");
   invalidateClientsCache();
   return { ok: true, id: clienteId };
 }
 
-/** Notifica a las personas asignadas a los servicios cargados en el alta. */
+/** Avisa a las personas asignadas a la cuenta (a nivel cliente) que es nueva. */
+async function notifyNewClientTeam(
+  clienteId: string,
+  nombreCliente: string,
+  cleaned: ReturnType<typeof clean>,
+  yaNotificados: Set<string>,
+  actorId: string
+) {
+  const team = [
+    cleaned.cm_id,
+    cleaned.disenador_id,
+    cleaned.audiovisual_id,
+    cleaned.media_buyer_id,
+    cleaned.coordinador_id,
+  ].filter((id): id is string => !!id);
+  const destinatarios = Array.from(new Set(team)).filter(
+    (id) => id !== actorId && !yaNotificados.has(id)
+  );
+  if (destinatarios.length === 0) return;
+  const admin = createAdmin();
+  await admin.from("notifications").insert(
+    destinatarios.map((uid) => ({
+      user_id: uid,
+      tipo: "asignacion",
+      mensaje: `📣 Cuenta nueva: ${nombreCliente}. Sos parte del equipo.`,
+      link: `/clientes/${clienteId}`,
+      task_id: null,
+    }))
+  );
+}
+
+/**
+ * Notifica a las personas asignadas a los servicios cargados en el alta.
+ * Devuelve el set de user_ids notificados (para no duplicar el aviso de cuenta).
+ */
 async function notifyClientServiceAssignees(
   clienteId: string,
   nombreCliente: string,
   services: NewClientServiceInput[],
   actorId: string
-) {
+): Promise<Set<string>> {
   const admin = createAdmin();
   const link = `/clientes/${clienteId}`;
+  const notificados = new Set<string>();
   const rows: {
     user_id: string;
     tipo: string;
@@ -166,6 +207,7 @@ async function notifyClientServiceAssignees(
       new Set((s.responsables ?? []).filter(Boolean))
     ).filter((id) => id !== actorId);
     for (const uid of destinatarios) {
+      notificados.add(uid);
       rows.push({
         user_id: uid,
         tipo: "asignacion",
@@ -179,6 +221,7 @@ async function notifyClientServiceAssignees(
   if (rows.length > 0) {
     await admin.from("notifications").insert(rows);
   }
+  return notificados;
 }
 
 export async function updateClientRow(id: string, input: ClientInput) {

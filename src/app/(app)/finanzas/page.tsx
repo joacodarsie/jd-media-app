@@ -371,6 +371,15 @@ export default async function FinanzasPage() {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Link
+          href="/finanzas/cierre"
+          className="rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40"
+        >
+          <div className="font-semibold">Cierre de mes →</div>
+          <div className="text-xs text-muted-foreground">
+            Cobros + nómina + gastos + suscripciones del mes, con el neto.
+          </div>
+        </Link>
+        <Link
           href="/finanzas/recordatorios"
           className="rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40"
         >

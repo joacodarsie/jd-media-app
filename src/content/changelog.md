@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-06-20 — Cierre de mes: todo el mes en una pantalla
+
+- 🧮 **Nueva sección Finanzas → "Cierre de mes"** (con selector de mes): junta en un solo lugar lo que **cobraste** y lo que falta cobrar, la **nómina calculada** del equipo vs lo ya pagado, los **gastos** y las **suscripciones** que renuevan — con el **neto del mes** (realizado y proyectado).
+- ✅ Dos indicadores de estado: "¿cobraste todo?" y "¿pagaste al equipo y los gastos?", para cerrar el mes sin que se escape nada.
+
 ## 2026-06-20 — Servicios puntuales y costo por porcentaje
 
 - 🧾 **Servicios que no son gestión de redes** (branding, diseño suelto, web, botly…) ahora pueden definir su **costo de entrega**: un **% de lo que paga el cliente** (ej: branding de $400k con 50% para quien lo hace = $200k de costo) o un monto fijo, y a quién se le paga. Se carga en cada servicio, en la ficha del cliente.

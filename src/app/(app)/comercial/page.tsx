@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Sparkles } from "lucide-react";
+import { Plus, Sparkles, GraduationCap } from "lucide-react";
 import { redirect } from "next/navigation";
 import { requireUser, userHas } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -111,6 +111,16 @@ export default async function ComercialPage() {
         </div>
         <div className="flex items-center gap-2">
           <CopyRequestDataButton />
+          <Button asChild variant="outline" className="gap-1.5">
+            <Link
+              href="/comercial/feedback"
+              title="Feedback de una reunión comercial con IA"
+            >
+              <GraduationCap className="h-4 w-4 text-primary" />
+              <span className="hidden sm:inline">Feedback de reunión</span>
+              <span className="sm:hidden">Feedback</span>
+            </Link>
+          </Button>
           <Button asChild variant="outline" className="gap-1.5">
             <Link
               href="/comercial/post-meet"

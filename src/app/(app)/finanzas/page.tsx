@@ -461,6 +461,7 @@ export default async function FinanzasPage({
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <AnalisisLink href="/finanzas/salud" title="Salud de la agencia" desc="Margen real por cliente (ingreso − costo)." />
           <AnalisisLink href="/finanzas/rentabilidad" title="Rentabilidad por cliente" desc="Cuánto deja cada cliente neto." />
+          <AnalisisLink href="/finanzas/vencimientos" title="Vencimientos" desc="Qué pagás y cuándo: plataformas, equipo y gastos." />
           <AnalisisLink href="/finanzas/proyeccion" title="Proyección" desc="MRR, LTV y caja de los próximos meses." />
           <AnalisisLink href="/finanzas/evolucion" title="Evolución" desc="Ingresos, costos y margen mes a mes." />
           <AnalisisLink href="/finanzas/suscripciones" title="Suscripciones" desc="Plataformas SaaS que paga la agencia." />

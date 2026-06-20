@@ -109,10 +109,21 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Recordatorio mensual de cobro a clientes (arranca el mes). Dedup por mes,
-  // así que es seguro intentarlo en cada corrida del 1°.
+  // Cobros del mes que se arman solos: el 1° se generan las facturas (abono de
+  // cada cliente activo) sin tener que tocar "Generar mes". Idempotente (no
+  // duplica). Luego el recordatorio de cobro avisa que toca enviarlos.
+  let cobrosGenerados: unknown = null;
   let cobroReminders: unknown = null;
   if (esPrimerDiaDeMes) {
+    const periodo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    try {
+      const { data, error } = await admin.rpc("jd_generate_invoices_for_period", {
+        p_periodo: periodo,
+      });
+      cobrosGenerados = error ? { error: error.message } : { created: data };
+    } catch (e) {
+      cobrosGenerados = { error: e instanceof Error ? e.message : String(e) };
+    }
     try {
       await ensureCobroReminders(admin);
       cobroReminders = { ok: true };
@@ -201,6 +212,7 @@ export async function GET(req: NextRequest) {
     tasks_archived: archivedRows?.length ?? 0,
     month_end: monthEnd,
     month_start: monthStart,
+    cobros_generados: cobrosGenerados,
     cobro_reminders: cobroReminders,
     paid_media: paidMedia,
     instagram,

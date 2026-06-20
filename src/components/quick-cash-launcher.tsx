@@ -187,7 +187,6 @@ export function QuickCashLauncher({
   const [fecha, setFecha] = useState(today());
   // Solo gasto
   const [categoria, setCategoria] = useState<ExpenseCategory>("plataformas");
-  const [proveedor, setProveedor] = useState("");
   const [gastoClienteId, setGastoClienteId] = useState(""); // imputar a cliente (opcional)
   // Plataforma / Deuda
   const [subId, setSubId] = useState("");
@@ -204,7 +203,11 @@ export function QuickCashLauncher({
       if (e.key === "Escape") setOpen(false);
     }
     function onClick(e: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+      const t = e.target as HTMLElement;
+      // No cerrar si el click cae dentro de un popover/select (Combo, moneda),
+      // que se renderiza en un portal fuera del panel.
+      if (t.closest?.("[data-radix-popper-content-wrapper]")) return;
+      if (panelRef.current && !panelRef.current.contains(t)) {
         setOpen(false);
       }
     }
@@ -242,7 +245,6 @@ export function QuickCashLauncher({
   function resetForm() {
     setMonto("");
     setConcepto("");
-    setProveedor("");
     setGastoClienteId("");
     setFecha(today());
     setDebtMonto("");
@@ -345,13 +347,12 @@ export function QuickCashLauncher({
         afterSave("Pago al equipo registrado ✓");
       });
     } else {
-      if (!concepto.trim() && !proveedor.trim())
-        return toast.error("Poné al menos el proveedor o el concepto.");
+      if (!concepto.trim()) return toast.error("Poné un concepto (qué gasto fue).");
       start(async () => {
         const res = await quickExpensePaid({
           categoria,
-          proveedor: proveedor || null,
-          concepto: concepto || proveedor,
+          proveedor: null,
+          concepto,
           monto: m,
           moneda,
           fecha,
@@ -432,7 +433,7 @@ export function QuickCashLauncher({
           <div className="grid grid-cols-2 gap-2 text-xs">
             {(
               [
-                ["gasto", "Gasto / proveedor"],
+                ["gasto", "Gasto"],
                 ["plataforma", "Plataforma"],
                 ["equipo", "Al equipo"],
                 ["deuda", "Deuda"],
@@ -530,15 +531,6 @@ export function QuickCashLauncher({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div>
-              <Label className="text-xs">Proveedor</Label>
-              <Input
-                value={proveedor}
-                onChange={(e) => setProveedor(e.target.value)}
-                placeholder="Ej: Notion, AFIP, Estudio contable"
-                className="h-9"
-              />
             </div>
             <div>
               <Label className="text-xs">Imputar a cliente (opcional)</Label>

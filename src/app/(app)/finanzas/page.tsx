@@ -10,6 +10,7 @@ import {
   Repeat,
   Users,
   Megaphone,
+  HandCoins,
 } from "lucide-react";
 import { HelpTrigger } from "@/components/help-trigger";
 import { requireFeature } from "@/lib/auth";
@@ -80,7 +81,8 @@ export default async function FinanzasPage({
 }: {
   searchParams: { m?: string };
 }) {
-  await requireFeature("finanzas");
+  const me = await requireFeature("finanzas");
+  const isAdmin = me.rol === "admin";
   const supabase = createClient();
   const admin = createAdmin();
   const rates = await getExchangeRates();
@@ -99,6 +101,7 @@ export default async function FinanzasPage({
     { data: svcRaw },
     { data: adSpendRaw },
     { data: internalRaw },
+    { data: debtsRaw },
     clientsData,
     usersData,
     payroll,
@@ -131,6 +134,10 @@ export default async function FinanzasPage({
       .gte("fecha", mStart)
       .lt("fecha", mEnd),
     supabase.from("clients").select("id").eq("es_interno", true),
+    // Deudas activas (solo se muestran al admin). Privadas.
+    isAdmin
+      ? admin.from("debts").select("monto, moneda").eq("saldada", false)
+      : Promise.resolve({ data: [] }),
     getActiveClients(),
     getActiveUsers(),
     buildPeriodPayroll(admin, period),
@@ -173,6 +180,13 @@ export default async function FinanzasPage({
     .filter((x) => internalIds.has(x.cliente_id))
     .reduce((a, x) => a + ars(x.spend, x.moneda), 0);
   const ganancia = ingresos - sueldos - plataformas - publicidad;
+
+  // Deudas (solo admin): total y meses para saldar al ritmo de ganancia actual.
+  const deudaTotal = ((debtsRaw ?? []) as { monto: number; moneda: string }[]).reduce(
+    (a, d) => a + ars(d.monto, d.moneda),
+    0
+  );
+  const mesesParaSaldar = deudaTotal > 0 && ganancia > 0 ? Math.ceil(deudaTotal / ganancia) : null;
 
   // ===== Cashflow del mes (lo efectivamente movido) =====
   const cobrado = invoices
@@ -286,6 +300,23 @@ export default async function FinanzasPage({
               </Link>
             )}
           </div>
+
+          {/* Deudas (privado, solo admin): posición real */}
+          {isAdmin && deudaTotal > 0 && (
+            <Link
+              href="/finanzas/deudas"
+              className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-300"
+            >
+              <HandCoins className="h-3.5 w-3.5" />
+              Debés <b>{fmtARS(deudaTotal)}</b>
+              {mesesParaSaldar != null && (
+                <span className="text-red-600/80 dark:text-red-300/80">
+                  · a este ritmo de ganancia lo saldás en ~{mesesParaSaldar}{" "}
+                  {mesesParaSaldar === 1 ? "mes" : "meses"}
+                </span>
+              )}
+            </Link>
+          )}
         </CardContent>
       </Card>
 
@@ -434,6 +465,9 @@ export default async function FinanzasPage({
           <AnalisisLink href="/finanzas/evolucion" title="Evolución" desc="Ingresos, costos y margen mes a mes." />
           <AnalisisLink href="/finanzas/suscripciones" title="Suscripciones" desc="Plataformas SaaS que paga la agencia." />
           <AnalisisLink href="/finanzas/recordatorios" title="Recordatorios de cobro" desc="Mensaje de WhatsApp por cliente, a un toque." />
+          {isAdmin && (
+            <AnalisisLink href="/finanzas/deudas" title="Deudas" desc="Lo que debés, para ver tu posición real. Privado." />
+          )}
         </div>
       </div>
     </div>

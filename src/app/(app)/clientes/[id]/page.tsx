@@ -39,6 +39,10 @@ import { ClientListEditor } from "@/components/client-list-editor";
 import { DocumentsManager, type DocumentRow } from "@/components/documents-manager";
 import { ClientPortalLink } from "@/components/client-portal-link";
 import { ClientMeetingsCard } from "@/components/client-meetings-card";
+import {
+  MovimientosHistorialCard,
+  type MovimientoRow,
+} from "@/components/movimientos-historial-card";
 import { ScrollTopOnMount } from "@/components/scroll-top-on-mount";
 import type { ClientService } from "@/lib/types";
 
@@ -76,6 +80,7 @@ export default async function ClientDetail({
     { data: clientDocs },
     { data: calConns },
     { data: portalToken },
+    { data: invoicesRaw },
   ] = await Promise.all([
     supabase
       .from("clients")
@@ -111,6 +116,14 @@ export default async function ClientDetail({
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    // Historial de cobros del cliente (últimos 12).
+    admin
+      .from("client_invoices")
+      .select("id, periodo, concepto, monto, moneda, fecha_vencimiento, fecha_cobro")
+      .eq("cliente_id", params.id)
+      .order("periodo", { ascending: false })
+      .order("fecha_emision", { ascending: false })
+      .limit(12),
   ]);
 
   if (!client) notFound();
@@ -158,6 +171,32 @@ export default async function ClientDetail({
   }
 
   const canSeeFinancials = isStaff(me.rol) || assignedToMe;
+
+  // Historial de cobros normalizado para la card.
+  const hoyStr = new Date().toISOString().slice(0, 10);
+  const cobroRows: MovimientoRow[] = (
+    (invoicesRaw ?? []) as {
+      id: string;
+      periodo: string;
+      concepto: string;
+      monto: number;
+      moneda: string;
+      fecha_vencimiento: string | null;
+      fecha_cobro: string | null;
+    }[]
+  ).map((i) => ({
+    id: i.id,
+    concepto: i.concepto,
+    periodo: i.periodo,
+    monto: Number(i.monto),
+    moneda: i.moneda,
+    estado: i.fecha_cobro
+      ? "pagado"
+      : i.fecha_vencimiento && i.fecha_vencimiento < hoyStr
+      ? "vencido"
+      : "pendiente",
+    fecha: i.fecha_cobro ?? i.fecha_vencimiento,
+  }));
 
   // ── Acciones de navegación de la ficha (toolbar) ──
   const navBtn =
@@ -300,6 +339,16 @@ export default async function ClientDetail({
               />
             </CardContent>
           </Card>
+
+          {/* Historial de cobros */}
+          {canSeeFinancials && (
+            <MovimientosHistorialCard
+              title="Historial de cobros"
+              rows={cobroRows}
+              estadoLabels={{ pagado: "Cobrado", pendiente: "Pendiente", vencido: "Vencido" }}
+              emptyText="Todavía no hay cobros registrados para este cliente."
+            />
+          )}
 
           {/* Tareas */}
           <Card>

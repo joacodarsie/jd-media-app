@@ -13,13 +13,21 @@ import {
 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdmin } from "@/lib/supabase/admin";
 import { PAY_FREQUENCY_LABEL, ROLE_LABEL } from "@/lib/constants";
 import { fmtDate } from "@/lib/dates";
+import { currentPeriod } from "@/lib/finanzas";
+import { buildPeriodPayroll } from "@/lib/payroll-period";
 import type { AppUser, Compensation, Position, UserRole } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PersonalInfoDialog } from "@/components/personal-info-dialog";
 import { CompensationFormDialog } from "@/components/compensation-form-dialog";
+import { MiSueldoCard } from "@/components/mi-sueldo-card";
+import {
+  MovimientosHistorialCard,
+  type MovimientoRow,
+} from "@/components/movimientos-historial-card";
 
 export const dynamic = "force-dynamic";
 
@@ -35,20 +43,33 @@ export default async function PersonaDetail({
   if (!canSeePersonal) notFound();
 
   const supabase = createClient();
-  const [{ data: user }, { data: comp }] = await Promise.all([
-    supabase
-      .from("users")
-      .select(
-        "id, nombre, email, avatar_url, area, rol, position_id, secondary_position_ids, activo, telefono, fecha_ingreso"
-      )
-      .eq("id", params.id)
-      .maybeSingle(),
-    supabase
-      .from("compensation")
-      .select("user_id, monto, moneda, frecuencia, forma_pago, notas, updated_at")
-      .eq("user_id", params.id)
-      .maybeSingle(),
-  ]);
+  const admin = createAdmin();
+  const periodo = currentPeriod();
+  const [{ data: user }, { data: comp }, payroll, { data: paymentsRaw }] =
+    await Promise.all([
+      supabase
+        .from("users")
+        .select(
+          "id, nombre, email, avatar_url, area, rol, position_id, secondary_position_ids, activo, telefono, fecha_ingreso"
+        )
+        .eq("id", params.id)
+        .maybeSingle(),
+      supabase
+        .from("compensation")
+        .select("user_id, monto, moneda, frecuencia, forma_pago, notas, updated_at")
+        .eq("user_id", params.id)
+        .maybeSingle(),
+      // Sueldo del mes en curso (acceso ya gateado a admin o la propia persona).
+      buildPeriodPayroll(admin, periodo).catch(() => null),
+      // Historial de pagos al equipo de esta persona (últimos 12).
+      admin
+        .from("team_payments")
+        .select("id, periodo, concepto, monto, moneda, fecha_programada, fecha_pago")
+        .eq("user_id", params.id)
+        .order("periodo", { ascending: false })
+        .order("fecha_programada", { ascending: false })
+        .limit(12),
+    ]);
   if (!user) notFound();
   const u = user as AppUser;
   const position = u.position_id
@@ -71,6 +92,31 @@ export default async function PersonaDetail({
     forma_pago: position?.pago_default_forma ?? null,
     notas: position?.pago_default_notas ?? null,
   };
+
+  // Sueldo calculado del mes en curso para esta persona.
+  const miSueldo = payroll?.people.find((p) => p.userId === params.id) ?? null;
+
+  // Historial de pagos normalizado para la card.
+  const hoy = new Date().toISOString().slice(0, 10);
+  const paymentRows: MovimientoRow[] = (
+    (paymentsRaw ?? []) as {
+      id: string;
+      periodo: string;
+      concepto: string;
+      monto: number;
+      moneda: string;
+      fecha_programada: string;
+      fecha_pago: string | null;
+    }[]
+  ).map((p) => ({
+    id: p.id,
+    concepto: p.concepto,
+    periodo: p.periodo,
+    monto: Number(p.monto),
+    moneda: p.moneda,
+    estado: p.fecha_pago ? "pagado" : p.fecha_programada < hoy ? "vencido" : "pendiente",
+    fecha: p.fecha_pago ?? p.fecha_programada,
+  }));
 
   return (
     <div className="space-y-5">
@@ -119,6 +165,9 @@ export default async function PersonaDetail({
         </div>
       </div>
 
+      {/* Sueldo calculado del mes en curso (automático, real) */}
+      <MiSueldoCard person={miSueldo} periodo={periodo} title="Sueldo de este mes" />
+
       <div className="grid gap-4 md:grid-cols-2">
         {/* Datos de contacto */}
         <Card>
@@ -154,7 +203,12 @@ export default async function PersonaDetail({
         {/* Pago */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-base">Pago</CardTitle>
+            <CardTitle className="text-base">
+              Compensación pactada{" "}
+              <span className="text-xs font-normal text-muted-foreground">
+                · referencia
+              </span>
+            </CardTitle>
             {isAdmin && (
               <CompensationFormDialog
                 userId={u.id}
@@ -224,6 +278,14 @@ export default async function PersonaDetail({
           </CardContent>
         </Card>
       </div>
+
+      {/* Historial de pagos al equipo */}
+      <MovimientosHistorialCard
+        title="Historial de pagos"
+        rows={paymentRows}
+        estadoLabels={{ pagado: "Pagado", pendiente: "Programado", vencido: "Atrasado" }}
+        emptyText="Todavía no hay pagos registrados para esta persona."
+      />
 
       {position && (
         <Card>

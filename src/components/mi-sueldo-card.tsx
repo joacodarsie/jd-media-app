@@ -13,9 +13,11 @@ import { cn } from "@/lib/utils";
 export function MiSueldoCard({
   person,
   periodo,
+  title = "Mi próximo sueldo",
 }: {
   person: PersonPayroll | null;
   periodo: string;
+  title?: string;
 }) {
   const lines = [
     ...(person?.autoLines ?? []),
@@ -49,7 +51,7 @@ export function MiSueldoCard({
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between gap-2 text-base">
           <span className="flex items-center gap-2">
-            <Wallet className="h-4 w-4 text-emerald-600" /> Mi próximo sueldo
+            <Wallet className="h-4 w-4 text-emerald-600" /> {title}
           </span>
           <span className="text-xs font-normal capitalize text-muted-foreground">
             {periodLabel(periodo)}

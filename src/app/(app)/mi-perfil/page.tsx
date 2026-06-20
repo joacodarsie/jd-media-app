@@ -9,6 +9,7 @@ import type { Compensation, Position } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CompensationCard } from "@/components/compensation-card";
 import { MiSueldoCard } from "@/components/mi-sueldo-card";
+import { BankDetailsCard } from "@/components/bank-details-card";
 import { WhatsAppOptinCard } from "@/components/whatsapp-optin-card";
 import { GoogleCalendarCard } from "@/components/google-calendar-card";
 import { BrowserNotificationsCard } from "@/components/browser-notifications-card";
@@ -94,6 +95,14 @@ export default async function MiPerfilPage() {
       )}
 
       <MiSueldoCard person={miSueldo} periodo={periodo} />
+
+      <BankDetailsCard
+        initialAlias={(me as unknown as { alias_cbu?: string | null }).alias_cbu ?? null}
+        initialCbu={(me as unknown as { cbu?: string | null }).cbu ?? null}
+        initialTitular={
+          (me as unknown as { titular_cuenta?: string | null }).titular_cuenta ?? null
+        }
+      />
 
       <CompensationCard
         compensation={(comp as Compensation) ?? null}

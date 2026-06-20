@@ -2,6 +2,14 @@
 title: Novedades
 ---
 
+## 2026-06-20 — Tus datos para cobrar, tu sueldo real e historiales
+
+- 🏦 **"Mis datos para cobrar" en Mi perfil**: cada uno carga su propio **alias/CBU** (y titular) sin depender de nadie. Aparece en tu sueldo y donde se registra tu pago. Si te falta, la app te avisa.
+- 👤 **Sueldo real del mes en el perfil de cada persona**: además de la compensación pactada (que queda como referencia), ahora se ve el **monto automático del mes** con su desglose — lo que de verdad se cobra/paga según cuentas, piezas, comisiones y jornadas.
+- 🧾 **Historiales fáciles de ver**:
+  - En el perfil de cada **persona**: su **historial de pagos** (qué se le pagó, cuándo, cuánto, qué está pendiente o atrasado).
+  - En la ficha de cada **cliente**: su **historial de cobros** (períodos cobrados, pendientes y vencidos), con el total cobrado.
+
 ## 2026-06-20 — Mirá tu próximo sueldo + recordatorio de cobro automático
 
 - 💰 **"Mi próximo sueldo" en Mi perfil**: cada uno entra a **Mi perfil** y ve, con total claridad, lo que va a cobrar este mes — el desglose por cada cuenta y concepto (CM, diseño, edición, portadas, media buyer, comisiones, jornadas…) y el **total estimado**. Si ya se registró el pago, lo muestra. Podés copiar el detalle con un toque.

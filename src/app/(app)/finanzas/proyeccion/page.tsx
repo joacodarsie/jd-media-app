@@ -34,6 +34,7 @@ interface SvcRow {
   facturacion: string | null;
   fecha_inicio: string | null;
   fecha_fin: string | null;
+  updated_at: string | null;
 }
 interface ClientRow {
   id: string;
@@ -99,7 +100,7 @@ export default async function ProyeccionPage() {
       .eq("es_interno", false),
     supabase
       .from("client_services")
-      .select("cliente_id, monto_mensual, moneda, activo, facturacion, fecha_inicio, fecha_fin"),
+      .select("cliente_id, monto_mensual, moneda, activo, facturacion, fecha_inicio, fecha_fin, updated_at"),
     supabase
       .from("client_invoices")
       .select("monto, moneda, fecha_vencimiento, fecha_cobro"),
@@ -143,15 +144,24 @@ export default async function ProyeccionPage() {
   const arpa = cuentas > 0 ? mrrHoy / cuentas : 0;
 
   // ===== 2) Evolución del MRR (ramp a precios de hoy) =====
-  // Para el histórico también contamos las cuentas dadas de baja que tengan
-  // fecha_fin registrada, ubicándolas en los meses que estuvieron activas → así
-  // el ramp refleja el churn (la caída cuando se fueron), no solo el crecimiento.
+  // Para el histórico contamos TODAS las cuentas recurrentes (activas y bajas),
+  // ubicándolas en los meses que estuvieron activas → así el ramp refleja el
+  // churn (la caída cuando se fueron), no solo el crecimiento.
+  // Fecha de baja efectiva: `fecha_fin` si se cargó; si la cuenta está inactiva
+  // y NO tiene fecha_fin (bajas viejas), usamos `updated_at` como aproximación
+  // (es cuando se desactivó el servicio). Las activas no terminan.
   const trendSvcs = svcs.filter(
     (s) =>
       s.monto_mensual != null &&
-      (s.facturacion ?? "mensual") === "mensual" &&
-      (s.activo || s.fecha_fin) // activas, o bajas con fecha de fin conocida
+      (s.facturacion ?? "mensual") === "mensual"
   );
+  const finEfectivo = (s: SvcRow): string | null => {
+    if (s.fecha_fin) return s.fecha_fin.slice(0, 10);
+    if (!s.activo) return s.updated_at ? s.updated_at.slice(0, 10) : null;
+    return null; // activa → sigue contando
+  };
+  // Cuántas bajas se ubican por aproximación (updated_at), para avisarlo.
+  const bajasAproximadas = trendSvcs.filter((s) => !s.activo && !s.fecha_fin).length;
   const monthEnd = (m: string) => `${nextPeriod(m)}-01`; // exclusivo
   const trend = backMonths.map((m) => {
     const end = monthEnd(m);
@@ -160,8 +170,9 @@ export default async function ProyeccionPage() {
       const inicio = s.fecha_inicio ?? clientById.get(s.cliente_id)?.fecha_inicio ?? null;
       // Si no hay fecha de inicio, asumimos que ya estaba (cuenta vieja).
       const arrancoAntes = !inicio || inicio < end;
-      // Activa: sigue contando. Baja: cuenta hasta su fecha_fin.
-      const terminoDespues = !s.fecha_fin || s.fecha_fin >= `${m}-01`;
+      // Activa: sigue contando. Baja: cuenta hasta su fecha de baja efectiva.
+      const fin = finEfectivo(s);
+      const terminoDespues = !fin || fin >= `${m}-01`;
       if (arrancoAntes && terminoDespues) {
         mrr += toARS(Number(s.monto_mensual), s.moneda, rates);
       }
@@ -374,9 +385,17 @@ export default async function ProyeccionPage() {
         </div>
         <p className="mt-3 text-[11px] text-muted-foreground">
           MRR reconstruido a precios de hoy, ubicando cada cuenta entre su fecha de
-          alta y de baja. Incluye las cuentas que se dieron de baja (con fecha de fin
-          registrada), así que la caída del churn se ve reflejada. Las bajas viejas sin
-          fecha de fin cargada no se descuentan.
+          alta y de baja. Incluye las cuentas dadas de baja, así que la caída del
+          churn se ve reflejada.
+          {bajasAproximadas > 0 && (
+            <>
+              {" "}
+              {bajasAproximadas} baja{bajasAproximadas === 1 ? "" : "s"} sin fecha de
+              fin cargada se ubica{bajasAproximadas === 1 ? "" : "n"} por su última
+              modificación (aproximado); cargá la fecha de baja del servicio para que
+              sea exacta.
+            </>
+          )}
         </p>
       </div>
 

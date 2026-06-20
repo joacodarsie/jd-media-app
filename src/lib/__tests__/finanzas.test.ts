@@ -5,6 +5,7 @@ import {
   nextPeriod,
   prevPeriod,
   monthRange,
+  daysUntil,
 } from "@/lib/finanzas";
 
 const rates = {
@@ -35,6 +36,30 @@ describe("isOverdue", () => {
   });
   it("NO vencida si no hay fecha de vencimiento", () => {
     expect(isOverdue(null, null)).toBe(false);
+  });
+});
+
+describe("daysUntil", () => {
+  const iso = (offsetDays: number) => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + offsetDays);
+    return d.toISOString().slice(0, 10);
+  };
+  it("hoy = 0", () => {
+    expect(daysUntil(iso(0))).toBe(0);
+  });
+  it("futuro = positivo, pasado = negativo", () => {
+    expect(daysUntil(iso(5))).toBe(5);
+    expect(daysUntil(iso(-3))).toBe(-3);
+  });
+  it("acepta timestamp y toma solo la fecha", () => {
+    expect(daysUntil(iso(2) + "T23:59:59Z")).toBe(2);
+  });
+  it("null/inválido → null", () => {
+    expect(daysUntil(null)).toBeNull();
+    expect(daysUntil(undefined)).toBeNull();
+    expect(daysUntil("")).toBeNull();
   });
 });
 

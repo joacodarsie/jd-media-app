@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-06-20 — Cobros más claros y churn que se ve en la proyección
+
+- ⏰ **Días para cobrar en la tabla de Cobros**: cada factura sin cobrar ahora muestra un cartelito al lado del vencimiento — **"vence hoy"**, **"en 3 días"** o **"atrasado 5 días"** (en rojo cuando ya venció). De un vistazo sabés a quién hay que apurar.
+- 📉 **El churn se refleja en la Proyección**: la evolución del MRR ahora incluye las cuentas que se dieron de baja, así se ve la **caída** cuando un cliente se va, no solo el crecimiento. Las bajas viejas sin fecha de fin cargada se ubican por aproximación (su última modificación) y la app te avisa para que la cargues si querés que sea exacta.
+
 ## 2026-06-17 — Proyección financiera: MRR, LTV y caja a futuro
 
 - 🔮 **Nueva sección Finanzas → "Proyección"** que mira hacia adelante, no solo el mes actual:

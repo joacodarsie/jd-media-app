@@ -8,6 +8,7 @@ import {
   fmtARS,
   fmtCurrency,
   isOverdue,
+  daysUntil,
 } from "@/lib/finanzas";
 import type { ExchangeRates } from "@/lib/exchange";
 import { Input } from "@/components/ui/input";
@@ -153,7 +154,7 @@ export function InvoicesTable({
                   </div>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <div className="flex gap-2 text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
                     <span>{i.periodo}</span>
                     <span>·</span>
                     <span className={cn(overdue && "font-semibold text-red-700")}>
@@ -164,8 +165,11 @@ export function InvoicesTable({
                             month: "short",
                           })
                         : "—"}
-                      {overdue && " · venc."}
                     </span>
+                    <DueChip
+                      fechaVencimiento={i.fecha_vencimiento}
+                      fechaCobro={i.fecha_cobro}
+                    />
                   </div>
                   <div className="flex items-center gap-1">
                     <MarkPaidButton id={i.id} kind="invoice" paidAt={i.fecha_cobro} />
@@ -243,13 +247,20 @@ export function InvoicesTable({
                       </td>
                       <td className="px-3 py-2 text-xs">{i.periodo}</td>
                       <td className={cn("px-3 py-2 text-xs", overdue && "font-semibold text-red-700")}>
-                        {i.fecha_vencimiento
-                          ? new Date(i.fecha_vencimiento).toLocaleDateString("es-AR", {
-                              day: "2-digit",
-                              month: "short",
-                            })
-                          : "—"}
-                        {overdue && " · venc."}
+                        <div className="flex flex-col items-start gap-0.5">
+                          <span>
+                            {i.fecha_vencimiento
+                              ? new Date(i.fecha_vencimiento).toLocaleDateString("es-AR", {
+                                  day: "2-digit",
+                                  month: "short",
+                                })
+                              : "—"}
+                          </span>
+                          <DueChip
+                            fechaVencimiento={i.fecha_vencimiento}
+                            fechaCobro={i.fecha_cobro}
+                          />
+                        </div>
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">
                         <div className="font-semibold">{fmtCurrency(Number(i.monto), i.moneda)}</div>
@@ -297,6 +308,57 @@ export function InvoicesTable({
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Chip relativo de vencimiento para facturas sin cobrar: "vence hoy",
+ * "en N días" o "atrasado N días". No muestra nada si ya se cobró, si no hay
+ * vencimiento, o si falta más de una semana (evita ruido).
+ */
+function DueChip({
+  fechaVencimiento,
+  fechaCobro,
+}: {
+  fechaVencimiento: string | null;
+  fechaCobro: string | null;
+}) {
+  if (fechaCobro) return null;
+  const d = daysUntil(fechaVencimiento);
+  if (d === null) return null;
+
+  let label: string;
+  let tone: "red" | "amber" | "muted";
+  if (d < 0) {
+    const n = Math.abs(d);
+    label = `atrasado ${n} día${n === 1 ? "" : "s"}`;
+    tone = "red";
+  } else if (d === 0) {
+    label = "vence hoy";
+    tone = "red";
+  } else if (d <= 3) {
+    label = `en ${d} día${d === 1 ? "" : "s"}`;
+    tone = "amber";
+  } else if (d <= 7) {
+    label = `en ${d} días`;
+    tone = "muted";
+  } else {
+    return null;
+  }
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium leading-none",
+        tone === "red" &&
+          "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300",
+        tone === "amber" &&
+          "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
+        tone === "muted" && "bg-muted text-muted-foreground"
+      )}
+    >
+      {label}
+    </span>
   );
 }
 

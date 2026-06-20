@@ -51,3 +51,19 @@ export function isOverdue(fechaVencimiento: string | null, fechaCobro: string | 
   const today = new Date().toISOString().slice(0, 10);
   return fechaVencimiento < today;
 }
+
+/**
+ * Días (enteros) desde hoy hasta `fecha` (YYYY-MM-DD). 0 = hoy, negativo = ya
+ * pasó (atraso), positivo = faltan días. `null` si no hay fecha. Compara a
+ * medianoche local para que no dependa de la hora del día.
+ */
+export function daysUntil(fecha: string | null | undefined): number | null {
+  if (!fecha) return null;
+  const [y, m, d] = fecha.slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(y, m - 1, d);
+  target.setHours(0, 0, 0, 0);
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000);
+}

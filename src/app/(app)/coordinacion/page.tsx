@@ -101,9 +101,9 @@ export default async function CoordinacionPage() {
       <div>
         <h1 className="text-2xl font-bold">Coordinación</h1>
         <p className="text-muted-foreground">
-          El centro de control de la agencia: economía de cada pack, simulador de
-          escenarios y panorama real con todos los servicios activos. Solo vos
-          podés verlo y modificarlo.
+          El panorama real de la agencia: lo que cobrás vs. lo que te cuesta cada
+          cuenta. Las tarifas y simuladores quedan abajo, para cuando los
+          necesites. Solo vos lo ves.
         </p>
       </div>
       <CoordinacionPanel initial={settings} panorama={panorama} />

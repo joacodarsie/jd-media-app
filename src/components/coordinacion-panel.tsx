@@ -218,6 +218,23 @@ export function CoordinacionPanel({
         </div>
       </section>
 
+      {/* ── Configuración avanzada (colapsable) ──────── */}
+      <details className="group rounded-xl border bg-card [&_section]:rounded-none [&_section]:border-0 [&_section]:border-t [&_section]:bg-transparent">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3">
+          <div>
+            <h2 className="text-base font-semibold">Tarifas, packs y simuladores</h2>
+            <p className="text-xs text-muted-foreground">
+              La economía de cada pack, el modelo de tarifas por rol y los
+              simuladores. Lo abrís solo cuando querés ajustar precios o probar
+              un escenario.
+            </p>
+          </div>
+          <span className="shrink-0 rounded-md border px-2 py-1 text-xs text-muted-foreground">
+            <span className="group-open:hidden">Mostrar</span>
+            <span className="hidden group-open:inline">Ocultar</span>
+          </span>
+        </summary>
+
       {/* ── SIMULADOR ───────────────────────────────── */}
       <section className="rounded-xl border bg-card">
         <div className="border-b px-4 py-3">
@@ -370,6 +387,7 @@ export function CoordinacionPanel({
 
       {/* ── COTIZADOR PERSONALIZADO ─────────────────── */}
       <CustomPackEstimator rates={rates} />
+      </details>
 
       {dirty && (
         <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-xl border bg-card px-4 py-2.5 shadow-lg">

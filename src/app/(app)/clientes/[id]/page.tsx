@@ -11,6 +11,7 @@ import {
   Globe,
   Mail,
   Megaphone,
+  MessageCircle,
   Network,
   Phone,
   Pencil,
@@ -22,7 +23,8 @@ import { requireUser, isStaff } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { listEventsForUser } from "@/lib/google-calendar";
-import { CLIENT_STATUS_LABEL } from "@/lib/constants";
+import { CLIENT_STATUS_LABEL, SERVICE_TYPE_LABEL } from "@/lib/constants";
+import { AGENCY } from "@/lib/agency";
 import { fmtDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { Client, TaskWithRels } from "@/lib/types";
@@ -36,6 +38,7 @@ import { DeleteClientButton } from "@/components/delete-client-button";
 import { ClientServicesEditor } from "@/components/client-services-editor";
 import { ClientStatusToggle } from "@/components/client-status-toggle";
 import { ClientActivateButton } from "@/components/client-activate-button";
+import { ProposalMessageCard } from "@/components/proposal-message-card";
 import { ClientListEditor } from "@/components/client-list-editor";
 import { DocumentsManager, type DocumentRow } from "@/components/documents-manager";
 import { ClientPortalLink } from "@/components/client-portal-link";
@@ -171,6 +174,49 @@ export default async function ClientDetail({
   // URL a una cuenta que no es suya (o inactiva), 404.
   if (!isStaff(me.rol) && (!assignedToMe || c.estado !== "activo")) {
     notFound();
+  }
+
+  // Mensaje para enviarle al cliente de una propuesta: resumen de lo contratado
+  // + datos para transferir. La carta acuerdo (PDF) se adjunta aparte.
+  const esPropuesta = c.estado === "propuesta";
+  let proposalMessage = "";
+  if (esPropuesta) {
+    const esUnico = (s: ClientService) =>
+      (s as { facturacion?: string }).facturacion === "unico";
+    const activos = svcList.filter((s) => s.activo);
+    const nf = (n: number) => Number(n).toLocaleString("es-AR");
+    const lineas = activos.map((s) => {
+      const label = SERVICE_TYPE_LABEL[s.tipo] ?? s.tipo;
+      if (!s.monto_mensual) return `• ${label}`;
+      return `• ${label}: ${s.moneda || "ARS"} ${nf(Number(s.monto_mensual))}${
+        esUnico(s) ? " (pago único)" : " /mes"
+      }`;
+    });
+    const totalMensual = activos
+      .filter((s) => !esUnico(s))
+      .reduce((a, s) => a + (Number(s.monto_mensual) || 0), 0);
+    const totalUnico = activos
+      .filter(esUnico)
+      .reduce((a, s) => a + (Number(s.monto_mensual) || 0), 0);
+    const saludo = c.contacto_nombre?.split(" ")[0] || c.nombre;
+    const partes = [
+      `Hola ${saludo}! 🙌 Te paso la carta acuerdo con el detalle de lo que vamos a hacer:`,
+      "",
+      ...lineas,
+      "",
+    ];
+    if (totalMensual > 0) partes.push(`Total mensual: ARS ${nf(totalMensual)}`);
+    if (totalUnico > 0) partes.push(`Pago único: ARS ${nf(totalUnico)}`);
+    partes.push(
+      "",
+      "Para dejar todo en marcha, te paso los datos para la transferencia:",
+      `Alias: ${AGENCY.bank.alias}`,
+      `Titular: ${AGENCY.bank.titular}`,
+      `CUIT/CUIL: ${AGENCY.bank.cuil}`,
+      "",
+      "Apenas me confirmes el pago, activamos todo y arrancamos 🚀 ¡Cualquier duda, quedo a disposición!"
+    );
+    proposalMessage = partes.join("\n");
   }
 
   const canSeeFinancials = isStaff(me.rol) || assignedToMe;
@@ -360,6 +406,36 @@ export default async function ClientDetail({
       <div className="grid gap-5 lg:grid-cols-3">
         {/* Columna principal */}
         <div className="space-y-5 lg:col-span-2">
+          {/* Mensaje para el cliente (solo propuestas) */}
+          {esPropuesta && canSeeFinancials && (
+            <Card className="border-violet-300 dark:border-violet-900">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <MessageCircle className="h-4 w-4 text-violet-600" />
+                  Enviar al cliente
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Revisá que los servicios y montos de abajo estén bien, generá la{" "}
+                  <Link
+                    href={`/contrato/cliente/${c.id}`}
+                    target="_blank"
+                    className="font-medium text-foreground underline underline-offset-2"
+                  >
+                    carta acuerdo
+                  </Link>{" "}
+                  (imprimila como PDF para adjuntarla) y mandá este mensaje con los
+                  datos de transferencia.
+                </p>
+                <ProposalMessageCard
+                  telefono={c.contacto_telefono ?? null}
+                  mensaje={proposalMessage}
+                />
+              </CardContent>
+            </Card>
+          )}
+
           {/* Servicios contratados */}
           <Card>
             <CardContent className="pt-6">

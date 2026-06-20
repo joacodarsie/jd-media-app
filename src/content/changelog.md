@@ -6,6 +6,7 @@ title: Novedades
 
 - 📝 **Carta acuerdo desde el pipeline**: en una oportunidad (etapas Propuesta / Negociación / Ganado) ahora aparece **"Generar carta acuerdo"**. Crea una ficha en estado **Propuesta** (no cuenta como cliente todavía, no entra a Finanzas ni a Sueldos) para que armes el contrato y la carta, y se la envíes junto con los datos de transferencia.
 - ✅ **Cuando el cliente paga, lo activás**: desde su ficha, el botón **"Activar cliente (pagó)"** lo pasa a Activo, arranca su primer mes y recién ahí empieza a contar. Si nunca paga, queda como Propuesta y no ensucia nada. En Clientes hay un filtro nuevo **"Propuestas"**.
+- 💬 **Mensaje listo para el cliente**: en la ficha de una Propuesta tenés un mensaje armado solo (resumen de lo contratado + datos para transferir), editable, con **copiar** y **abrir WhatsApp**. Lo mandás junto con la carta acuerdo en PDF.
 - 💸 **Comisiones de cierre automáticas**: la comisión del **primer mes** de cada cliente nuevo se carga **sola** en Sueldos, para el comercial que figura como **"Cerrado por"** en la ficha. Ya no hace falta cargarla a mano (el botón "Comisión" queda solo para casos especiales: lead referido o ajustes). El bonus por volumen también cuenta estos cierres.
 - 📜 **Historial de movimientos**: en Finanzas → Análisis → **"Movimientos"** ves todo lo que entró y salió (cobros, pagos al equipo y gastos), mes a mes, con filtro por Ingresos / Egresos y los totales arriba.
 

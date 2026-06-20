@@ -6,7 +6,8 @@
 // self-service de cada colaborador (/mi-perfil), sin duplicar el cálculo.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { mergeSettings, type AgencySettings } from "./coordinacion";
+import { mergeSettings, serviceDeliveryCost, type AgencySettings } from "./coordinacion";
+import { SERVICE_TYPE_LABEL } from "./constants";
 import {
   computeAutoPayroll,
   closerVolumeBonusPct,
@@ -22,6 +23,8 @@ interface ServiceRow extends PayrollService {
   monto_mensual: number | null;
   facturacion: string | null;
   activo: boolean;
+  costo_pct: number | null;
+  created_at: string | null;
 }
 
 export interface PeriodPayrollResult {
@@ -61,7 +64,7 @@ export async function buildPeriodPayroll(
     admin
       .from("client_services")
       .select(
-        "cliente_id, tipo, pack, pack_detalle, monto_mensual, facturacion, activo, costo_override, costo_override_user, media_buyer_user_id, media_buyer_aplica"
+        "cliente_id, tipo, pack, pack_detalle, monto_mensual, facturacion, activo, costo_override, costo_pct, costo_override_user, created_at, media_buyer_user_id, media_buyer_aplica"
       )
       .eq("activo", true),
     admin.from("users").select("id, nombre, rol, alias_cbu, cbu, titular_cuenta").eq("activo", true),
@@ -188,6 +191,25 @@ export async function buildPeriodPayroll(
   const userById = new Map(users.map((u) => [u.id, u]));
   const clientById = new Map(clients.map((c) => [c.id, c.nombre]));
   const salaryConcepto = `Sueldo ${periodo}`;
+
+  // Costo de entrega de servicios que no son gestión de redes (branding, web,
+  // botly, diseño suelto…): % del monto o fijo, pagado a quien lo entrega. Los
+  // recurrentes se pagan cada mes; los de cobro único, solo en el mes en que se
+  // cargaron (created_at). Las cuentas internas (JD MEDIA) no se incluyen.
+  for (const s of services) {
+    const esUnico = (s.facturacion ?? "mensual") === "unico";
+    if (esUnico && (s.created_at ?? "").slice(0, 7) !== periodo) continue;
+    const dc = serviceDeliveryCost(s);
+    if (!dc || !dc.userId || dc.monto <= 0) continue;
+    if (!autoByUser.has(dc.userId)) autoByUser.set(dc.userId, []);
+    autoByUser.get(dc.userId)!.push({
+      clienteId: s.cliente_id,
+      cliente: clientById.get(s.cliente_id) ?? "—",
+      concepto: `${SERVICE_TYPE_LABEL[s.tipo] ?? s.tipo}${esUnico ? " (proyecto)" : ""}`,
+      monto: dc.monto,
+      kind: "extra",
+    });
+  }
 
   // Combinar auto + ítems manuales en una nómina por persona.
   const personIds = new Set<string>([...autoByUser.keys(), ...items.map((i) => i.user_id)]);

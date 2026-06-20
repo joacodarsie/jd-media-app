@@ -117,6 +117,36 @@ export function mbCost(pack: RatePack, rates: AgencyRates): number {
   return rates.media_buyer[pack] ?? 0;
 }
 
+/** Servicio para resolver su costo de entrega (campos relevantes). */
+export interface ServiceCostInput {
+  tipo: string;
+  monto_mensual: number | null;
+  costo_override: number | null;
+  costo_pct: number | null;
+  costo_override_user: string | null;
+}
+
+/**
+ * Costo de entrega de un servicio que NO es gestión de redes ni pauta (branding,
+ * diseño suelto, web, botly…): un monto fijo (`costo_override`) o un % del monto
+ * (`costo_pct`), pagado a `costo_override_user`. Devuelve null si no aplica o si
+ * no hay costo configurado. La gestión de redes se costea por-pieza aparte, y la
+ * pauta (media buyer) va incluida en gestión.
+ */
+export function serviceDeliveryCost(
+  svc: ServiceCostInput
+): { monto: number; userId: string | null } | null {
+  if (svc.tipo === "gestion_redes" || svc.tipo === "paid_media") return null;
+  if (svc.costo_override != null) {
+    return { monto: Number(svc.costo_override), userId: svc.costo_override_user };
+  }
+  if (svc.costo_pct != null) {
+    const base = Number(svc.monto_mensual) || 0;
+    return { monto: Math.round(base * Number(svc.costo_pct)), userId: svc.costo_override_user };
+  }
+  return null;
+}
+
 /** Costo de un pack estándar (incluye pauta: escenario de lista full-service). */
 export function packCost(pack: PackParam, rates: AgencyRates): number {
   return (

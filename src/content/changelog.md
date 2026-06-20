@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-06-20 — Servicios puntuales y costo por porcentaje
+
+- 🧾 **Servicios que no son gestión de redes** (branding, diseño suelto, web, botly…) ahora pueden definir su **costo de entrega**: un **% de lo que paga el cliente** (ej: branding de $400k con 50% para quien lo hace = $200k de costo) o un monto fijo, y a quién se le paga. Se carga en cada servicio, en la ficha del cliente.
+- 📊 **Salud de la agencia más exacta**: los **cobros únicos ya no se cuentan como ingreso mensual** (antes inflaban el MRR). Aparecen en una sección aparte, **"Proyectos puntuales"**, con su ingreso, costo y margen real del mes. Y a las cuentas que no son de gestión de redes ya no se les inventa un costo de CM.
+- 💵 **Sueldos**: quien entrega esos servicios entra **automáticamente** a la nómina (los puntuales, en el mes del proyecto).
+
 ## 2026-06-20 — Media buyer: incluido en gestión de redes
 
 - 🎯 **La gestión de campañas de Meta ahora se cuenta como parte del servicio de gestión de redes**: el media buyer cobra por **cada cuenta con gestión de redes**, sin tener que marcar "paid media" como un servicio aparte en cada cliente nuevo.

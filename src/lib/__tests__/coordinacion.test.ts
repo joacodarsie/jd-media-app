@@ -4,6 +4,7 @@ import {
   mbCost,
   packCost,
   mergeSettings,
+  serviceDeliveryCost,
   DEFAULT_AGENCY_SETTINGS,
 } from "@/lib/coordinacion";
 
@@ -34,6 +35,35 @@ describe("packCost", () => {
     const esperado =
       productionBase("Presencia", presencia.posts, presencia.reels, r) + mbCost("Presencia", r);
     expect(packCost(presencia, r)).toBe(esperado);
+  });
+});
+
+describe("serviceDeliveryCost", () => {
+  const base = {
+    tipo: "branding",
+    monto_mensual: 400_000,
+    costo_override: null,
+    costo_pct: null,
+    costo_override_user: "u1",
+  };
+  it("% del monto al que entrega (branding 50% de 400k = 200k)", () => {
+    expect(serviceDeliveryCost({ ...base, costo_pct: 0.5 })).toEqual({
+      monto: 200_000,
+      userId: "u1",
+    });
+  });
+  it("monto fijo tiene prioridad sobre el %", () => {
+    expect(serviceDeliveryCost({ ...base, costo_override: 150_000, costo_pct: 0.5 })).toEqual({
+      monto: 150_000,
+      userId: "u1",
+    });
+  });
+  it("gestión de redes y pauta no usan este costo", () => {
+    expect(serviceDeliveryCost({ ...base, tipo: "gestion_redes", costo_pct: 0.5 })).toBeNull();
+    expect(serviceDeliveryCost({ ...base, tipo: "paid_media", costo_pct: 0.5 })).toBeNull();
+  });
+  it("sin costo configurado → null", () => {
+    expect(serviceDeliveryCost(base)).toBeNull();
   });
 });
 

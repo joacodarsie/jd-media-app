@@ -4,6 +4,7 @@ import {
   mergeSettings,
   productionBase,
   mbCost,
+  serviceDeliveryCost,
   type RatePack,
   type AgencySettings,
 } from "@/lib/coordinacion";
@@ -25,7 +26,7 @@ export default async function CoordinacionPage() {
         .eq("es_interno", false),
       admin
         .from("client_services")
-        .select("cliente_id, tipo, pack, monto_mensual, facturacion, pack_detalle, activo, costo_override")
+        .select("cliente_id, tipo, pack, monto_mensual, facturacion, pack_detalle, activo, costo_override, costo_pct, costo_override_user")
         .eq("activo", true),
     ]);
 
@@ -75,6 +76,15 @@ export default async function CoordinacionPage() {
           (conPauta ? mbCost(pack, settings.rates) : 0);
       }
     }
+
+    // Costo de entrega de servicios recurrentes que no son gestión de redes
+    // (web/botly/diseño con %). Los cobros únicos no entran al panorama mensual.
+    for (const sv of svcs) {
+      if ((sv.facturacion ?? "mensual") === "unico") continue;
+      const dc = serviceDeliveryCost(sv);
+      if (dc) costo += dc.monto;
+    }
+
     panorama.push({
       id: c.id,
       nombre: c.nombre,

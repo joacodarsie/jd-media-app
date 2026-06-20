@@ -262,6 +262,21 @@ function ServiceDialog({
   const [notas, setNotas] = useState(service?.notas ?? "");
   const [activo, setActivo] = useState(service?.activo ?? true);
 
+  // Costo de entrega (servicios que no son gestión de redes): % del monto o fijo.
+  const svcCost = service as
+    | { costo_pct?: number | null; costo_override?: number | null; costo_override_user?: string | null }
+    | undefined;
+  const [costoModo, setCostoModo] = useState<"pct" | "fijo">(
+    svcCost?.costo_override != null ? "fijo" : "pct"
+  );
+  const [costoPct, setCostoPct] = useState<string>(
+    svcCost?.costo_pct != null ? String(Math.round(Number(svcCost.costo_pct) * 100)) : ""
+  );
+  const [costoFijo, setCostoFijo] = useState<string>(
+    svcCost?.costo_override != null ? String(svcCost.costo_override) : ""
+  );
+  const [costoUser, setCostoUser] = useState<string>(svcCost?.costo_override_user ?? "");
+
   const initialDet = service?.pack_detalle as
     | { posts?: number; historias_dias?: number; reels?: number }
     | undefined;
@@ -308,6 +323,12 @@ function ServiceDialog({
       notas,
       activo,
       responsables,
+      // Costo de entrega: solo para servicios que no son gestión de redes.
+      costo_override:
+        !isRedes && costoModo === "fijo" && costoFijo !== "" ? Number(costoFijo) : null,
+      costo_pct:
+        !isRedes && costoModo === "pct" && costoPct !== "" ? Number(costoPct) / 100 : null,
+      costo_override_user: !isRedes ? costoUser || null : null,
     };
     start(async () => {
       const res =
@@ -444,6 +465,79 @@ function ServiceDialog({
               />
             </div>
           </div>
+
+          {tipo !== "gestion_redes" && (
+            <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
+              <Label>Costo de entrega</Label>
+              <p className="text-xs text-muted-foreground">
+                Cuánto te cuesta este servicio y a quién se lo pagás. Para
+                revenue-share usá un % del monto (ej: branding 50% para quien lo
+                hace); o un monto fijo.
+              </p>
+              <div className="flex gap-2">
+                {(["pct", "fijo"] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setCostoModo(m)}
+                    className={
+                      costoModo === m
+                        ? "flex-1 rounded-md border border-primary bg-primary/10 px-3 py-1.5 text-sm"
+                        : "flex-1 rounded-md border bg-card px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
+                    }
+                  >
+                    {m === "pct" ? "% del monto" : "Monto fijo"}
+                  </button>
+                ))}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {costoModo === "pct" ? (
+                  <div className="space-y-1">
+                    <Label className="text-xs">% para quien entrega</Label>
+                    <Input
+                      type="number"
+                      value={costoPct}
+                      onChange={(e) => setCostoPct(e.target.value)}
+                      placeholder="ej: 50"
+                    />
+                    {costoPct !== "" && monto !== "" && (
+                      <p className="text-[11px] text-muted-foreground">
+                        = {moneda}{" "}
+                        {Math.round((Number(monto) * Number(costoPct)) / 100).toLocaleString("es-AR")}{" "}
+                        de costo
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Monto fijo de costo</Label>
+                    <Input
+                      type="number"
+                      value={costoFijo}
+                      onChange={(e) => setCostoFijo(e.target.value)}
+                      placeholder="$"
+                    />
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <Label className="text-xs">Se le paga a</Label>
+                  <Select value={costoUser || "none"} onValueChange={(v) => setCostoUser(v === "none" ? "" : v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Persona" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— Sin asignar —</SelectItem>
+                      {users.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.nombre}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">

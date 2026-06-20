@@ -31,10 +31,15 @@ export interface ServiceInput {
   facturacion: "mensual" | "unico";
   /** Personas que llevan este servicio (equipo por servicio). */
   responsables: string[];
+  /** Costo de entrega (servicios no por-pieza): % del monto (0–1) o monto fijo. */
+  costo_pct?: number | null;
+  costo_override?: number | null;
+  /** Persona a la que se le paga el costo de entrega. */
+  costo_override_user?: string | null;
 }
 
 function clean(input: ServiceInput) {
-  return {
+  const base = {
     cliente_id: input.cliente_id,
     tipo: input.tipo,
     pack: input.pack?.trim() || null,
@@ -54,6 +59,26 @@ function clean(input: ServiceInput) {
     responsables: Array.isArray(input.responsables)
       ? Array.from(new Set(input.responsables.filter(Boolean)))
       : [],
+  };
+
+  // Los campos de costo de entrega SOLO se tocan para servicios que no son de
+  // gestión de redes. En gestión, `costo_override` es el acuerdo fijo (ej. Luz)
+  // y se preserva: no lo incluimos en el payload para no pisarlo.
+  if (input.tipo === "gestion_redes") return base;
+
+  const override =
+    input.costo_override != null && !Number.isNaN(input.costo_override)
+      ? input.costo_override
+      : null;
+  const pct =
+    override == null && input.costo_pct != null && !Number.isNaN(input.costo_pct)
+      ? input.costo_pct
+      : null;
+  return {
+    ...base,
+    costo_override: override,
+    costo_pct: pct,
+    costo_override_user: override != null || pct != null ? input.costo_override_user || null : null,
   };
 }
 

@@ -66,6 +66,36 @@ export async function deleteDebt(id: string) {
   return { ok: true };
 }
 
+/**
+ * Registra un pago parcial/total de una deuda: descuenta `monto` del saldo
+ * restante. Si llega a 0, la marca saldada. No genera un gasto operativo (la
+ * devolución de una deuda no es un costo de la agencia; solo baja lo que debés).
+ */
+export async function quickPayDebt(id: string, monto: number) {
+  await requireRole(["admin"]);
+  if (!Number.isFinite(monto) || monto <= 0) return { error: "Monto inválido." };
+  const admin = createAdmin();
+  const { data: debt, error: e0 } = await admin
+    .from("debts")
+    .select("monto")
+    .eq("id", id)
+    .maybeSingle();
+  if (e0) return { error: e0.message };
+  if (!debt) return { error: "No se encontró la deuda." };
+  const restante = Math.max(0, Number(debt.monto) - monto);
+  const { error } = await admin
+    .from("debts")
+    .update({
+      monto: restante,
+      saldada: restante <= 0,
+      fecha_saldada: restante <= 0 ? new Date().toISOString().slice(0, 10) : null,
+    })
+    .eq("id", id);
+  if (error) return { error: error.message };
+  invalidate();
+  return { ok: true, restante };
+}
+
 export async function toggleDebtSaldada(id: string, saldada: boolean) {
   await requireRole(["admin"]);
   const admin = createAdmin();

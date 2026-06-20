@@ -41,12 +41,16 @@ import {
   type QuickPendingItem,
   type ExpenseCategory,
 } from "@/app/(app)/finanzas/actions";
+import { registerSubscriptionPayment } from "@/app/(app)/finanzas/suscripciones/actions";
+import { quickPayDebt } from "@/app/(app)/finanzas/debts-actions";
 import { cn } from "@/lib/utils";
 
 type Mini = { id: string; nombre: string };
+type SubMini = { id: string; nombre: string; costo: number; moneda: string };
+type DebtMini = { id: string; acreedor: string; monto: number; moneda: string };
 
 type Direccion = "in" | "out";
-type Salida = "equipo" | "gasto";
+type Salida = "gasto" | "plataforma" | "equipo" | "deuda";
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -154,9 +158,13 @@ function Combo({
 export function QuickCashLauncher({
   clients,
   users,
+  subscriptions = [],
+  debts = [],
 }: {
   clients: Mini[];
   users: Mini[];
+  subscriptions?: SubMini[];
+  debts?: DebtMini[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -181,6 +189,13 @@ export function QuickCashLauncher({
   const [categoria, setCategoria] = useState<ExpenseCategory>("plataformas");
   const [proveedor, setProveedor] = useState("");
   const [gastoClienteId, setGastoClienteId] = useState(""); // imputar a cliente (opcional)
+  // Plataforma / Deuda
+  const [subId, setSubId] = useState("");
+  const [debtId, setDebtId] = useState("");
+  const [debtMonto, setDebtMonto] = useState("");
+
+  const subSel = subscriptions.find((x) => x.id === subId);
+  const debtSel = debts.find((x) => x.id === debtId);
 
   // Cerrar al clickear afuera / Esc
   useEffect(() => {
@@ -230,6 +245,36 @@ export function QuickCashLauncher({
     setProveedor("");
     setGastoClienteId("");
     setFecha(today());
+    setDebtMonto("");
+  }
+
+  function payPlatform() {
+    if (!subId) return toast.error("Elegí la plataforma.");
+    start(async () => {
+      const res = await registerSubscriptionPayment(subId);
+      if (res?.error) return void toast.error(res.error);
+      toast.success("Plataforma pagada ✓");
+      setSubId("");
+      router.refresh();
+    });
+  }
+
+  function payDebt() {
+    if (!debtId) return toast.error("Elegí la deuda.");
+    const m = Number(debtMonto);
+    if (!Number.isFinite(m) || m <= 0) return toast.error("Poné cuánto pagaste.");
+    start(async () => {
+      const res = await quickPayDebt(debtId, m);
+      if (res?.error) return void toast.error(res.error);
+      toast.success(
+        res.restante && res.restante > 0
+          ? `Pago registrado ✓ — queda ${fmt(res.restante, debtSel?.moneda ?? "ARS")}`
+          : "¡Deuda saldada! 🙌"
+      );
+      setDebtMonto("");
+      setDebtId("");
+      router.refresh();
+    });
   }
 
   function afterSave(msg: string) {
@@ -384,25 +429,26 @@ export function QuickCashLauncher({
       <div className="space-y-3 overflow-y-auto px-3 pb-4">
         {/* Sub-toggle de salida */}
         {!entrada && (
-          <div className="flex gap-2 text-xs">
-            <button
-              onClick={() => setSalida("gasto")}
-              className={cn(
-                "flex-1 rounded-md border py-1.5 font-medium",
-                salida === "gasto" ? "border-primary bg-primary/10" : "text-muted-foreground"
-              )}
-            >
-              Gasto / proveedor
-            </button>
-            <button
-              onClick={() => setSalida("equipo")}
-              className={cn(
-                "flex-1 rounded-md border py-1.5 font-medium",
-                salida === "equipo" ? "border-primary bg-primary/10" : "text-muted-foreground"
-              )}
-            >
-              Al equipo
-            </button>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            {(
+              [
+                ["gasto", "Gasto / proveedor"],
+                ["plataforma", "Plataforma"],
+                ["equipo", "Al equipo"],
+                ["deuda", "Deuda"],
+              ] as [Salida, string][]
+            ).map(([v, label]) => (
+              <button
+                key={v}
+                onClick={() => setSalida(v)}
+                className={cn(
+                  "rounded-md border py-1.5 font-medium",
+                  salida === v ? "border-primary bg-primary/10" : "text-muted-foreground"
+                )}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         )}
 
@@ -512,7 +558,96 @@ export function QuickCashLauncher({
           </div>
         )}
 
-        {/* Bloque "nuevo": monto + concepto + fecha */}
+        {/* Plataforma: elegir suscripción y pagarla de un toque */}
+        {!entrada && salida === "plataforma" && (
+          <div className="space-y-2 rounded-lg border bg-muted/30 p-2">
+            <Label className="text-xs">¿Qué plataforma pagaste?</Label>
+            {subscriptions.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                No hay plataformas cargadas. Cargalas en Finanzas → Suscripciones.
+              </p>
+            ) : (
+              <>
+                <Combo
+                  items={subscriptions.map((sx) => ({ id: sx.id, nombre: sx.nombre }))}
+                  value={subId}
+                  onChange={setSubId}
+                  placeholder="Elegí plataforma"
+                />
+                {subSel && (
+                  <p className="px-1 text-[11px] text-muted-foreground">
+                    Se registra como gasto del mes por{" "}
+                    <b className="text-foreground">{fmt(subSel.costo, subSel.moneda)}</b> y
+                    se agenda la próxima renovación.
+                  </p>
+                )}
+                <Button
+                  onClick={payPlatform}
+                  disabled={pending || !subId}
+                  className="w-full bg-red-600 hover:bg-red-700"
+                >
+                  {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Registrar pago de plataforma
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Deuda: elegir y descontar lo que pagaste */}
+        {!entrada && salida === "deuda" && (
+          <div className="space-y-2 rounded-lg border bg-muted/30 p-2">
+            <Label className="text-xs">¿Qué deuda pagaste?</Label>
+            {debts.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                No tenés deudas cargadas. Cargalas en Finanzas → Deudas.
+              </p>
+            ) : (
+              <>
+                <Combo
+                  items={debts.map((d) => ({
+                    id: d.id,
+                    nombre: `${d.acreedor} · debés ${fmt(d.monto, d.moneda)}`,
+                  }))}
+                  value={debtId}
+                  onChange={(id) => {
+                    setDebtId(id);
+                    const d = debts.find((x) => x.id === id);
+                    if (d) setDebtMonto(String(d.monto));
+                  }}
+                  placeholder="Elegí deuda"
+                />
+                {debtSel && (
+                  <div>
+                    <Label className="text-xs">¿Cuánto pagaste? ({debtSel.moneda})</Label>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      value={debtMonto}
+                      onChange={(e) => setDebtMonto(e.target.value)}
+                      placeholder="0"
+                      className="h-9 text-right tabular-nums"
+                    />
+                    <p className="mt-1 px-1 text-[10px] text-muted-foreground">
+                      Se descuenta del saldo que debés. No cuenta como gasto de la agencia.
+                    </p>
+                  </div>
+                )}
+                <Button
+                  onClick={payDebt}
+                  disabled={pending || !debtId}
+                  className="w-full bg-red-600 hover:bg-red-700"
+                >
+                  {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Registrar pago de deuda
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Bloque "nuevo": monto + concepto + fecha (cobro / equipo / gasto) */}
+        {(entrada || salida === "equipo" || salida === "gasto") && (
         <div className="rounded-lg border border-dashed p-2">
           <div className="mb-1.5 flex items-center gap-1 px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             <Plus className="h-3 w-3" />
@@ -578,6 +713,7 @@ export function QuickCashLauncher({
             {entrada ? "Registrar cobro" : "Registrar pago"}
           </Button>
         </div>
+        )}
 
         <p className="px-1 text-[10px] text-muted-foreground">
           Lo que cargás acá entra directo al cashflow del día y queda ordenado en su

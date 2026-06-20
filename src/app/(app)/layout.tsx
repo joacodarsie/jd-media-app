@@ -80,9 +80,36 @@ export default async function AppLayout({
 
   // Carga rápida de plata: widget flotante solo para admin.
   const isAdmin = user.rol === "admin";
-  const [quickClients, quickUsers] = isAdmin
-    ? await Promise.all([getActiveClients(), getActiveUsers()])
-    : [[], []];
+  const [quickClients, quickUsers, quickSubsRes, quickDebtsRes] = await Promise.all([
+    isAdmin ? getActiveClients() : Promise.resolve([]),
+    isAdmin ? getActiveUsers() : Promise.resolve([]),
+    isAdmin
+      ? supabase
+          .from("subscriptions")
+          .select("id, nombre, costo, moneda")
+          .eq("activa", true)
+          .order("nombre")
+      : Promise.resolve({ data: [] }),
+    isAdmin
+      ? supabase
+          .from("debts")
+          .select("id, acreedor, monto, moneda")
+          .eq("saldada", false)
+          .order("acreedor")
+      : Promise.resolve({ data: [] }),
+  ]);
+  const quickSubs = ((quickSubsRes as { data: unknown[] | null }).data ?? []) as {
+    id: string;
+    nombre: string;
+    costo: number;
+    moneda: string;
+  }[];
+  const quickDebts = ((quickDebtsRes as { data: unknown[] | null }).data ?? []) as {
+    id: string;
+    acreedor: string;
+    monto: number;
+    moneda: string;
+  }[];
 
   return (
     <AppShell
@@ -100,6 +127,8 @@ export default async function AppLayout({
         <QuickCashLauncher
           clients={quickClients.map((c) => ({ id: c.id, nombre: c.nombre }))}
           users={quickUsers.map((u) => ({ id: u.id, nombre: u.nombre }))}
+          subscriptions={quickSubs}
+          debts={quickDebts}
         />
       )}
       <WelcomeTour userRol={user.rol} userName={user.nombre} />

@@ -9,6 +9,7 @@ import {
   Plus,
   Repeat,
   Users,
+  Megaphone,
 } from "lucide-react";
 import { HelpTrigger } from "@/components/help-trigger";
 import { requireFeature } from "@/lib/auth";
@@ -18,6 +19,7 @@ import { getActiveUsers, getActiveClients } from "@/lib/cache";
 import { getExchangeRates } from "@/lib/exchange";
 import {
   currentPeriod,
+  nextPeriod,
   periodLabel,
   toARS,
   fmtARS,
@@ -86,12 +88,17 @@ export default async function FinanzasPage({
     searchParams.m && /^\d{4}-\d{2}$/.test(searchParams.m) ? searchParams.m : currentPeriod();
   const today = new Date().toISOString().slice(0, 10);
   const in7 = new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10);
+  const mStart = `${period}-01`;
+  const mEnd = `${nextPeriod(period)}-01`;
 
   const [
     { data: invoicesRaw },
     { data: paymentsRaw },
     { data: expensesRaw },
     { data: subsRaw },
+    { data: svcRaw },
+    { data: adSpendRaw },
+    { data: internalRaw },
     clientsData,
     usersData,
     payroll,
@@ -112,6 +119,18 @@ export default async function FinanzasPage({
         "id, categoria, proveedor, concepto, monto, moneda, periodo, fecha_programada, fecha_pago"
       ),
     supabase.from("subscriptions").select("costo, moneda, ciclo").eq("activa", true),
+    // Abonos recurrentes activos (ingreso mensual esperado).
+    supabase
+      .from("client_services")
+      .select("cliente_id, monto_mensual, moneda, facturacion, activo")
+      .eq("activo", true),
+    // Pauta de Meta del mes (la de JD Media = costo propio de la agencia).
+    supabase
+      .from("paid_media_snapshots")
+      .select("cliente_id, spend, moneda, fecha")
+      .gte("fecha", mStart)
+      .lt("fecha", mEnd),
+    supabase.from("clients").select("id").eq("es_interno", true),
     getActiveClients(),
     getActiveUsers(),
     buildPeriodPayroll(admin, period),
@@ -121,38 +140,56 @@ export default async function FinanzasPage({
   const payments = (paymentsRaw ?? []) as unknown as PaymentRow[];
   const expenses = (expensesRaw ?? []) as unknown as ExpenseRow[];
   const subs = (subsRaw ?? []) as SubRow[];
+  const svcs = (svcRaw ?? []) as {
+    cliente_id: string;
+    monto_mensual: number | null;
+    moneda: string;
+    facturacion: string | null;
+  }[];
+  const adSpend = (adSpendRaw ?? []) as { cliente_id: string; spend: number; moneda: string }[];
+  const internalIds = new Set(((internalRaw ?? []) as { id: string }[]).map((c) => c.id));
   const clients = clientsData as { id: string; nombre: string }[];
   const users = usersData as { id: string; nombre: string }[];
   const ars = (m: number, mon: string) => toARS(Number(m), mon, rates);
+  const activeClientIds = new Set(clients.map((c) => c.id));
 
-  // ===== Resumen del mes elegido: Entró / Salió / Neto (cashflow real) =====
+  // ===== GANANCIA del mes = Ingresos − Sueldos − Plataformas − Publicidad =====
+  // Ingresos: abono mensual de los clientes activos (lo que te pagan por mes).
+  const ingresos = svcs
+    .filter(
+      (v) =>
+        activeClientIds.has(v.cliente_id) &&
+        (v.facturacion ?? "mensual") !== "unico" &&
+        v.monto_mensual != null
+    )
+    .reduce((a, v) => a + ars(v.monto_mensual as number, v.moneda), 0);
+  const sueldos = payroll.totalNomina;
+  const plataformas = subs.reduce(
+    (a, s) => a + ars(s.costo, s.moneda) / (CICLO_MESES[s.ciclo] ?? 1),
+    0
+  );
+  // Publicidad propia: pauta de JD Media (cliente interno) del mes.
+  const publicidad = adSpend
+    .filter((x) => internalIds.has(x.cliente_id))
+    .reduce((a, x) => a + ars(x.spend, x.moneda), 0);
+  const ganancia = ingresos - sueldos - plataformas - publicidad;
+
+  // ===== Cashflow del mes (lo efectivamente movido) =====
   const cobrado = invoices
     .filter((i) => i.fecha_cobro && i.fecha_cobro.startsWith(period))
     .reduce((a, i) => a + ars(i.monto, i.moneda), 0);
   const pagadoEquipo = payments
     .filter((p) => p.fecha_pago && p.fecha_pago.startsWith(period))
     .reduce((a, p) => a + ars(p.monto, p.moneda), 0);
-  const pagadoGastos = expenses
-    .filter((e) => e.fecha_pago && e.fecha_pago.startsWith(period))
-    .reduce((a, e) => a + ars(e.monto, e.moneda), 0);
-  const salio = pagadoEquipo + pagadoGastos;
-  const neto = cobrado - salio;
 
   // ===== Pendientes del mes (lo que falta para cerrar) =====
   const porCobrar = invoices
     .filter((i) => i.periodo === period && !i.fecha_cobro)
     .reduce((a, i) => a + ars(i.monto, i.moneda), 0);
-  const nomina = payroll.totalNomina;
-  const porPagarEquipo = Math.max(0, nomina - pagadoEquipo);
+  const porPagarEquipo = Math.max(0, sueldos - pagadoEquipo);
   const gastosPendMes = expenses
     .filter((e) => e.periodo === period && !e.fecha_pago)
     .reduce((a, e) => a + ars(e.monto, e.moneda), 0);
-
-  // ===== Costos fijos recurrentes (para que las suscripciones se VEAN) =====
-  const subsMensual = subs.reduce(
-    (a, s) => a + ars(s.costo, s.moneda) / (CICLO_MESES[s.ciclo] ?? 1),
-    0
-  );
 
   // ===== Pendientes LIVE (para las tarjetas del día a día) =====
   const cobrosPend = invoices.filter((i) => !i.fecha_cobro);
@@ -172,8 +209,6 @@ export default async function FinanzasPage({
   const gastosPend = expenses.filter((e) => !e.fecha_pago);
   const gastosAtras = gastosPend.filter((e) => e.fecha_programada && e.fecha_programada < today);
   const totalGastosPend = gastosPend.reduce((a, e) => a + ars(e.monto, e.moneda), 0);
-
-  const hayPendientes = porCobrar > 0 || porPagarEquipo > 0 || gastosPendMes > 0;
 
   return (
     <div className="space-y-6">
@@ -201,60 +236,55 @@ export default async function FinanzasPage({
         </div>
       </div>
 
-      {/* ===== PANEL PRINCIPAL: Entró / Salió / Neto ===== */}
+      {/* ===== PANEL PRINCIPAL: Tu ganancia del mes ===== */}
       <Card>
         <CardContent className="p-5">
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Money label="Entró" value={cobrado} tone="good" icon={TrendingUp} />
-            <Money label="Salió" value={salio} tone="bad" icon={TrendingDown} />
-            <Money
-              label="Neto del mes"
-              value={neto}
-              tone={neto >= 0 ? "good" : "bad"}
-              icon={Wallet}
-              big
-            />
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                Tu ganancia de {periodLabel(period)}
+              </div>
+              <div
+                className={cn(
+                  "text-4xl font-bold tabular-nums",
+                  ganancia >= 0 ? "text-emerald-600" : "text-red-600"
+                )}
+              >
+                {fmtARS(ganancia)}
+              </div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                Lo que te queda después de pagar todo. Ingresos − sueldos − plataformas − publicidad.
+              </div>
+            </div>
+            {/* Desglose */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <Breakdown label="Ingresos" value={ingresos} sign="+" icon={TrendingUp} />
+              <Breakdown label="Sueldos" value={sueldos} sign="−" icon={Users} href="/coordinacion/sueldos" />
+              <Breakdown label="Plataformas" value={plataformas} sign="−" icon={Repeat} href="/finanzas/suscripciones" />
+              <Breakdown label="Publicidad" value={publicidad} sign="−" icon={Megaphone} href="/paid-media" />
+            </div>
           </div>
 
-          {/* Lo que falta para cerrar el mes */}
-          {hayPendientes && (
-            <div className="mt-4 flex flex-wrap gap-2 border-t pt-4 text-xs">
-              {porCobrar > 0 && (
-                <Link
-                  href="/finanzas/cobros"
-                  className="rounded-md bg-emerald-50 px-2.5 py-1.5 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300"
-                >
-                  Falta cobrar <b>{fmtARS(porCobrar)}</b>
-                </Link>
-              )}
-              {porPagarEquipo > 0 && (
-                <Link
-                  href="/coordinacion/sueldos"
-                  className="rounded-md bg-amber-50 px-2.5 py-1.5 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-300"
-                >
-                  Falta pagar al equipo <b>{fmtARS(porPagarEquipo)}</b>
-                </Link>
-              )}
-              {gastosPendMes > 0 && (
-                <Link
-                  href="/finanzas/gastos"
-                  className="rounded-md bg-orange-50 px-2.5 py-1.5 text-orange-700 hover:bg-orange-100 dark:bg-orange-950/30 dark:text-orange-300"
-                >
-                  Gastos por pagar <b>{fmtARS(gastosPendMes)}</b>
-                </Link>
-              )}
-            </div>
-          )}
-
-          {/* Costos fijos: sueldos + plataformas (para que las suscripciones se vean) */}
-          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-            <span className="font-semibold uppercase tracking-wide">Costo fijo / mes</span>
-            <span className="inline-flex items-center gap-1">
-              <Users className="h-3.5 w-3.5" /> Sueldos: <b className="text-foreground">{fmtARS(nomina)}</b>
+          {/* Cashflow real + lo que falta */}
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 border-t pt-3 text-xs text-muted-foreground">
+            <span>
+              Cobrado hasta ahora: <b className="text-foreground">{fmtARS(cobrado)}</b>
             </span>
-            <Link href="/finanzas/suscripciones" className="inline-flex items-center gap-1 hover:text-foreground">
-              <Repeat className="h-3.5 w-3.5" /> Plataformas: <b className="text-foreground">{fmtARS(subsMensual)}</b>
-            </Link>
+            {porCobrar > 0 && (
+              <Link href="/finanzas/cobros" className="text-emerald-700 hover:underline dark:text-emerald-400">
+                Falta cobrar {fmtARS(porCobrar)}
+              </Link>
+            )}
+            {porPagarEquipo > 0 && (
+              <Link href="/coordinacion/sueldos" className="text-amber-700 hover:underline dark:text-amber-400">
+                Falta pagar al equipo {fmtARS(porPagarEquipo)}
+              </Link>
+            )}
+            {gastosPendMes > 0 && (
+              <Link href="/finanzas/gastos" className="text-orange-700 hover:underline dark:text-orange-400">
+                Gastos por pagar {fmtARS(gastosPendMes)}
+              </Link>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -410,34 +440,40 @@ export default async function FinanzasPage({
   );
 }
 
-function Money({
+function Breakdown({
   label,
   value,
-  tone,
+  sign,
   icon: Icon,
-  big,
+  href,
 }: {
   label: string;
   value: number;
-  tone: "good" | "bad";
+  sign: "+" | "−";
   icon: typeof Wallet;
-  big?: boolean;
+  href?: string;
 }) {
-  return (
-    <div className={cn("rounded-lg border bg-card p-4", big && "sm:border-2 sm:border-primary/30")}>
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Icon className="h-4 w-4" /> {label}
+  const inner = (
+    <div className="rounded-lg border bg-card px-3 py-2">
+      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <Icon className="h-3.5 w-3.5" /> {label}
       </div>
       <div
         className={cn(
-          "mt-1 font-bold tabular-nums",
-          big ? "text-3xl" : "text-2xl",
-          tone === "good" ? "text-emerald-600" : "text-red-600"
+          "mt-0.5 text-base font-semibold tabular-nums",
+          sign === "+" ? "text-emerald-600" : "text-foreground"
         )}
       >
-        {fmtARS(value)}
+        {sign} {fmtARS(value)}
       </div>
     </div>
+  );
+  return href ? (
+    <Link href={href} className="transition-colors hover:opacity-80">
+      {inner}
+    </Link>
+  ) : (
+    inner
   );
 }
 

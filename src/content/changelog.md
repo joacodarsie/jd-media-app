@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-06-20 — Tu ganancia del mes, de un vistazo
+
+- 💰 **El inicio de Finanzas ahora muestra "Tu ganancia del mes"**: lo que te queda después de pagar todo = **Ingresos − Sueldos − Plataformas − Publicidad**, con cada parte desglosada.
+- 📣 **La publicidad de JD Media** (lo que gastás en Meta promocionando la agencia) se toma automático y se descuenta de la ganancia.
+- 🧾 La sección de cobros dejó de hablar de "facturas": ahora son **cobros/abonos** (más simple). Lo más rápido sigue siendo "Generar el mes" y marcar cobrado cuando te pagan.
+
 ## 2026-06-20 — Finanzas más simple: todo el mes en el inicio
 
 - 🧹 **Simplificamos Finanzas**: el inicio ahora responde de un vistazo lo importante — **Entró · Salió · Neto** del mes (con selector de mes), qué **falta cobrar/pagar**, y el **costo fijo** (sueldos + plataformas/suscripciones) para que se vea cuánto pesa lo recurrente.

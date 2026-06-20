@@ -109,7 +109,7 @@ export function InvoicesTable({
           trigger={
             <Button size="sm" className="gap-1">
               <Plus className="h-4 w-4" />
-              Nueva factura
+              Nuevo cobro
             </Button>
           }
         />

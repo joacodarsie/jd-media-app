@@ -90,7 +90,7 @@ export function InvoiceFormDialog(props: CreateProps | EditProps) {
       return;
     }
     if (!concepto.trim()) {
-      toast.error("Escribí un concepto (qué se está facturando).");
+      toast.error("Escribí un concepto (qué se cobra).");
       return;
     }
     const m = Number(monto);
@@ -121,7 +121,7 @@ export function InvoiceFormDialog(props: CreateProps | EditProps) {
         toast.error(res.error);
         return;
       }
-      toast.success(props.mode === "create" ? "Factura creada" : "Actualizada");
+      toast.success(props.mode === "create" ? "Cobro creado" : "Actualizado");
       setOpen(false);
       router.refresh();
     });
@@ -129,7 +129,7 @@ export function InvoiceFormDialog(props: CreateProps | EditProps) {
 
   function remove() {
     if (props.mode !== "edit") return;
-    if (!confirm("¿Eliminar esta factura?")) return;
+    if (!confirm("¿Eliminar este cobro?")) return;
     start(async () => {
       const res = await deleteInvoice(props.invoice.id);
       if (res?.error) {
@@ -148,7 +148,7 @@ export function InvoiceFormDialog(props: CreateProps | EditProps) {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {props.mode === "create" ? "Nueva factura" : "Editar factura"}
+            {props.mode === "create" ? "Nuevo cobro" : "Editar cobro"}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">

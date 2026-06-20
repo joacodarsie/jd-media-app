@@ -51,7 +51,7 @@ export function GenerateMonthButton({ kind }: Props) {
         }
       } else {
         toast.success(
-          `${created} ${kind === "invoices" ? "factura(s)" : "pago(s)"} generado(s) para ${periodLabel(periodo)}.`
+          `${created} ${kind === "invoices" ? "cobro(s)" : "pago(s)"} generado(s) para ${periodLabel(periodo)}.`
         );
       }
       setOpen(false);
@@ -70,7 +70,7 @@ export function GenerateMonthButton({ kind }: Props) {
       <PopoverContent className="w-72 space-y-3">
         <div>
           <h4 className="text-sm font-semibold">
-            Generar {kind === "invoices" ? "facturas" : "pagos"} del mes
+            Generar {kind === "invoices" ? "cobros" : "pagos"} del mes
           </h4>
           <p className="mt-1 text-xs text-muted-foreground">
             {kind === "invoices"

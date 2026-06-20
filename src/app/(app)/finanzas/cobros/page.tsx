@@ -71,8 +71,9 @@ export default async function CobrosPage({
       <div>
         <h1 className="text-2xl font-bold">Cuentas por cobrar</h1>
         <p className="text-muted-foreground">
-          Lo que te deben los clientes — y cuándo te tienen que pagar. Cargá
-          cada factura con el botón <b>Nueva factura</b> en la tabla.
+          Lo que te deben los clientes este mes y cuándo. Lo más rápido es{" "}
+          <b>Generar el mes</b> (crea el cobro de cada cliente con abono) y después
+          marcás <b>cobrado</b> cuando te paguen.
         </p>
       </div>
 
@@ -100,12 +101,11 @@ export default async function CobrosPage({
       <Card>
         <CardContent className="space-y-2 p-4">
           <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Atajo: generar facturas del mes en bloque
+            Generar los cobros del mes en bloque
           </div>
           <p className="text-xs text-muted-foreground">
-            Si todos tus clientes activos tienen servicios mensuales con monto
-            cargado, podés crear todas las facturas del mes de una. No duplica si
-            ya existían.
+            Crea de una el cobro de cada cliente activo con abono mensual cargado.
+            No duplica si ya existían. Después solo marcás cobrado cuando te paguen.
           </p>
           <GenerateMonthButton kind="invoices" />
         </CardContent>

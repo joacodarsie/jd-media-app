@@ -2,10 +2,10 @@
 title: Novedades
 ---
 
-## 2026-06-20 — Cierre de mes: todo el mes en una pantalla
+## 2026-06-20 — Finanzas más simple: todo el mes en el inicio
 
-- 🧮 **Nueva sección Finanzas → "Cierre de mes"** (con selector de mes): junta en un solo lugar lo que **cobraste** y lo que falta cobrar, la **nómina calculada** del equipo vs lo ya pagado, los **gastos** y las **suscripciones** que renuevan — con el **neto del mes** (realizado y proyectado).
-- ✅ Dos indicadores de estado: "¿cobraste todo?" y "¿pagaste al equipo y los gastos?", para cerrar el mes sin que se escape nada.
+- 🧹 **Simplificamos Finanzas**: el inicio ahora responde de un vistazo lo importante — **Entró · Salió · Neto** del mes (con selector de mes), qué **falta cobrar/pagar**, y el **costo fijo** (sueldos + plataformas/suscripciones) para que se vea cuánto pesa lo recurrente.
+- 🗂️ Las secciones quedaron ordenadas en **"Día a día"** (cobrar, pagar, gastos) y **"Análisis"** (salud, rentabilidad, proyección, evolución, suscripciones, recordatorios). Menos botones, todo más a mano.
 
 ## 2026-06-20 — Servicios puntuales y costo por porcentaje
 

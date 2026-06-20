@@ -7,10 +7,13 @@ import {
   ArrowRight,
   Receipt,
   Plus,
+  Repeat,
+  Users,
 } from "lucide-react";
 import { HelpTrigger } from "@/components/help-trigger";
 import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdmin } from "@/lib/supabase/admin";
 import { getActiveUsers, getActiveClients } from "@/lib/cache";
 import { getExchangeRates } from "@/lib/exchange";
 import {
@@ -20,6 +23,8 @@ import {
   fmtARS,
   fmtCurrency,
 } from "@/lib/finanzas";
+import { buildPeriodPayroll } from "@/lib/payroll-period";
+import { MonthPicker } from "@/components/month-picker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { InvoiceFormDialog } from "@/components/invoice-form-dialog";
@@ -28,6 +33,8 @@ import { ExpenseFormDialog } from "@/components/expense-form-dialog";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
+
+const CICLO_MESES: Record<string, number> = { mensual: 1, trimestral: 3, anual: 12 };
 
 interface InvoiceRow {
   id: string;
@@ -39,7 +46,6 @@ interface InvoiceRow {
   concepto: string;
   cliente: { id: string; nombre: string } | null;
 }
-
 interface PaymentRow {
   id: string;
   monto: number;
@@ -50,7 +56,6 @@ interface PaymentRow {
   concepto: string;
   usuario: { id: string; nombre: string } | null;
 }
-
 interface ExpenseRow {
   id: string;
   categoria: string;
@@ -62,12 +67,23 @@ interface ExpenseRow {
   fecha_programada: string | null;
   fecha_pago: string | null;
 }
+interface SubRow {
+  costo: number;
+  moneda: string;
+  ciclo: string;
+}
 
-export default async function FinanzasPage() {
+export default async function FinanzasPage({
+  searchParams,
+}: {
+  searchParams: { m?: string };
+}) {
   await requireFeature("finanzas");
   const supabase = createClient();
+  const admin = createAdmin();
   const rates = await getExchangeRates();
-  const period = currentPeriod();
+  const period =
+    searchParams.m && /^\d{4}-\d{2}$/.test(searchParams.m) ? searchParams.m : currentPeriod();
   const today = new Date().toISOString().slice(0, 10);
   const in7 = new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10);
 
@@ -75,8 +91,10 @@ export default async function FinanzasPage() {
     { data: invoicesRaw },
     { data: paymentsRaw },
     { data: expensesRaw },
+    { data: subsRaw },
     clientsData,
     usersData,
+    payroll,
   ] = await Promise.all([
     supabase
       .from("client_invoices")
@@ -93,59 +111,69 @@ export default async function FinanzasPage() {
       .select(
         "id, categoria, proveedor, concepto, monto, moneda, periodo, fecha_programada, fecha_pago"
       ),
+    supabase.from("subscriptions").select("costo, moneda, ciclo").eq("activa", true),
     getActiveClients(),
     getActiveUsers(),
+    buildPeriodPayroll(admin, period),
   ]);
 
   const invoices = (invoicesRaw ?? []) as unknown as InvoiceRow[];
   const payments = (paymentsRaw ?? []) as unknown as PaymentRow[];
   const expenses = (expensesRaw ?? []) as unknown as ExpenseRow[];
+  const subs = (subsRaw ?? []) as SubRow[];
   const clients = clientsData as { id: string; nombre: string }[];
   const users = usersData as { id: string; nombre: string }[];
+  const ars = (m: number, mon: string) => toARS(Number(m), mon, rates);
 
-  // ===== Cashflow real del mes (fecha_cobro / fecha_pago) =====
-  const cobradoMes = invoices
+  // ===== Resumen del mes elegido: Entró / Salió / Neto (cashflow real) =====
+  const cobrado = invoices
     .filter((i) => i.fecha_cobro && i.fecha_cobro.startsWith(period))
-    .reduce((a, i) => a + toARS(Number(i.monto), i.moneda, rates), 0);
-  const pagadoEquipoMes = payments
+    .reduce((a, i) => a + ars(i.monto, i.moneda), 0);
+  const pagadoEquipo = payments
     .filter((p) => p.fecha_pago && p.fecha_pago.startsWith(period))
-    .reduce((a, p) => a + toARS(Number(p.monto), p.moneda, rates), 0);
-  const pagadoGastosMes = expenses
+    .reduce((a, p) => a + ars(p.monto, p.moneda), 0);
+  const pagadoGastos = expenses
     .filter((e) => e.fecha_pago && e.fecha_pago.startsWith(period))
-    .reduce((a, e) => a + toARS(Number(e.monto), e.moneda, rates), 0);
-  const margenReal = cobradoMes - pagadoEquipoMes - pagadoGastosMes;
+    .reduce((a, e) => a + ars(e.monto, e.moneda), 0);
+  const salio = pagadoEquipo + pagadoGastos;
+  const neto = cobrado - salio;
 
-  // ===== Pendientes (independiente del mes) =====
-  const cobrosPend = invoices.filter((i) => !i.fecha_cobro);
-  const cobrosVenc = cobrosPend.filter(
-    (i) => i.fecha_vencimiento && i.fecha_vencimiento < today
+  // ===== Pendientes del mes (lo que falta para cerrar) =====
+  const porCobrar = invoices
+    .filter((i) => i.periodo === period && !i.fecha_cobro)
+    .reduce((a, i) => a + ars(i.monto, i.moneda), 0);
+  const nomina = payroll.totalNomina;
+  const porPagarEquipo = Math.max(0, nomina - pagadoEquipo);
+  const gastosPendMes = expenses
+    .filter((e) => e.periodo === period && !e.fecha_pago)
+    .reduce((a, e) => a + ars(e.monto, e.moneda), 0);
+
+  // ===== Costos fijos recurrentes (para que las suscripciones se VEAN) =====
+  const subsMensual = subs.reduce(
+    (a, s) => a + ars(s.costo, s.moneda) / (CICLO_MESES[s.ciclo] ?? 1),
+    0
   );
+
+  // ===== Pendientes LIVE (para las tarjetas del día a día) =====
+  const cobrosPend = invoices.filter((i) => !i.fecha_cobro);
+  const cobrosVenc = cobrosPend.filter((i) => i.fecha_vencimiento && i.fecha_vencimiento < today);
   const cobros7d = cobrosPend.filter(
     (i) => i.fecha_vencimiento && i.fecha_vencimiento >= today && i.fecha_vencimiento <= in7
   );
-  const totalPorCobrar = cobrosPend.reduce(
-    (a, i) => a + toARS(Number(i.monto), i.moneda, rates),
-    0
-  );
+  const totalPorCobrar = cobrosPend.reduce((a, i) => a + ars(i.monto, i.moneda), 0);
 
   const pagosPend = payments.filter((p) => !p.fecha_pago);
   const pagosAtras = pagosPend.filter((p) => p.fecha_programada < today);
   const pagos7d = pagosPend.filter(
     (p) => p.fecha_programada >= today && p.fecha_programada <= in7
   );
-  const totalPorPagar = pagosPend.reduce(
-    (a, p) => a + toARS(Number(p.monto), p.moneda, rates),
-    0
-  );
+  const totalPorPagar = pagosPend.reduce((a, p) => a + ars(p.monto, p.moneda), 0);
 
   const gastosPend = expenses.filter((e) => !e.fecha_pago);
-  const gastosAtras = gastosPend.filter(
-    (e) => e.fecha_programada && e.fecha_programada < today
-  );
-  const totalGastosPend = gastosPend.reduce(
-    (a, e) => a + toARS(Number(e.monto), e.moneda, rates),
-    0
-  );
+  const gastosAtras = gastosPend.filter((e) => e.fecha_programada && e.fecha_programada < today);
+  const totalGastosPend = gastosPend.reduce((a, e) => a + ars(e.monto, e.moneda), 0);
+
+  const hayPendientes = porCobrar > 0 || porPagarEquipo > 0 || gastosPendMes > 0;
 
   return (
     <div className="space-y-6">
@@ -153,74 +181,85 @@ export default async function FinanzasPage() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold">
             Finanzas
-            <HelpTrigger
-              slug="finanzas"
-              label="Cómo funciona Finanzas"
-              size="md"
-            />
+            <HelpTrigger slug="finanzas" label="Cómo funciona Finanzas" size="md" />
           </h1>
           <p className="text-muted-foreground">
-            Cashflow de {periodLabel(period)} — lo que entró/salió este mes.
+            Cómo venís en <b className="capitalize">{periodLabel(period)}</b> — lo que entra,
+            lo que sale y lo que queda.
           </p>
         </div>
-        <div className="rounded-lg border bg-card px-3 py-2 text-right">
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-            Dólar blue
-          </div>
-          <div className="text-lg font-bold tabular-nums">
-            ARS {rates.USD.toLocaleString("es-AR")}
-          </div>
-          <div className="text-[10px] text-muted-foreground">
-            {rates.source === "live" ? "dolarapi.com · hoy" : "fallback"}
+        <div className="flex items-center gap-3">
+          <MonthPicker value={period} />
+          <div className="rounded-lg border bg-card px-3 py-2 text-right">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Dólar blue
+            </div>
+            <div className="text-sm font-bold tabular-nums">
+              ARS {rates.USD.toLocaleString("es-AR")}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Margen real del mes — protagonista */}
+      {/* ===== PANEL PRINCIPAL: Entró / Salió / Neto ===== */}
       <Card>
         <CardContent className="p-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div
-                className={cn(
-                  "flex h-12 w-12 items-center justify-center rounded-lg",
-                  margenReal >= 0
-                    ? "bg-primary/15 text-foreground"
-                    : "bg-red-100 text-red-700"
-                )}
-              >
-                <Wallet className="h-6 w-6" />
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground">
-                  Margen REAL de {periodLabel(period)}
-                </div>
-                <div className="text-3xl font-bold tabular-nums">
-                  {fmtARS(margenReal)}
-                </div>
-                <div className="mt-0.5 text-[11px] text-muted-foreground">
-                  Lo que entró menos lo que salió en el mes.{" "}
-                  <span className="text-foreground/70">
-                    No depende del período del servicio.
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <Stat label="↓ Cobrado" value={cobradoMes} color="emerald" />
-              <Stat label="↑ Pagado equipo" value={pagadoEquipoMes} color="amber" />
-              <Stat label="↑ Gastos" value={pagadoGastosMes} color="orange" />
-            </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Money label="Entró" value={cobrado} tone="good" icon={TrendingUp} />
+            <Money label="Salió" value={salio} tone="bad" icon={TrendingDown} />
+            <Money
+              label="Neto del mes"
+              value={neto}
+              tone={neto >= 0 ? "good" : "bad"}
+              icon={Wallet}
+              big
+            />
           </div>
-          <p className="mt-3 rounded-md bg-muted/50 px-2 py-1.5 text-[11px] text-muted-foreground">
-            <b>Ejemplo:</b> si el cliente paga mayo en abril, ese cobro aparece
-            en abril. Si vos pagás el sueldo de mayo en junio, ese pago aparece
-            en junio. Esta vista muestra cashflow real.
-          </p>
+
+          {/* Lo que falta para cerrar el mes */}
+          {hayPendientes && (
+            <div className="mt-4 flex flex-wrap gap-2 border-t pt-4 text-xs">
+              {porCobrar > 0 && (
+                <Link
+                  href="/finanzas/cobros"
+                  className="rounded-md bg-emerald-50 px-2.5 py-1.5 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300"
+                >
+                  Falta cobrar <b>{fmtARS(porCobrar)}</b>
+                </Link>
+              )}
+              {porPagarEquipo > 0 && (
+                <Link
+                  href="/coordinacion/sueldos"
+                  className="rounded-md bg-amber-50 px-2.5 py-1.5 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-300"
+                >
+                  Falta pagar al equipo <b>{fmtARS(porPagarEquipo)}</b>
+                </Link>
+              )}
+              {gastosPendMes > 0 && (
+                <Link
+                  href="/finanzas/gastos"
+                  className="rounded-md bg-orange-50 px-2.5 py-1.5 text-orange-700 hover:bg-orange-100 dark:bg-orange-950/30 dark:text-orange-300"
+                >
+                  Gastos por pagar <b>{fmtARS(gastosPendMes)}</b>
+                </Link>
+              )}
+            </div>
+          )}
+
+          {/* Costos fijos: sueldos + plataformas (para que las suscripciones se vean) */}
+          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+            <span className="font-semibold uppercase tracking-wide">Costo fijo / mes</span>
+            <span className="inline-flex items-center gap-1">
+              <Users className="h-3.5 w-3.5" /> Sueldos: <b className="text-foreground">{fmtARS(nomina)}</b>
+            </span>
+            <Link href="/finanzas/suscripciones" className="inline-flex items-center gap-1 hover:text-foreground">
+              <Repeat className="h-3.5 w-3.5" /> Plataformas: <b className="text-foreground">{fmtARS(subsMensual)}</b>
+            </Link>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Alertas */}
+      {/* Alertas (vencidos / atrasados, todo el histórico) */}
       {(cobrosVenc.length > 0 || pagosAtras.length > 0 || gastosAtras.length > 0) && (
         <Card className="border-red-300 bg-red-50/40 dark:border-red-900 dark:bg-red-950/20">
           <CardContent className="space-y-1 p-3 text-sm">
@@ -231,240 +270,171 @@ export default async function FinanzasPage() {
               <Row
                 href="/finanzas/cobros?f=vencidas"
                 text={`${cobrosVenc.length} factura(s) vencida(s) sin cobrar`}
-                amount={fmtARS(
-                  cobrosVenc.reduce((a, i) => a + toARS(Number(i.monto), i.moneda, rates), 0)
-                )}
+                amount={fmtARS(cobrosVenc.reduce((a, i) => a + ars(i.monto, i.moneda), 0))}
               />
             )}
             {pagosAtras.length > 0 && (
               <Row
                 href="/finanzas/pagos?f=atrasados"
                 text={`${pagosAtras.length} pago(s) atrasado(s) al equipo`}
-                amount={fmtARS(
-                  pagosAtras.reduce((a, p) => a + toARS(Number(p.monto), p.moneda, rates), 0)
-                )}
+                amount={fmtARS(pagosAtras.reduce((a, p) => a + ars(p.monto, p.moneda), 0))}
               />
             )}
             {gastosAtras.length > 0 && (
               <Row
                 href="/finanzas/gastos?f=pendientes"
                 text={`${gastosAtras.length} gasto(s) atrasado(s)`}
-                amount={fmtARS(
-                  gastosAtras.reduce((a, e) => a + toARS(Number(e.monto), e.moneda, rates), 0)
-                )}
+                amount={fmtARS(gastosAtras.reduce((a, e) => a + ars(e.monto, e.moneda), 0))}
               />
             )}
           </CardContent>
         </Card>
       )}
 
-      {/* 3 cards: Cobros / Pagos equipo / Gastos */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Section
-          href="/finanzas/cobros"
-          title="Cuentas por cobrar"
-          icon={TrendingUp}
-          color="emerald"
-          totalLabel="Pendiente total"
-          totalARS={totalPorCobrar}
-          subKpis={[
-            { label: "Cobrado este mes", value: cobradoMes },
-            { label: "Vence en 7 días", value: cobros7d.length, isCount: true },
-          ]}
-          listTitle="Próximos 7 días"
-          listEmpty="Nada vence en esta semana."
-          listItems={cobros7d.slice(0, 4).map((i) => ({
-            id: i.id,
-            primary: i.cliente?.nombre ?? "—",
-            secondary: i.concepto,
-            amountLabel: fmtCurrency(Number(i.monto), i.moneda),
-            dateLabel: i.fecha_vencimiento
-              ? new Date(i.fecha_vencimiento).toLocaleDateString("es-AR", { day: "2-digit", month: "short" })
-              : "—",
-          }))}
-          newButton={
-            <InvoiceFormDialog
-              mode="create"
-              clients={clients}
-              trigger={
-                <Button size="sm" variant="outline" className="h-7 gap-1 px-2">
-                  <Plus className="h-3 w-3" /> Nueva
-                </Button>
-              }
-            />
-          }
-        />
-        <Section
-          href="/finanzas/pagos"
-          title="Pagos al equipo"
-          icon={TrendingDown}
-          color="amber"
-          totalLabel="Pendiente total"
-          totalARS={totalPorPagar}
-          subKpis={[
-            { label: "Pagado este mes", value: pagadoEquipoMes },
-            { label: "Paga en 7 días", value: pagos7d.length, isCount: true },
-          ]}
-          listTitle="Próximos 7 días"
-          listEmpty="Nada se paga en esta semana."
-          listItems={pagos7d.slice(0, 4).map((p) => ({
-            id: p.id,
-            primary: p.usuario?.nombre ?? "—",
-            secondary: p.concepto,
-            amountLabel: fmtCurrency(Number(p.monto), p.moneda),
-            dateLabel: new Date(p.fecha_programada).toLocaleDateString("es-AR", {
-              day: "2-digit",
-              month: "short",
-            }),
-          }))}
-          newButton={
-            <PaymentFormDialog
-              mode="create"
-              users={users}
-              clients={clients}
-              trigger={
-                <Button size="sm" variant="outline" className="h-7 gap-1 px-2">
-                  <Plus className="h-3 w-3" /> Nuevo
-                </Button>
-              }
-            />
-          }
-        />
-        <Section
-          href="/finanzas/gastos"
-          title="Gastos operativos"
-          icon={Receipt}
-          color="orange"
-          totalLabel="Pendiente total"
-          totalARS={totalGastosPend}
-          subKpis={[
-            { label: "Pagado este mes", value: pagadoGastosMes },
-            { label: "Pendientes", value: gastosPend.length, isCount: true },
-          ]}
-          listTitle="Gastos del mes pagados"
-          listEmpty="Sin gastos cargados este mes."
-          listItems={expenses
-            .filter((e) => e.fecha_pago && e.fecha_pago.startsWith(period))
-            .slice(0, 4)
-            .map((e) => ({
-              id: e.id,
-              primary: e.proveedor ?? "—",
-              secondary: e.concepto,
-              amountLabel: fmtCurrency(Number(e.monto), e.moneda),
-              dateLabel: e.fecha_pago
-                ? new Date(e.fecha_pago).toLocaleDateString("es-AR", { day: "2-digit", month: "short" })
+      {/* ===== Día a día ===== */}
+      <div>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Día a día
+        </h2>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Section
+            href="/finanzas/cobros"
+            title="Cobrar"
+            icon={TrendingUp}
+            color="emerald"
+            totalLabel="Por cobrar"
+            totalARS={totalPorCobrar}
+            listTitle="Vence en 7 días"
+            listEmpty="Nada vence esta semana."
+            listItems={cobros7d.slice(0, 4).map((i) => ({
+              id: i.id,
+              primary: i.cliente?.nombre ?? "—",
+              secondary: i.concepto,
+              amountLabel: fmtCurrency(Number(i.monto), i.moneda),
+              dateLabel: i.fecha_vencimiento
+                ? new Date(i.fecha_vencimiento).toLocaleDateString("es-AR", { day: "2-digit", month: "short" })
                 : "—",
             }))}
-          newButton={
-            <ExpenseFormDialog
-              mode="create"
-              clients={clients}
-              trigger={
-                <Button size="sm" variant="outline" className="h-7 gap-1 px-2">
-                  <Plus className="h-3 w-3" /> Nuevo
-                </Button>
-              }
-            />
-          }
-        />
+            newButton={
+              <InvoiceFormDialog
+                mode="create"
+                clients={clients}
+                trigger={
+                  <Button size="sm" variant="outline" className="h-7 gap-1 px-2">
+                    <Plus className="h-3 w-3" /> Nueva
+                  </Button>
+                }
+              />
+            }
+          />
+          <Section
+            href="/finanzas/pagos"
+            title="Pagar al equipo"
+            icon={TrendingDown}
+            color="amber"
+            totalLabel="Por pagar"
+            totalARS={totalPorPagar}
+            listTitle="Paga en 7 días"
+            listEmpty="Nada se paga esta semana."
+            listItems={pagos7d.slice(0, 4).map((p) => ({
+              id: p.id,
+              primary: p.usuario?.nombre ?? "—",
+              secondary: p.concepto,
+              amountLabel: fmtCurrency(Number(p.monto), p.moneda),
+              dateLabel: new Date(p.fecha_programada).toLocaleDateString("es-AR", { day: "2-digit", month: "short" }),
+            }))}
+            newButton={
+              <PaymentFormDialog
+                mode="create"
+                users={users}
+                clients={clients}
+                trigger={
+                  <Button size="sm" variant="outline" className="h-7 gap-1 px-2">
+                    <Plus className="h-3 w-3" /> Nuevo
+                  </Button>
+                }
+              />
+            }
+          />
+          <Section
+            href="/finanzas/gastos"
+            title="Gastos"
+            icon={Receipt}
+            color="orange"
+            totalLabel="Pendientes"
+            totalARS={totalGastosPend}
+            listTitle="Gastos del mes pagados"
+            listEmpty="Sin gastos este mes."
+            listItems={expenses
+              .filter((e) => e.fecha_pago && e.fecha_pago.startsWith(period))
+              .slice(0, 4)
+              .map((e) => ({
+                id: e.id,
+                primary: e.proveedor ?? "—",
+                secondary: e.concepto,
+                amountLabel: fmtCurrency(Number(e.monto), e.moneda),
+                dateLabel: e.fecha_pago
+                  ? new Date(e.fecha_pago).toLocaleDateString("es-AR", { day: "2-digit", month: "short" })
+                  : "—",
+              }))}
+            newButton={
+              <ExpenseFormDialog
+                mode="create"
+                clients={clients}
+                trigger={
+                  <Button size="sm" variant="outline" className="h-7 gap-1 px-2">
+                    <Plus className="h-3 w-3" /> Nuevo
+                  </Button>
+                }
+              />
+            }
+          />
+        </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Link
-          href="/finanzas/cierre"
-          className="rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40"
-        >
-          <div className="font-semibold">Cierre de mes →</div>
-          <div className="text-xs text-muted-foreground">
-            Cobros + nómina + gastos + suscripciones del mes, con el neto.
-          </div>
-        </Link>
-        <Link
-          href="/finanzas/recordatorios"
-          className="rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40"
-        >
-          <div className="font-semibold">Recordatorios de pago →</div>
-          <div className="text-xs text-muted-foreground">
-            Mensaje de WhatsApp por cliente con monto y alias.
-          </div>
-        </Link>
-        <Link
-          href="/finanzas/salud"
-          className="rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40"
-        >
-          <div className="font-semibold">Salud de la agencia →</div>
-          <div className="text-xs text-muted-foreground">
-            Margen real por cliente (ingreso − costo de producción).
-          </div>
-        </Link>
-        <Link
-          href="/finanzas/rentabilidad"
-          className="rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40"
-        >
-          <div className="font-semibold">Rentabilidad por cliente →</div>
-          <div className="text-xs text-muted-foreground">
-            Cuánto deja cada cliente neto.
-          </div>
-        </Link>
-        <Link
-          href="/finanzas/suscripciones"
-          className="rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40"
-        >
-          <div className="font-semibold">Suscripciones →</div>
-          <div className="text-xs text-muted-foreground">
-            Plataformas SaaS recurrentes que paga la agencia.
-          </div>
-        </Link>
-        <Link
-          href="/finanzas/movimientos"
-          className="rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40"
-        >
-          <div className="font-semibold">Movimientos →</div>
-          <div className="text-xs text-muted-foreground">
-            Historial unificado de cobros y pagos.
-          </div>
-        </Link>
-        <Link
-          href="/finanzas/evolucion"
-          className="rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40"
-        >
-          <div className="font-semibold">Evolución →</div>
-          <div className="text-xs text-muted-foreground">
-            Ingresos, costos y margen mes a mes (últimos 12).
-          </div>
-        </Link>
-        <Link
-          href="/finanzas/proyeccion"
-          className="rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40"
-        >
-          <div className="font-semibold">Proyección →</div>
-          <div className="text-xs text-muted-foreground">
-            MRR, LTV y caja proyectada de los próximos meses.
-          </div>
-        </Link>
+      {/* ===== Análisis (secundario) ===== */}
+      <div>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Análisis
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <AnalisisLink href="/finanzas/salud" title="Salud de la agencia" desc="Margen real por cliente (ingreso − costo)." />
+          <AnalisisLink href="/finanzas/rentabilidad" title="Rentabilidad por cliente" desc="Cuánto deja cada cliente neto." />
+          <AnalisisLink href="/finanzas/proyeccion" title="Proyección" desc="MRR, LTV y caja de los próximos meses." />
+          <AnalisisLink href="/finanzas/evolucion" title="Evolución" desc="Ingresos, costos y margen mes a mes." />
+          <AnalisisLink href="/finanzas/suscripciones" title="Suscripciones" desc="Plataformas SaaS que paga la agencia." />
+          <AnalisisLink href="/finanzas/recordatorios" title="Recordatorios de cobro" desc="Mensaje de WhatsApp por cliente, a un toque." />
+        </div>
       </div>
     </div>
   );
 }
 
-function Stat({
+function Money({
   label,
   value,
-  color,
+  tone,
+  icon: Icon,
+  big,
 }: {
   label: string;
   value: number;
-  color: "emerald" | "amber" | "orange";
+  tone: "good" | "bad";
+  icon: typeof Wallet;
+  big?: boolean;
 }) {
-  const cls: Record<typeof color, string> = {
-    emerald: "text-emerald-700 dark:text-emerald-400",
-    amber: "text-amber-700 dark:text-amber-400",
-    orange: "text-orange-700 dark:text-orange-400",
-  };
   return (
-    <div className="rounded-md border bg-card px-2 py-1.5">
-      <div className="text-[10px] text-muted-foreground">{label}</div>
-      <div className={cn("text-sm font-semibold tabular-nums", cls[color])}>
+    <div className={cn("rounded-lg border bg-card p-4", big && "sm:border-2 sm:border-primary/30")}>
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Icon className="h-4 w-4" /> {label}
+      </div>
+      <div
+        className={cn(
+          "mt-1 font-bold tabular-nums",
+          big ? "text-3xl" : "text-2xl",
+          tone === "good" ? "text-emerald-600" : "text-red-600"
+        )}
+      >
         {fmtARS(value)}
       </div>
     </div>
@@ -484,18 +454,24 @@ function Row({ href, text, amount }: { href: string; text: string; amount: strin
   );
 }
 
+function AnalisisLink({ href, title, desc }: { href: string; title: string; desc: string }) {
+  return (
+    <Link
+      href={href}
+      className="rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40"
+    >
+      <div className="font-semibold">{title} →</div>
+      <div className="text-xs text-muted-foreground">{desc}</div>
+    </Link>
+  );
+}
+
 interface SectionListItem {
   id: string;
   primary: string;
   secondary: string;
   amountLabel: string;
   dateLabel: string;
-}
-
-interface SubKpi {
-  label: string;
-  value: number;
-  isCount?: boolean;
 }
 
 function Section({
@@ -505,7 +481,6 @@ function Section({
   color,
   totalARS,
   totalLabel,
-  subKpis,
   listTitle,
   listItems,
   listEmpty,
@@ -517,7 +492,6 @@ function Section({
   color: "emerald" | "amber" | "orange";
   totalARS: number;
   totalLabel: string;
-  subKpis: SubKpi[];
   listTitle: string;
   listItems: SectionListItem[];
   listEmpty: string;
@@ -545,19 +519,6 @@ function Section({
             </div>
           </Link>
           <div>{newButton}</div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          {subKpis.map((k, i) => (
-            <div key={i} className="rounded-md border bg-card px-2 py-1.5">
-              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                {k.label}
-              </div>
-              <div className="text-sm font-semibold tabular-nums">
-                {k.isCount ? k.value : fmtARS(k.value)}
-              </div>
-            </div>
-          ))}
         </div>
 
         <div>

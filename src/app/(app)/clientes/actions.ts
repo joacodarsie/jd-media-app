@@ -286,3 +286,42 @@ export async function toggleClientStatus(id: string, currentStatus: string) {
   revalidatePath(`/clientes/${id}`);
   return { ok: true, nuevo: next };
 }
+
+/**
+ * Activa un cliente que estaba en estado "propuesta" (marcó el pago). Lo pasa a
+ * "activo" y setea la fecha de inicio = hoy, con lo cual arranca su primer mes:
+ * empieza a contar en Finanzas y se dispara la comisión de cierre del comercial
+ * que lo cerró. También alinea la fecha de inicio de sus servicios y marca el
+ * lead vinculado como ganado.
+ */
+export async function activateClient(id: string) {
+  const me = await requireUser();
+  if (me.rol !== "admin" && me.rol !== "coordinador") {
+    return { error: "No autorizado" };
+  }
+  const admin = createAdmin();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const { error } = await admin
+    .from("clients")
+    .update({ estado: "activo", fecha_inicio: today })
+    .eq("id", id);
+  if (error) return { error: error.message };
+
+  // Alinear la fecha de inicio de los servicios que no la tengan cargada.
+  await admin
+    .from("client_services")
+    .update({ fecha_inicio: today })
+    .eq("cliente_id", id)
+    .is("fecha_inicio", null);
+
+  // Marcar como ganado el lead vinculado (si vino de una propuesta del pipeline).
+  await admin.from("leads").update({ stage: "ganado" }).eq("ganado_cliente_id", id);
+
+  revalidatePath("/clientes");
+  revalidatePath(`/clientes/${id}`);
+  revalidatePath("/comercial");
+  revalidatePath("/finanzas");
+  invalidateClientsCache();
+  return { ok: true };
+}

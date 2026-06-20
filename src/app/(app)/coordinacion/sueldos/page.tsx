@@ -30,8 +30,9 @@ export default async function SueldosPage({
         <h1 className="text-2xl font-bold">Sueldos</h1>
         <p className="text-muted-foreground">
           Nómina del mes calculada automática desde el modelo de tarifas
-          (CM, diseño, edición, media buyer y acuerdos fijos), más comisiones y
-          extras que cargues a mano. Solo vos lo ves.
+          (CM, diseño, edición, media buyer y acuerdos fijos) e incluye la
+          comisión de cierre del primer mes de cada cliente nuevo. Sumá extras o
+          ajustes a mano. Solo vos lo ves.
         </p>
       </div>
       <SueldosPanel

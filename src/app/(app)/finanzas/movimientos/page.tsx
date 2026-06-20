@@ -20,10 +20,18 @@ interface Movement {
   metodo: string | null;
 }
 
-export default async function MovimientosPage() {
+type Filtro = "todos" | "in" | "out";
+
+export default async function MovimientosPage({
+  searchParams,
+}: {
+  searchParams: { t?: string };
+}) {
   await requireFeature("finanzas");
   const supabase = createClient();
   const rates = await getExchangeRates();
+  const filtro: Filtro =
+    searchParams.t === "in" ? "in" : searchParams.t === "out" ? "out" : "todos";
 
   const [{ data: invs }, { data: pays }, { data: exps }] = await Promise.all([
     supabase
@@ -108,9 +116,21 @@ export default async function MovimientosPage() {
     metodo: e.metodo_pago,
   }));
 
-  const all = [...ingresos, ...egresosEquipo, ...egresosGastos].sort(
+  const todos = [...ingresos, ...egresosEquipo, ...egresosGastos].sort(
     (a, b) => b.fecha.localeCompare(a.fecha)
   );
+
+  // Totales globales (sobre todo el historial cargado, sin filtrar) en ARS.
+  const totalIn = todos
+    .filter((m) => m.kind === "in")
+    .reduce((a, m) => a + toARS(m.monto, m.moneda, rates), 0);
+  const totalOut = todos
+    .filter((m) => m.kind === "out")
+    .reduce((a, m) => a + toARS(m.monto, m.moneda, rates), 0);
+
+  // Aplicar filtro de tipo a lo que se muestra.
+  const all =
+    filtro === "todos" ? todos : todos.filter((m) => m.kind === filtro);
 
   // Agrupar por mes
   const byMonth = new Map<string, Movement[]>();
@@ -132,8 +152,44 @@ export default async function MovimientosPage() {
       <div>
         <h1 className="text-2xl font-bold">Movimientos</h1>
         <p className="text-muted-foreground">
-          Historial unificado de cobros e ingresos efectivos al equipo.
+          Historial completo de todo lo que entró y salió: cobros, pagos al
+          equipo y gastos, mes a mes.
         </p>
+      </div>
+
+      {/* Resumen del historial */}
+      <div className="grid grid-cols-3 gap-3">
+        <SummaryCard label="Entró" value={fmtARS(totalIn)} tone="in" />
+        <SummaryCard label="Salió" value={fmtARS(totalOut)} tone="out" />
+        <SummaryCard
+          label="Neto"
+          value={fmtARS(totalIn - totalOut)}
+          tone={totalIn - totalOut >= 0 ? "in" : "out"}
+        />
+      </div>
+
+      {/* Filtro por tipo */}
+      <div className="flex flex-wrap gap-1.5">
+        {(
+          [
+            { key: "todos", label: "Todos", href: "/finanzas/movimientos" },
+            { key: "in", label: "Ingresos", href: "/finanzas/movimientos?t=in" },
+            { key: "out", label: "Egresos", href: "/finanzas/movimientos?t=out" },
+          ] as const
+        ).map((opt) => (
+          <Link
+            key={opt.key}
+            href={opt.href}
+            className={cn(
+              "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+              filtro === opt.key
+                ? "border-primary bg-primary/10 text-foreground"
+                : "border-transparent bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            {opt.label}
+          </Link>
+        ))}
       </div>
 
       {all.length === 0 ? (
@@ -229,6 +285,32 @@ export default async function MovimientosPage() {
           );
         })
       )}
+    </div>
+  );
+}
+
+function SummaryCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "in" | "out";
+}) {
+  return (
+    <div className="rounded-lg border bg-card p-3">
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+      <div
+        className={cn(
+          "mt-0.5 text-base font-bold tabular-nums sm:text-lg",
+          tone === "in" ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"
+        )}
+      >
+        {value}
+      </div>
     </div>
   );
 }

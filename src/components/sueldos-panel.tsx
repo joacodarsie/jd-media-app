@@ -416,6 +416,13 @@ function CommissionDialog({
           <DialogTitle>Comisión de cierre</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          <div className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] text-muted-foreground">
+            Las comisiones del <strong className="text-foreground">primer mes</strong> se
+            cargan <strong className="text-foreground">solas</strong> según quién figura como{" "}
+            &ldquo;Cerrado por&rdquo; en la ficha de cada cliente nuevo. Usá esto solo para
+            casos especiales: comisión a quien <em>refirió</em> el lead, un cierre que no
+            quedó taggeado, o un ajuste manual.
+          </div>
           <div>
             <Label>Cliente nuevo</Label>
             <Select

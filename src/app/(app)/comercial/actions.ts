@@ -180,3 +180,83 @@ export async function convertLeadToClient(leadId: string) {
 
   return { ok: true, clientId: created.id };
 }
+
+/**
+ * Genera una PROPUESTA a partir de un lead: crea el cliente en estado
+ * "propuesta" (NO cuenta en Finanzas, Sueldos ni en la lista de activos) para
+ * poder armar y enviar la carta acuerdo antes de que el cliente pague. Si paga,
+ * se activa desde la ficha (Activar cliente) y recién ahí arranca su primer mes
+ * y la comisión de cierre. Si no paga, no ensucia nada.
+ *
+ * El comercial asignado al lead queda registrado como "cerrado por" para que la
+ * comisión del primer mes se calcule sola al activarlo.
+ */
+export async function createProposalFromLead(leadId: string) {
+  const { supabase } = await ctx();
+
+  const { data: lead, error: leadErr } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("id", leadId)
+    .maybeSingle();
+  if (leadErr || !lead) {
+    return { error: leadErr?.message ?? "Lead no encontrado" };
+  }
+  if (lead.ganado_cliente_id) {
+    return {
+      error: "Este lead ya tiene una ficha creada: " + lead.ganado_cliente_id,
+    };
+  }
+
+  const clientName = (lead.empresa?.trim() || lead.nombre?.trim() || "Cliente").slice(
+    0,
+    120
+  );
+
+  const { data: created, error: cErr } = await supabase
+    .from("clients")
+    .insert({
+      nombre: clientName,
+      estado: "propuesta",
+      contacto_nombre: lead.empresa ? lead.nombre : null,
+      contacto_email: lead.email,
+      contacto_telefono: lead.telefono,
+      monto_mensual: lead.monto_estimado,
+      notas: lead.notas,
+      cerrado_por_id: lead.asignado_a_id,
+      // La fecha de inicio (primer mes) se setea al ACTIVAR, no ahora.
+      fecha_inicio: null,
+    })
+    .select("id")
+    .single();
+  if (cErr || !created) {
+    return { error: "No se pudo crear la propuesta: " + (cErr?.message ?? "") };
+  }
+
+  // Si el lead tenía servicio interesado, crear client_services con el monto.
+  if (lead.servicio_interesado) {
+    const { error: csErr } = await supabase.from("client_services").insert({
+      cliente_id: created.id,
+      tipo: lead.servicio_interesado,
+      monto_mensual: lead.monto_estimado,
+      moneda: lead.moneda ?? "ARS",
+      fecha_inicio: null,
+      activo: true,
+    });
+    if (csErr) {
+      console.warn("createProposalFromLead: client_services insert failed", csErr);
+    }
+  }
+
+  // Vincular la ficha al lead (sin marcarlo "ganado" todavía: aún no pagó).
+  await supabase
+    .from("leads")
+    .update({ ganado_cliente_id: created.id })
+    .eq("id", leadId);
+
+  revalidatePath("/comercial");
+  revalidatePath("/clientes");
+  revalidatePath(`/clientes/${created.id}`);
+
+  return { ok: true, clientId: created.id };
+}

@@ -35,6 +35,7 @@ import { ClientFormDialog } from "@/components/client-form-dialog";
 import { DeleteClientButton } from "@/components/delete-client-button";
 import { ClientServicesEditor } from "@/components/client-services-editor";
 import { ClientStatusToggle } from "@/components/client-status-toggle";
+import { ClientActivateButton } from "@/components/client-activate-button";
 import { ClientListEditor } from "@/components/client-list-editor";
 import { DocumentsManager, type DocumentRow } from "@/components/documents-manager";
 import { ClientPortalLink } from "@/components/client-portal-link";
@@ -53,6 +54,8 @@ const ESTADO_BADGE: Record<string, string> = {
     "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
   at_risk: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
   perdido: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
+  propuesta:
+    "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300",
 };
 
 interface ClientWithTeam extends Client {
@@ -322,6 +325,35 @@ export default async function ClientDetail({
               );
             })}
         </div>
+
+        {/* Banner de PROPUESTA: aún no es cliente real (no pagó). */}
+        {c.estado === "propuesta" && (
+          <div className="mt-4 rounded-lg border border-violet-300 bg-violet-50 p-4 dark:border-violet-900 dark:bg-violet-950/30">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 text-sm">
+                <div className="font-semibold text-violet-800 dark:text-violet-200">
+                  Esto es una propuesta, todavía no es cliente.
+                </div>
+                <p className="mt-0.5 text-violet-700/80 dark:text-violet-300/80">
+                  No cuenta en Finanzas ni en Sueldos. Editá los servicios y el
+                  contrato, generá la{" "}
+                  <Link
+                    href={`/contrato/cliente/${c.id}`}
+                    target="_blank"
+                    className="font-medium underline underline-offset-2"
+                  >
+                    carta acuerdo
+                  </Link>{" "}
+                  y enviásela junto con los datos de transferencia. Cuando te
+                  pague, tocá <strong>Activar cliente</strong>.
+                </p>
+              </div>
+              {canEdit && (
+                <ClientActivateButton id={c.id} nombre={c.nombre} size="sm" />
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Layout principal: contenido + columna lateral ── */}
@@ -489,12 +521,23 @@ export default async function ClientDetail({
           />
 
           {/* Estado del cliente */}
-          <ClientStatusToggle
-            id={c.id}
-            currentStatus={c.estado}
-            fechaActivado={c.fecha_activado ?? null}
-            fechaInactivado={c.fecha_inactivado ?? null}
-          />
+          {c.estado === "propuesta" ? (
+            <div className="rounded-lg border border-violet-300 bg-violet-50 p-3 dark:border-violet-900 dark:bg-violet-950/30">
+              <div className="mb-2 text-xs text-violet-700 dark:text-violet-300">
+                Estado: <b>Propuesta</b> · activala cuando pague
+              </div>
+              {canEdit && (
+                <ClientActivateButton id={c.id} nombre={c.nombre} size="sm" />
+              )}
+            </div>
+          ) : (
+            <ClientStatusToggle
+              id={c.id}
+              currentStatus={c.estado}
+              fechaActivado={c.fecha_activado ?? null}
+              fechaInactivado={c.fecha_inactivado ?? null}
+            />
+          )}
 
           {/* Links rápidos */}
           <Card>

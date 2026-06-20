@@ -58,7 +58,9 @@ export async function buildPeriodPayroll(
     admin.from("agency_settings").select("packs, rates").eq("id", 1).maybeSingle(),
     admin
       .from("clients")
-      .select("id, nombre, cm_id, disenador_id, audiovisual_id, media_buyer_id, coordinador_id")
+      .select(
+        "id, nombre, cm_id, disenador_id, audiovisual_id, media_buyer_id, coordinador_id, cerrado_por_id, fecha_inicio"
+      )
       .eq("estado", "activo")
       .eq("es_interno", false),
     admin
@@ -161,6 +163,45 @@ export async function buildPeriodPayroll(
     }
   }
 
+  // ── Comisión de cierre AUTOMÁTICA del primer mes ──
+  // Cada cliente cuya fecha de inicio cae en este período genera, una sola vez,
+  // la comisión del comercial que lo cerró (clients.cerrado_por_id), calculada
+  // sobre el abono mensual recurrente. Si ya se cargó una comisión manual para
+  // esa cuenta, no se duplica. El bonus por volumen (más abajo) también cuenta
+  // estos cierres automáticos.
+  const recurringByClient = new Map<string, number>();
+  for (const s of services) {
+    if (s.facturacion === "unico") continue;
+    recurringByClient.set(
+      s.cliente_id,
+      (recurringByClient.get(s.cliente_id) ?? 0) + (Number(s.monto_mensual) || 0)
+    );
+  }
+  const cierrePct = settings.rates.comision_cierre ?? 0.1;
+  const autoCierreBasesByUser = new Map<string, number[]>();
+  if (cierrePct > 0) {
+    for (const c of clients) {
+      if ((c.fecha_inicio ?? "").slice(0, 7) !== periodo) continue;
+      if (!c.cerrado_por_id) continue;
+      // No duplicar si ya hay una comisión cargada a mano para esta cuenta.
+      if (items.some((i) => i.tipo === "comision" && i.cliente_id === c.id)) continue;
+      const base = recurringByClient.get(c.id) ?? 0;
+      if (base <= 0) continue;
+      const monto = Math.round(base * cierrePct);
+      if (!autoByUser.has(c.cerrado_por_id)) autoByUser.set(c.cerrado_por_id, []);
+      autoByUser.get(c.cerrado_por_id)!.push({
+        clienteId: c.id,
+        cliente: c.nombre,
+        concepto: `Comisión cierre (${Math.round(cierrePct * 100)}%) · primer mes`,
+        monto,
+        kind: "comision",
+      });
+      const arr = autoCierreBasesByUser.get(c.cerrado_por_id) ?? [];
+      arr.push(base);
+      autoCierreBasesByUser.set(c.cerrado_por_id, arr);
+    }
+  }
+
   // Jornadas de producción del mes: el monto se reparte en partes iguales
   // entre los asistentes y se suma a la nómina de cada uno.
   const sessions = (sessionsRaw ?? []) as {
@@ -221,23 +262,26 @@ export async function buildPeriodPayroll(
     const baseAutoLines = autoByUser.get(uid) ?? [];
 
     // Bonus por volumen de cierres del mes (closer): +2% cada 2 clientes, tope 6%.
-    const cierres = items
+    // Cuenta tanto las comisiones manuales como las automáticas del primer mes.
+    const cierresManual = items
       .filter((i) => i.user_id === uid && i.tipo === "comision")
       .map((i) => decodeCommissionNote(i.notas))
       .filter(
         (d): d is { role: "closer" | "both" | "ref"; base: number } =>
           !!d && (d.role === "closer" || d.role === "both")
-      );
-    const bonusPct = closerVolumeBonusPct(cierres.length);
+      )
+      .map((d) => d.base);
+    const cierreBases = [...cierresManual, ...(autoCierreBasesByUser.get(uid) ?? [])];
+    const bonusPct = closerVolumeBonusPct(cierreBases.length);
     const bonusLine: PayrollLine | null =
       bonusPct > 0
         ? {
             clienteId: null,
             cliente: "—",
-            concepto: `Bonus por volumen · ${cierres.length} cierres (${Math.round(
+            concepto: `Bonus por volumen · ${cierreBases.length} cierres (${Math.round(
               bonusPct * 100
             )}%)`,
-            monto: Math.round(cierres.reduce((a, c) => a + c.base, 0) * bonusPct),
+            monto: Math.round(cierreBases.reduce((a, b) => a + b, 0) * bonusPct),
             kind: "comision",
           }
         : null;
@@ -271,14 +315,7 @@ export async function buildPeriodPayroll(
   people.sort((a, b) => b.total - a.total);
 
   // ── Datos para los diálogos del panel admin ──
-  const recurringByClient = new Map<string, number>();
-  for (const s of services) {
-    if (s.facturacion === "unico") continue;
-    recurringByClient.set(
-      s.cliente_id,
-      (recurringByClient.get(s.cliente_id) ?? 0) + (Number(s.monto_mensual) || 0)
-    );
-  }
+  // (recurringByClient ya se calculó arriba para la comisión automática.)
   const clientOptions = clients
     .map((c) => ({ id: c.id, nombre: c.nombre, abono: recurringByClient.get(c.id) ?? 0 }))
     .sort((a, b) => a.nombre.localeCompare(b.nombre));

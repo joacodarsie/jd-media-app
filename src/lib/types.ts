@@ -20,7 +20,7 @@ export type TaskStatus =
 
 export type TaskPriority = "baja" | "media" | "alta" | "urgente";
 export type ClientPack = "Presencia" | "Crecimiento" | "Escala" | "Personalizado";
-export type ClientStatus = "activo" | "at_risk" | "perdido";
+export type ClientStatus = "activo" | "at_risk" | "perdido" | "propuesta";
 
 export type ServiceType =
   | "gestion_redes"

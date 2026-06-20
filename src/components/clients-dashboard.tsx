@@ -32,9 +32,10 @@ interface UpcomingPub {
   estado: string;
 }
 
-type Quick = "activos" | "perdido" | "todos";
+type Quick = "activos" | "propuesta" | "perdido" | "todos";
 const QUICK_LABEL: Record<Quick, string> = {
   activos: "Activos",
+  propuesta: "Propuestas",
   perdido: "Perdidos",
   todos: "Todos",
 };
@@ -44,6 +45,8 @@ const ESTADO_BADGE: Record<string, string> = {
     "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
   at_risk: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
   perdido: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
+  propuesta:
+    "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300",
 };
 
 export function ClientsDashboard({
@@ -115,6 +118,7 @@ export function ClientsDashboard({
   const filtered = useMemo(() => {
     return realClients.filter((c) => {
       if (quick === "activos" && c.estado !== "activo") return false;
+      if (quick === "propuesta" && c.estado !== "propuesta") return false;
       if (quick === "perdido" && c.estado !== "perdido") return false;
       if (pack !== "__all__" && c.pack !== pack) return false;
       if (resp !== "__all__" && (c as { cm_id?: string | null }).cm_id !== resp)
@@ -127,6 +131,7 @@ export function ClientsDashboard({
   const counts = useMemo(
     () => ({
       activos: realClients.filter((c) => c.estado === "activo").length,
+      propuesta: realClients.filter((c) => c.estado === "propuesta").length,
       perdido: realClients.filter((c) => c.estado === "perdido").length,
       todos: realClients.length,
     }),

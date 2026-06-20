@@ -10,6 +10,7 @@ import {
   CheckCheck,
   CircleUser,
   DollarSign,
+  FileText,
   Mail,
   Pencil,
   Phone,
@@ -19,7 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   changeLeadStage,
-  convertLeadToClient,
+  createProposalFromLead,
   deleteLead,
   type LeadStage,
 } from "@/app/(app)/comercial/actions";
@@ -199,25 +200,27 @@ function LeadCard({
       router.refresh();
     });
   }
-  function convert() {
+  function generateCarta() {
     if (
       !confirm(
-        `Crear cliente a partir de "${lead.nombre}"?\n\nSe va a:\n- Crear un cliente nuevo con los datos del lead\n- Agregar el servicio interesado al cliente (si tiene)\n- Marcar este lead como Ganado`
+        `¿Generar carta acuerdo para "${lead.nombre}"?\n\nSe va a crear una PROPUESTA (no cuenta como cliente todavía) para que armes y envíes la carta acuerdo. Cuando el cliente pague, la activás desde su ficha.`
       )
     )
       return;
     start(async () => {
-      const res = await convertLeadToClient(lead.id);
+      const res = await createProposalFromLead(lead.id);
       if (res?.error) {
         toast.error(res.error);
         return;
       }
-      toast.success("Cliente creado");
-      router.push(`/clientes/${res.clientId}`);
+      toast.success("Propuesta creada. Completá el contrato y generá la carta.");
+      router.push(`/clientes/${res.clientId}/onboarding`);
     });
   }
   const canConvert =
-    (lead.stage === "ganado" || lead.stage === "negociacion") &&
+    (lead.stage === "ganado" ||
+      lead.stage === "negociacion" ||
+      lead.stage === "propuesta") &&
     !lead.ganado_cliente_id;
   return (
     <div
@@ -320,16 +323,16 @@ function LeadCard({
           href={`/clientes/${lead.ganado_cliente_id}`}
           className="mt-2 flex items-center justify-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300"
         >
-          <CheckCheck className="h-3 w-3" /> Ver cliente <ArrowRight className="h-3 w-3" />
+          <CheckCheck className="h-3 w-3" /> Ver ficha <ArrowRight className="h-3 w-3" />
         </Link>
       ) : canConvert ? (
         <button
           type="button"
-          onClick={convert}
+          onClick={generateCarta}
           disabled={pending}
           className="mt-2 flex w-full items-center justify-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary hover:bg-primary/20"
         >
-          <CheckCheck className="h-3 w-3" /> Convertir a cliente
+          <FileText className="h-3 w-3" /> Generar carta acuerdo
         </button>
       ) : null}
     </div>

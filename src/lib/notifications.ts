@@ -154,3 +154,58 @@ export async function ensureFinanceNotifications(admin: SupabaseClient) {
     });
   }
 }
+
+/**
+ * Recordatorio mensual de COBRO: arrancado el mes, avisa a admins + feature
+ * finanzas que toca enviar los recordatorios de cobro a los clientes (la idea
+ * es que paguen el 1° para tener margen de pagarle al equipo). No genera
+ * facturas — solo lleva a /finanzas/recordatorios, donde cada mensaje de
+ * WhatsApp sale a un toque. Dedup: un solo aviso por mes calendario.
+ */
+export async function ensureCobroReminders(admin: SupabaseClient) {
+  const periodo = formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM"); // YYYY-MM
+  const inicioMesCordoba = toZonedTime(new Date(periodo + "-01T00:00:00"), TIMEZONE);
+
+  // Cuántos clientes activos hay para cobrar (informativo en el mensaje).
+  const { count } = await admin
+    .from("clients")
+    .select("id", { count: "exact", head: true })
+    .eq("estado", "activo")
+    .eq("es_interno", false);
+  const n = count ?? 0;
+  if (n === 0) return;
+
+  const { data: usersRaw } = await admin
+    .from("users")
+    .select("id, rol, permisos")
+    .eq("activo", true);
+  type URow = { id: string; rol: string; permisos: Record<string, boolean> | null };
+  const recipients = ((usersRaw ?? []) as URow[])
+    .filter((u) => u.rol === "admin" || u.permisos?.finanzas === true)
+    .map((u) => u.id);
+  if (recipients.length === 0) return;
+
+  const mensaje = `💰 Nuevo mes: enviá los recordatorios de cobro a tus ${n} cliente${
+    n > 1 ? "s" : ""
+  } activo${n > 1 ? "s" : ""}. Ideal cobrar el 1° para poder pagarle al equipo.`;
+
+  for (const uid of recipients) {
+    // Dedup por mes: ¿ya le avisamos este mes con este link?
+    const { data: existing } = await admin
+      .from("notifications")
+      .select("id")
+      .eq("user_id", uid)
+      .eq("tipo", "recordatorio")
+      .eq("link", "/finanzas/recordatorios")
+      .gte("created_at", inicioMesCordoba.toISOString())
+      .limit(1);
+    if (existing && existing.length > 0) continue;
+    await admin.from("notifications").insert({
+      user_id: uid,
+      tipo: "recordatorio",
+      mensaje,
+      link: "/finanzas/recordatorios",
+      task_id: null,
+    });
+  }
+}

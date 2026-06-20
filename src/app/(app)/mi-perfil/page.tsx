@@ -2,9 +2,13 @@ import Link from "next/link";
 import { Briefcase } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdmin } from "@/lib/supabase/admin";
+import { currentPeriod } from "@/lib/finanzas";
+import { buildPeriodPayroll } from "@/lib/payroll-period";
 import type { Compensation, Position } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CompensationCard } from "@/components/compensation-card";
+import { MiSueldoCard } from "@/components/mi-sueldo-card";
 import { WhatsAppOptinCard } from "@/components/whatsapp-optin-card";
 import { GoogleCalendarCard } from "@/components/google-calendar-card";
 import { BrowserNotificationsCard } from "@/components/browser-notifications-card";
@@ -18,7 +22,8 @@ export default async function MiPerfilPage() {
   const me = await requireUser();
   const supabase = createClient();
 
-  const [{ data: position }, { data: comp }] = await Promise.all([
+  const periodo = currentPeriod();
+  const [{ data: position }, { data: comp }, payroll] = await Promise.all([
     me.position_id
       ? supabase
           .from("positions")
@@ -31,7 +36,11 @@ export default async function MiPerfilPage() {
       .select("user_id, monto, moneda, frecuencia, notas, updated_at")
       .eq("user_id", me.id)
       .maybeSingle(),
+    // Nómina del mes en curso; solo renderizamos la fila de la persona logueada.
+    buildPeriodPayroll(createAdmin(), periodo).catch(() => null),
   ]);
+
+  const miSueldo = payroll?.people.find((p) => p.userId === me.id) ?? null;
 
   return (
     <div className="space-y-5">
@@ -83,6 +92,8 @@ export default async function MiPerfilPage() {
           </CardContent>
         </Card>
       )}
+
+      <MiSueldoCard person={miSueldo} periodo={periodo} />
 
       <CompensationCard
         compensation={(comp as Compensation) ?? null}

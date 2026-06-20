@@ -3,6 +3,7 @@ import { createAdmin } from "@/lib/supabase/admin";
 import {
   ensureDueNotifications,
   ensureFinanceNotifications,
+  ensureCobroReminders,
 } from "@/lib/notifications";
 import {
   runMonthEndCompliance,
@@ -108,6 +109,18 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Recordatorio mensual de cobro a clientes (arranca el mes). Dedup por mes,
+  // así que es seguro intentarlo en cada corrida del 1°.
+  let cobroReminders: unknown = null;
+  if (esPrimerDiaDeMes) {
+    try {
+      await ensureCobroReminders(admin);
+      cobroReminders = { ok: true };
+    } catch (e) {
+      cobroReminders = { error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
   // Paid media: snapshot diario + análisis IA de cada cuenta con Meta cargado.
   // Va acá (no en un cron propio) para no sumar crons en Hobby.
   let paidMedia: unknown = null;
@@ -188,6 +201,7 @@ export async function GET(req: NextRequest) {
     tasks_archived: archivedRows?.length ?? 0,
     month_end: monthEnd,
     month_start: monthStart,
+    cobro_reminders: cobroReminders,
     paid_media: paidMedia,
     instagram,
     meta_token: metaToken,

@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-06-20 — Mirá tu próximo sueldo + recordatorio de cobro automático
+
+- 💰 **"Mi próximo sueldo" en Mi perfil**: cada uno entra a **Mi perfil** y ve, con total claridad, lo que va a cobrar este mes — el desglose por cada cuenta y concepto (CM, diseño, edición, portadas, media buyer, comisiones, jornadas…) y el **total estimado**. Si ya se registró el pago, lo muestra. Podés copiar el detalle con un toque.
+- 🔔 **Recordatorio de cobro automático**: arrancado el mes, la app le avisa a Dirección que toca **enviar los recordatorios de cobro** a los clientes, con link directo a la sección donde cada mensaje de WhatsApp sale a un toque. La idea: cobrar el 1° para tener margen de pagarle al equipo en tiempo.
+
 ## 2026-06-20 — Cobros más claros y churn que se ve en la proyección
 
 - ⏰ **Días para cobrar en la tabla de Cobros**: cada factura sin cobrar ahora muestra un cartelito al lado del vencimiento — **"vence hoy"**, **"en 3 días"** o **"atrasado 5 días"** (en rojo cuando ya venció). De un vistazo sabés a quién hay que apurar.

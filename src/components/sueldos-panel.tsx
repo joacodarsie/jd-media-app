@@ -34,7 +34,13 @@ import {
 } from "@/components/ui/select";
 import { fmtARS, periodLabel, prevPeriod, nextPeriod } from "@/lib/finanzas";
 import { ROLE_LABEL } from "@/lib/constants";
-import { encodeCommissionNote, type PayrollLine } from "@/lib/payroll";
+import {
+  encodeCommissionNote,
+  type PersonPayroll,
+  type MediaBuyerAccount,
+} from "@/lib/payroll";
+
+export type { PersonPayroll, MediaBuyerAccount } from "@/lib/payroll";
 
 export interface CommissionConfig {
   /** Fracción por cierre (ej: 0.10). */
@@ -49,32 +55,6 @@ import {
   registerSalaryPayment,
 } from "@/app/(app)/coordinacion/sueldos/actions";
 import { cn } from "@/lib/utils";
-
-export interface PersonPayroll {
-  userId: string;
-  nombre: string;
-  rol: string;
-  alias: string | null;
-  titular: string | null;
-  autoLines: PayrollLine[];
-  manualItems: {
-    id: string;
-    tipo: "comision" | "extra" | "ajuste";
-    concepto: string;
-    monto: number;
-    cliente: string | null;
-  }[];
-  total: number;
-  registrado: boolean;
-  pagado: boolean;
-}
-
-export interface MediaBuyerAccount {
-  clienteId: string;
-  cliente: string;
-  aplica: boolean;
-  userId: string | null;
-}
 
 interface ClientOption {
   id: string;

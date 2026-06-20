@@ -34,6 +34,34 @@ export interface PayrollLine {
   kind: PayrollLineKind;
 }
 
+/** Nómina ya ensamblada de una persona para un período (auto + manual). */
+export interface PersonPayroll {
+  userId: string;
+  nombre: string;
+  rol: string;
+  alias: string | null;
+  titular: string | null;
+  autoLines: PayrollLine[];
+  manualItems: {
+    id: string;
+    tipo: "comision" | "extra" | "ajuste";
+    concepto: string;
+    monto: number;
+    cliente: string | null;
+  }[];
+  total: number;
+  registrado: boolean;
+  pagado: boolean;
+}
+
+/** Cuenta con servicio de pauta, para el toggle de media buyer. */
+export interface MediaBuyerAccount {
+  clienteId: string;
+  cliente: string;
+  aplica: boolean;
+  userId: string | null;
+}
+
 export interface PayrollClient {
   id: string;
   nombre: string;

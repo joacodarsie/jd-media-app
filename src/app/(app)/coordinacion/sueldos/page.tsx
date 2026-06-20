@@ -21,7 +21,6 @@ export default async function SueldosPage({
     salaryConcepto,
     clientOptions,
     teamOptions,
-    mbAccounts,
     commission,
   } = await buildPeriodPayroll(admin, periodo);
 
@@ -42,7 +41,6 @@ export default async function SueldosPage({
         salaryConcepto={salaryConcepto}
         clientOptions={clientOptions}
         teamOptions={teamOptions}
-        mbAccounts={mbAccounts}
         commission={commission}
       />
     </div>

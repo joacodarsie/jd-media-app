@@ -47,30 +47,6 @@ export async function deletePayrollItem(id: string) {
   return { ok: true };
 }
 
-/** Toggle "aplica" y/o persona del media buyer de una cuenta (servicio paid_media). */
-export async function setMediaBuyer(input: {
-  clienteId: string;
-  aplica?: boolean;
-  userId?: string | null;
-}) {
-  await requireRole(["admin"]);
-  const admin = createAdmin();
-  const patch: Record<string, unknown> = {};
-  if (typeof input.aplica === "boolean") patch.media_buyer_aplica = input.aplica;
-  if (input.userId !== undefined) patch.media_buyer_user_id = input.userId;
-  if (Object.keys(patch).length === 0) return { ok: true };
-  const { error } = await admin
-    .from("client_services")
-    .update(patch)
-    .eq("cliente_id", input.clienteId)
-    .eq("tipo", "paid_media")
-    .eq("activo", true);
-  if (error) return { error: error.message };
-  revalidatePath(PATH);
-  revalidatePath("/coordinacion");
-  return { ok: true };
-}
-
 /**
  * Registra el sueldo del período como un pago al equipo (Finanzas → team_payments),
  * para que entre al cashflow. Idempotente por persona+período+concepto: si ya

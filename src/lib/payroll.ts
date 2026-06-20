@@ -5,7 +5,9 @@
 //   - Diseño por pieza    → clients.disenador_id
 //   - Edición por reel    → clients.audiovisual_id
 //   - Media buyer por pack→ clients.media_buyer_id (gestor de pauta de la cuenta),
-//       con fallback a paid_media.media_buyer_user_id (toggle media_buyer_aplica)
+//       con fallback al rol paid_media. La gestión de campañas de Meta va
+//       INCLUIDA en el servicio de gestión de redes: toda cuenta con gestión
+//       genera el pago de media buyer (no depende de un servicio de pauta aparte).
 //   - Acuerdo fijo (override) → client_services.costo_override_user (monto completo)
 // El total de la nómina auto debe coincidir con el costo del panorama.
 
@@ -52,14 +54,6 @@ export interface PersonPayroll {
   total: number;
   registrado: boolean;
   pagado: boolean;
-}
-
-/** Cuenta con servicio de pauta, para el toggle de media buyer. */
-export interface MediaBuyerAccount {
-  clienteId: string;
-  cliente: string;
-  aplica: boolean;
-  userId: string | null;
 }
 
 export interface PayrollClient {
@@ -166,14 +160,12 @@ export function computeAutoPayroll(
       }
     }
 
-    // Media buyer: por cada servicio de pauta activo que aplique.
-    const pack = (gestion?.pack ?? "Personalizado") as RatePack;
-    for (const s of svcs) {
-      if (s.tipo !== "paid_media") continue;
-      if (s.media_buyer_aplica === false) continue;
-      // El gestor de pauta de la cuenta manda; si no hay, cae al del servicio.
-      const who = c.media_buyer_id ?? s.media_buyer_user_id ?? fallbackMediaBuyerId;
-      add(who, {
+    // Media buyer: la gestión de campañas de Meta va incluida en el servicio de
+    // gestión de redes, así que toda cuenta con gestión paga media buyer al
+    // gestor de pauta de la cuenta (o, si no hay, al rol paid_media).
+    if (gestion) {
+      const pack = (gestion.pack ?? "Personalizado") as RatePack;
+      add(c.media_buyer_id ?? fallbackMediaBuyerId, {
         clienteId: c.id,
         cliente: c.nombre,
         concepto: `Media buyer ${pack}`,

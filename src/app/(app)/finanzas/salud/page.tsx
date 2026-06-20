@@ -89,9 +89,10 @@ export default async function SaludAgenciaPage({
   }[];
   const pubs = (pubsRaw ?? []) as { cliente_id: string; tipo: string }[];
 
-  // Ingreso mensual contratado (MRR) + si tiene pauta, por cliente.
+  // Ingreso mensual contratado (MRR) + qué cuentas tienen gestión de redes
+  // (la pauta/media buyer va incluida ahí → cuesta en toda cuenta con gestión).
   const mrrByC = new Map<string, number>();
-  const paidByC = new Set<string>();
+  const gestionByC = new Set<string>();
   for (const s of svcs) {
     if (s.monto_mensual != null) {
       mrrByC.set(
@@ -99,7 +100,7 @@ export default async function SaludAgenciaPage({
         (mrrByC.get(s.cliente_id) ?? 0) + toARS(Number(s.monto_mensual), s.moneda, rates)
       );
     }
-    if (s.tipo === "paid_media") paidByC.add(s.cliente_id);
+    if (s.tipo === "gestion_redes") gestionByC.add(s.cliente_id);
   }
 
   // Piezas publicadas en el mes, por cliente.
@@ -118,9 +119,9 @@ export default async function SaludAgenciaPage({
       const reels = reelsByC.get(c.id) ?? 0;
       const posts = postsByC.get(c.id) ?? 0;
       const mrr = mrrByC.get(c.id) ?? 0;
-      const hasPaid = paidByC.has(c.id);
+      const hasPaid = gestionByC.has(c.id);
       // Costo de producción real = CM (fijo del pack, incluye historias) +
-      // posts×diseño + reels×edición + media buyer si tiene pauta.
+      // posts×diseño + reels×edición + media buyer (incluido en gestión de redes).
       const costo = productionBase(pack, posts, reels, rt) + (hasPaid ? mbCost(pack, rt) : 0);
       const margen = mrr - costo;
       const margenPct = mrr > 0 ? (margen / mrr) * 100 : null;

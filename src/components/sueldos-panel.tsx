@@ -12,7 +12,6 @@ import {
   ChevronRight,
   Check,
   Percent,
-  Settings2,
 } from "lucide-react";
 import {
   Dialog,
@@ -34,13 +33,9 @@ import {
 } from "@/components/ui/select";
 import { fmtARS, periodLabel, prevPeriod, nextPeriod } from "@/lib/finanzas";
 import { ROLE_LABEL } from "@/lib/constants";
-import {
-  encodeCommissionNote,
-  type PersonPayroll,
-  type MediaBuyerAccount,
-} from "@/lib/payroll";
+import { encodeCommissionNote, type PersonPayroll } from "@/lib/payroll";
 
-export type { PersonPayroll, MediaBuyerAccount } from "@/lib/payroll";
+export type { PersonPayroll } from "@/lib/payroll";
 
 export interface CommissionConfig {
   /** Fracción por cierre (ej: 0.10). */
@@ -51,7 +46,6 @@ export interface CommissionConfig {
 import {
   addPayrollItem,
   deletePayrollItem,
-  setMediaBuyer,
   registerSalaryPayment,
 } from "@/app/(app)/coordinacion/sueldos/actions";
 import { cn } from "@/lib/utils";
@@ -77,7 +71,6 @@ export function SueldosPanel({
   salaryConcepto,
   clientOptions,
   teamOptions,
-  mbAccounts,
   commission,
 }: {
   periodo: string;
@@ -86,11 +79,9 @@ export function SueldosPanel({
   salaryConcepto: string;
   clientOptions: ClientOption[];
   teamOptions: TeamOption[];
-  mbAccounts: MediaBuyerAccount[];
   commission: CommissionConfig;
 }) {
   const router = useRouter();
-  const [showMb, setShowMb] = useState(false);
 
   function goPeriod(p: string) {
     router.push(`/coordinacion/sueldos?periodo=${p}`);
@@ -128,22 +119,9 @@ export function SueldosPanel({
           </div>
           <div className="flex items-center gap-2">
             <CommissionDialog periodo={periodo} clientOptions={clientOptions} teamOptions={teamOptions} commission={commission} />
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setShowMb((v) => !v)}
-            >
-              <Settings2 className="h-4 w-4" /> Media buyer
-            </Button>
           </div>
         </div>
       </div>
-
-      {/* ── Media buyer por cuenta ── */}
-      {showMb && (
-        <MediaBuyerSettings accounts={mbAccounts} teamOptions={teamOptions} />
-      )}
 
       {/* ── Personas ── */}
       {people.length === 0 ? (
@@ -632,72 +610,6 @@ function ExtraItemDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Media buyer por cuenta
-// ─────────────────────────────────────────────────────────────────────────
-function MediaBuyerSettings({
-  accounts,
-  teamOptions,
-}: {
-  accounts: MediaBuyerAccount[];
-  teamOptions: TeamOption[];
-}) {
-  const router = useRouter();
-  const [pending, start] = useTransition();
-
-  function patch(clienteId: string, input: { aplica?: boolean; userId?: string }) {
-    start(async () => {
-      const res = await setMediaBuyer({ clienteId, ...input });
-      if (res?.error) return void toast.error(res.error);
-      router.refresh();
-    });
-  }
-
-  return (
-    <div className="rounded-xl border bg-card">
-      <div className="border-b px-4 py-3">
-        <h2 className="text-sm font-semibold">Media buyer por cuenta</h2>
-        <p className="text-xs text-muted-foreground">
-          Quién cobra la gestión de campañas de cada cuenta y si entra en la
-          nómina. La gestión básica de Meta va incluida en el servicio de redes.
-        </p>
-      </div>
-      <ul className="divide-y">
-        {accounts.length === 0 && (
-          <li className="px-4 py-3 text-sm text-muted-foreground">
-            Ninguna cuenta tiene servicio de pauta.
-          </li>
-        )}
-        {accounts.map((a) => (
-          <li key={a.clienteId} className="flex items-center justify-between gap-3 px-4 py-2.5">
-            <span className="min-w-0 truncate text-sm font-medium">{a.cliente}</span>
-            <div className="flex items-center gap-2">
-              <div className="w-44">
-                <PersonSelect
-                  value={a.userId ?? ""}
-                  onChange={(v) => patch(a.clienteId, { userId: v })}
-                  options={teamOptions}
-                  disabled={pending || !a.aplica}
-                />
-              </div>
-              <label className="flex cursor-pointer items-center gap-1.5 text-xs">
-                <input
-                  type="checkbox"
-                  checked={a.aplica}
-                  disabled={pending}
-                  onChange={(e) => patch(a.clienteId, { aplica: e.target.checked })}
-                  className="h-4 w-4 accent-primary"
-                />
-                aplica
-              </label>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
 

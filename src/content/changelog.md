@@ -2,6 +2,13 @@
 title: Novedades
 ---
 
+## 2026-06-20 — Media buyer: incluido en gestión de redes
+
+- 🎯 **La gestión de campañas de Meta ahora se cuenta como parte del servicio de gestión de redes**: el media buyer cobra por **cada cuenta con gestión de redes**, sin tener que marcar "paid media" como un servicio aparte en cada cliente nuevo.
+- 💵 Esto corrige el sueldo del media buyer: antes solo figuraban las cuentas con el servicio de pauta cargado a mano; ahora figuran **todas** las que tienen gestión de redes.
+- 📊 El margen real (Salud de la agencia) y el panorama de Coordinación reflejan ese costo en todas las cuentas con gestión.
+- 🧹 Se limpiaron los servicios de "paid media" que estaban sueltos sin facturación; los que sí facturan un extra de pauta se conservan.
+
 ## 2026-06-20 — Tus datos para cobrar, tu sueldo real e historiales
 
 - 🏦 **"Mis datos para cobrar" en Mi perfil**: cada uno carga su propio **alias/CBU** (y titular) sin depender de nadie. Aparece en tu sueldo y donde se registra tu pago. Si te falta, la app te avisa.

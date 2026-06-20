@@ -64,25 +64,37 @@ describe("computeAutoPayroll", () => {
     expect(out.has("dis1")).toBe(false);
   });
 
-  it("media buyer cobra cuando hay pauta y aplica", () => {
+  it("media buyer cobra en toda cuenta con gestión de redes (pauta incluida)", () => {
     const out = computeAutoPayroll(
       [cliente({ cm_id: "cm1", media_buyer_id: "mb1" })],
-      [servicio(), servicio({ tipo: "paid_media", media_buyer_aplica: true })],
+      [servicio()],
       r,
       null
     );
-    expect(out.get("mb1")?.[0].monto).toBe(r.media_buyer.Presencia);
-    expect(out.get("mb1")?.[0].kind).toBe("media_buyer");
+    const mb = out.get("mb1")?.find((l) => l.kind === "media_buyer");
+    expect(mb?.monto).toBe(r.media_buyer.Presencia);
   });
 
-  it("media buyer NO cobra si el servicio lo desactiva", () => {
+  it("media buyer cae al rol paid_media si la cuenta no tiene gestor asignado", () => {
     const out = computeAutoPayroll(
-      [cliente({ cm_id: "cm1", media_buyer_id: "mb1" })],
-      [servicio({ tipo: "paid_media", media_buyer_aplica: false })],
+      [cliente({ cm_id: "cm1" })], // sin media_buyer_id
+      [servicio()],
       r,
-      null
+      "fallbackMB"
+    );
+    const mb = out.get("fallbackMB")?.find((l) => l.kind === "media_buyer");
+    expect(mb?.monto).toBe(r.media_buyer.Presencia);
+  });
+
+  it("sin gestión de redes no hay media buyer", () => {
+    const out = computeAutoPayroll(
+      [cliente({ media_buyer_id: "mb1" })],
+      [servicio({ tipo: "branding" })],
+      r,
+      "fallbackMB"
     );
     expect(out.has("mb1")).toBe(false);
+    expect(out.has("fallbackMB")).toBe(false);
   });
 });
 

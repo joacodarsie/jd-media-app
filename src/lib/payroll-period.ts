@@ -16,7 +16,6 @@ import {
   type PayrollService,
   type PayrollLine,
   type PersonPayroll,
-  type MediaBuyerAccount,
 } from "./payroll";
 
 interface ServiceRow extends PayrollService {
@@ -32,7 +31,6 @@ export interface PeriodPayrollResult {
   salaryConcepto: string;
   clientOptions: { id: string; nombre: string; abono: number }[];
   teamOptions: { id: string; nombre: string; rol: string }[];
-  mbAccounts: MediaBuyerAccount[];
   commission: { cierre: number; leadPropio: number };
 }
 
@@ -267,20 +265,6 @@ export async function buildPeriodPayroll(
     .map((u) => ({ id: u.id, nombre: u.nombre, rol: u.rol }))
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
-  const mbAccounts: MediaBuyerAccount[] = [];
-  for (const s of services) {
-    if (s.tipo !== "paid_media") continue;
-    const nombre = clientById.get(s.cliente_id);
-    if (!nombre) continue;
-    mbAccounts.push({
-      clienteId: s.cliente_id,
-      cliente: nombre,
-      aplica: s.media_buyer_aplica !== false,
-      userId: s.media_buyer_user_id ?? fallbackMediaBuyer,
-    });
-  }
-  mbAccounts.sort((a, b) => a.cliente.localeCompare(b.cliente));
-
   const totalNomina = people.reduce((a, p) => a + p.total, 0);
 
   return {
@@ -290,7 +274,6 @@ export async function buildPeriodPayroll(
     salaryConcepto,
     clientOptions,
     teamOptions,
-    mbAccounts,
     commission: {
       cierre: settings.rates.comision_cierre ?? 0.1,
       leadPropio: settings.rates.comision_lead_propio ?? 0.05,

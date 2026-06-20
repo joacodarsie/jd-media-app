@@ -53,8 +53,9 @@ export default async function CoordinacionPage() {
     // Cuentas sin gestión mensual (ej. branding único) no entran en el panorama
     // de ingresos recurrentes.
     if (!gestion && ingreso === 0) continue;
-    // La pauta (media buyer) solo cuesta si la cuenta tiene servicio de pauta.
-    const conPauta = svcs.some((s) => s.tipo === "paid_media");
+    // La gestión de campañas (media buyer) va incluida en gestión de redes:
+    // cuesta en toda cuenta que tenga ese servicio.
+    const conPauta = !!gestion;
     let costo = 0;
     let packLabel = "—";
     if (gestion) {

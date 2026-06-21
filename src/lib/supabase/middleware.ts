@@ -18,6 +18,9 @@ const PUBLIC_PATHS = [
   "/contrato/cliente/",
   "/diagnostico/cliente/",
   "/plan/cliente/",
+  // Reporte mensual: público SOLO con ?token válido del portal; sin token la
+  // propia página exige login (requireUser).
+  "/reporte/cliente/",
   "/api/cron/",
 ];
 

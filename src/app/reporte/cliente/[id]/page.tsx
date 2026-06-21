@@ -20,6 +20,7 @@ import {
 import type { Client, PublicationStatus } from "@/lib/types";
 import { Markdown } from "@/components/markdown";
 import { PrintButton } from "@/components/print-button";
+import { ReportWhatsappButton } from "@/components/report-whatsapp-button";
 import { ReportMonthPicker } from "@/components/report-month-picker";
 import { MonthlyReportEditor } from "@/components/monthly-report-editor";
 import { igMonthlyForReport, paidMonthlyForReport, igStoriesForReport } from "@/lib/social/report";
@@ -134,10 +135,34 @@ export default async function ReporteClientePage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { mes?: string };
+  searchParams: { mes?: string; token?: string };
 }) {
-  const me = await requireUser();
-  const supabase = createClient();
+  // Acceso: interno (staff logueado) o público con ?token del portal del cliente.
+  // Con token válido la página es pública (para que el cliente abra el reporte
+  // desde el celular sin login); sin token, exige sesión.
+  const admin = createAdmin();
+  const token = searchParams.token;
+  let me: Awaited<ReturnType<typeof requireUser>> | null = null;
+  let isPublic = false;
+  if (token) {
+    const { data: tok } = await admin
+      .from("client_portal_tokens")
+      .select("cliente_id, revoked_at, expires_at")
+      .eq("token", token)
+      .maybeSingle();
+    const valid =
+      tok &&
+      !tok.revoked_at &&
+      tok.cliente_id === params.id &&
+      (!tok.expires_at || new Date(tok.expires_at) > new Date());
+    if (!valid) notFound();
+    isPublic = true;
+  } else {
+    me = await requireUser();
+  }
+  // En modo público leemos con el admin client (tablas RLS); interno con la
+  // sesión del usuario.
+  const supabase = isPublic ? admin : createClient();
 
   const today = new Date();
   const defaultMes = `${today.getFullYear()}-${String(
@@ -145,7 +170,8 @@ export default async function ReporteClientePage({
   ).padStart(2, "0")}`;
   const mes = searchParams.mes || defaultMes;
   if (!/^\d{4}-\d{2}$/.test(mes)) {
-    redirect(`/reporte/cliente/${params.id}?mes=${defaultMes}`);
+    const tokenQs = token ? `&token=${token}` : "";
+    redirect(`/reporte/cliente/${params.id}?mes=${defaultMes}${tokenQs}`);
   }
 
   const { start, end, label } = monthBounds(mes);
@@ -260,10 +286,8 @@ export default async function ReporteClientePage({
     audiovisual?: { id: string; nombre: string } | null;
   };
   // Pueden editar el reporte: staff (admin/coordinador) y la CM / responsable
-  // asignada a esta cuenta.
-  const canEdit =
-    isStaff(me.rol) ||
-    c.cm_id === me.id;
+  // asignada a esta cuenta. En modo público (cliente) nunca.
+  const canEdit = !!me && (isStaff(me.rol) || c.cm_id === me.id);
   const pubList = (pubs ?? []) as RawPub[];
   const taskList = (tasks ?? []) as unknown as RawTask[];
   const commentList = (comments ?? []) as unknown as RawComment[];
@@ -379,8 +403,7 @@ export default async function ReporteClientePage({
   const monedaContratado = serviceList[0]?.moneda ?? "ARS";
 
   // Paid media + resultados de Instagram del mes (snapshots diarios agregados).
-  // Tablas RLS-only → admin.
-  const admin = createAdmin();
+  // Tablas RLS-only → admin (declarado arriba).
   const paid = await paidMonthlyForReport(admin, params.id, mes);
   const hasPaid = paid.hasData;
 
@@ -424,38 +447,64 @@ export default async function ReporteClientePage({
   const mediaTipo = (t: string) =>
     t === "VIDEO" ? "Reel" : t === "CAROUSEL_ALBUM" ? "Carrusel" : "Post";
 
+  // Token activo del portal del cliente: sirve para armar el link público del
+  // reporte que se manda por WhatsApp (solo en modo interno).
+  let portalToken: string | null = null;
+  if (!isPublic) {
+    const { data: tok } = await admin
+      .from("client_portal_tokens")
+      .select("token")
+      .eq("cliente_id", params.id)
+      .is("revoked_at", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    portalToken = (tok as { token?: string } | null)?.token ?? null;
+  }
+
   return (
     <div className="min-h-screen bg-white text-zinc-900">
-      {/* Toolbar (no se imprime) */}
-      <div className="border-b bg-zinc-50 print:hidden">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-3">
-          <Link
-            href={`/clientes/${params.id}`}
-            className="inline-flex items-center text-sm text-zinc-600 hover:text-zinc-900"
-          >
-            <ArrowLeft className="mr-1 h-4 w-4" /> Volver al cliente
-          </Link>
-          <div className="flex items-center gap-2">
-            <ReportMonthPicker currentMes={mes} clientId={params.id} />
-            {canEdit && (
-              <ResultsReadingButton
-                clienteId={params.id}
-                mes={mes}
-                hasReading={!!aiResultados}
-              />
-            )}
-            {canEdit && (
-              <MonthlyReportEditor
-                clienteId={params.id}
-                yearMonth={mes}
-                initialNota={nota}
-                initialMetricas={metricas}
-              />
-            )}
-            <PrintButton />
+      {/* Toolbar (no se imprime) — solo modo interno */}
+      {!isPublic && (
+        <div className="border-b bg-zinc-50 print:hidden">
+          <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-3">
+            <Link
+              href={`/clientes/${params.id}`}
+              className="inline-flex items-center text-sm text-zinc-600 hover:text-zinc-900"
+            >
+              <ArrowLeft className="mr-1 h-4 w-4" /> Volver al cliente
+            </Link>
+            <div className="flex items-center gap-2">
+              <ReportMonthPicker currentMes={mes} clientId={params.id} />
+              {canEdit && (
+                <ResultsReadingButton
+                  clienteId={params.id}
+                  mes={mes}
+                  hasReading={!!aiResultados}
+                />
+              )}
+              {canEdit && (
+                <MonthlyReportEditor
+                  clienteId={params.id}
+                  yearMonth={mes}
+                  initialNota={nota}
+                  initialMetricas={metricas}
+                />
+              )}
+              {canEdit && (
+                <ReportWhatsappButton
+                  clienteId={params.id}
+                  mes={mes}
+                  mesLabel={label}
+                  telefono={(c as { contacto_telefono?: string | null }).contacto_telefono ?? null}
+                  token={portalToken}
+                />
+              )}
+              <PrintButton />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="mx-auto max-w-4xl px-8 py-10 print:px-0 print:py-0">
         {/* Header / Portada */}

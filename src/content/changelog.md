@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-06-21 — Enviá el reporte del mes al cliente por WhatsApp
+
+- 📲 **Botón "WhatsApp" en el reporte mensual**: arma un **link público del reporte** (el cliente lo abre desde el celular, sin login) y un mensaje listo. A un toque abrís WhatsApp con el link, o lo copiás.
+- 🔗 El link reusa el **token del portal** del cliente: si la cuenta ya tiene su link de portal generado, funciona directo; si no, el botón te avisa para generarlo en la ficha.
+- 🔒 El reporte público solo se abre con ese token (nadie ve el reporte de otro cliente).
+
 ## 2026-06-20 — Carta acuerdo desde Comercial + comisiones que se cargan solas
 
 - 📝 **Carta acuerdo desde el pipeline**: en una oportunidad (etapas Propuesta / Negociación / Ganado) ahora aparece **"Generar carta acuerdo"**. Crea una ficha en estado **Propuesta** (no cuenta como cliente todavía, no entra a Finanzas ni a Sueldos) para que armes el contrato y la carta, y se la envíes junto con los datos de transferencia.

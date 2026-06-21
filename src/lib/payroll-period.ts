@@ -11,6 +11,7 @@ import { SERVICE_TYPE_LABEL } from "./constants";
 import {
   computeAutoPayroll,
   closerVolumeBonusPct,
+  selectFirstMonthCommissions,
   decodeCommissionNote,
   COMERCIAL_FIXED_MENSUAL,
   type PayrollClient,
@@ -178,28 +179,26 @@ export async function buildPeriodPayroll(
     );
   }
   const cierrePct = settings.rates.comision_cierre ?? 0.1;
+  const firstMonthCommissions = selectFirstMonthCommissions(
+    clients,
+    recurringByClient,
+    periodo,
+    cierrePct,
+    (clienteId) => items.some((i) => i.tipo === "comision" && i.cliente_id === clienteId)
+  );
   const autoCierreBasesByUser = new Map<string, number[]>();
-  if (cierrePct > 0) {
-    for (const c of clients) {
-      if ((c.fecha_inicio ?? "").slice(0, 7) !== periodo) continue;
-      if (!c.cerrado_por_id) continue;
-      // No duplicar si ya hay una comisión cargada a mano para esta cuenta.
-      if (items.some((i) => i.tipo === "comision" && i.cliente_id === c.id)) continue;
-      const base = recurringByClient.get(c.id) ?? 0;
-      if (base <= 0) continue;
-      const monto = Math.round(base * cierrePct);
-      if (!autoByUser.has(c.cerrado_por_id)) autoByUser.set(c.cerrado_por_id, []);
-      autoByUser.get(c.cerrado_por_id)!.push({
-        clienteId: c.id,
-        cliente: c.nombre,
-        concepto: `Comisión cierre (${Math.round(cierrePct * 100)}%) · primer mes`,
-        monto,
-        kind: "comision",
-      });
-      const arr = autoCierreBasesByUser.get(c.cerrado_por_id) ?? [];
-      arr.push(base);
-      autoCierreBasesByUser.set(c.cerrado_por_id, arr);
-    }
+  for (const fc of firstMonthCommissions) {
+    if (!autoByUser.has(fc.closerId)) autoByUser.set(fc.closerId, []);
+    autoByUser.get(fc.closerId)!.push({
+      clienteId: fc.clienteId,
+      cliente: fc.cliente,
+      concepto: `Comisión cierre (${Math.round(cierrePct * 100)}%) · primer mes`,
+      monto: fc.monto,
+      kind: "comision",
+    });
+    const arr = autoCierreBasesByUser.get(fc.closerId) ?? [];
+    arr.push(fc.base);
+    autoCierreBasesByUser.set(fc.closerId, arr);
   }
 
   // Jornadas de producción del mes: el monto se reparte en partes iguales

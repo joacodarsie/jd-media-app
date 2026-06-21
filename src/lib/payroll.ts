@@ -209,6 +209,47 @@ export const COMMISSION_PCT = {
   referido: 0.05, // solo refirió (lead propio de otro)
 } as const;
 
+/** Comisión de cierre del primer mes atribuida a quien cerró la cuenta. */
+export interface FirstMonthCommission {
+  closerId: string;
+  clienteId: string;
+  cliente: string;
+  base: number;
+  monto: number;
+}
+
+/**
+ * Selecciona las comisiones de cierre AUTOMÁTICAS del primer mes para un período.
+ * Un cliente califica si: su `fecha_inicio` cae en el período, tiene
+ * `cerrado_por_id`, tiene abono recurrente > 0, y NO se le cargó ya una comisión
+ * a mano (dedup vía `hasManualCommission`). Función pura → testeable sin DB.
+ */
+export function selectFirstMonthCommissions(
+  clients: PayrollClient[],
+  recurringByClient: Map<string, number>,
+  periodo: string,
+  cierrePct: number,
+  hasManualCommission: (clienteId: string) => boolean
+): FirstMonthCommission[] {
+  if (cierrePct <= 0) return [];
+  const out: FirstMonthCommission[] = [];
+  for (const c of clients) {
+    if ((c.fecha_inicio ?? "").slice(0, 7) !== periodo) continue;
+    if (!c.cerrado_por_id) continue;
+    if (hasManualCommission(c.id)) continue;
+    const base = recurringByClient.get(c.id) ?? 0;
+    if (base <= 0) continue;
+    out.push({
+      closerId: c.cerrado_por_id,
+      clienteId: c.id,
+      cliente: c.nombre,
+      base,
+      monto: Math.round(base * cierrePct),
+    });
+  }
+  return out;
+}
+
 /**
  * Bonus por volumen de cierres del mes: por cada 2 clientes cerrados se suma
  * un 2% extra de comisión, con tope del 6%. Se aplica sobre la misma base que

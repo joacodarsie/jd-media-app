@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { Plus, Sparkles, GraduationCap } from "lucide-react";
+import { Plus, Sparkles, GraduationCap, FileClock } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { redirect } from "next/navigation";
 import { requireUser, userHas } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdmin } from "@/lib/supabase/admin";
 import { Button } from "@/components/ui/button";
 import { LeadKanban, type LeadRow } from "@/components/lead-kanban";
 import { LeadFormDialog } from "@/components/lead-form-dialog";
@@ -20,8 +22,9 @@ export default async function ComercialPage() {
     redirect("/dashboard");
   }
   const supabase = createClient();
+  const admin = createAdmin();
 
-  const [{ data: leads }, { data: services }, { data: users }] =
+  const [{ data: leads }, { data: services }, { data: users }, { data: propuestas }] =
     await Promise.all([
       supabase
         .from("leads")
@@ -39,7 +42,23 @@ export default async function ComercialPage() {
         .select("id, nombre")
         .eq("activo", true)
         .order("nombre"),
+      // Propuestas enviadas que todavía no pagaron (estado "propuesta"): para
+      // seguirlas y cobrarlas. Vía admin: la página ya está gateada por rol.
+      admin
+        .from("clients")
+        .select("id, nombre, created_at, monto_mensual")
+        .eq("estado", "propuesta")
+        .order("created_at", { ascending: true }),
     ]);
+
+  const propuestasRows = (propuestas ?? []) as {
+    id: string;
+    nombre: string;
+    created_at: string | null;
+    monto_mensual: number | null;
+  }[];
+  const diasDesde = (iso: string | null): number =>
+    iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400_000) : 0;
 
   type RawLead = {
     id: string;
@@ -175,6 +194,46 @@ export default async function ComercialPage() {
           value={leadRows.filter((l) => l.stage === "ganado").length}
         />
       </div>
+
+      {propuestasRows.length > 0 && (
+        <div className="rounded-lg border border-violet-300 bg-violet-50/60 p-4 dark:border-violet-900 dark:bg-violet-950/20">
+          <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-violet-800 dark:text-violet-200">
+            <FileClock className="h-4 w-4" />
+            Propuestas esperando pago ({propuestasRows.length})
+          </div>
+          <p className="mb-3 text-xs text-violet-700/80 dark:text-violet-300/80">
+            Cartas acuerdo enviadas que todavía no se activaron. Seguilas para
+            cerrar el cobro; cuando paguen, activá la ficha.
+          </p>
+          <ul className="space-y-1.5">
+            {propuestasRows.map((p) => {
+              const dias = diasDesde(p.created_at);
+              return (
+                <li key={p.id}>
+                  <Link
+                    href={`/clientes/${p.id}`}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:border-violet-300"
+                  >
+                    <span className="font-medium">{p.nombre}</span>
+                    <span className="flex items-center gap-3 text-xs text-muted-foreground">
+                      {p.monto_mensual ? (
+                        <span>ARS {Number(p.monto_mensual).toLocaleString("es-AR")}/mes</span>
+                      ) : null}
+                      <span
+                        className={cn(
+                          dias >= 7 ? "font-medium text-amber-600 dark:text-amber-400" : ""
+                        )}
+                      >
+                        {dias === 0 ? "hoy" : `hace ${dias} día${dias === 1 ? "" : "s"}`}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       <LeadKanban
         leads={leadRows}

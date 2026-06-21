@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   computeAutoPayroll,
   closerVolumeBonusPct,
+  selectFirstMonthCommissions,
   encodeCommissionNote,
   decodeCommissionNote,
   type PayrollClient,
@@ -20,6 +21,8 @@ function cliente(over: Partial<PayrollClient> = {}): PayrollClient {
     audiovisual_id: null,
     media_buyer_id: null,
     coordinador_id: null,
+    cerrado_por_id: null,
+    fecha_inicio: null,
     ...over,
   };
 }
@@ -119,5 +122,78 @@ describe("encode/decode de comisión", () => {
     expect(decodeCommissionNote(null)).toBeNull();
     expect(decodeCommissionNote("cualquiercosa")).toBeNull();
     expect(decodeCommissionNote("closer:no-numero")).toBeNull();
+  });
+});
+
+describe("selectFirstMonthCommissions", () => {
+  const periodo = "2026-06";
+  const rec = new Map<string, number>([["c1", 350_000]]);
+  const noManual = () => false;
+
+  it("genera la comisión del closer en el primer mes (10% del abono)", () => {
+    const out = selectFirstMonthCommissions(
+      [cliente({ cerrado_por_id: "u1", fecha_inicio: "2026-06-10" })],
+      rec,
+      periodo,
+      0.1,
+      noManual
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ closerId: "u1", clienteId: "c1", base: 350_000, monto: 35_000 });
+  });
+
+  it("ignora clientes cuyo primer mes no es el período", () => {
+    const out = selectFirstMonthCommissions(
+      [cliente({ cerrado_por_id: "u1", fecha_inicio: "2026-05-30" })],
+      rec,
+      periodo,
+      0.1,
+      noManual
+    );
+    expect(out).toHaveLength(0);
+  });
+
+  it("ignora clientes sin cerrado_por_id", () => {
+    const out = selectFirstMonthCommissions(
+      [cliente({ cerrado_por_id: null, fecha_inicio: "2026-06-01" })],
+      rec,
+      periodo,
+      0.1,
+      noManual
+    );
+    expect(out).toHaveLength(0);
+  });
+
+  it("no duplica si ya hay una comisión manual para esa cuenta", () => {
+    const out = selectFirstMonthCommissions(
+      [cliente({ cerrado_por_id: "u1", fecha_inicio: "2026-06-01" })],
+      rec,
+      periodo,
+      0.1,
+      (id) => id === "c1"
+    );
+    expect(out).toHaveLength(0);
+  });
+
+  it("ignora clientes sin abono recurrente (base 0)", () => {
+    const out = selectFirstMonthCommissions(
+      [cliente({ id: "cX", cerrado_por_id: "u1", fecha_inicio: "2026-06-01" })],
+      rec, // no tiene cX
+      periodo,
+      0.1,
+      noManual
+    );
+    expect(out).toHaveLength(0);
+  });
+
+  it("con cierrePct 0 no genera nada", () => {
+    const out = selectFirstMonthCommissions(
+      [cliente({ cerrado_por_id: "u1", fecha_inicio: "2026-06-01" })],
+      rec,
+      periodo,
+      0,
+      noManual
+    );
+    expect(out).toHaveLength(0);
   });
 });

@@ -8,9 +8,11 @@ import { AdsOnboardingChecklist, type AdsOnboardingState } from "@/components/ad
 import { ClientListEditor } from "@/components/client-list-editor";
 import { MetaAdAccountField } from "@/components/meta-ad-account-field";
 import { IgConnect } from "@/components/ig-connect";
+import { TiktokConnect } from "@/components/tiktok-connect";
+import { tiktokConfigured } from "@/lib/tiktok";
 import { JdMediaPartnerCard } from "@/components/jdmedia-partner-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AtSign } from "lucide-react";
+import { AtSign, Music2 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +34,20 @@ export default async function PublicidadOnboardingPage({
 
   const igUserId = (client as { ig_user_id?: string | null }).ig_user_id ?? null;
   const igUsername = (client as { ig_username?: string | null }).ig_username ?? null;
+
+  // TikTok: solo si la integración está configurada (app aprobada + credenciales).
+  const tiktokOn = tiktokConfigured();
+  let ttConnected = false;
+  let ttUsername: string | null = null;
+  if (tiktokOn) {
+    const { data: tt } = await admin
+      .from("client_tiktok_accounts")
+      .select("username")
+      .eq("cliente_id", params.id)
+      .maybeSingle();
+    ttConnected = !!tt;
+    ttUsername = (tt as { username?: string | null } | null)?.username ?? null;
+  }
 
   const credenciales =
     ((client as unknown as { credenciales?: Record<string, string>[] }).credenciales ??
@@ -148,6 +164,29 @@ export default async function PublicidadOnboardingPage({
           </p>
         </CardContent>
       </Card>
+
+      {/* Conexión con TikTok (Resultados orgánicos) — solo si está configurado */}
+      {tiktokOn && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Music2 className="h-4 w-4 text-primary" /> Conexión con TikTok
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Vinculá la cuenta de TikTok del cliente para sumar sus{" "}
+              <b>resultados orgánicos</b> al reporte. A diferencia de Instagram,
+              cada cliente <b>autoriza su propia cuenta</b> una vez.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <TiktokConnect
+              clientId={client.id}
+              connected={ttConnected}
+              username={ttUsername}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="pt-4">

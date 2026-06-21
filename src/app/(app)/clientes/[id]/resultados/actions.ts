@@ -9,6 +9,7 @@ import {
   type IgAccountOption,
 } from "@/lib/meta/instagram";
 import { syncClientInstagram } from "@/lib/social/sync";
+import { tiktokConfigured, authorizeUrl } from "@/lib/tiktok";
 
 const CAN_MANAGE = ["admin", "coordinador", "paid_media"];
 
@@ -85,4 +86,43 @@ export async function refreshIgResults(
   } catch (e) {
     return { error: friendlyIgError(e) };
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// TikTok (OAuth por cuenta)
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Devuelve el link de autorización de TikTok para este cliente (con state
+ * firmado). El staff lo abre con el cliente o se lo manda para que lo autorice.
+ */
+export async function getTiktokAuthUrl(
+  clienteId: string
+): Promise<{ ok: true; url: string } | { error: string }> {
+  const me = await requireUser();
+  if (!canManage(me.rol)) return { error: "Sin acceso." };
+  if (!tiktokConfigured())
+    return { error: "TikTok todavía no está configurado en la app." };
+  try {
+    return { ok: true, url: authorizeUrl(clienteId) };
+  } catch {
+    return { error: "No se pudo generar el link de TikTok." };
+  }
+}
+
+/** Desconecta la cuenta de TikTok del cliente (borra el token guardado). */
+export async function disconnectTiktok(
+  clienteId: string
+): Promise<{ ok: true } | { error: string }> {
+  const me = await requireUser();
+  if (!canManage(me.rol)) return { error: "Sin acceso." };
+  const admin = createAdmin();
+  const { error } = await admin
+    .from("client_tiktok_accounts")
+    .delete()
+    .eq("cliente_id", clienteId);
+  if (error) return { error: error.message };
+  revalidatePath(`/clientes/${clienteId}/resultados`);
+  revalidatePath(`/clientes/${clienteId}/pauta`);
+  return { ok: true };
 }

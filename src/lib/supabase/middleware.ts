@@ -21,6 +21,9 @@ const PUBLIC_PATHS = [
   // Reporte mensual: público SOLO con ?token válido del portal; sin token la
   // propia página exige login (requireUser).
   "/reporte/cliente/",
+  // Callback de OAuth de TikTok: lo abre el navegador del cliente (sin sesión);
+  // la seguridad está en el `state` firmado.
+  "/api/tiktok/callback",
   "/api/cron/",
 ];
 

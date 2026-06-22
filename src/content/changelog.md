@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-06-22 — Reclutamiento: la IA te analiza los CVs
+
+- 🧑‍💼 **Nueva sección Reclutamiento** (Equipo & clientes, admin/coordinación): creás una **búsqueda** (puesto + perfil), cargás los CVs en lote (PDF) y la **IA los lee y analiza solos** — nombre, ubicación, área, experiencia, skills, formación, un resumen y un **puntaje de aptitud** para el puesto.
+- 🔎 **Filtrás en vez de abrir mil mails**: por **Córdoba Capital**, experiencia mínima, aptitud y búsqueda libre, ordenando por el candidato más apto. Cada uno muestra fortalezas, dudas y contacto (mail / WhatsApp) a un toque.
+- 📥 Por ahora se cargan bajando los adjuntos del mail; **pronto se van a traer solos desde Gmail**.
+
 ## 2026-06-21 — Conexión de Instagram y TikTok en el onboarding de Redes
 
 - 🔗 **Vincular IG y TikTok ahora está en el onboarding de Gestión de Redes**, con el **paso a paso detallado** de cada red (cuenta profesional, vínculo con la página de Facebook, asignación al system user de JD Media para IG; y autorización del cliente para TikTok). Así se hace fácil y sin errores.

@@ -75,6 +75,12 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "FileText",
         roles: ["admin", "coordinador"],
       },
+      {
+        href: "/reclutamiento",
+        label: "Reclutamiento",
+        icon: "UserSearch",
+        roles: ["admin", "coordinador"],
+      },
     ],
   },
   {

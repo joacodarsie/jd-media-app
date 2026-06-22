@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-06-21 — Conexión de Instagram y TikTok en el onboarding de Redes
+
+- 🔗 **Vincular IG y TikTok ahora está en el onboarding de Gestión de Redes**, con el **paso a paso detallado** de cada red (cuenta profesional, vínculo con la página de Facebook, asignación al system user de JD Media para IG; y autorización del cliente para TikTok). Así se hace fácil y sin errores.
+- 🎯 El **onboarding de publicidad** quedó enfocado: solo la **conexión con Meta Ads** (cuenta publicitaria + checklist). Si buscás conectar IG/TikTok, te manda a Redes.
+
 ## 2026-06-21 — Enviá el reporte del mes al cliente por WhatsApp
 
 - 📲 **Botón "WhatsApp" en el reporte mensual**: arma un **link público del reporte** (el cliente lo abre desde el celular, sin login) y un mensaje listo. A un toque abrís WhatsApp con el link, o lo copiás.

@@ -7,12 +7,8 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { AdsOnboardingChecklist, type AdsOnboardingState } from "@/components/ads-onboarding-checklist";
 import { ClientListEditor } from "@/components/client-list-editor";
 import { MetaAdAccountField } from "@/components/meta-ad-account-field";
-import { IgConnect } from "@/components/ig-connect";
-import { TiktokConnect } from "@/components/tiktok-connect";
-import { tiktokConfigured } from "@/lib/tiktok";
 import { JdMediaPartnerCard } from "@/components/jdmedia-partner-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AtSign, Music2 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -27,27 +23,10 @@ export default async function PublicidadOnboardingPage({
 
   const { data: client } = await supabase
     .from("clients")
-    .select("id, nombre, credenciales, ig_user_id, ig_username")
+    .select("id, nombre, credenciales")
     .eq("id", params.id)
     .maybeSingle();
   if (!client) notFound();
-
-  const igUserId = (client as { ig_user_id?: string | null }).ig_user_id ?? null;
-  const igUsername = (client as { ig_username?: string | null }).ig_username ?? null;
-
-  // TikTok: solo si la integración está configurada (app aprobada + credenciales).
-  const tiktokOn = tiktokConfigured();
-  let ttConnected = false;
-  let ttUsername: string | null = null;
-  if (tiktokOn) {
-    const { data: tt } = await admin
-      .from("client_tiktok_accounts")
-      .select("username")
-      .eq("cliente_id", params.id)
-      .maybeSingle();
-    ttConnected = !!tt;
-    ttUsername = (tt as { username?: string | null } | null)?.username ?? null;
-  }
 
   const credenciales =
     ((client as unknown as { credenciales?: Record<string, string>[] }).credenciales ??
@@ -135,58 +114,19 @@ export default async function PublicidadOnboardingPage({
         </CardContent>
       </Card>
 
-      {/* Conexión con Instagram (Resultados orgánicos) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <AtSign className="h-4 w-4 text-primary" /> Conexión con Instagram
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Vinculá la cuenta de Instagram del cliente para que los{" "}
-            <b>resultados orgánicos</b> (seguidores, alcance, interacciones)
-            aparezcan automáticamente en el reporte. Requiere que la cuenta de IG
-            esté asignada al system user <code>jdmedia</code> (paso del checklist).
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <IgConnect
-            clientId={client.id}
-            connected={!!igUserId}
-            username={igUsername}
-          />
-          <p className="text-[11px] text-muted-foreground">
-            Tocá <b>Detectar cuentas</b> para elegirla de la lista, o pegá el ID a
-            mano. También podés gestionarla desde la sección{" "}
-            <Link href={`/clientes/${client.id}/resultados`} className="underline">
-              Resultados
-            </Link>{" "}
-            del cliente.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Conexión con TikTok (Resultados orgánicos) — solo si está configurado */}
-      {tiktokOn && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Music2 className="h-4 w-4 text-primary" /> Conexión con TikTok
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              Vinculá la cuenta de TikTok del cliente para sumar sus{" "}
-              <b>resultados orgánicos</b> al reporte. A diferencia de Instagram,
-              cada cliente <b>autoriza su propia cuenta</b> una vez.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <TiktokConnect
-              clientId={client.id}
-              connected={ttConnected}
-              username={ttUsername}
-            />
-          </CardContent>
-        </Card>
-      )}
+      {/* La conexión de Instagram y TikTok vive ahora en el onboarding de
+          Gestión de Redes (resultados orgánicos), no acá. */}
+      <div className="rounded-lg border border-dashed bg-muted/20 p-3 text-xs text-muted-foreground">
+        ¿Buscás conectar <b>Instagram</b> o <b>TikTok</b> del cliente? Eso ahora
+        se hace en el{" "}
+        <Link
+          href={`/clientes/${client.id}/onboarding/redes`}
+          className="font-medium text-primary underline underline-offset-2"
+        >
+          onboarding de Gestión de Redes
+        </Link>
+        . Acá, en publicidad, solo va la conexión con Meta Ads.
+      </div>
 
       <Card>
         <CardContent className="pt-4">

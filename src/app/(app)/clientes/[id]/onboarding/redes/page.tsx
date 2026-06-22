@@ -2,8 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Megaphone, ChevronRight } from "lucide-react";
 import { requireRole } from "@/lib/auth";
+import { createAdmin } from "@/lib/supabase/admin";
+import { tiktokConfigured } from "@/lib/tiktok";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HelpTrigger } from "@/components/help-trigger";
+import { RedesConnectionGuide } from "@/components/redes-connection-guide";
 import { loadOnboarding, OnboardingStepRow } from "../_shared";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +27,20 @@ export default async function OnboardingRedesPage({
   const redesSteps = steps.filter((s) => s.stage === "redes");
   const redesDone = redesSteps.filter((s) => s.done).length;
   const progress = Math.round((redesDone / redesSteps.length) * 100);
+
+  // Estado de conexión de Instagram + TikTok (para la tarjeta de conexión).
+  const admin = createAdmin();
+  const tiktokOn = tiktokConfigured();
+  const [{ data: conn }, ttRes] = await Promise.all([
+    admin.from("clients").select("ig_user_id, ig_username").eq("id", client.id).maybeSingle(),
+    tiktokOn
+      ? admin.from("client_tiktok_accounts").select("username").eq("cliente_id", client.id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const igConnected = !!(conn as { ig_user_id?: string | null } | null)?.ig_user_id;
+  const igUsername = (conn as { ig_username?: string | null } | null)?.ig_username ?? null;
+  const ttConnected = !!ttRes.data;
+  const ttUsername = (ttRes.data as { username?: string | null } | null)?.username ?? null;
 
   return (
     <div className="space-y-5">
@@ -86,6 +103,15 @@ export default async function OnboardingRedesPage({
           ))}
         </CardContent>
       </Card>
+
+      <RedesConnectionGuide
+        clientId={client.id}
+        igConnected={igConnected}
+        igUsername={igUsername}
+        tiktokOn={tiktokOn}
+        ttConnected={ttConnected}
+        ttUsername={ttUsername}
+      />
 
       {redesDone === redesSteps.length && (
         <div className="flex items-start gap-2 rounded-md border border-emerald-300 bg-emerald-50/60 p-3 dark:border-emerald-900 dark:bg-emerald-950/30">

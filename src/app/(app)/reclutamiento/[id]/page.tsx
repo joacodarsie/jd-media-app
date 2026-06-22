@@ -10,6 +10,7 @@ import {
   AREA_OPTIONS,
 } from "@/components/recruitment-search-form";
 import { RecruitmentUploader } from "@/components/recruitment-uploader";
+import { RecruitmentGmailImport } from "@/components/recruitment-gmail-import";
 import {
   RecruitmentCandidates,
   type Candidate,
@@ -48,6 +49,14 @@ export default async function BusquedaPage({ params }: { params: { id: string } 
     .order("fit_score", { ascending: false, nullsFirst: false });
 
   const candidates = (cand ?? []) as Candidate[];
+
+  // ¿Hay casilla de Gmail conectada? (para mostrar "Traer de Gmail")
+  const { data: gm } = await admin
+    .from("gmail_account")
+    .select("email")
+    .eq("id", 1)
+    .maybeSingle();
+  const gmailConnected = !!(gm as { email?: string | null } | null)?.email;
 
   return (
     <div className="space-y-5">
@@ -90,10 +99,12 @@ export default async function BusquedaPage({ params }: { params: { id: string } 
         </Card>
       )}
 
+      {gmailConnected && <RecruitmentGmailImport searchId={s.id} connected />}
+
       <div className="rounded-lg border border-dashed bg-muted/20 p-3 text-xs text-muted-foreground">
-        💡 Bajá los CVs de los mails y arrastralos acá con <b>Cargar CVs (PDF)</b>. La
-        IA lee cada uno, lo puntúa según el perfil y te deja filtrar por Córdoba,
-        experiencia y aptitud. (Pronto: traerlos solos desde Gmail.)
+        💡 Subí los CVs con <b>Cargar CVs (PDF)</b> o <b>traelos de Gmail</b> (filtrá
+        por asunto/fecha en la búsqueda). La IA lee cada uno, lo puntúa según el
+        perfil y te deja filtrar por Córdoba, experiencia y aptitud.
       </div>
 
       <RecruitmentCandidates searchId={s.id} candidates={candidates} />

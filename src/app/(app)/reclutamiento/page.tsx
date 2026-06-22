@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { Users, ArrowRight, Briefcase } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { RecruitmentSearchForm, AREA_OPTIONS } from "@/components/recruitment-search-form";
+import { RecruitmentGmailConnection } from "@/components/recruitment-gmail-connection";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +44,15 @@ export default async function ReclutamientoPage() {
     countBy.set(c.search_id, (countBy.get(c.search_id) ?? 0) + 1);
   }
 
+  // Estado de la conexión a Gmail (para traer CVs de los mails).
+  const { data: gm, error: gmErr } = await admin
+    .from("gmail_account")
+    .select("email")
+    .eq("id", 1)
+    .maybeSingle();
+  const gmailMigrated = !(gmErr && (gmErr as { code?: string }).code === "42P01");
+  const gmailEmail = (gm as { email?: string | null } | null)?.email ?? null;
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -56,6 +67,10 @@ export default async function ReclutamientoPage() {
         </div>
         <RecruitmentSearchForm />
       </div>
+
+      <Suspense fallback={null}>
+        <RecruitmentGmailConnection connectedEmail={gmailEmail} migrated={gmailMigrated} />
+      </Suspense>
 
       {rows.length === 0 ? (
         <Card>

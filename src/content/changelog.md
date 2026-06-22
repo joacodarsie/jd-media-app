@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-06-22 — Reclutamiento: traé los CVs solos desde Gmail
+
+- 📬 **Conexión a Gmail** en Reclutamiento: conectás la casilla de la agencia y, desde cada búsqueda, el botón **"Traer de Gmail"** trae los CVs adjuntos de los mails (filtrás por asunto/fecha) y la IA los analiza solos — sin bajar nada a mano.
+- 🔁 Reusa el mismo acceso de Google que ya usa la app. Requiere un setup único en Google Cloud (habilitar Gmail + permiso de lectura); está todo en la guía.
+
 ## 2026-06-22 — Reclutamiento: la IA te analiza los CVs
 
 - 🧑‍💼 **Nueva sección Reclutamiento** (Equipo & clientes, admin/coordinación): creás una **búsqueda** (puesto + perfil), cargás los CVs en lote (PDF) y la **IA los lee y analiza solos** — nombre, ubicación, área, experiencia, skills, formación, un resumen y un **puntaje de aptitud** para el puesto.

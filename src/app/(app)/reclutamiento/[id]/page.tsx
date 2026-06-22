@@ -15,6 +15,7 @@ import {
   RecruitmentCandidates,
   type Candidate,
 } from "@/components/recruitment-candidates";
+import { buildAreaProfiles } from "@/lib/recruitment/area-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,13 @@ export default async function BusquedaPage({ params }: { params: { id: string } 
     .maybeSingle();
   const gmailConnected = !!(gm as { email?: string | null } | null)?.email;
 
+  const areaProfiles = await buildAreaProfiles(admin);
+
+  // Resumen rápido de la búsqueda.
+  const total = candidates.length;
+  const enCordoba = candidates.filter((c) => c.es_cordoba_capital === true).length;
+  const aptos = candidates.filter((c) => (c.fit_score ?? 0) >= 75).length;
+
   return (
     <div className="space-y-5">
       <Link
@@ -79,6 +87,7 @@ export default async function BusquedaPage({ params }: { params: { id: string } 
           <RecruitmentSearchForm
             mode="edit"
             search={s}
+            areaProfiles={areaProfiles}
             trigger={
               <Button variant="outline" size="icon" title="Editar búsqueda">
                 <Pencil className="h-4 w-4" />
@@ -90,13 +99,29 @@ export default async function BusquedaPage({ params }: { params: { id: string } 
 
       {s.perfil && (
         <Card>
-          <CardContent className="py-3 text-sm">
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Perfil buscado
-            </span>
-            <p className="mt-1 whitespace-pre-line text-muted-foreground">{s.perfil}</p>
+          <CardContent className="py-2 text-sm">
+            <details className="group">
+              <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Perfil que usa la IA para puntuar
+                <span className="font-normal normal-case text-muted-foreground group-open:hidden">
+                  ver
+                </span>
+                <span className="hidden font-normal normal-case text-muted-foreground group-open:inline">
+                  ocultar
+                </span>
+              </summary>
+              <p className="mt-2 whitespace-pre-line text-muted-foreground">{s.perfil}</p>
+            </details>
           </CardContent>
         </Card>
+      )}
+
+      {total > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          <StatBox label="Candidatos" value={total} />
+          <StatBox label="De Córdoba Cap." value={enCordoba} />
+          <StatBox label="Aptitud alta (≥75)" value={aptos} accent />
+        </div>
       )}
 
       {gmailConnected && <RecruitmentGmailImport searchId={s.id} connected />}
@@ -108,6 +133,31 @@ export default async function BusquedaPage({ params }: { params: { id: string } 
       </div>
 
       <RecruitmentCandidates searchId={s.id} candidates={candidates} />
+    </div>
+  );
+}
+
+function StatBox({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number;
+  accent?: boolean;
+}) {
+  return (
+    <div className="rounded-lg border bg-card p-3">
+      <div
+        className={
+          accent
+            ? "text-2xl font-bold tabular-nums text-emerald-600"
+            : "text-2xl font-bold tabular-nums"
+        }
+      >
+        {value}
+      </div>
+      <div className="text-xs text-muted-foreground">{label}</div>
     </div>
   );
 }

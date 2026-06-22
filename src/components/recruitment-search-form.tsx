@@ -38,6 +38,7 @@ export const AREA_OPTIONS = [
 export function RecruitmentSearchForm({
   mode = "create",
   search,
+  areaProfiles = {},
   trigger,
 }: {
   mode?: "create" | "edit";
@@ -48,6 +49,8 @@ export function RecruitmentSearchForm({
     perfil: string | null;
     ubicacion_pref: string | null;
   };
+  /** Perfil auto del área (de los puestos de la agencia), por valor de área. */
+  areaProfiles?: Record<string, string>;
   trigger?: React.ReactNode;
 }) {
   const router = useRouter();
@@ -57,6 +60,19 @@ export function RecruitmentSearchForm({
   const [area, setArea] = useState(search?.area ?? "");
   const [perfil, setPerfil] = useState(search?.perfil ?? "");
   const [ubic, setUbic] = useState(search?.ubicacion_pref ?? "Córdoba Capital");
+  // Qué área autocompletó el perfil actual (para poder reemplazarlo al cambiar
+  // de área, pero sin pisar lo que el usuario escribió a mano).
+  const [autoArea, setAutoArea] = useState<string | null>(null);
+
+  function onAreaChange(v: string) {
+    setArea(v);
+    const prof = areaProfiles[v];
+    const perfilEsAuto = perfil.trim() === "" || (autoArea && perfil === areaProfiles[autoArea]);
+    if (prof && perfilEsAuto) {
+      setPerfil(prof);
+      setAutoArea(v);
+    }
+  }
 
   function submit() {
     if (!titulo.trim()) return void toast.error("Poné un título.");
@@ -104,7 +120,7 @@ export function RecruitmentSearchForm({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Área</Label>
-              <Select value={area} onValueChange={setArea}>
+              <Select value={area} onValueChange={onAreaChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Elegí" />
                 </SelectTrigger>
@@ -123,13 +139,21 @@ export function RecruitmentSearchForm({
             </div>
           </div>
           <div>
-            <Label>Perfil buscado (para que la IA puntúe)</Label>
+            <Label>Perfil buscado (opcional)</Label>
             <Textarea
               value={perfil}
-              onChange={(e) => setPerfil(e.target.value)}
-              rows={4}
-              placeholder="Qué buscás: experiencia, herramientas (Premiere, After Effects…), estilo, disponibilidad, etc. Mientras más claro, mejor puntúa el fit."
+              onChange={(e) => {
+                setPerfil(e.target.value);
+                setAutoArea(null);
+              }}
+              rows={5}
+              placeholder="Elegí un área y se completa solo con el perfil del puesto (qué hace, qué incluye/excluye, KPIs). Editalo si querés sumar algo puntual (herramientas, disponibilidad, etc.)."
             />
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {autoArea
+                ? "✨ Completado con el perfil del área (de tus Procesos). Editalo o dejalo así — la IA lo usa para puntuar la aptitud."
+                : "Si lo dejás vacío, la IA usa el perfil del área para puntuar."}
+            </p>
           </div>
         </div>
         <DialogFooter>

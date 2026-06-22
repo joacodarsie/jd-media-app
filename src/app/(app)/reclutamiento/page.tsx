@@ -6,6 +6,7 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { RecruitmentSearchForm, AREA_OPTIONS } from "@/components/recruitment-search-form";
 import { RecruitmentGmailConnection } from "@/components/recruitment-gmail-connection";
+import { buildAreaProfiles } from "@/lib/recruitment/area-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,9 @@ export default async function ReclutamientoPage() {
   const gmailMigrated = !(gmErr && (gmErr as { code?: string }).code === "42P01");
   const gmailEmail = (gm as { email?: string | null } | null)?.email ?? null;
 
+  // Perfil automático por área (de los puestos/procesos de la agencia).
+  const areaProfiles = await buildAreaProfiles(admin);
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -65,7 +69,7 @@ export default async function ReclutamientoPage() {
             Filtrás por ubicación (Córdoba), área y experiencia en vez de abrir mil mails.
           </p>
         </div>
-        <RecruitmentSearchForm />
+        <RecruitmentSearchForm areaProfiles={areaProfiles} />
       </div>
 
       <Suspense fallback={null}>

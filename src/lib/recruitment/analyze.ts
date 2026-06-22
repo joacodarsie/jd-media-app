@@ -58,9 +58,13 @@ Te paso el TEXTO de un CV. Devolvé EXCLUSIVAMENTE un objeto JSON válido (sin m
   "fit_score": number|null             // 0-100: qué tan calificado/apto está para el puesto buscado
 }
 
+Cómo calcular el fit_score:
+- Pesá sobre todo la APTITUD para el PUESTO buscado (${ctx.titulo}) según el perfil de arriba: experiencia real en esa función, herramientas, formación y los puntos que el perfil marca como "Incluye".
+- Usá el "NO incluye" del perfil para no confundir disciplinas: si el candidato es claramente de OTRO rol (ej: un diseñador gráfico para un puesto de editor audiovisual), bajá el fit. PERO reconocé skills transferibles: si además domina lo del puesto (ej: un diseñador que también edita video con Premiere), no lo dejes en cero — puntualo según cuánto cubre del puesto y dejá una duda aclarando el cruce.
+- Córdoba Capital suma pero NO es lo decisivo del fit_score (la ubicación se filtra aparte con es_cordoba_capital). El fit es aptitud para el puesto.
+
 Reglas:
 - Basate SOLO en lo que dice el CV. No inventes datos de contacto ni experiencia.
-- Ubicación: Córdoba Capital es importante para esta búsqueda, pero el fit_score debe reflexar sobre todo la APTITUD para el puesto (experiencia, skills, formación), no solo la ubicación.
 - Si el texto no parece un CV o está vacío, devolvé el JSON con casi todo null, fit_score 0, y una duda explicando que no se pudo leer.
 - Solo el JSON, nada más.`;
 }

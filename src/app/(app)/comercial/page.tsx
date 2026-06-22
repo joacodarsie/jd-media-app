@@ -8,9 +8,8 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { Button } from "@/components/ui/button";
 import { LeadKanban, type LeadRow } from "@/components/lead-kanban";
 import { LeadFormDialog } from "@/components/lead-form-dialog";
-import { CopyRequestDataButton } from "@/components/copy-request-data-button";
+import { NewProposalDialog } from "@/components/new-proposal-dialog";
 import { HelpTrigger } from "@/components/help-trigger";
-import { DismissibleHint } from "@/components/dismissible-hint";
 
 export const dynamic = "force-dynamic";
 
@@ -116,84 +115,45 @@ export default async function ComercialPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold">
-            Pipeline comercial
+            Comercial
             <HelpTrigger
               slug="comercial"
-              label="Cómo usar el pipeline comercial"
+              label="Cómo usar la sección comercial"
               size="md"
             />
           </h1>
           <p className="text-muted-foreground">
-            Leads y oportunidades. Arrastrá tarjetas entre columnas para cambiar
-            el estado.
+            Cuando un prospecto te pasa los datos, generá la carta acuerdo a un
+            toque y seguila hasta que pague.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <CopyRequestDataButton />
           <Button asChild variant="outline" className="gap-1.5">
-            <Link
-              href="/comercial/feedback"
-              title="Feedback de una reunión comercial con IA"
-            >
+            <Link href="/comercial/feedback" title="Feedback de una reunión comercial con IA">
               <GraduationCap className="h-4 w-4 text-primary" />
               <span className="hidden sm:inline">Feedback de reunión</span>
               <span className="sm:hidden">Feedback</span>
             </Link>
           </Button>
           <Button asChild variant="outline" className="gap-1.5">
-            <Link
-              href="/comercial/post-meet"
-              title="Generar mensaje post-meet con IA"
-            >
+            <Link href="/comercial/post-meet" title="Generar mensaje post-meet con IA">
               <Sparkles className="h-4 w-4 text-primary" />
               <span className="hidden sm:inline">Mensaje post-meet</span>
               <span className="sm:hidden">Post-meet</span>
             </Link>
           </Button>
-          <LeadFormDialog
-            mode="create"
-            services={services ?? []}
-            users={users ?? []}
-            trigger={
-              <Button>
-                <Plus className="mr-2 h-4 w-4" /> Nuevo lead
-              </Button>
-            }
-          />
+          <NewProposalDialog services={services ?? []} users={users ?? []} />
         </div>
       </div>
 
-      <DismissibleHint
-        id="comercial-post-meet"
-        className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-xs text-foreground/80"
-      >
-        <div className="flex items-start gap-2">
-          <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-          <p>
-            <b>Mensaje post-meet</b>: después de cada primera reunión,{" "}
-            <Link
-              href="/comercial/post-meet"
-              className="font-semibold text-primary underline-offset-2 hover:underline"
-            >
-              andá al workspace
-            </Link>
-            , pegá la transcripción (o un resumen) y la IA te devuelve el
-            mensaje de follow-up listo, con el tono y el contexto de JD Media.
-          </p>
+      {propuestasRows.length === 0 && (
+        <div className="rounded-lg border border-dashed bg-muted/20 p-4 text-sm text-muted-foreground">
+          Todavía no hay propuestas en curso. Cuando un prospecto te pase los datos,
+          tocá <b className="text-foreground">Nueva propuesta</b>: cargás sus datos,
+          armás la carta acuerdo y se la mandás con los datos de pago. Cuando
+          transfiere, la activás y se vuelve cliente.
         </div>
-      </DismissibleHint>
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Stat label="Leads activos" value={totalActivos} />
-        <Stat
-          label="Valor en pipeline"
-          value={`ARS ${pipelineValor.toLocaleString("es-AR")}`}
-        />
-        <Stat
-          label="Cerrados (histórico)"
-          value={leadRows.filter((l) => l.stage === "ganado").length}
-        />
-      </div>
+      )}
 
       {propuestasRows.length > 0 && (
         <div className="rounded-lg border border-violet-300 bg-violet-50/60 p-4 dark:border-violet-900 dark:bg-violet-950/20">
@@ -235,20 +195,41 @@ export default async function ComercialPage() {
         </div>
       )}
 
-      <LeadKanban
-        leads={leadRows}
-        services={services ?? []}
-        users={users ?? []}
-      />
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="rounded-lg border bg-card p-4">
-      <div className="text-2xl font-bold leading-none">{value}</div>
-      <div className="mt-1 text-xs text-muted-foreground">{label}</div>
+      {/* Pipeline de leads — secundario, colapsado por defecto */}
+      <details className="group rounded-lg border bg-card">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3">
+          <div>
+            <span className="font-semibold">Pipeline de leads</span>
+            <span className="ml-2 text-xs text-muted-foreground">
+              {totalActivos} activos · {leadRows.filter((l) => l.stage === "ganado").length} cerrados
+              {pipelineValor > 0 ? ` · ARS ${pipelineValor.toLocaleString("es-AR")}` : ""}
+            </span>
+          </div>
+          <span className="shrink-0 rounded-md border px-2 py-1 text-xs text-muted-foreground">
+            <span className="group-open:hidden">Mostrar</span>
+            <span className="hidden group-open:inline">Ocultar</span>
+          </span>
+        </summary>
+        <div className="space-y-3 border-t p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">
+              Seguimiento opcional de oportunidades por etapa. Arrastrá las tarjetas
+              entre columnas.
+            </p>
+            <LeadFormDialog
+              mode="create"
+              services={services ?? []}
+              users={users ?? []}
+              trigger={
+                <Button size="sm" variant="outline">
+                  <Plus className="mr-2 h-4 w-4" /> Nuevo lead
+                </Button>
+              }
+            />
+          </div>
+          <LeadKanban leads={leadRows} services={services ?? []} users={users ?? []} />
+        </div>
+      </details>
     </div>
   );
 }

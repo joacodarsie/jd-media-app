@@ -260,3 +260,58 @@ export async function createProposalFromLead(leadId: string) {
 
   return { ok: true, clientId: created.id };
 }
+
+export interface DirectProposalInput {
+  nombre: string; // empresa o nombre del cliente
+  contacto_nombre: string | null;
+  email: string | null;
+  telefono: string | null;
+  servicio: string | null; // slug/tipo de servicio interesado (opcional)
+  monto_estimado: number | null;
+  cerrado_por_id: string | null;
+}
+
+/**
+ * Crea una PROPUESTA directo, sin pasar por el pipeline de leads: cargás los
+ * datos del prospecto que ya te los pasó y queda lista para armar la carta
+ * acuerdo. Mismo estado "propuesta" (no cuenta hasta activar al pagar).
+ */
+export async function createDirectProposal(input: DirectProposalInput) {
+  const { supabase, userId } = await ctx();
+  const clientName = (input.nombre?.trim() || input.contacto_nombre?.trim() || "").slice(0, 120);
+  if (!clientName) return { error: "Poné al menos el nombre del cliente." };
+
+  const { data: created, error: cErr } = await supabase
+    .from("clients")
+    .insert({
+      nombre: clientName,
+      estado: "propuesta",
+      contacto_nombre: input.contacto_nombre?.trim() || null,
+      contacto_email: input.email?.trim() || null,
+      contacto_telefono: input.telefono?.trim() || null,
+      monto_mensual: input.monto_estimado,
+      cerrado_por_id: input.cerrado_por_id || userId,
+      fecha_inicio: null,
+    })
+    .select("id")
+    .single();
+  if (cErr || !created) {
+    return { error: "No se pudo crear la propuesta: " + (cErr?.message ?? "") };
+  }
+
+  if (input.servicio) {
+    const { error: csErr } = await supabase.from("client_services").insert({
+      cliente_id: created.id,
+      tipo: input.servicio,
+      monto_mensual: input.monto_estimado,
+      moneda: "ARS",
+      fecha_inicio: null,
+      activo: true,
+    });
+    if (csErr) console.warn("createDirectProposal: service insert failed", csErr);
+  }
+
+  revalidatePath("/comercial");
+  revalidatePath("/clientes");
+  return { ok: true, clientId: created.id };
+}

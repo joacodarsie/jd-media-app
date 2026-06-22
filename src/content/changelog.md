@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-06-22 — Comercial más directo + puestos al día
+
+- 🎯 **Comercial enfocado en cerrar**: cuando un prospecto te pasa los datos, tocás **"Nueva propuesta"**, cargás sus datos y armás la carta acuerdo directo — sin pasar por el pipeline. Arriba ves las **propuestas esperando pago**; el pipeline de leads quedó como sección secundaria (colapsada), para quien quiera usarlo.
+- 📋 **Puestos y procesos actualizados**: repasé todas las áreas, saqué roles viejos que ya no existen (y referencias a ellos), y completé los que estaban flojos (Paid Media y Coordinación con descripción y herramientas nuevas; Coordinación de Gestión de Redes quedó como dueña de la estrategia de contenido). Esto también afina el análisis de CVs por área en Reclutamiento.
+
 ## 2026-06-22 — Reclutamiento: traé los CVs solos desde Gmail
 
 - 📬 **Conexión a Gmail** en Reclutamiento: conectás la casilla de la agencia y, desde cada búsqueda, el botón **"Traer de Gmail"** trae los CVs adjuntos de los mails (filtrás por asunto/fecha) y la IA los analiza solos — sin bajar nada a mano.

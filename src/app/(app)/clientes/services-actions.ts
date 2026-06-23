@@ -36,6 +36,12 @@ export interface ServiceInput {
   costo_override?: number | null;
   /** Persona a la que se le paga el costo de entrega. */
   costo_override_user?: string | null;
+  /**
+   * Solo gestión de redes: si el cliente contrató Paid Media (gestión de
+   * campañas de Meta). Si es false, no se paga media buyer y ese monto queda
+   * como ganancia de la agencia. Default true.
+   */
+  media_buyer_aplica?: boolean | null;
 }
 
 function clean(input: ServiceInput) {
@@ -59,6 +65,8 @@ function clean(input: ServiceInput) {
     responsables: Array.isArray(input.responsables)
       ? Array.from(new Set(input.responsables.filter(Boolean)))
       : [],
+    // ¿Incluye paid media? Solo relevante en gestión de redes; default true.
+    media_buyer_aplica: input.media_buyer_aplica ?? true,
   };
 
   // Los campos de costo de entrega SOLO se tocan para servicios que no son de

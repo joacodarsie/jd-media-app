@@ -29,7 +29,11 @@ import {
   deleteProductionSession,
   type JornadaInput,
 } from "@/app/(app)/coordinacion/jornadas/actions";
-import { cn } from "@/lib/utils";
+import {
+  computeJornadaSplit,
+  JORNADA_MONTO_DEFAULT,
+  JORNADA_VIATICOS,
+} from "@/lib/jornada";
 
 export interface Jornada {
   id: string;
@@ -112,8 +116,9 @@ function JornadaCard({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const n = jornada.asistentes.length;
-  const porPersona = n > 0 ? Math.round(jornada.monto / n) : 0;
+  const directorId = jornada.asistentes[0] ?? null;
+  const acompananteId = jornada.asistentes[1] ?? null;
+  const split = computeJornadaSplit(jornada.monto, !!acompananteId);
 
   function remove() {
     if (!confirm("¿Eliminar esta jornada? Se descontará de la nómina del mes.")) return;
@@ -144,23 +149,37 @@ function JornadaCard({
         </div>
         <div className="text-right">
           <div className="text-lg font-bold tabular-nums">{fmt(jornada.monto)}</div>
-          <div className="text-[11px] text-muted-foreground">{fmt(porPersona)} c/u</div>
+          <div className="text-[11px] text-muted-foreground">cobra el cliente</div>
         </div>
       </div>
 
       <div className="flex-1 px-4 py-3">
         <div className="mb-1.5 flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
-          <Users className="h-3.5 w-3.5" /> Asistentes ({n})
+          <Users className="h-3.5 w-3.5" /> Reparto
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {jornada.asistentes.map((id) => (
-            <span
-              key={id}
-              className="rounded-full border bg-muted/40 px-2 py-0.5 text-xs"
-            >
-              {firstName(nameById.get(id) ?? "—")}
-            </span>
-          ))}
+        <div className="space-y-1 text-sm">
+          {directorId && (
+            <div className="flex items-center justify-between gap-2">
+              <span>
+                {firstName(nameById.get(directorId) ?? "—")}{" "}
+                <span className="text-xs text-muted-foreground">(dirige)</span>
+              </span>
+              <span className="tabular-nums font-medium">{fmt(split.director)}</span>
+            </div>
+          )}
+          {acompananteId && split.acompanante != null && (
+            <div className="flex items-center justify-between gap-2">
+              <span>
+                {firstName(nameById.get(acompananteId) ?? "—")}{" "}
+                <span className="text-xs text-muted-foreground">(acompaña)</span>
+              </span>
+              <span className="tabular-nums font-medium">{fmt(split.acompanante)}</span>
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-2 text-muted-foreground">
+            <span className="text-xs">Agencia</span>
+            <span className="tabular-nums text-xs">{fmt(split.agencia)}</span>
+          </div>
         </div>
         {jornada.notas && (
           <p className="mt-2 text-xs italic text-muted-foreground">{jornada.notas}</p>
@@ -198,23 +217,23 @@ function JornadaDialog({
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const today = new Date().toISOString().slice(0, 10);
+  const nameById = new Map(team.map((t) => [t.id, t.nombre]));
 
   const [fecha, setFecha] = useState(jornada?.fecha ?? today);
-  const [monto, setMonto] = useState(jornada?.monto ?? 50000);
+  const [monto, setMonto] = useState(jornada?.monto ?? JORNADA_MONTO_DEFAULT);
   const [clienteId, setClienteId] = useState(jornada?.clienteId ?? "");
   const [lugar, setLugar] = useState(jornada?.lugar ?? "");
   const [notas, setNotas] = useState(jornada?.notas ?? "");
-  const [asistentes, setAsistentes] = useState<string[]>(jornada?.asistentes ?? []);
+  const [directorId, setDirectorId] = useState(jornada?.asistentes?.[0] ?? "");
+  const [acompananteId, setAcompananteId] = useState(jornada?.asistentes?.[1] ?? "");
 
-  const porPersona = asistentes.length > 0 ? Math.round(monto / asistentes.length) : 0;
-
-  function toggle(id: string) {
-    setAsistentes((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-  }
+  const split = computeJornadaSplit(monto, !!acompananteId);
 
   function submit() {
+    if (!directorId) return void toast.error("Elegí quién dirige la jornada.");
+    if (acompananteId && acompananteId === directorId)
+      return void toast.error("El acompañante tiene que ser otra persona.");
+    const asistentes = [directorId, acompananteId].filter(Boolean) as string[];
     const input: JornadaInput = {
       fecha,
       monto,
@@ -288,33 +307,64 @@ function JornadaDialog({
               <Input value={lugar} onChange={(e) => setLugar(e.target.value)} placeholder="Ej: Córdoba" />
             </div>
           </div>
-          <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <Label>Asistentes</Label>
-              {asistentes.length > 0 && (
-                <span className="text-[11px] text-muted-foreground">
-                  {fmt(porPersona)} por persona
-                </span>
-              )}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Quién dirige</Label>
+              <Select value={directorId} onValueChange={setDirectorId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Elegí" />
+                </SelectTrigger>
+                <SelectContent>
+                  {team.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {firstName(t.nombre)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="grid max-h-44 grid-cols-2 gap-1.5 overflow-y-auto rounded-md border p-2">
-              {team.map((t) => (
-                <label
-                  key={t.id}
-                  className={cn(
-                    "flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm",
-                    asistentes.includes(t.id) ? "bg-primary/10" : "hover:bg-muted"
-                  )}
-                >
-                  <input
-                    type="checkbox"
-                    checked={asistentes.includes(t.id)}
-                    onChange={() => toggle(t.id)}
-                    className="h-4 w-4 accent-primary"
-                  />
-                  <span className="truncate">{firstName(t.nombre)}</span>
-                </label>
-              ))}
+            <div>
+              <Label>Acompañante (opcional)</Label>
+              <Select
+                value={acompananteId || "__none__"}
+                onValueChange={(v) => setAcompananteId(v === "__none__" ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin acompañante" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Sin acompañante</SelectItem>
+                  {team
+                    .filter((t) => t.id !== directorId)
+                    .map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {firstName(t.nombre)}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+            <div className="mb-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+              Reparto ({fmt(JORNADA_VIATICOS)} de viáticos + resto 50/30/20)
+            </div>
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <span>Dirige {directorId ? `· ${firstName(nameById.get(directorId) ?? "")}` : ""}</span>
+                <span className="tabular-nums font-medium">{fmt(split.director)}</span>
+              </div>
+              {acompananteId && split.acompanante != null && (
+                <div className="flex justify-between">
+                  <span>Acompaña · {firstName(nameById.get(acompananteId) ?? "")}</span>
+                  <span className="tabular-nums font-medium">{fmt(split.acompanante)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-muted-foreground">
+                <span>Agencia</span>
+                <span className="tabular-nums">{fmt(split.agencia)}</span>
+              </div>
             </div>
           </div>
           <div>

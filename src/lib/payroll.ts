@@ -164,10 +164,11 @@ export function computeAutoPayroll(
       }
     }
 
-    // Media buyer: la gestión de campañas de Meta va incluida en el servicio de
-    // gestión de redes, así que toda cuenta con gestión paga media buyer al
-    // gestor de pauta de la cuenta (o, si no hay, al rol paid_media).
-    if (gestion) {
+    // Media buyer: la gestión de campañas de Meta (paid media) va incluida en el
+    // servicio de gestión de redes. Solo se paga si el servicio lo incluye
+    // (media_buyer_aplica). Si el cliente NO contrató paid media, ese costo no se
+    // paga y queda como ganancia de la agencia. Default true (compat).
+    if (gestion && gestion.media_buyer_aplica !== false) {
       const pack = (gestion.pack ?? "Personalizado") as RatePack;
       add(c.media_buyer_id ?? fallbackMediaBuyerId, {
         clienteId: c.id,

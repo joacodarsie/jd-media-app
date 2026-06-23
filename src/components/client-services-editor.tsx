@@ -261,6 +261,11 @@ function ServiceDialog({
   const [moneda, setMoneda] = useState(service?.moneda ?? "ARS");
   const [notas, setNotas] = useState(service?.notas ?? "");
   const [activo, setActivo] = useState(service?.activo ?? true);
+  // ¿La gestión de redes incluye Paid Media? Si no, no se paga media buyer y
+  // ese monto queda como ganancia de la agencia.
+  const [mediaBuyerAplica, setMediaBuyerAplica] = useState<boolean>(
+    (service as { media_buyer_aplica?: boolean | null } | undefined)?.media_buyer_aplica ?? true
+  );
 
   // Costo de entrega (servicios que no son gestión de redes): % del monto o fijo.
   const svcCost = service as
@@ -323,6 +328,7 @@ function ServiceDialog({
       notas,
       activo,
       responsables,
+      media_buyer_aplica: isRedes ? mediaBuyerAplica : true,
       // Costo de entrega: solo para servicios que no son gestión de redes.
       costo_override:
         !isRedes && costoModo === "fijo" && costoFijo !== "" ? Number(costoFijo) : null,
@@ -432,6 +438,22 @@ function ServiceDialog({
                   </div>
                 </div>
               </div>
+              <label className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3">
+                <input
+                  type="checkbox"
+                  checked={mediaBuyerAplica}
+                  onChange={(e) => setMediaBuyerAplica(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-primary"
+                />
+                <span className="text-sm">
+                  <span className="font-medium">Incluye Paid Media</span> (gestión de
+                  campañas de Meta)
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    Si lo destildás, no se paga el media buyer de esta cuenta y ese
+                    monto queda como ganancia de la agencia.
+                  </span>
+                </span>
+              </label>
             </>
           )}
 

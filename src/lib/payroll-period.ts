@@ -8,6 +8,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { mergeSettings, serviceDeliveryCost, type AgencySettings } from "./coordinacion";
 import { SERVICE_TYPE_LABEL } from "./constants";
+import { computeJornadaSplit } from "./jornada";
 import {
   computeAutoPayroll,
   closerVolumeBonusPct,
@@ -201,8 +202,9 @@ export async function buildPeriodPayroll(
     autoCierreBasesByUser.set(fc.closerId, arr);
   }
 
-  // Jornadas de producción del mes: el monto se reparte en partes iguales
-  // entre los asistentes y se suma a la nómina de cada uno.
+  // Jornadas de producción del mes. Reparto (ver lib/jornada): viáticos en partes
+  // iguales + resto 50% director / 30% acompañante / 20% agencia. Por convención
+  // asistentes[0] = director/a, asistentes[1] = acompañante.
   const sessions = (sessionsRaw ?? []) as {
     id: string;
     fecha: string;
@@ -214,15 +216,25 @@ export async function buildPeriodPayroll(
   for (const s of sessions) {
     const asistentes = s.asistentes ?? [];
     if (asistentes.length === 0) continue;
-    const porPersona = Math.round(Number(s.monto) / asistentes.length);
+    const directorId = asistentes[0];
+    const acompananteId = asistentes[1] ?? null;
+    const split = computeJornadaSplit(Number(s.monto), !!acompananteId);
     const detalle = s.lugar ?? new Date(s.fecha + "T12:00:00").toLocaleDateString("es-AR");
-    for (const uid of asistentes) {
-      if (!autoByUser.has(uid)) autoByUser.set(uid, []);
-      autoByUser.get(uid)!.push({
+    if (!autoByUser.has(directorId)) autoByUser.set(directorId, []);
+    autoByUser.get(directorId)!.push({
+      clienteId: s.cliente_id,
+      cliente: "—",
+      concepto: `Jornada de producción (dirige) · ${detalle}`,
+      monto: split.director,
+      kind: "extra",
+    });
+    if (acompananteId && split.acompanante != null) {
+      if (!autoByUser.has(acompananteId)) autoByUser.set(acompananteId, []);
+      autoByUser.get(acompananteId)!.push({
         clienteId: s.cliente_id,
         cliente: "—",
-        concepto: `Jornada de producción · ${detalle}`,
-        monto: porPersona,
+        concepto: `Jornada de producción (acompaña) · ${detalle}`,
+        monto: split.acompanante,
         kind: "extra",
       });
     }

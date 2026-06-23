@@ -29,16 +29,23 @@ export function RecruitmentGmailImport({
       const res = await fetch(`/api/reclutamiento/${searchId}/gmail-import`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, max: 15 }),
+        body: JSON.stringify({ query, max: 8 }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast.error(json.error ?? `Error ${res.status}`);
+        toast.error(
+          json.error ??
+            (res.status === 504
+              ? "Tardó demasiado y se cortó. Probá de nuevo o achicá el rango (ej: newer_than:30d)."
+              : `Error ${res.status}`)
+        );
         return;
       }
       if (json.ok > 0) toast.success(`${json.ok} CV(s) traídos de Gmail y analizados.`);
       else toast.message("No se encontraron CVs nuevos con esa búsqueda.");
       if (json.skipped > 0) toast.message(`${json.skipped} ya estaban cargados.`);
+      if (json.timedOut)
+        toast.message("Procesé una tanda y corté por tiempo. Tocá de nuevo para seguir con el resto.");
       if (Array.isArray(json.errors) && json.errors.length > 0) {
         console.warn("Gmail import errors:", json.errors);
       }

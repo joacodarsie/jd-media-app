@@ -67,7 +67,15 @@ export async function POST(
 
   const body = (await req.json().catch(() => ({}))) as { query?: string; max?: number };
   const query = (body.query?.trim() || DEFAULT_QUERY).slice(0, 300);
-  const max = Math.min(Math.max(body.max ?? 15, 1), 25);
+  // `max` = cuántos CVs NUEVOS importar por tanda (objetivo). Traemos una lista
+  // más grande de mails y vamos salteando los ya importados hasta llegar al
+  // objetivo o al límite de tiempo.
+  const max = Math.min(Math.max(body.max ?? 8, 1), 15);
+  const listSize = 60;
+  // Presupuesto de tiempo: las funciones de Vercel Hobby se cortan a los 60s.
+  // Frenamos en 45s y devolvemos lo procesado, en vez de comerse un 504.
+  const deadline = Date.now() + 45_000;
+  let timedOut = false;
 
   let token: string | null;
   try {
@@ -86,9 +94,31 @@ export async function POST(
   let skipped = 0;
   const errors: string[] = [];
 
+  // Mails ya importados en esta búsqueda → para saltearlos ANTES de descargar y
+  // analizar (si no, cada reintento reprocesaría los mismos y nunca avanzaría).
+  const { data: existing } = await admin
+    .from("recruitment_candidates")
+    .select("source_ref")
+    .eq("search_id", search.id)
+    .like("source_ref", "gmail:%");
+  const importedMids = new Set<string>();
+  for (const r of (existing ?? []) as { source_ref: string | null }[]) {
+    const m = r.source_ref?.split(":")[1];
+    if (m) importedMids.add(m);
+  }
+
   try {
-    const ids = await listMessages(token, query, max);
+    const ids = await listMessages(token, query, listSize);
     for (const mid of ids) {
+      if (ok >= max) break;
+      if (Date.now() > deadline) {
+        timedOut = true;
+        break;
+      }
+      if (importedMids.has(mid)) {
+        skipped++;
+        continue;
+      }
       try {
         const msg = await getMessage(token, mid);
         if (msg.attachments.length === 0) continue;
@@ -149,5 +179,5 @@ export async function POST(
     );
   }
 
-  return NextResponse.json({ ok, skipped, errors, scanned: max });
+  return NextResponse.json({ ok, skipped, errors, scanned: max, timedOut });
 }

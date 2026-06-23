@@ -67,6 +67,13 @@ export const NAV_GROUPS: NavGroup[] = [
         roles: ["admin", "coordinador", "comercial", "prospecting"],
         feature: "comercial",
       },
+      {
+        href: "/prospeccion",
+        label: "Prospección",
+        icon: "Radar",
+        roles: ["admin", "coordinador", "comercial", "prospecting"],
+        feature: "comercial",
+      },
       // Equipo agrupa: Directorio, Organigrama, Personas y Capacidad (pestañas).
       { href: "/equipo", label: "Equipo", icon: "Users2" },
       {

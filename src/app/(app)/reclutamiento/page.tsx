@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Users, ArrowRight, Briefcase } from "lucide-react";
+import { Users, ArrowRight, Briefcase, Layers } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { RecruitmentSearchForm } from "@/components/recruitment-search-form";
 import { RecruitmentGmailConnection } from "@/components/recruitment-gmail-connection";
 import { buildAreaProfiles } from "@/lib/recruitment/area-profile";
 import { areaLabel } from "@/lib/recruitment/areas";
+import { POOL_TITULO } from "@/lib/recruitment/pool";
 
 export const dynamic = "force-dynamic";
 
@@ -25,14 +26,14 @@ export default async function ReclutamientoPage() {
     return <MigrationNotice />;
   }
 
-  const rows = (searches ?? []) as {
+  const rows = ((searches ?? []) as {
     id: string;
     titulo: string;
     area: string | null;
     ubicacion_pref: string | null;
     estado: string;
     created_at: string;
-  }[];
+  }[]).filter((s) => s.titulo !== POOL_TITULO); // el pool tiene su propia página
 
   // Conteo de candidatos por búsqueda.
   const { data: cand } = await admin
@@ -73,6 +74,23 @@ export default async function ReclutamientoPage() {
       <Suspense fallback={null}>
         <RecruitmentGmailConnection connectedEmail={gmailEmail} migrated={gmailMigrated} />
       </Suspense>
+
+      <Link
+        href="/reclutamiento/pool"
+        className="group flex items-center justify-between gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
+      >
+        <div className="flex items-center gap-3">
+          <Layers className="h-5 w-5 text-primary" />
+          <div>
+            <div className="font-semibold">Pool de talento</div>
+            <p className="text-sm text-muted-foreground">
+              Analizá TODOS los CVs de una vez; la IA los clasifica para su mejor rol
+              y los filtrás por puesto. Ideal cuando te llegan CVs de todo tipo.
+            </p>
+          </div>
+        </div>
+        <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+      </Link>
 
       {rows.length === 0 ? (
         <Card>

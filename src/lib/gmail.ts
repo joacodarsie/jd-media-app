@@ -109,6 +109,35 @@ export async function listMessages(
   return (json.messages ?? []).map((m) => m.id);
 }
 
+/**
+ * Lista TODOS los IDs de mensajes que matchean la query, paginando con
+ * pageToken hasta `limit` (Gmail trae hasta 500 por página). Sirve para el pool
+ * de reclutamiento, donde puede haber cientos de CVs. Solo trae IDs (barato);
+ * el cuerpo/adjunto se baja después por cada uno.
+ */
+export async function listMessageIds(
+  accessToken: string,
+  query: string,
+  limit = 1000
+): Promise<string[]> {
+  const ids: string[] = [];
+  let pageToken: string | undefined;
+  do {
+    const pageSize = Math.min(500, limit - ids.length);
+    let url = `${API}/messages?q=${encodeURIComponent(query)}&maxResults=${pageSize}`;
+    if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!res.ok) throw new Error(`Gmail list falló: ${res.status} ${await res.text()}`);
+    const json = (await res.json()) as {
+      messages?: { id: string }[];
+      nextPageToken?: string;
+    };
+    for (const m of json.messages ?? []) ids.push(m.id);
+    pageToken = json.nextPageToken;
+  } while (pageToken && ids.length < limit);
+  return ids;
+}
+
 interface Part {
   filename?: string;
   mimeType?: string;

@@ -168,6 +168,7 @@ export default async function ClientDetail({
     (c as unknown as { cm_id?: string | null }).cm_id === me.id ||
     (c as unknown as { disenador_id?: string | null }).disenador_id === me.id ||
     (c as unknown as { audiovisual_id?: string | null }).audiovisual_id === me.id ||
+    (c as unknown as { media_buyer_id?: string | null }).media_buyer_id === me.id ||
     svcList.some((s) => s.activo && (s.responsables ?? []).includes(me.id));
 
   // Los no-staff solo pueden abrir sus cuentas ACTIVAS asignadas. Si entran por

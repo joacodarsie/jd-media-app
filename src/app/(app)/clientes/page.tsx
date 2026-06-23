@@ -62,6 +62,7 @@ export default async function ClientesPage() {
         row.cm_id === me.id ||
         row.disenador_id === me.id ||
         row.audiovisual_id === me.id ||
+        row.media_buyer_id === me.id ||
         fromServices.has(row.id as string);
       return mine;
     });

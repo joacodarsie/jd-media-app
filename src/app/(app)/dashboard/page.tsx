@@ -109,7 +109,9 @@ export default async function DashboardPage() {
     supabase
       .from("clients")
       .select("id, nombre, pack, estado")
-      .or(`cm_id.eq.${user.id},disenador_id.eq.${user.id},audiovisual_id.eq.${user.id}`),
+      .or(
+        `cm_id.eq.${user.id},disenador_id.eq.${user.id},audiovisual_id.eq.${user.id},media_buyer_id.eq.${user.id}`
+      ),
     supabase
       .from("tasks")
       .select(

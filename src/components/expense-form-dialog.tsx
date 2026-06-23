@@ -29,17 +29,12 @@ import {
   type ExpenseCategory,
 } from "@/app/(app)/finanzas/actions";
 import { currentPeriod } from "@/lib/finanzas";
+import { EXPENSE_CATEGORIES } from "@/lib/finanzas/expense-categories";
 
-export const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string }[] = [
-  { value: "plataformas", label: "Plataformas (Notion, Adobe, Canva…)" },
-  { value: "ads", label: "Ads de JD Media propios" },
-  { value: "servicios", label: "Servicios pro (contador, abogado)" },
-  { value: "impuestos", label: "Impuestos / monotributo" },
-  { value: "bancos", label: "Bancos / comisiones" },
-  { value: "oficina", label: "Oficina (alquiler, luz, internet)" },
-  { value: "equipamiento", label: "Equipamiento" },
-  { value: "otros", label: "Otros" },
-];
+// EXPENSE_CATEGORIES vive ahora en @/lib/finanzas/expense-categories
+// (server-safe). Se re-exporta para los componentes de cliente que ya lo
+// importaban desde acá.
+export { EXPENSE_CATEGORIES };
 
 interface BaseProps {
   trigger: React.ReactNode;

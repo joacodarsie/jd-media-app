@@ -6,7 +6,7 @@ import { getExchangeRates } from "@/lib/exchange";
 import { toARS, fmtARS } from "@/lib/finanzas";
 import { Card, CardContent } from "@/components/ui/card";
 import { ExpensesTable, type ExpenseTableRow } from "@/components/expenses-table";
-import { EXPENSE_CATEGORIES } from "@/components/expense-form-dialog";
+import { expenseCategoryLabel } from "@/lib/finanzas/expense-categories";
 
 export const dynamic = "force-dynamic";
 
@@ -84,8 +84,7 @@ export default async function GastosPage({
             </h2>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {categorias.map(([cat, total]) => {
-                const label =
-                  EXPENSE_CATEGORIES.find((c) => c.value === cat)?.label ?? cat;
+                const label = expenseCategoryLabel(cat);
                 return (
                   <div
                     key={cat}

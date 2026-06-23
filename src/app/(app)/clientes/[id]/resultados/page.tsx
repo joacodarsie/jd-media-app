@@ -11,14 +11,27 @@ import {
   TrendingUp,
   TrendingDown,
   ExternalLink,
+  FileText,
 } from "lucide-react";
 import { requireUser, isStaff } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { metaConfigured } from "@/lib/meta/instagram";
 import { IgConnect } from "@/components/ig-connect";
 import { IgRefreshButton } from "@/components/ig-refresh-button";
+import { IgPublicationsList, type PubItem } from "@/components/ig-publications-list";
 
 export const dynamic = "force-dynamic";
+
+/** Suma de una métrica diaria en los últimos N snapshots (period total). */
+function sumLast(snaps: Snap[], key: "reach" | "profile_views" | "interactions", n: number): number {
+  return snaps.slice(0, n).reduce((acc, s) => acc + (Number(s[key]) || 0), 0);
+}
+
+function mediaKind(t: string): PubItem["kind"] {
+  if (t === "VIDEO") return "reel";
+  if (t === "CAROUSEL_ALBUM") return "carrusel";
+  return "post";
+}
 
 interface IgMediaLite {
   id: string;
@@ -35,6 +48,7 @@ interface IgMediaLite {
 interface Detalle {
   month?: { reach?: number; profile_views?: number; interactions?: number };
   top_media?: IgMediaLite[];
+  media?: IgMediaLite[];
 }
 interface Snap {
   fecha: string;
@@ -78,6 +92,20 @@ function Kpi({
         </div>
       )}
     </div>
+  );
+}
+
+/** Chip del mix de contenido (ej: "4 reels"). Atenuado si es 0. */
+function MixBadge({ n, label }: { n: number; label: string }) {
+  return (
+    <span
+      className={
+        "rounded-full border px-2 py-0.5 font-medium " +
+        (n > 0 ? "bg-primary/10 text-foreground" : "bg-muted/40 text-muted-foreground")
+      }
+    >
+      {n} {label}
+    </span>
   );
 }
 
@@ -156,8 +184,71 @@ export default async function ResultadosPage({ params }: { params: { id: string 
     if (prev && prev.fecha !== latest.fecha) delta30 = latest.followers - prev.followers;
   }
 
-  const month = latest?.detalle?.month ?? null;
-  const topMedia = latest?.detalle?.top_media ?? [];
+  // Métricas de 28 días: las calculamos sumando los snapshots diarios (la API de
+  // Meta dejó de servir el período "days_28" para estas métricas y devuelve 0).
+  const diasConDatos = Math.min(snaps.length, 28);
+  const reach28 = sumLast(snaps, "reach", 28);
+  const views28 = sumLast(snaps, "profile_views", 28);
+  const inter28 = sumLast(snaps, "interactions", 28);
+
+  // Publicaciones del mes (con su tipo) + historias acumuladas del mes.
+  const monthMedia = latest?.detalle?.media ?? latest?.detalle?.top_media ?? [];
+  const monthStartISO = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+    .toISOString()
+    .slice(0, 10);
+  const { data: storiesRaw } = await admin
+    .from("ig_stories")
+    .select("story_id, permalink, thumbnail_url, posted_at, reach, replies")
+    .eq("cliente_id", c.id)
+    .gte("posted_at", monthStartISO)
+    .order("posted_at", { ascending: false });
+  const stories = (storiesRaw ?? []) as {
+    story_id: string;
+    permalink: string | null;
+    thumbnail_url: string | null;
+    posted_at: string | null;
+    reach: number | null;
+    replies: number | null;
+  }[];
+
+  // Mix de contenido del mes.
+  const mix = {
+    reel: monthMedia.filter((m) => m.media_type === "VIDEO").length,
+    post: monthMedia.filter((m) => m.media_type === "IMAGE").length,
+    carrusel: monthMedia.filter((m) => m.media_type === "CAROUSEL_ALBUM").length,
+    historia: stories.length,
+  };
+
+  // Lista unificada de publicaciones (feed + historias) para el listado filtrable.
+  const pubItems: PubItem[] = [
+    ...monthMedia.map((m) => ({
+      id: m.id,
+      kind: mediaKind(m.media_type),
+      permalink: m.permalink,
+      thumbnail_url: m.thumbnail_url,
+      caption: m.caption,
+      timestamp: m.timestamp,
+      reach: m.reach,
+      like_count: m.like_count,
+      comments_count: m.comments_count,
+      saved: m.saved,
+      replies: null,
+    })),
+    ...stories.map((s) => ({
+      id: s.story_id,
+      kind: "historia" as const,
+      permalink: s.permalink,
+      thumbnail_url: s.thumbnail_url,
+      caption: null,
+      timestamp: s.posted_at,
+      reach: s.reach,
+      like_count: null,
+      comments_count: null,
+      saved: null,
+      replies: s.replies,
+    })),
+  ];
+
   // Seguidores en orden cronológico para el sparkline.
   const followersSeries = [...snaps].reverse().map((s) => s.followers);
 
@@ -179,7 +270,15 @@ export default async function ResultadosPage({ params }: { params: { id: string 
             perfil e interacciones. Se actualizan solos cada día.
           </p>
         </div>
-        {connected && <IgRefreshButton clientId={c.id} />}
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/reporte/cliente/${c.id}`}
+            className="inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-sm font-medium transition-colors hover:bg-muted"
+          >
+            <FileText className="h-4 w-4 text-primary" /> Reporte mensual
+          </Link>
+          {connected && <IgRefreshButton clientId={c.id} />}
+        </div>
       </div>
 
       {!metaConfigured() && (
@@ -205,18 +304,18 @@ export default async function ResultadosPage({ params }: { params: { id: string 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
             <Kpi label="Seguidores" value={fmt(latest.followers)} icon={Users} delta={delta30} />
             <Kpi
-              label="Alcance (28 días)"
-              value={month?.reach ? fmt(month.reach) : "—"}
+              label={diasConDatos >= 28 ? "Alcance (28 días)" : `Alcance (${diasConDatos} días)`}
+              value={reach28 > 0 ? fmt(reach28) : "—"}
               icon={Radar}
             />
             <Kpi
               label="Visitas al perfil"
-              value={month?.profile_views ? fmt(month.profile_views) : "—"}
+              value={views28 > 0 ? fmt(views28) : "—"}
               icon={Eye}
             />
             <Kpi
               label="Interacciones"
-              value={month?.interactions ? fmt(month.interactions) : "—"}
+              value={inter28 > 0 ? fmt(inter28) : "—"}
               icon={Heart}
             />
             <Kpi label="Publicaciones" value={fmt(latest.media_count)} icon={BarChart3} />
@@ -235,58 +334,25 @@ export default async function ResultadosPage({ params }: { params: { id: string 
             </div>
           )}
 
-          {/* Top publicaciones */}
-          {topMedia.length > 0 && (
-            <div>
-              <h2 className="mb-2 text-sm font-semibold">Publicaciones destacadas (último mes)</h2>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {topMedia.map((m) => (
-                  <a
-                    key={m.id}
-                    href={m.permalink ?? "#"}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="group overflow-hidden rounded-lg border bg-card transition hover:border-primary/40"
-                  >
-                    <div className="relative aspect-square bg-muted">
-                      {m.thumbnail_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={m.thumbnail_url}
-                          alt=""
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                          {m.media_type}
-                        </div>
-                      )}
-                      <span className="absolute right-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                        {m.media_type === "VIDEO" ? "Reel" : m.media_type === "CAROUSEL_ALBUM" ? "Carrusel" : "Post"}
-                      </span>
-                    </div>
-                    <div className="space-y-1 p-2">
-                      {m.caption && (
-                        <p className="line-clamp-2 text-xs text-muted-foreground">{m.caption}</p>
-                      )}
-                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-                        {m.reach != null && (
-                          <span className="inline-flex items-center gap-1">
-                            <Radar className="h-3 w-3" /> {fmt(m.reach)}
-                          </span>
-                        )}
-                        <span className="inline-flex items-center gap-1">
-                          <Heart className="h-3 w-3" /> {fmt(m.like_count)}
-                        </span>
-                        {m.saved != null && m.saved > 0 && (
-                          <span className="inline-flex items-center gap-1">★ {fmt(m.saved)}</span>
-                        )}
-                      </div>
-                    </div>
-                  </a>
-                ))}
+          {/* Contenido del mes: mix por tipo + listado filtrable */}
+          {pubItems.length > 0 ? (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold">Publicaciones del mes</h2>
+                <div className="flex flex-wrap gap-1.5 text-xs">
+                  <MixBadge n={mix.reel} label="reels" />
+                  <MixBadge n={mix.post} label="posteos" />
+                  <MixBadge n={mix.carrusel} label="carruseles" />
+                  <MixBadge n={mix.historia} label="historias" />
+                </div>
               </div>
+              <IgPublicationsList items={pubItems} />
             </div>
+          ) : (
+            <p className="rounded-lg border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+              Todavía no hay publicaciones registradas este mes. Aparecen acá cuando se
+              actualizan los resultados.
+            </p>
           )}
 
           <p className="text-[11px] text-muted-foreground">

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { friendlyAiError } from "@/lib/ai/errors";
 import {
   generateOutreachMessage,
+  generateFollowupMessage,
   type LeadForMessage,
   type MessageContext,
 } from "@/lib/prospecting/message";
@@ -130,9 +131,21 @@ export async function addManualLead(campaignId: string, input: ManualLeadInput) 
 
 export async function setLeadEstado(id: string, estado: string) {
   const { supabase } = await ctx();
+  // Al pasar a "contactado" por primera vez, sellar la fecha (para priorizar
+  // seguimientos). No la pisamos si ya estaba.
+  const patch: Record<string, unknown> = { estado };
+  if (estado === "contactado") {
+    const { data: prev } = await supabase
+      .from("prospecting_leads")
+      .select("contactado_at")
+      .eq("id", id)
+      .single();
+    if (!(prev as { contactado_at: string | null } | null)?.contactado_at)
+      patch.contactado_at = new Date().toISOString();
+  }
   const { data, error } = await supabase
     .from("prospecting_leads")
-    .update({ estado })
+    .update(patch)
     .eq("id", id)
     .select("campaign_id")
     .single();
@@ -167,6 +180,23 @@ export async function deleteLead(id: string) {
   return { ok: true as const };
 }
 
+/** Nombre/descripción del servicio de la campaña, para el contexto del mensaje. */
+async function loadServicio(
+  supabase: Awaited<ReturnType<typeof ctx>>["supabase"],
+  servicioSlug: string | null
+) {
+  if (!servicioSlug) return { servicioNombre: null, servicioDesc: null };
+  const { data: svc } = await supabase
+    .from("services")
+    .select("name, description")
+    .eq("slug", servicioSlug)
+    .maybeSingle();
+  return {
+    servicioNombre: (svc as { name?: string } | null)?.name ?? null,
+    servicioDesc: (svc as { description?: string } | null)?.description ?? null,
+  };
+}
+
 /**
  * Genera (o regenera) el primer mensaje personalizado de un lead con IA y lo
  * guarda. Devuelve el texto para refrescar la card al toque.
@@ -197,17 +227,7 @@ export async function generateLeadMessage(id: string) {
     idioma: string;
   };
 
-  let servicioNombre: string | null = null;
-  let servicioDesc: string | null = null;
-  if (c.servicio) {
-    const { data: svc } = await supabase
-      .from("services")
-      .select("name, description")
-      .eq("slug", c.servicio)
-      .maybeSingle();
-    servicioNombre = (svc as { name?: string } | null)?.name ?? null;
-    servicioDesc = (svc as { description?: string } | null)?.description ?? null;
-  }
+  const { servicioNombre, servicioDesc } = await loadServicio(supabase, c.servicio);
 
   const l = lead as LeadForMessage & { campaign_id: string };
   const leadCtx: LeadForMessage = {
@@ -245,6 +265,149 @@ export async function generateLeadMessage(id: string) {
 
   revalidatePath(`/prospeccion/${l.campaign_id}`);
   return { ok: true as const, mensaje };
+}
+
+/**
+ * Genera el mensaje de SEGUIMIENTO (follow-up) para un lead ya contactado que no
+ * respondió, y lo guarda en `seguimiento`. Segundo toque = donde se cierra.
+ */
+export async function generateLeadFollowup(id: string) {
+  const { supabase } = await ctx();
+  const { data: lead, error } = await supabase
+    .from("prospecting_leads")
+    .select(
+      "id, campaign_id, empresa, descripcion, ciudad, pais, instagram, sitio_web, por_que, mensaje"
+    )
+    .eq("id", id)
+    .single();
+  if (error || !lead) return { error: "No se encontró el lead." };
+
+  const { data: camp } = await supabase
+    .from("prospecting_campaigns")
+    .select("rubro, servicio, angulo, canal, idioma")
+    .eq("id", (lead as { campaign_id: string }).campaign_id)
+    .single();
+  if (!camp) return { error: "No se encontró la campaña." };
+  const c = camp as {
+    rubro: string;
+    servicio: string | null;
+    angulo: string | null;
+    canal: string;
+    idioma: string;
+  };
+  const { servicioNombre, servicioDesc } = await loadServicio(supabase, c.servicio);
+
+  const l = lead as LeadForMessage & { campaign_id: string; mensaje: string | null };
+  let seguimiento: string | null;
+  try {
+    seguimiento = await generateFollowupMessage(
+      {
+        empresa: l.empresa,
+        descripcion: l.descripcion,
+        ciudad: l.ciudad,
+        pais: l.pais,
+        instagram: l.instagram,
+        sitio_web: l.sitio_web,
+        por_que: l.por_que,
+      },
+      {
+        rubro: c.rubro,
+        servicioNombre,
+        servicioDesc,
+        angulo: c.angulo,
+        canal: c.canal,
+        idioma: c.idioma,
+      },
+      l.mensaje
+    );
+  } catch (e) {
+    console.error("generateLeadFollowup:", e);
+    return { error: friendlyAiError(e) };
+  }
+  if (!seguimiento) return { error: "La IA no devolvió un seguimiento. Probá de nuevo." };
+
+  const { error: upErr } = await supabase
+    .from("prospecting_leads")
+    .update({ seguimiento })
+    .eq("id", id);
+  if (upErr) return { error: upErr.message };
+
+  revalidatePath(`/prospeccion/${l.campaign_id}`);
+  return { ok: true as const, seguimiento };
+}
+
+/**
+ * Genera el primer mensaje para TODOS los leads de la campaña que todavía no lo
+ * tienen (los que quedaron sin mensaje al descubrir, o los cargados a mano).
+ * Devuelve cuántos generó.
+ */
+export async function generateAllMessages(campaignId: string) {
+  const { supabase } = await ctx();
+  const { data: camp } = await supabase
+    .from("prospecting_campaigns")
+    .select("rubro, servicio, angulo, canal, idioma")
+    .eq("id", campaignId)
+    .single();
+  if (!camp) return { error: "No se encontró la campaña." };
+  const c = camp as {
+    rubro: string;
+    servicio: string | null;
+    angulo: string | null;
+    canal: string;
+    idioma: string;
+  };
+
+  const { data: leads } = await supabase
+    .from("prospecting_leads")
+    .select("id, empresa, descripcion, ciudad, pais, instagram, sitio_web, por_que")
+    .eq("campaign_id", campaignId)
+    .is("mensaje", null)
+    .neq("estado", "descartado");
+  const rows = (leads ?? []) as (LeadForMessage & { id: string })[];
+  if (rows.length === 0) return { ok: true as const, generated: 0 };
+
+  const { servicioNombre, servicioDesc } = await loadServicio(supabase, c.servicio);
+  const msgCtx: MessageContext = {
+    rubro: c.rubro,
+    servicioNombre,
+    servicioDesc,
+    angulo: c.angulo,
+    canal: c.canal,
+    idioma: c.idioma,
+  };
+
+  const results = await Promise.all(
+    rows.map(async (l) => {
+      try {
+        const mensaje = await generateOutreachMessage(
+          {
+            empresa: l.empresa,
+            descripcion: l.descripcion,
+            ciudad: l.ciudad,
+            pais: l.pais,
+            instagram: l.instagram,
+            sitio_web: l.sitio_web,
+            por_que: l.por_que,
+          },
+          msgCtx
+        );
+        if (!mensaje) return false;
+        const { error } = await supabase
+          .from("prospecting_leads")
+          .update({ mensaje })
+          .eq("id", l.id);
+        return !error;
+      } catch (e) {
+        console.warn("generateAllMessages lead:", (e as Error).message);
+        return false;
+      }
+    })
+  );
+  const generated = results.filter(Boolean).length;
+  revalidatePath(`/prospeccion/${campaignId}`);
+  if (generated === 0)
+    return { error: "No se pudo generar ningún mensaje. Probá de nuevo." };
+  return { ok: true as const, generated };
 }
 
 /**

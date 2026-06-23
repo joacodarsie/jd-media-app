@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { requireUser, isStaff } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { discoverLeads, type CampaignContext } from "@/lib/prospecting/discover";
+import {
+  generateOutreachMessage,
+  type LeadForMessage,
+  type MessageContext,
+} from "@/lib/prospecting/message";
 import { friendlyAiError } from "@/lib/ai/errors";
 
 export const runtime = "nodejs";
@@ -24,7 +29,7 @@ export async function POST(
   const admin = createAdmin();
   const { data: camp, error: cErr } = await admin
     .from("prospecting_campaigns")
-    .select("id, nombre, rubro, ubicacion, servicio, angulo, idioma")
+    .select("id, nombre, rubro, ubicacion, servicio, angulo, canal, idioma")
     .eq("id", params.campaignId)
     .maybeSingle();
   if (cErr && (cErr as { code?: string }).code === "42P01")
@@ -38,8 +43,17 @@ export async function POST(
     ubicacion: string | null;
     servicio: string | null;
     angulo: string | null;
+    canal: string;
     idioma: string;
   };
+
+  // Empresas ya cargadas en la campaña: se las pasamos a la IA para que no las
+  // repita (más leads nuevos por corrida).
+  const { data: existing } = await admin
+    .from("prospecting_leads")
+    .select("empresa")
+    .eq("campaign_id", c.id);
+  const excludeEmpresas = ((existing ?? []) as { empresa: string }[]).map((e) => e.empresa);
 
   const body = (await req.json().catch(() => ({}))) as { cantidad?: number };
   const cantidad = Math.min(Math.max(body.cantidad ?? 6, 1), 12);
@@ -65,6 +79,7 @@ export async function POST(
     servicioDesc,
     angulo: c.angulo,
     idioma: c.idioma,
+    excludeEmpresas,
   };
 
   let leads;
@@ -80,12 +95,46 @@ export async function POST(
       created: 0,
       skipped: 0,
       message:
-        "La búsqueda no trajo empresas con contacto. Probá afinar el rubro o la zona.",
+        "La búsqueda no trajo empresas nuevas con contacto. Probá afinar el rubro o la zona.",
     });
+
+  // Auto-generar el primer mensaje de cada lead en paralelo, así llegan listos
+  // para enviar (sin tener que clickear lead por lead). Si alguno falla, queda
+  // sin mensaje y el botón "Generar mensajes" lo recupera después.
+  const msgCtx: MessageContext = {
+    rubro: c.rubro,
+    servicioNombre,
+    servicioDesc,
+    angulo: c.angulo,
+    canal: c.canal,
+    idioma: c.idioma,
+  };
+  const mensajes = await Promise.all(
+    leads.map(async (lead) => {
+      try {
+        const l: LeadForMessage = {
+          empresa: lead.empresa,
+          descripcion: lead.descripcion,
+          ciudad: lead.ciudad,
+          pais: lead.pais,
+          instagram: lead.instagram,
+          sitio_web: lead.sitio_web,
+          por_que: lead.por_que,
+        };
+        return await generateOutreachMessage(l, msgCtx);
+      } catch (e) {
+        console.warn("auto-msg falló:", (e as Error).message);
+        return null;
+      }
+    })
+  );
 
   let created = 0;
   let skipped = 0;
-  for (const lead of leads) {
+  let conMensaje = 0;
+  for (let i = 0; i < leads.length; i++) {
+    const lead = leads[i];
+    const mensaje = mensajes[i];
     const { error: insErr } = await admin.from("prospecting_leads").insert({
       campaign_id: c.id,
       empresa: lead.empresa,
@@ -99,6 +148,7 @@ export async function POST(
       por_que: lead.por_que,
       fit_score: lead.fit_score,
       fuente_url: lead.fuente_url,
+      mensaje,
       fuente: "ia",
     });
     if (insErr) {
@@ -107,7 +157,8 @@ export async function POST(
       continue;
     }
     created++;
+    if (mensaje) conMensaje++;
   }
 
-  return NextResponse.json({ created, skipped, found: leads.length });
+  return NextResponse.json({ created, skipped, conMensaje, found: leads.length });
 }

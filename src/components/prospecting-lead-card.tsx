@@ -34,6 +34,7 @@ import {
 } from "@/lib/prospecting/shared";
 import {
   generateLeadMessage,
+  generateLeadFollowup,
   setLeadEstado,
   deleteLead,
   convertLeadToProposal,
@@ -53,6 +54,7 @@ export interface LeadRow {
   fit_score: number | null;
   fuente_url: string | null;
   mensaje: string | null;
+  seguimiento: string | null;
   estado: string;
   cliente_id: string | null;
   canal: string;
@@ -68,14 +70,18 @@ function fitColor(score: number | null): string {
 export function ProspectingLeadCard({ lead }: { lead: LeadRow }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [busy, setBusy] = useState<"msg" | "convert" | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState<"msg" | "convert" | "followup" | null>(null);
+  const [copied, setCopied] = useState<"msg" | "followup" | null>(null);
   const [msg, setMsg] = useState(lead.mensaje);
+  const [followup, setFollowup] = useState(lead.seguimiento);
 
   const meta = estadoMeta(lead.estado);
   const web = ensureHttp(lead.sitio_web);
   const ig = instagramUrl(lead.instagram);
   const wa = msg ? intlWhatsappLink(lead.telefono, msg) : intlWhatsappLink(lead.telefono, "");
+  const waFollow = followup ? intlWhatsappLink(lead.telefono, followup) : null;
+  // El seguimiento tiene sentido una vez que ya hubo un primer contacto.
+  const yaContactado = lead.estado === "contactado" || lead.estado === "respondio";
 
   function genMessage() {
     setBusy("msg");
@@ -88,12 +94,23 @@ export function ProspectingLeadCard({ lead }: { lead: LeadRow }) {
     });
   }
 
-  function copyMsg() {
-    if (!msg) return;
-    navigator.clipboard.writeText(msg).then(() => {
-      setCopied(true);
-      toast.success("Mensaje copiado");
-      setTimeout(() => setCopied(false), 1500);
+  function genFollowup() {
+    setBusy("followup");
+    start(async () => {
+      const res = await generateLeadFollowup(lead.id);
+      setBusy(null);
+      if ("error" in res) return void toast.error(res.error);
+      setFollowup(res.seguimiento);
+      toast.success("Seguimiento generado");
+    });
+  }
+
+  function copyText(text: string | null, which: "msg" | "followup") {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(which);
+      toast.success("Copiado");
+      setTimeout(() => setCopied(null), 1500);
     });
   }
 
@@ -196,13 +213,13 @@ export function ProspectingLeadCard({ lead }: { lead: LeadRow }) {
                 </a>
               </Button>
             )}
-            <Button size="sm" variant="outline" onClick={copyMsg}>
-              {copied ? <Check className="mr-1 h-4 w-4" /> : <Copy className="mr-1 h-4 w-4" />}
+            <Button size="sm" variant="outline" onClick={() => copyText(msg, "msg")}>
+              {copied === "msg" ? <Check className="mr-1 h-4 w-4" /> : <Copy className="mr-1 h-4 w-4" />}
               Copiar
             </Button>
             {ig && (
               <Button asChild size="sm" variant="outline">
-                <a href={ig} target="_blank" rel="noopener noreferrer" onClick={copyMsg}>
+                <a href={ig} target="_blank" rel="noopener noreferrer" onClick={() => copyText(msg, "msg")}>
                   <Camera className="mr-1 h-4 w-4" /> Abrir IG
                 </a>
               </Button>
@@ -218,6 +235,40 @@ export function ProspectingLeadCard({ lead }: { lead: LeadRow }) {
           {busy === "msg" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
           Generar mensaje
         </Button>
+      )}
+
+      {/* Seguimiento (follow-up): aparece una vez contactado, o si ya se generó */}
+      {(yaContactado || followup) && (
+        followup ? (
+          <div className="rounded-lg border border-amber-300/60 bg-amber-50/60 p-3 dark:border-amber-500/30 dark:bg-amber-500/5">
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+              Seguimiento
+            </p>
+            <p className="whitespace-pre-wrap text-sm">{followup}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {waFollow && (
+                <Button asChild size="sm" className="bg-[#25D366] text-white hover:bg-[#1ebe5b]">
+                  <a href={waFollow} target="_blank" rel="noopener noreferrer">
+                    <MessageCircle className="mr-1 h-4 w-4" /> WhatsApp
+                  </a>
+                </Button>
+              )}
+              <Button size="sm" variant="outline" onClick={() => copyText(followup, "followup")}>
+                {copied === "followup" ? <Check className="mr-1 h-4 w-4" /> : <Copy className="mr-1 h-4 w-4" />}
+                Copiar
+              </Button>
+              <Button size="sm" variant="ghost" onClick={genFollowup} disabled={pending} title="Regenerar seguimiento">
+                {busy === "followup" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />}
+                Regenerar
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button size="sm" variant="ghost" className="text-amber-700 dark:text-amber-300" onClick={genFollowup} disabled={pending}>
+            {busy === "followup" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+            Generar seguimiento
+          </Button>
+        )
       )}
 
       {/* Estado + convertir */}

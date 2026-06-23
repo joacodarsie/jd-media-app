@@ -95,3 +95,39 @@ export async function generateOutreachMessage(
     .trim();
   return out || null;
 }
+
+/**
+ * Genera el mensaje de SEGUIMIENTO para un lead que ya fue contactado y no
+ * respondió. Es un segundo toque: corto, sin reproche, que aporta algo nuevo
+ * (una idea concreta, un dato, una pregunta) y reabre la conversación sin sonar
+ * desesperado. La conversión real vive acá.
+ */
+export async function generateFollowupMessage(
+  lead: LeadForMessage,
+  ctx: MessageContext,
+  mensajeInicial: string | null
+): Promise<string | null> {
+  const system = `${buildSystem(ctx)}
+
+AHORA NO es el primer mensaje: es un SEGUIMIENTO. Ya les escribiste antes y no contestaron (puede ser que no lo vieron o estaban ocupados, no que no les interese). Reglas extra del follow-up:
+- Más corto todavía que el primero (2-3 líneas).
+- Nada de "te escribí y no me respondiste" ni reproches ni culpa.
+- Aportá algo NUEVO y concreto: una idea puntual para su negocio, un mini-dato, o una pregunta simple de sí/no que sea fácil de contestar.
+- Cerrá con una salida fácil ("si no es para ustedes ahora, sin drama, avisame y listo").
+- Tono relajado, humano, cordobés. 1 emoji como mucho.`;
+  const prevBlock = mensajeInicial
+    ? `\n\nMENSAJE QUE YA LE MANDASTE (no lo repitas, escribí algo distinto):\n${mensajeInicial}`
+    : "";
+  const msg = await client.messages.create({
+    model: AI_MODEL_SMART,
+    max_tokens: 500,
+    system: [{ type: "text", text: system }],
+    messages: [{ role: "user", content: buildUser(lead) + prevBlock }],
+  });
+  const out = msg.content
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("")
+    .trim();
+  return out || null;
+}

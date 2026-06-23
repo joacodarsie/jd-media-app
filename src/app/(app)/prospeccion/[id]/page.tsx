@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ProspectingCampaignDialog } from "@/components/prospecting-campaign-dialog";
 import { ProspectingCampaignActions } from "@/components/prospecting-campaign-actions";
 import { ProspectingDiscoverButton } from "@/components/prospecting-discover-button";
+import { ProspectingGenerateAllButton } from "@/components/prospecting-generate-all-button";
 import { ProspectingManualLeadDialog } from "@/components/prospecting-manual-lead-dialog";
 import { ProspectingLeadCard, type LeadRow } from "@/components/prospecting-lead-card";
 import { channelLabel, langLabel, LEAD_ESTADOS } from "@/lib/prospecting/shared";
@@ -60,12 +61,25 @@ export default async function CampaignDetailPage({
   const services = (svc ?? []) as { slug: string; name: string }[];
   const servicioNombre = services.find((s) => s.slug === c.servicio)?.name ?? null;
 
-  const { data: leadsData } = await admin
+  const LEAD_COLS =
+    "id, empresa, descripcion, ciudad, pais, sitio_web, instagram, telefono, email, por_que, fit_score, fuente_url, mensaje, seguimiento, estado, cliente_id";
+  const leadsRes = await admin
     .from("prospecting_leads")
-    .select(
-      "id, empresa, descripcion, ciudad, pais, sitio_web, instagram, telefono, email, por_que, fit_score, fuente_url, mensaje, estado, cliente_id"
-    )
+    .select(LEAD_COLS)
     .eq("campaign_id", c.id);
+  let leadsData = leadsRes.data;
+  const leadsErr = leadsRes.error;
+  // Resiliencia: si todavía no se aplicó la migración 0099 (columna seguimiento),
+  // no rompemos la página — la traemos sin esa columna.
+  if (leadsErr && (leadsErr as { code?: string }).code === "42703") {
+    const fallback = await admin
+      .from("prospecting_leads")
+      .select(LEAD_COLS.replace(", seguimiento", ""))
+      .eq("campaign_id", c.id);
+    leadsData = ((fallback.data ?? []) as unknown as Record<string, unknown>[]).map(
+      (l) => ({ ...l, seguimiento: null })
+    ) as typeof leadsData;
+  }
 
   const leads = ((leadsData ?? []) as Omit<LeadRow, "canal">[]).sort((a, b) => {
     const eo = (ESTADO_ORDER[a.estado] ?? 9) - (ESTADO_ORDER[b.estado] ?? 9);
@@ -77,6 +91,11 @@ export default async function CampaignDetailPage({
     acc[l.estado] = (acc[l.estado] ?? 0) + 1;
     return acc;
   }, {});
+
+  // Leads activos sin mensaje todavía (para el botón "Generar mensajes").
+  const sinMensaje = leads.filter(
+    (l) => !l.mensaje && l.estado !== "descartado"
+  ).length;
 
   return (
     <div className="space-y-5">
@@ -146,6 +165,9 @@ export default async function CampaignDetailPage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
           <ProspectingDiscoverButton campaignId={c.id} />
+          {sinMensaje > 0 && (
+            <ProspectingGenerateAllButton campaignId={c.id} count={sinMensaje} />
+          )}
           <ProspectingManualLeadDialog campaignId={c.id} />
         </div>
         {leads.length > 0 && (

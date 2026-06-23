@@ -34,6 +34,7 @@ export function ProspectingDiscoverButton({ campaignId }: { campaignId: string }
       const data = (await res.json()) as {
         created?: number;
         skipped?: number;
+        conMensaje?: number;
         message?: string;
         error?: string;
       };
@@ -45,7 +46,10 @@ export function ProspectingDiscoverButton({ campaignId }: { campaignId: string }
         toast.info(data.message ?? "No se sumaron leads nuevos.", { id: t });
       } else {
         const dup = data.skipped ? ` (${data.skipped} ya estaban)` : "";
-        toast.success(`Se sumaron ${data.created} leads${dup}.`, { id: t });
+        const msg = data.conMensaje
+          ? ` con mensaje listo${data.conMensaje < (data.created ?? 0) ? ` (${data.conMensaje}/${data.created})` : ""}`
+          : "";
+        toast.success(`Se sumaron ${data.created} leads${msg}${dup}.`, { id: t });
       }
       router.refresh();
     } catch {

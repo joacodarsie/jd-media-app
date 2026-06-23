@@ -20,6 +20,8 @@ export interface CampaignContext {
   servicioDesc: string | null;
   angulo: string | null;
   idioma: string;
+  /** Empresas ya cargadas en la campaña, para no repetirlas. */
+  excludeEmpresas?: string[];
 }
 
 export interface DiscoveredLead {
@@ -40,13 +42,20 @@ function buildSystem(ctx: CampaignContext): string {
   const servicio = ctx.servicioNombre
     ? `${ctx.servicioNombre}${ctx.servicioDesc ? ` — ${ctx.servicioDesc}` : ""}`
     : "servicios de marketing digital (gestión de redes, pauta paga, contenido, web)";
+  const yaTenemos =
+    ctx.excludeEmpresas && ctx.excludeEmpresas.length > 0
+      ? `\n\nYA TENEMOS ESTAS EMPRESAS (NO las repitas, buscá distintas):\n${ctx.excludeEmpresas
+          .slice(0, 60)
+          .map((e) => `- ${e}`)
+          .join("\n")}`
+      : "";
   return `Sos un prospector B2B senior de JD Media, una agencia de marketing digital de Córdoba, Argentina. Tu trabajo es encontrar EMPRESAS REALES que sean buenos clientes potenciales y traer sus datos de contacto públicos para que el equipo comercial les escriba.
 
 CLUSTER OBJETIVO (campaña: "${ctx.nombre}")
 - Rubro / nicho: ${ctx.rubro}
 - Zona: ${ctx.ubicacion ?? "sin zona definida (priorizá Argentina y España)"}
 - Servicio que vamos a ofrecer: ${servicio}
-- Ángulo / problema que resolvemos: ${ctx.angulo ?? "mejorar su presencia digital y traerles más clientes"}
+- Ángulo / problema que resolvemos: ${ctx.angulo ?? "mejorar su presencia digital y traerles más clientes"}${yaTenemos}
 
 CÓMO TRABAJAR
 1. Usá la herramienta de búsqueda web para encontrar empresas reales del rubro en la zona. Hacé varias búsquedas distintas (directorios, Google Maps/listados, Instagram, "mejores <rubro> en <zona>", etc.).

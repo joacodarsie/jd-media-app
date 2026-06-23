@@ -4,14 +4,12 @@ import { Users, ArrowRight, Briefcase } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { Card, CardContent } from "@/components/ui/card";
-import { RecruitmentSearchForm, AREA_OPTIONS } from "@/components/recruitment-search-form";
+import { RecruitmentSearchForm } from "@/components/recruitment-search-form";
 import { RecruitmentGmailConnection } from "@/components/recruitment-gmail-connection";
 import { buildAreaProfiles } from "@/lib/recruitment/area-profile";
+import { areaLabel } from "@/lib/recruitment/areas";
 
 export const dynamic = "force-dynamic";
-
-const areaLabel = (a: string | null) =>
-  AREA_OPTIONS.find((o) => o.value === a)?.label ?? a ?? "—";
 
 export default async function ReclutamientoPage() {
   await requireRole(["admin", "coordinador"]);

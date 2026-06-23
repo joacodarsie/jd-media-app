@@ -24,16 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createSearch, updateSearch } from "@/app/(app)/reclutamiento/actions";
-
-export const AREA_OPTIONS = [
-  { value: "cm", label: "Community Manager" },
-  { value: "diseno", label: "Diseño" },
-  { value: "edicion", label: "Edición audiovisual" },
-  { value: "pauta", label: "Pauta / Paid Media" },
-  { value: "desarrollo", label: "Desarrollo web" },
-  { value: "comercial", label: "Comercial / Ventas" },
-  { value: "otro", label: "Otro" },
-];
+import { AREA_OPTIONS } from "@/lib/recruitment/areas";
 
 export function RecruitmentSearchForm({
   mode = "create",

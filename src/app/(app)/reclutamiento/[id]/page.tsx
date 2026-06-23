@@ -5,10 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  RecruitmentSearchForm,
-  AREA_OPTIONS,
-} from "@/components/recruitment-search-form";
+import { RecruitmentSearchForm } from "@/components/recruitment-search-form";
 import { RecruitmentUploader } from "@/components/recruitment-uploader";
 import { RecruitmentGmailImport } from "@/components/recruitment-gmail-import";
 import {
@@ -16,11 +13,9 @@ import {
   type Candidate,
 } from "@/components/recruitment-candidates";
 import { buildAreaProfiles } from "@/lib/recruitment/area-profile";
+import { areaLabel } from "@/lib/recruitment/areas";
 
 export const dynamic = "force-dynamic";
-
-const areaLabel = (a: string | null) =>
-  AREA_OPTIONS.find((o) => o.value === a)?.label ?? a ?? "—";
 
 export default async function BusquedaPage({ params }: { params: { id: string } }) {
   await requireRole(["admin", "coordinador"]);

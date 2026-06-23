@@ -1,19 +1,48 @@
 import Link from "next/link";
-import { Plus, Sparkles, GraduationCap, FileClock } from "lucide-react";
+import { Sparkles, GraduationCap, FileClock, Radar, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { redirect } from "next/navigation";
 import { requireUser, userHas } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { Button } from "@/components/ui/button";
-import { LeadKanban, type LeadRow } from "@/components/lead-kanban";
-import { LeadFormDialog } from "@/components/lead-form-dialog";
 import { NewProposalDialog } from "@/components/new-proposal-dialog";
 import { HelpTrigger } from "@/components/help-trigger";
+import { whatsappLink } from "@/lib/payment-reminder";
 
 export const dynamic = "force-dynamic";
 
 const COMERCIAL_ROLES = ["admin", "coordinador", "comercial", "prospecting"];
+
+// Buckets de seguimiento por antigüedad de la propuesta (días desde que se creó).
+function seguimientoBucket(dias: number): {
+  label: string;
+  urgente: boolean;
+  badge: string;
+} {
+  if (dias >= 7)
+    return {
+      label: "En riesgo — seguila ya",
+      urgente: true,
+      badge: "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300",
+    };
+  if (dias >= 3)
+    return {
+      label: "Seguila",
+      urgente: true,
+      badge: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+    };
+  return {
+    label: "Reciente",
+    urgente: false,
+    badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+  };
+}
+
+function followupMessage(nombre: string): string {
+  const first = nombre.split(" ")[0];
+  return `¡Hola ${first}! ¿Cómo va? Te escribo de JD Media para saber si pudiste ver la propuesta que te pasé 😊 Cualquier duda quedo a disposición para avanzar cuando quieras.`;
+}
 
 export default async function ComercialPage() {
   const me = await requireUser();
@@ -23,92 +52,28 @@ export default async function ComercialPage() {
   const supabase = createClient();
   const admin = createAdmin();
 
-  const [{ data: leads }, { data: services }, { data: users }, { data: propuestas }] =
-    await Promise.all([
-      supabase
-        .from("leads")
-        .select(
-          "id, nombre, empresa, email, telefono, origen, servicio_interesado, monto_estimado, moneda, stage, asignado_a_id, notas, proxima_accion, proxima_accion_at, perdido_motivo, ganado_cliente_id, asignado:users!leads_asignado_a_id_fkey(id,nombre), servicio:services(slug,name)"
-        )
-        .order("updated_at", { ascending: false }),
-      supabase
-        .from("services")
-        .select("slug, name")
-        .eq("active", true)
-        .order("orden"),
-      supabase
-        .from("users")
-        .select("id, nombre")
-        .eq("activo", true)
-        .order("nombre"),
-      // Propuestas enviadas que todavía no pagaron (estado "propuesta"): para
-      // seguirlas y cobrarlas. Vía admin: la página ya está gateada por rol.
-      admin
-        .from("clients")
-        .select("id, nombre, created_at, monto_mensual")
-        .eq("estado", "propuesta")
-        .order("created_at", { ascending: true }),
-    ]);
+  const [{ data: services }, { data: users }, { data: propuestas }] = await Promise.all([
+    supabase.from("services").select("slug, name").eq("active", true).order("orden"),
+    supabase.from("users").select("id, nombre").eq("activo", true).order("nombre"),
+    // Propuestas (clientes en estado "propuesta"): cartas acuerdo enviadas que
+    // todavía no se activaron. Es el embudo real de comercial. Más viejas primero.
+    admin
+      .from("clients")
+      .select("id, nombre, created_at, monto_mensual, contacto_telefono")
+      .eq("estado", "propuesta")
+      .order("created_at", { ascending: true }),
+  ]);
 
   const propuestasRows = (propuestas ?? []) as {
     id: string;
     nombre: string;
     created_at: string | null;
     monto_mensual: number | null;
+    contacto_telefono: string | null;
   }[];
   const diasDesde = (iso: string | null): number =>
     iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400_000) : 0;
-
-  type RawLead = {
-    id: string;
-    nombre: string;
-    empresa: string | null;
-    email: string | null;
-    telefono: string | null;
-    origen: string | null;
-    servicio_interesado: string | null;
-    monto_estimado: number | null;
-    moneda: string;
-    stage: LeadRow["stage"];
-    asignado_a_id: string | null;
-    notas: string | null;
-    proxima_accion: string | null;
-    proxima_accion_at: string | null;
-    perdido_motivo: string | null;
-    ganado_cliente_id: string | null;
-    asignado?: { id: string; nombre: string } | null;
-    servicio?: { slug: string; name: string } | null;
-  };
-
-  const leadRows: LeadRow[] = ((leads ?? []) as unknown as RawLead[]).map(
-    (l) => ({
-      id: l.id,
-      nombre: l.nombre,
-      empresa: l.empresa,
-      email: l.email,
-      telefono: l.telefono,
-      origen: l.origen,
-      servicio_interesado: l.servicio_interesado,
-      monto_estimado: l.monto_estimado,
-      moneda: l.moneda,
-      stage: l.stage,
-      asignado_a_id: l.asignado_a_id,
-      notas: l.notas,
-      proxima_accion: l.proxima_accion,
-      proxima_accion_at: l.proxima_accion_at,
-      perdido_motivo: l.perdido_motivo,
-      ganado_cliente_id: l.ganado_cliente_id,
-      asignado_nombre: l.asignado?.nombre ?? null,
-      servicio_nombre: l.servicio?.name ?? null,
-    })
-  );
-
-  const totalActivos = leadRows.filter(
-    (l) => l.stage !== "ganado" && l.stage !== "perdido"
-  ).length;
-  const pipelineValor = leadRows
-    .filter((l) => l.stage !== "ganado" && l.stage !== "perdido")
-    .reduce((acc, l) => acc + (l.monto_estimado ?? 0), 0);
+  const enRiesgo = propuestasRows.filter((p) => diasDesde(p.created_at) >= 3).length;
 
   return (
     <div className="space-y-5">
@@ -116,15 +81,11 @@ export default async function ComercialPage() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold">
             Comercial
-            <HelpTrigger
-              slug="comercial"
-              label="Cómo usar la sección comercial"
-              size="md"
-            />
+            <HelpTrigger slug="comercial" label="Cómo usar la sección comercial" size="md" />
           </h1>
           <p className="text-muted-foreground">
-            Cuando un prospecto te pasa los datos, generá la carta acuerdo a un
-            toque y seguila hasta que pague.
+            Cuando un prospecto te pasa los datos, generá la carta acuerdo a un toque
+            y seguila hasta que pague.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -146,90 +107,107 @@ export default async function ComercialPage() {
         </div>
       </div>
 
-      {propuestasRows.length === 0 && (
-        <div className="rounded-lg border border-dashed bg-muted/20 p-4 text-sm text-muted-foreground">
-          Todavía no hay propuestas en curso. Cuando un prospecto te pase los datos,
-          tocá <b className="text-foreground">Nueva propuesta</b>: cargás sus datos,
-          armás la carta acuerdo y se la mandás con los datos de pago. Cuando
-          transfiere, la activás y se vuelve cliente.
-        </div>
-      )}
-
-      {propuestasRows.length > 0 && (
-        <div className="rounded-lg border border-violet-300 bg-violet-50/60 p-4 dark:border-violet-900 dark:bg-violet-950/20">
-          <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-violet-800 dark:text-violet-200">
-            <FileClock className="h-4 w-4" />
-            Propuestas esperando pago ({propuestasRows.length})
+      {/* Prospección: el techo del embudo */}
+      <Link
+        href="/prospeccion"
+        className="group flex items-center justify-between gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
+      >
+        <div className="flex items-center gap-3">
+          <Radar className="h-5 w-5 text-primary" />
+          <div>
+            <div className="font-semibold">Prospección</div>
+            <p className="text-sm text-muted-foreground">
+              ¿Pocas propuestas en curso? Buscá nuevos leads con IA y armá campañas
+              de captación.
+            </p>
           </div>
-          <p className="mb-3 text-xs text-violet-700/80 dark:text-violet-300/80">
-            Cartas acuerdo enviadas que todavía no se activaron. Seguilas para
-            cerrar el cobro; cuando paguen, activá la ficha.
-          </p>
-          <ul className="space-y-1.5">
+        </div>
+        <span className="shrink-0 text-sm text-primary group-hover:underline">Ir →</span>
+      </Link>
+
+      {/* Seguimiento de propuestas */}
+      <div>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
+            <FileClock className="h-5 w-5 text-primary" /> Seguimiento de propuestas
+          </h2>
+          {propuestasRows.length > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {propuestasRows.length} en curso
+              {enRiesgo > 0 && (
+                <span className="ml-1 font-medium text-amber-600 dark:text-amber-400">
+                  · {enRiesgo} para seguir
+                </span>
+              )}
+            </span>
+          )}
+        </div>
+
+        {propuestasRows.length === 0 ? (
+          <div className="rounded-lg border border-dashed bg-muted/20 p-6 text-sm text-muted-foreground">
+            No hay propuestas en curso. Cuando un prospecto te pase los datos, tocá{" "}
+            <b className="text-foreground">Nueva propuesta</b>: cargás sus datos, armás
+            la carta acuerdo y se la mandás con los datos de pago. Cuando transfiere, la
+            activás y se vuelve cliente.
+          </div>
+        ) : (
+          <ul className="space-y-2">
             {propuestasRows.map((p) => {
               const dias = diasDesde(p.created_at);
+              const b = seguimientoBucket(dias);
+              const wa = whatsappLink(p.contacto_telefono, followupMessage(p.nombre));
               return (
-                <li key={p.id}>
-                  <Link
-                    href={`/clientes/${p.id}`}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:border-violet-300"
-                  >
-                    <span className="font-medium">{p.nombre}</span>
-                    <span className="flex items-center gap-3 text-xs text-muted-foreground">
-                      {p.monto_mensual ? (
-                        <span>ARS {Number(p.monto_mensual).toLocaleString("es-AR")}/mes</span>
-                      ) : null}
-                      <span
-                        className={cn(
-                          dias >= 7 ? "font-medium text-amber-600 dark:text-amber-400" : ""
-                        )}
-                      >
-                        {dias === 0 ? "hoy" : `hace ${dias} día${dias === 1 ? "" : "s"}`}
+                <li
+                  key={p.id}
+                  className={cn(
+                    "flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3",
+                    b.urgente && "border-amber-300/60 dark:border-amber-900/60"
+                  )}
+                >
+                  <div className="min-w-0">
+                    <Link href={`/clientes/${p.id}`} className="font-medium hover:underline">
+                      {p.nombre}
+                    </Link>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs">
+                      <span className={cn("rounded-full px-2 py-0.5 font-medium", b.badge)}>
+                        {b.label}
                       </span>
-                    </span>
-                  </Link>
+                      <span className="text-muted-foreground">
+                        {dias === 0 ? "creada hoy" : `hace ${dias} día${dias === 1 ? "" : "s"}`}
+                      </span>
+                      {p.monto_mensual ? (
+                        <span className="text-muted-foreground">
+                          · ARS {Number(p.monto_mensual).toLocaleString("es-AR")}/mes
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {wa ? (
+                      <Button
+                        asChild
+                        size="sm"
+                        className="bg-[#25D366] text-white hover:bg-[#1ebe5b]"
+                      >
+                        <a href={wa} target="_blank" rel="noopener noreferrer">
+                          <MessageCircle className="mr-1 h-4 w-4" /> Seguir
+                        </a>
+                      </Button>
+                    ) : (
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/clientes/${p.id}`}>Abrir</Link>
+                      </Button>
+                    )}
+                    <Button asChild size="sm" variant="outline">
+                      <Link href={`/clientes/${p.id}`}>Activar / ver</Link>
+                    </Button>
+                  </div>
                 </li>
               );
             })}
           </ul>
-        </div>
-      )}
-
-      {/* Pipeline de leads — secundario, colapsado por defecto */}
-      <details className="group rounded-lg border bg-card">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3">
-          <div>
-            <span className="font-semibold">Pipeline de leads</span>
-            <span className="ml-2 text-xs text-muted-foreground">
-              {totalActivos} activos · {leadRows.filter((l) => l.stage === "ganado").length} cerrados
-              {pipelineValor > 0 ? ` · ARS ${pipelineValor.toLocaleString("es-AR")}` : ""}
-            </span>
-          </div>
-          <span className="shrink-0 rounded-md border px-2 py-1 text-xs text-muted-foreground">
-            <span className="group-open:hidden">Mostrar</span>
-            <span className="hidden group-open:inline">Ocultar</span>
-          </span>
-        </summary>
-        <div className="space-y-3 border-t p-4">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">
-              Seguimiento opcional de oportunidades por etapa. Arrastrá las tarjetas
-              entre columnas.
-            </p>
-            <LeadFormDialog
-              mode="create"
-              services={services ?? []}
-              users={users ?? []}
-              trigger={
-                <Button size="sm" variant="outline">
-                  <Plus className="mr-2 h-4 w-4" /> Nuevo lead
-                </Button>
-              }
-            />
-          </div>
-          <LeadKanban leads={leadRows} services={services ?? []} users={users ?? []} />
-        </div>
-      </details>
+        )}
+      </div>
     </div>
   );
 }

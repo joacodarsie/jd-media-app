@@ -2,6 +2,21 @@
 title: Novedades
 ---
 
+## 2026-06-24 — Asesor financiero: la app te dice cómo venís y qué hacer
+
+- 🧮 **Nuevo Asesor financiero en Finanzas** (admin): lee tus números del mes —ganancia, margen, concentración de clientes, cobranzas vencidas, deudas y la tendencia de cobranza— y te devuelve un **diagnóstico en criollo**, un **puntaje de salud** y **recomendaciones priorizadas** con link directo a la acción. Lo generás y actualizás con un botón.
+- 🧹 Y para no marearte, los análisis detallados (movimientos, rentabilidad, evolución, vencimientos…) quedaron en un **desplegable**. Arriba ves solo lo importante: tu ganancia, el asesor, las alertas y el día a día.
+
+## 2026-06-24 — Prospección con IA: salí a buscar clientes
+
+- 🛰️ **Una forma nueva de conseguir clientes sin depender solo de la pauta**: creás una campaña por **cluster** (un rubro en una zona, ej. *"gimnasios de Nueva Córdoba"*) y la IA **busca empresas reales** que nos necesitan, con sus datos de contacto y la fuente de dónde salieron.
+- ✍️ Cada lead llega con un **primer mensaje ya escrito**, personalizado con algo concreto de su cuenta y ofreciéndole una idea gratis (engancha mucho más que pedir una llamada). Lo mandás por WhatsApp o Instagram a un toque.
+- 🔁 **Seguimiento** a un botón (el segundo toque, donde más se cierra), una sección **"Para seguir"** que te recuerda a quién contactaste hace días y no respondió, y cada campaña muestra su **tasa de respuesta y conversión**. Está en **Prospección** (comercial / coordinación).
+
+## 2026-06-24 — Paid Media ve todas sus cuentas
+
+- 👀 El **gestor de pauta** ahora ve en **Clientes** y en su panel **todas las cuentas donde hace la publicidad**. Antes, si solo figuraba como media buyer de la cuenta (sin ser CM/diseño/edición), no le aparecían — quedó arreglado.
+
 ## 2026-06-22 — Comercial más directo + puestos al día
 
 - 🎯 **Comercial enfocado en cerrar**: cuando un prospecto te pasa los datos, tocás **"Nueva propuesta"**, cargás sus datos y armás la carta acuerdo directo — sin pasar por el pipeline. Arriba ves las **propuestas esperando pago**; el pipeline de leads quedó como sección secundaria (colapsada), para quien quiera usarlo.

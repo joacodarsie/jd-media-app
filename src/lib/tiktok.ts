@@ -153,8 +153,12 @@ export interface TiktokUserInfo {
 }
 
 export async function getUserInfo(accessToken: string): Promise<TiktokUserInfo> {
+  // OJO: `username` requiere el scope user.info.profile (que NO pedimos). Si se
+  // incluye, TikTok rechaza todo el request ("scope not authorized"). Con
+  // user.info.basic + user.info.stats alcanza para el reporte; el nombre visible
+  // sale de display_name.
   const fields =
-    "open_id,union_id,avatar_url,display_name,username,follower_count,following_count,likes_count,video_count";
+    "open_id,union_id,avatar_url,display_name,follower_count,following_count,likes_count,video_count";
   const res = await fetch(`${USER_INFO_URL}?fields=${fields}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });

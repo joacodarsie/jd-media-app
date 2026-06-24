@@ -2,6 +2,15 @@
 title: Novedades
 ---
 
+## 2026-06-24 — Sueldos: más justos, más claros y con recibo
+
+- 🎯 **Diseño y edición se pagan por el contenido REAL del mes**: en vez de pagar por el pack contratado, la app cuenta las **publicaciones aprobadas/publicadas** del mes y paga el diseño (post/carrusel), la edición (a quien editó cada reel) y las portadas según lo que realmente salió. Un mes que produjo menos, cuesta menos. El CM y el media buyer siguen por pack.
+- 👥 **Coordinación repartible por mes**: si un mes el rol de coordinación se divide entre dos personas (como en junio: media y media entre Brisa y Luz), lo cargás desde el botón **"Coordinación"** y la app reparte ese 10% como corresponda. Si no tocás nada, va todo a la coordinadora de siempre.
+- 🤖 **Ajustes del mes con IA**: escribís en criollo (*"a Brisa sumale 20 mil por carruseles extra, a Guille descontale un adelanto de 50 mil"*) y la app arma los ítems solos. Los revisás y aplicás.
+- ✏️ **Editar ítems** ya cargados (concepto, monto, cliente) sin tener que borrar y volver a crear.
+- 🧾 **Recibo imprimible / PDF** por persona y mes: el detalle completo de a qué corresponde cada parte del sueldo, con los datos de transferencia. Botón **"Recibo"** en cada tarjeta.
+- 💰 Y un acceso directo a **Cuentas por cobrar** desde Sueldos, para ver de un vistazo cuánto te deben y quién.
+
 ## 2026-06-24 — Asesor financiero: la app te dice cómo venís y qué hacer
 
 - 🧮 **Nuevo Asesor financiero en Finanzas** (admin): lee tus números del mes —ganancia, margen, concentración de clientes, cobranzas vencidas, deudas y la tendencia de cobranza— y te devuelve un **diagnóstico en criollo**, un **puntaje de salud** y **recomendaciones priorizadas** con link directo a la acción. Lo generás y actualizás con un botón.

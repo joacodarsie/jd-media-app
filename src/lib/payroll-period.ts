@@ -13,6 +13,7 @@ import { computeJornadaSplit } from "./jornada";
 import {
   computeAutoPayroll,
   computeContentPayroll,
+  computeCoordinationPayroll,
   closerVolumeBonusPct,
   selectFirstMonthCommissions,
   decodeCommissionNote,
@@ -22,6 +23,7 @@ import {
   type PayrollPublication,
   type PayrollLine,
   type PersonPayroll,
+  type CoordinationSplit,
 } from "./payroll";
 
 interface ServiceRow extends PayrollService {
@@ -40,6 +42,8 @@ export interface PeriodPayrollResult {
   clientOptions: { id: string; nombre: string; abono: number }[];
   teamOptions: { id: string; nombre: string; rol: string }[];
   commission: { cierre: number; leadPropio: number };
+  /** Comisión base de coordinación (ej 0.10) y reparto excepcional del mes. */
+  coordinacion: { pct: number; split: { userId: string; pct: number }[] };
 }
 
 /**
@@ -60,6 +64,7 @@ export async function buildPeriodPayroll(
     { data: paymentsRaw },
     { data: sessionsRaw },
     { data: pubsRaw },
+    { data: splitRaw },
   ] = await Promise.all([
     admin.from("agency_settings").select("packs, rates").eq("id", 1).maybeSingle(),
     admin
@@ -95,6 +100,11 @@ export async function buildPeriodPayroll(
       .in("estado", ["aprobado", "publicado"])
       .gte("fecha_publicacion", `${periodo}-01`)
       .lt("fecha_publicacion", `${nextPeriod(periodo)}-01`),
+    // Excepción de reparto de coordinación de ESTE mes (vacío = default).
+    admin
+      .from("payroll_coordination_splits")
+      .select("user_id, pct")
+      .eq("periodo", periodo),
   ]);
 
   const settings: AgencySettings = mergeSettings(settingsRow);
@@ -167,34 +177,33 @@ export async function buildPeriodPayroll(
   }
 
   // Comisión recurrente de coordinación: % del abono mensual del servicio de
-  // gestión de redes de cada cuenta, atribuida al coordinador/a DE ESA CUENTA.
+  // gestión de redes de cada cuenta, atribuida a la coordinadora DE ESA CUENTA
+  // (o repartida según la excepción del mes, si la hay).
   const coordPct = settings.rates.comision_coordinacion ?? 0;
   const fallbackCoordinador = users.find((u) => u.rol === "coordinador")?.id ?? null;
-  if (coordPct > 0) {
-    const gdrByClient = new Map<string, number>();
-    for (const s of services) {
-      if (s.tipo !== "gestion_redes") continue;
-      if (s.facturacion === "unico") continue;
-      gdrByClient.set(
-        s.cliente_id,
-        (gdrByClient.get(s.cliente_id) ?? 0) + (Number(s.monto_mensual) || 0)
-      );
-    }
-    for (const c of clients) {
-      const abono = gdrByClient.get(c.id) ?? 0;
-      if (abono <= 0) continue;
-      const who = c.coordinador_id ?? fallbackCoordinador;
-      if (!who) continue;
-      const monto = Math.round(abono * coordPct);
-      if (!autoByUser.has(who)) autoByUser.set(who, []);
-      autoByUser.get(who)!.push({
-        clienteId: c.id,
-        cliente: c.nombre,
-        concepto: `Coordinación gestión de redes (${Math.round(coordPct * 100)}%)`,
-        monto,
-        kind: "comision",
-      });
-    }
+  const gdrByClient = new Map<string, number>();
+  for (const s of services) {
+    if (s.tipo !== "gestion_redes") continue;
+    if (s.facturacion === "unico") continue;
+    gdrByClient.set(
+      s.cliente_id,
+      (gdrByClient.get(s.cliente_id) ?? 0) + (Number(s.monto_mensual) || 0)
+    );
+  }
+  const coordSplit = ((splitRaw ?? []) as { user_id: string; pct: number }[]).map((s) => ({
+    userId: s.user_id,
+    pct: Number(s.pct),
+  })) as CoordinationSplit[];
+  const coordByUser = computeCoordinationPayroll(
+    clients,
+    gdrByClient,
+    coordPct,
+    fallbackCoordinador,
+    coordSplit.length > 0 ? coordSplit : null
+  );
+  for (const [uid, lines] of coordByUser) {
+    if (!autoByUser.has(uid)) autoByUser.set(uid, []);
+    autoByUser.get(uid)!.push(...lines);
   }
 
   // ── Comisión de cierre AUTOMÁTICA del primer mes ──
@@ -381,5 +390,6 @@ export async function buildPeriodPayroll(
       cierre: settings.rates.comision_cierre ?? 0.1,
       leadPropio: settings.rates.comision_lead_propio ?? 0.05,
     },
+    coordinacion: { pct: coordPct, split: coordSplit },
   };
 }

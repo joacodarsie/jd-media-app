@@ -131,6 +131,42 @@ export async function registerSalaryPayment(input: {
 }
 
 /**
+ * Define el reparto EXCEPCIONAL de la comisión de coordinación para un mes.
+ * `split` son fracciones del pool (deberían sumar ~1). Pasar [] (vacío) vuelve
+ * al comportamiento por defecto (todo a la coordinadora de cada cuenta).
+ */
+export async function setCoordinationSplit(input: {
+  periodo: string;
+  split: { userId: string; pct: number }[];
+}) {
+  await requireRole(["admin"]);
+  if (!/^\d{4}-\d{2}$/.test(input.periodo)) return { error: "Período inválido." };
+  const admin = createAdmin();
+
+  // Reemplazo total: borro el reparto anterior del mes y cargo el nuevo.
+  const { error: delErr } = await admin
+    .from("payroll_coordination_splits")
+    .delete()
+    .eq("periodo", input.periodo);
+  if (delErr) {
+    if ((delErr as { code?: string }).code === "42P01")
+      return { error: "Falta aplicar la migración 0103." };
+    return { error: delErr.message };
+  }
+
+  const rows = (input.split ?? [])
+    .filter((s) => s.userId && Number.isFinite(s.pct) && s.pct > 0)
+    .map((s) => ({ periodo: input.periodo, user_id: s.userId, pct: s.pct }));
+
+  if (rows.length > 0) {
+    const { error } = await admin.from("payroll_coordination_splits").insert(rows);
+    if (error) return { error: error.message };
+  }
+  revalidatePath(PATH);
+  return { ok: true as const };
+}
+
+/**
  * Asistente de nómina: traduce una instrucción en criollo a ítems propuestos
  * (extras/ajustes). NO persiste nada — devuelve la propuesta para que el admin
  * la revise y confirme con `applyAdjustments`.

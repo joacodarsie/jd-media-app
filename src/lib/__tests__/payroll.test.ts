@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   computeAutoPayroll,
   computeContentPayroll,
+  computeCoordinationPayroll,
   closerVolumeBonusPct,
   selectFirstMonthCommissions,
   encodeCommissionNote,
@@ -184,6 +185,52 @@ describe("computeContentPayroll", () => {
       r,
       periodo
     );
+    expect(out.size).toBe(0);
+  });
+});
+
+describe("computeCoordinationPayroll", () => {
+  const abono = new Map<string, number>([
+    ["c1", 350_000],
+    ["c2", 500_000],
+  ]);
+  const clientes = [
+    cliente({ id: "c1", nombre: "Uno", coordinador_id: "luz" }),
+    cliente({ id: "c2", nombre: "Dos", coordinador_id: "luz" }),
+  ];
+
+  it("default: el 10% va entero a la coordinadora de cada cuenta", () => {
+    const out = computeCoordinationPayroll(clientes, abono, 0.1, null, null);
+    const total = (out.get("luz") ?? []).reduce((a, l) => a + l.monto, 0);
+    expect(total).toBe(35_000 + 50_000);
+    expect(out.has("brisa")).toBe(false);
+  });
+
+  it("split 50/50: reparte el pool de cada cuenta entre dos personas (5% y 5%)", () => {
+    const out = computeCoordinationPayroll(clientes, abono, 0.1, null, [
+      { userId: "brisa", pct: 0.5 },
+      { userId: "luz", pct: 0.5 },
+    ]);
+    const luz = (out.get("luz") ?? []).reduce((a, l) => a + l.monto, 0);
+    const brisa = (out.get("brisa") ?? []).reduce((a, l) => a + l.monto, 0);
+    expect(luz).toBe(17_500 + 25_000);
+    expect(brisa).toBe(17_500 + 25_000);
+    expect(out.get("luz")?.[0].concepto).toContain("5%");
+  });
+
+  it("cae al fallback si la cuenta no tiene coordinadora y no hay split", () => {
+    const out = computeCoordinationPayroll(
+      [cliente({ id: "c1", nombre: "Uno", coordinador_id: null })],
+      new Map([["c1", 350_000]]),
+      0.1,
+      "fallbackCoord",
+      null
+    );
+    expect(out.get("fallbackCoord")?.[0].monto).toBe(35_000);
+  });
+
+  it("sin pct de coordinación no genera nada", () => {
+    const out = computeCoordinationPayroll(clientes, abono, 0, "x", null);
     expect(out.size).toBe(0);
   });
 });

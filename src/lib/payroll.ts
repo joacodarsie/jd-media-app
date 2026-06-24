@@ -269,6 +269,76 @@ export function computeContentPayroll(
   return out;
 }
 
+/** Reparto del pool de coordinación de un mes entre personas (fracciones ~1). */
+export interface CoordinationSplit {
+  userId: string;
+  pct: number; // fracción del pool de coordinación (0..1)
+}
+
+/**
+ * Comisión recurrente de coordinación de Gestión de Redes: un % (`coordPct`,
+ * ej 0.10) del abono mensual de cada cuenta con gestión de redes.
+ *
+ * Por defecto la cobra entera la coordinadora de la cuenta (coordinador_id, con
+ * fallback al rol coordinador). Si el mes tiene un `split` (excepción cargada
+ * para ese período), el pool de cada cuenta se reparte entre las personas del
+ * split según su fracción — por ejemplo 5%/5% cuando dos personas se dividieron
+ * el rol a mitad de mes. Función pura → testeable sin DB.
+ */
+export function computeCoordinationPayroll(
+  clients: PayrollClient[],
+  abonoByClient: Map<string, number>,
+  coordPct: number,
+  fallbackCoordinador: string | null,
+  split: CoordinationSplit[] | null
+): Map<string, PayrollLine[]> {
+  const out = new Map<string, PayrollLine[]>();
+  if (coordPct <= 0) return out;
+  const add = (userId: string | null, line: PayrollLine) => {
+    if (!userId) return;
+    if (!out.has(userId)) out.set(userId, []);
+    out.get(userId)!.push(line);
+  };
+  const validSplit = split?.filter((s) => s.userId && s.pct > 0) ?? null;
+  const hasSplit = !!validSplit && validSplit.length > 0;
+
+  for (const c of clients) {
+    const abono = abonoByClient.get(c.id) ?? 0;
+    if (abono <= 0) continue;
+    const pool = Math.round(abono * coordPct);
+    if (pool <= 0) continue;
+
+    if (hasSplit) {
+      for (const s of validSplit!) {
+        const monto = Math.round(pool * s.pct);
+        if (monto === 0) continue;
+        add(s.userId, {
+          clienteId: c.id,
+          cliente: c.nombre,
+          concepto: `Coordinación gestión de redes (${pctLabel(coordPct * s.pct)})`,
+          monto,
+          kind: "comision",
+        });
+      }
+    } else {
+      add(c.coordinador_id ?? fallbackCoordinador, {
+        clienteId: c.id,
+        cliente: c.nombre,
+        concepto: `Coordinación gestión de redes (${pctLabel(coordPct)})`,
+        monto: pool,
+        kind: "comision",
+      });
+    }
+  }
+  return out;
+}
+
+/** Formatea una fracción como porcentaje legible: 0.05 → "5%", 0.075 → "7.5%". */
+function pctLabel(frac: number): string {
+  const pct = frac * 100;
+  return `${Number.isInteger(pct) ? pct : pct.toFixed(1)}%`;
+}
+
 // Re-export para comodidad de las páginas que arman el panorama y la nómina.
 export { productionBase, mbCost };
 

@@ -15,7 +15,11 @@ import {
   Percent,
   Sparkles,
   X,
+  Users,
+  Receipt,
+  Wallet,
 } from "lucide-react";
+import Link from "next/link";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +51,13 @@ export interface CommissionConfig {
   /** Fracción extra si es lead propio (ej: 0.05). */
   leadPropio: number;
 }
+
+export interface CoordinacionConfig {
+  /** Comisión base de coordinación (ej: 0.10). */
+  pct: number;
+  /** Reparto excepcional del mes (vacío = default: todo a cada coordinadora). */
+  split: { userId: string; pct: number }[];
+}
 import {
   addPayrollItem,
   updatePayrollItem,
@@ -54,6 +65,7 @@ import {
   registerSalaryPayment,
   proposeAdjustments,
   applyAdjustments,
+  setCoordinationSplit,
 } from "@/app/(app)/coordinacion/sueldos/actions";
 import type { ProposedAdjustment } from "@/lib/payroll-adjustments";
 import { cn } from "@/lib/utils";
@@ -80,6 +92,7 @@ export function SueldosPanel({
   clientOptions,
   teamOptions,
   commission,
+  coordinacion,
 }: {
   periodo: string;
   people: PersonPayroll[];
@@ -88,6 +101,7 @@ export function SueldosPanel({
   clientOptions: ClientOption[];
   teamOptions: TeamOption[];
   commission: CommissionConfig;
+  coordinacion: CoordinacionConfig;
 }) {
   const router = useRouter();
 
@@ -125,7 +139,19 @@ export function SueldosPanel({
             </div>
             <div className="text-xl font-bold tabular-nums">{fmt(totalNomina)}</div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/finanzas/cobros"
+              className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm hover:bg-muted"
+              title="Cuánto te deben los clientes y a quién"
+            >
+              <Wallet className="h-4 w-4" /> Cuentas por cobrar
+            </Link>
+            <CoordinacionMesDialog
+              periodo={periodo}
+              teamOptions={teamOptions}
+              coordinacion={coordinacion}
+            />
             <AjustesIADialog periodo={periodo} />
             <CommissionDialog periodo={periodo} clientOptions={clientOptions} teamOptions={teamOptions} commission={commission} />
           </div>
@@ -305,9 +331,17 @@ function PersonCard({
           periodo={periodo}
           clientOptions={clientOptions}
         />
+        <Link
+          href={`/recibo/${person.userId}?periodo=${periodo}`}
+          target="_blank"
+          className="ml-auto inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm hover:bg-muted"
+          title="Ver recibo imprimible / PDF"
+        >
+          <Receipt className="h-4 w-4" /> Recibo
+        </Link>
         <Button
           size="sm"
-          className="ml-auto gap-1.5"
+          className="gap-1.5"
           onClick={generarYRegistrar}
           disabled={pending}
         >
@@ -514,6 +548,194 @@ function CommissionDialog({
           <Button onClick={submit} disabled={pending}>
             {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Cargar comisión
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Diálogo: reparto de coordinación del mes (excepción)
+// ─────────────────────────────────────────────────────────────────────────
+function CoordinacionMesDialog({
+  periodo,
+  teamOptions,
+  coordinacion,
+}: {
+  periodo: string;
+  teamOptions: TeamOption[];
+  coordinacion: CoordinacionConfig;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [pending, start] = useTransition();
+  // Modo: false = default (todo a cada coordinadora); true = reparto del mes.
+  const [reparte, setReparte] = useState(coordinacion.split.length > 0);
+  // Filas como % (share) del pool de coordinación; arranca con el split guardado.
+  const [rows, setRows] = useState<{ userId: string; share: number }[]>(
+    coordinacion.split.length > 0
+      ? coordinacion.split.map((s) => ({ userId: s.userId, share: Math.round(s.pct * 100) }))
+      : [{ userId: "", share: 50 }, { userId: "", share: 50 }]
+  );
+
+  const basePct = Math.round(coordinacion.pct * 100);
+  const sumShare = rows.reduce((a, r) => a + (Number(r.share) || 0), 0);
+
+  function resync() {
+    setReparte(coordinacion.split.length > 0);
+    setRows(
+      coordinacion.split.length > 0
+        ? coordinacion.split.map((s) => ({ userId: s.userId, share: Math.round(s.pct * 100) }))
+        : [{ userId: "", share: 50 }, { userId: "", share: 50 }]
+    );
+  }
+
+  function save() {
+    const split = reparte
+      ? rows
+          .filter((r) => r.userId && r.share > 0)
+          .map((r) => ({ userId: r.userId, pct: r.share / 100 }))
+      : [];
+    if (reparte) {
+      if (split.length === 0)
+        return void toast.error("Agregá al menos una persona con su porcentaje.");
+      const ids = split.map((s) => s.userId);
+      if (new Set(ids).size !== ids.length)
+        return void toast.error("Hay una persona repetida en el reparto.");
+    }
+    start(async () => {
+      const res = await setCoordinationSplit({ periodo, split });
+      if (res?.error) return void toast.error(res.error);
+      toast.success(
+        reparte ? "Reparto de coordinación guardado para el mes." : "Coordinación vuelta al default."
+      );
+      setOpen(false);
+      router.refresh();
+    });
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) resync();
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" className="gap-1.5">
+          <Users className="h-4 w-4" /> Coordinación
+          {coordinacion.split.length > 0 && (
+            <span className="ml-0.5 rounded-full bg-amber-100 px-1.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+              reparto
+            </span>
+          )}
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Coordinación de {periodLabel(periodo)}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <p className="text-[11px] text-muted-foreground">
+            La comisión de coordinación es el <strong>{basePct}%</strong> del abono
+            de cada cuenta con gestión de redes. Normalmente la cobra entera la
+            coordinadora de cada cuenta. Si este mes el rol se repartió, indicá cómo
+            se divide ese {basePct}% (solo afecta a {periodLabel(periodo)}).
+          </p>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => setReparte(false)}
+              className={cn(
+                "flex-1 rounded-md border px-3 py-1.5 text-sm",
+                !reparte ? "border-primary bg-primary/10" : "text-muted-foreground"
+              )}
+            >
+              Default ({basePct}% a c/coordinadora)
+            </button>
+            <button
+              onClick={() => setReparte(true)}
+              className={cn(
+                "flex-1 rounded-md border px-3 py-1.5 text-sm",
+                reparte ? "border-primary bg-primary/10" : "text-muted-foreground"
+              )}
+            >
+              Repartir este mes
+            </button>
+          </div>
+
+          {reparte && (
+            <div className="space-y-2">
+              {rows.map((row, i) => {
+                const efectivo = ((coordinacion.pct * (Number(row.share) || 0)) / 100) * 100;
+                return (
+                  <div key={i} className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <PersonSelect
+                        value={row.userId}
+                        onChange={(v) =>
+                          setRows(rows.map((r, j) => (j === i ? { ...r, userId: v } : r)))
+                        }
+                        options={teamOptions}
+                      />
+                    </div>
+                    <div className="flex w-24 items-center gap-1">
+                      <Input
+                        type="number"
+                        value={row.share || ""}
+                        onChange={(e) =>
+                          setRows(
+                            rows.map((r, j) =>
+                              j === i ? { ...r, share: Number(e.target.value) } : r
+                            )
+                          )
+                        }
+                        className="h-9"
+                      />
+                      <span className="text-xs text-muted-foreground">%</span>
+                    </div>
+                    <span className="w-16 shrink-0 text-right text-xs text-muted-foreground">
+                      ={efectivo % 1 === 0 ? efectivo : efectivo.toFixed(1)}%
+                    </span>
+                    {rows.length > 1 && (
+                      <button
+                        onClick={() => setRows(rows.filter((_, j) => j !== i))}
+                        className="text-muted-foreground hover:text-red-600"
+                        aria-label="Quitar"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+              <div className="flex items-center justify-between">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="gap-1.5 text-xs"
+                  onClick={() => setRows([...rows, { userId: "", share: 0 }])}
+                >
+                  <Plus className="h-3.5 w-3.5" /> Agregar persona
+                </Button>
+                <span
+                  className={cn(
+                    "text-xs",
+                    sumShare === 100 ? "text-emerald-600" : "text-amber-600"
+                  )}
+                >
+                  Suma: {sumShare}% {sumShare !== 100 && "(ideal 100%)"}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button onClick={save} disabled={pending}>
+            {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Guardar
           </Button>
         </DialogFooter>
       </DialogContent>

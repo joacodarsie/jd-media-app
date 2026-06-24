@@ -25,6 +25,9 @@ const PUBLIC_PATHS = [
   // la seguridad está en el `state` firmado.
   "/api/tiktok/callback",
   "/api/cron/",
+  // Páginas legales públicas (requeridas por TikTok/Meta para el alta de la app).
+  "/privacidad",
+  "/terminos",
 ];
 
 export async function updateSession(request: NextRequest) {

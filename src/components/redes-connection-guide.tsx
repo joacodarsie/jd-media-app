@@ -2,6 +2,7 @@ import { AtSign, Music2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { IgConnect } from "@/components/ig-connect";
 import { TiktokConnect } from "@/components/tiktok-connect";
+import { TiktokResults } from "@/components/tiktok-results";
 
 /**
  * Tarjeta del onboarding de Gestión de Redes: conexión de Instagram y TikTok con
@@ -102,7 +103,10 @@ export function RedesConnectionGuide({
             </Step>
           </ol>
           {tiktokOn ? (
-            <TiktokConnect clientId={clientId} connected={ttConnected} username={ttUsername} />
+            <>
+              <TiktokConnect clientId={clientId} connected={ttConnected} username={ttUsername} />
+              {ttConnected && <TiktokResults clientId={clientId} />}
+            </>
           ) : (
             <p className="rounded-lg border border-dashed bg-muted/20 p-3 text-xs text-muted-foreground">
               La conexión de TikTok todavía <b>no está habilitada</b> en la app

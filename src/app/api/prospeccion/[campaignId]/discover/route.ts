@@ -120,6 +120,8 @@ export async function POST(
           instagram: lead.instagram,
           sitio_web: lead.sitio_web,
           por_que: lead.por_que,
+          gancho: lead.gancho,
+          idea: lead.idea,
         };
         return await generateOutreachMessage(l, msgCtx);
       } catch (e) {
@@ -146,6 +148,8 @@ export async function POST(
       telefono: lead.telefono,
       email: lead.email,
       por_que: lead.por_que,
+      gancho: lead.gancho,
+      idea: lead.idea,
       fit_score: lead.fit_score,
       fuente_url: lead.fuente_url,
       mensaje,

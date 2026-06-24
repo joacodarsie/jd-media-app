@@ -20,6 +20,8 @@ export interface LeadForMessage {
   instagram: string | null;
   sitio_web: string | null;
   por_que: string | null;
+  gancho: string | null;
+  idea: string | null;
 }
 
 export interface MessageContext {
@@ -57,11 +59,14 @@ QUÉ OFRECEMOS EN ESTA CAMPAÑA: ${servicio}.
 ${channelInstruction(ctx.canal)}
 ${langInstruction(ctx.idioma)}
 
+ESTRUCTURA (clave para que respondan)
+1. ABRÍ con el GANCHO: una observación concreta y real de SU cuenta/negocio (el campo "Gancho"). Que la primera línea demuestre que miramos su perfil, no un copy genérico. Si no hay gancho, usá la señal de "Por qué"/descripción.
+2. OFRECÉ VALOR CONCRETO: presentá la idea puntual que le daríamos (el campo "Idea") como algo gratis y accionable —"te armé/pensé esto para vos"—, conectado a un resultado de negocio (más clientes, reservas, ventas).
+3. CTA SUAVE atado a la oferta: invitá a que le mandemos esa idea / un mini-análisis gratis, o a una charla corta de 15 min sin compromiso. La meta es que sea fácil decir "sí, contame".
+
 REGLAS DEL MENSAJE
-- Personalizalo de verdad con la señal concreta del negocio (lo que está en "Por qué es buen lead" y su descripción). Que se note que miramos SU cuenta/negocio, no un copy genérico.
-- Una sola idea de valor clara, conectada a un resultado de negocio (más clientes, más reservas, más ventas). Nada de listas de servicios.
-- Honesto y sin promesas mágicas. Sin exagerar métricas inventadas.
-- CTA suave: proponer una charla corta de 15 minutos sin compromiso, o preguntar si les interesa que les pasemos ideas.
+- Pedir una llamada en seco convierte poco: el anzuelo es el VALOR (la idea / el mini-análisis), no la reunión.
+- Una sola idea de valor, no una lista de servicios. Honesto, sin promesas mágicas ni métricas inventadas.
 - Nada de "estimado/a", nada robótico, nada de mayúsculas gritadas ni exceso de emojis (1 como mucho).
 - Devolvé SOLO el texto del mensaje, listo para enviar. Sin comillas, sin notas, sin opciones alternativas.`;
 }
@@ -74,6 +79,8 @@ function buildUser(lead: LeadForMessage): string {
   if (lead.instagram) parts.push(`Instagram: ${lead.instagram}`);
   if (lead.sitio_web) parts.push(`Web: ${lead.sitio_web}`);
   if (lead.por_que) parts.push(`Por qué es buen lead: ${lead.por_que}`);
+  if (lead.gancho) parts.push(`Gancho (citá esto, es lo específico de su cuenta): ${lead.gancho}`);
+  if (lead.idea) parts.push(`Idea para ofrecerle gratis: ${lead.idea}`);
   return parts.join("\n");
 }
 

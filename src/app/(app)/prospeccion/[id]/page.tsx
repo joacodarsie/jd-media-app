@@ -11,7 +11,7 @@ import { ProspectingDiscoverButton } from "@/components/prospecting-discover-but
 import { ProspectingGenerateAllButton } from "@/components/prospecting-generate-all-button";
 import { ProspectingManualLeadDialog } from "@/components/prospecting-manual-lead-dialog";
 import { ProspectingLeadCard, type LeadRow } from "@/components/prospecting-lead-card";
-import { channelLabel, langLabel, LEAD_ESTADOS } from "@/lib/prospecting/shared";
+import { channelLabel, langLabel, LEAD_ESTADOS, leadStats } from "@/lib/prospecting/shared";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +97,8 @@ export default async function CampaignDetailPage({
     (l) => !l.mensaje && l.estado !== "descartado"
   ).length;
 
+  const stats = leadStats(leads.map((l) => l.estado));
+
   return (
     <div className="space-y-5">
       <Link
@@ -161,6 +163,23 @@ export default async function CampaignDetailPage({
         </div>
       </div>
 
+      {/* Métricas del embudo */}
+      {stats.contactados > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          <Stat label="Contactados" value={`${stats.contactados}`} />
+          <Stat
+            label="Tasa de respuesta"
+            value={stats.tasaRespuesta != null ? `${stats.tasaRespuesta}%` : "—"}
+            sub={`${stats.respondieron} respondieron`}
+          />
+          <Stat
+            label="Conversión"
+            value={stats.tasaConversion != null ? `${stats.tasaConversion}%` : "—"}
+            sub={`${stats.ganados} ganados`}
+          />
+        </div>
+      )}
+
       {/* Acciones */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
@@ -200,6 +219,16 @@ export default async function CampaignDetailPage({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-xl border bg-card p-3 text-center">
+      <div className="text-2xl font-bold">{value}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      {sub && <div className="text-[11px] text-muted-foreground">{sub}</div>}
     </div>
   );
 }

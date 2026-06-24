@@ -34,6 +34,8 @@ export interface DiscoveredLead {
   telefono: string | null;
   email: string | null;
   por_que: string | null;
+  gancho: string | null;
+  idea: string | null;
   fit_score: number | null;
   fuente_url: string | null;
 }
@@ -80,10 +82,13 @@ Después de investigar, tu ÚLTIMO mensaje debe ser EXCLUSIVAMENTE un array JSON
   "instagram": string|null,        // handle (ej: @marca) o URL
   "telefono": string|null,         // internacional con + y código de país, o null
   "email": string|null,
-  "por_que": string|null,          // 1 frase: la señal concreta por la que es buen lead (ej: "Instagram con 1.2k seguidores sin postear hace 2 meses")
+  "por_que": string|null,          // 1 frase para NOSOTROS: por qué es buen lead (capacidad de pago + cuánto nos necesita)
+  "gancho": string|null,           // observación MUY específica y real de SU presencia digital, lista para citarle en el mensaje. Que se note que miramos su cuenta. Ej: "tenés 4.2k seguidores pero el último posteo es de hace 6 semanas" o "tus reels de obras tienen buen alcance pero no hay llamada a la acción ni web en la bio"
+  "idea": string|null,             // UNA idea concreta y accionable que le daríamos gratis como anzuelo (mejor que pedir una llamada). Ej: "una serie de reels 'antes y después' de tus trabajos" o "rehacer la bio con un CTA a WhatsApp"
   "fit_score": number,             // 0-100: cuán buen prospecto es (ajuste al cluster + cuánto nos necesita + capacidad de pago)
   "fuente_url": string|null
 }
+El "gancho" y la "idea" son lo más importante: tienen que ser ESPECÍFICOS de esa empresa (no sirven frases que valdrían para cualquiera). Si de verdad no pudiste ver su cuenta, poné null antes que inventar.
 Devolvé solo empresas con al menos UNA vía de contacto (web, IG, teléfono o email). Solo el array JSON.`;
 }
 
@@ -119,6 +124,8 @@ function safeParseArray(raw: string): DiscoveredLead[] {
       telefono: str(o.telefono),
       email: str(o.email),
       por_que: str(o.por_que),
+      gancho: str(o.gancho),
+      idea: str(o.idea),
       fit_score: fit != null ? Math.max(0, Math.min(100, Math.round(fit))) : null,
       fuente_url: str(o.fuente_url),
     });

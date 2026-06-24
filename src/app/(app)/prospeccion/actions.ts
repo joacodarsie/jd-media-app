@@ -206,7 +206,7 @@ export async function generateLeadMessage(id: string) {
   const { data: lead, error } = await supabase
     .from("prospecting_leads")
     .select(
-      "id, campaign_id, empresa, descripcion, ciudad, pais, instagram, sitio_web, por_que"
+      "id, campaign_id, empresa, descripcion, ciudad, pais, instagram, sitio_web, por_que, gancho, idea"
     )
     .eq("id", id)
     .single();
@@ -238,6 +238,8 @@ export async function generateLeadMessage(id: string) {
     instagram: l.instagram,
     sitio_web: l.sitio_web,
     por_que: l.por_que,
+    gancho: l.gancho,
+    idea: l.idea,
   };
   const msgCtx: MessageContext = {
     rubro: c.rubro,
@@ -276,7 +278,7 @@ export async function generateLeadFollowup(id: string) {
   const { data: lead, error } = await supabase
     .from("prospecting_leads")
     .select(
-      "id, campaign_id, empresa, descripcion, ciudad, pais, instagram, sitio_web, por_que, mensaje"
+      "id, campaign_id, empresa, descripcion, ciudad, pais, instagram, sitio_web, por_que, gancho, idea, mensaje"
     )
     .eq("id", id)
     .single();
@@ -309,6 +311,8 @@ export async function generateLeadFollowup(id: string) {
         instagram: l.instagram,
         sitio_web: l.sitio_web,
         por_que: l.por_que,
+        gancho: l.gancho,
+        idea: l.idea,
       },
       {
         rubro: c.rubro,
@@ -359,7 +363,9 @@ export async function generateAllMessages(campaignId: string) {
 
   const { data: leads } = await supabase
     .from("prospecting_leads")
-    .select("id, empresa, descripcion, ciudad, pais, instagram, sitio_web, por_que")
+    .select(
+      "id, empresa, descripcion, ciudad, pais, instagram, sitio_web, por_que, gancho, idea"
+    )
     .eq("campaign_id", campaignId)
     .is("mensaje", null)
     .neq("estado", "descartado");
@@ -388,6 +394,8 @@ export async function generateAllMessages(campaignId: string) {
             instagram: l.instagram,
             sitio_web: l.sitio_web,
             por_que: l.por_que,
+            gancho: l.gancho,
+            idea: l.idea,
           },
           msgCtx
         );

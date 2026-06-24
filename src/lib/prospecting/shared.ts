@@ -26,6 +26,38 @@ export const LEAD_ESTADOS = [
 
 export type LeadEstado = (typeof LEAD_ESTADOS)[number]["value"];
 
+/** Días que esperamos antes de sugerir un seguimiento a un lead sin respuesta. */
+export const SEGUIMIENTO_DIAS = 3;
+
+/**
+ * Embudo de una campaña a partir de los estados de sus leads. "Contactados" son
+ * los que ya recibieron al menos el primer mensaje (de ahí en adelante).
+ */
+export function leadStats(estados: string[]) {
+  const contactados = estados.filter((e) =>
+    ["contactado", "respondio", "reunion", "ganado"].includes(e)
+  ).length;
+  const respondieron = estados.filter((e) =>
+    ["respondio", "reunion", "ganado"].includes(e)
+  ).length;
+  const ganados = estados.filter((e) => e === "ganado").length;
+  return {
+    contactados,
+    respondieron,
+    ganados,
+    tasaRespuesta: contactados ? Math.round((respondieron / contactados) * 100) : null,
+    tasaConversion: contactados ? Math.round((ganados / contactados) * 100) : null,
+  };
+}
+
+/** Días enteros transcurridos desde una fecha ISO (o null si no hay/!válida). */
+export function diasDesde(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const ms = Date.now() - new Date(iso).getTime();
+  if (Number.isNaN(ms)) return null;
+  return Math.floor(ms / 86_400_000);
+}
+
 export const channelLabel = (v: string) =>
   PROSPECTING_CHANNELS.find((c) => c.value === v)?.label ?? v;
 export const langLabel = (v: string) =>

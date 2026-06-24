@@ -1,11 +1,16 @@
 import Link from "next/link";
-import { Radar, ArrowRight, MapPin, Send } from "lucide-react";
+import { Radar, ArrowRight, MapPin, Send, Clock } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ProspectingCampaignDialog } from "@/components/prospecting-campaign-dialog";
-import { channelLabel } from "@/lib/prospecting/shared";
+import {
+  channelLabel,
+  leadStats,
+  diasDesde,
+  SEGUIMIENTO_DIAS,
+} from "@/lib/prospecting/shared";
 
 export const dynamic = "force-dynamic";
 
@@ -34,16 +39,37 @@ export default async function ProspeccionPage() {
     created_at: string;
   }[];
 
-  // Conteo de leads por campaña (total + ganados).
+  // Leads para conteos, métricas por campaña y "para seguir".
   const { data: leads } = await admin
     .from("prospecting_leads")
-    .select("campaign_id, estado");
+    .select("id, empresa, campaign_id, estado, contactado_at");
+  type LeadLite = {
+    id: string;
+    empresa: string;
+    campaign_id: string;
+    estado: string;
+    contactado_at: string | null;
+  };
+  const leadRows = (leads ?? []) as LeadLite[];
+
   const totalBy = new Map<string, number>();
   const wonBy = new Map<string, number>();
-  for (const l of (leads ?? []) as { campaign_id: string; estado: string }[]) {
+  const estadosBy = new Map<string, string[]>();
+  for (const l of leadRows) {
     totalBy.set(l.campaign_id, (totalBy.get(l.campaign_id) ?? 0) + 1);
     if (l.estado === "ganado") wonBy.set(l.campaign_id, (wonBy.get(l.campaign_id) ?? 0) + 1);
+    if (!estadosBy.has(l.campaign_id)) estadosBy.set(l.campaign_id, []);
+    estadosBy.get(l.campaign_id)!.push(l.estado);
   }
+  const nombreCampaña = new Map(rows.map((c) => [c.id, c.nombre]));
+
+  // "Para seguir": contactados sin respuesta hace ≥ SEGUIMIENTO_DIAS días.
+  const paraSeguir = leadRows
+    .filter((l) => l.estado === "contactado")
+    .map((l) => ({ ...l, dias: diasDesde(l.contactado_at) }))
+    .filter((l) => l.dias != null && l.dias >= SEGUIMIENTO_DIAS)
+    .sort((a, b) => (b.dias ?? 0) - (a.dias ?? 0))
+    .slice(0, 12);
 
   const { data: svc } = await admin
     .from("services")
@@ -69,6 +95,38 @@ export default async function ProspeccionPage() {
         <ProspectingCampaignDialog mode="create" services={services} />
       </div>
 
+      {paraSeguir.length > 0 && (
+        <div className="rounded-xl border border-amber-300/60 bg-amber-50/50 p-4 dark:border-amber-500/30 dark:bg-amber-500/5">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-amber-800 dark:text-amber-200">
+            <Clock className="h-4 w-4" /> Para seguir ({paraSeguir.length})
+          </h2>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Contactados hace {SEGUIMIENTO_DIAS}+ días sin respuesta. Mandales el
+            seguimiento (en la campaña, botón <b>Generar seguimiento</b>).
+          </p>
+          <ul className="divide-y divide-amber-200/60 dark:divide-amber-500/20">
+            {paraSeguir.map((l) => (
+              <li key={l.id}>
+                <Link
+                  href={`/prospeccion/${l.campaign_id}`}
+                  className="flex items-center justify-between gap-3 py-1.5 text-sm hover:opacity-80"
+                >
+                  <span className="min-w-0 truncate font-medium">{l.empresa}</span>
+                  <span className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+                    <span className="hidden truncate sm:inline">
+                      {nombreCampaña.get(l.campaign_id)}
+                    </span>
+                    <Badge className="bg-amber-200 text-amber-900 dark:bg-amber-500/40 dark:text-amber-100">
+                      hace {l.dias}d
+                    </Badge>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {rows.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
@@ -88,6 +146,7 @@ export default async function ProspeccionPage() {
           {rows.map((c) => {
             const total = totalBy.get(c.id) ?? 0;
             const won = wonBy.get(c.id) ?? 0;
+            const stats = leadStats(estadosBy.get(c.id) ?? []);
             return (
               <Link
                 key={c.id}
@@ -110,8 +169,13 @@ export default async function ProspeccionPage() {
                   </span>
                   {c.estado === "pausada" && <Badge className="bg-muted text-muted-foreground">pausada</Badge>}
                 </div>
-                <div className="mt-3 flex gap-3 text-sm">
+                <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm">
                   <span><b>{total}</b> leads</span>
+                  {stats.tasaRespuesta != null && (
+                    <span className="text-muted-foreground">
+                      <b>{stats.tasaRespuesta}%</b> respuesta
+                    </span>
+                  )}
                   {won > 0 && <span className="text-emerald-600 dark:text-emerald-400"><b>{won}</b> ganados</span>}
                 </div>
               </Link>

@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button";
 import { InvoiceFormDialog } from "@/components/invoice-form-dialog";
 import { PaymentFormDialog } from "@/components/payment-form-dialog";
 import { ExpenseFormDialog } from "@/components/expense-form-dialog";
+import { FinancialAdvisorCard, type AdviceData } from "@/components/financial-advisor-card";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -224,6 +225,17 @@ export default async function FinanzasPage({
   const gastosAtras = gastosPend.filter((e) => e.fecha_programada && e.fecha_programada < today);
   const totalGastosPend = gastosPend.reduce((a, e) => a + ars(e.monto, e.moneda), 0);
 
+  // Asesor financiero (solo admin). Resiliente si falta la migración 0102.
+  let advice: AdviceData | null = null;
+  if (isAdmin) {
+    const { data: adviceRow } = await admin
+      .from("financial_advice")
+      .select("score, estado, fortalezas, riesgos, recomendaciones, generado_at")
+      .eq("periodo", period)
+      .maybeSingle();
+    if (adviceRow) advice = adviceRow as unknown as AdviceData;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -319,6 +331,9 @@ export default async function FinanzasPage({
           )}
         </CardContent>
       </Card>
+
+      {/* Asesor financiero con IA (solo admin) */}
+      {isAdmin && <FinancialAdvisorCard period={period} advice={advice} />}
 
       {/* Alertas (vencidos / atrasados, todo el histórico) */}
       {(cobrosVenc.length > 0 || pagosAtras.length > 0 || gastosAtras.length > 0) && (

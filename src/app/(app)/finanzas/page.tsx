@@ -11,6 +11,7 @@ import {
   Users,
   Megaphone,
   HandCoins,
+  ChevronDown,
 } from "lucide-react";
 import { HelpTrigger } from "@/components/help-trigger";
 import { requireFeature } from "@/lib/auth";
@@ -468,12 +469,13 @@ export default async function FinanzasPage({
         </div>
       </div>
 
-      {/* ===== Análisis (secundario) ===== */}
-      <div>
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Análisis
-        </h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {/* ===== Análisis (secundario, colapsado para no marear) ===== */}
+      <details className="group rounded-xl border bg-card">
+        <summary className="flex cursor-pointer list-none items-center justify-between p-4 text-sm font-semibold text-muted-foreground hover:text-foreground">
+          <span className="uppercase tracking-wide">Análisis detallado</span>
+          <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="grid gap-3 p-4 pt-0 sm:grid-cols-2 lg:grid-cols-3">
           <AnalisisLink href="/finanzas/movimientos" title="Movimientos" desc="Historial completo de todo lo que entró y salió, mes a mes." />
           <AnalisisLink href="/finanzas/salud" title="Salud de la agencia" desc="Margen real por cliente (ingreso − costo)." />
           <AnalisisLink href="/finanzas/rentabilidad" title="Rentabilidad por cliente" desc="Cuánto deja cada cliente neto." />
@@ -486,7 +488,7 @@ export default async function FinanzasPage({
             <AnalisisLink href="/finanzas/deudas" title="Deudas" desc="Lo que debés, para ver tu posición real. Privado." />
           )}
         </div>
-      </div>
+      </details>
     </div>
   );
 }

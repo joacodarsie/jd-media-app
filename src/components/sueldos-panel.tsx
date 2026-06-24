@@ -7,11 +7,14 @@ import {
   Loader2,
   Plus,
   Trash2,
+  Pencil,
   Copy,
   ChevronLeft,
   ChevronRight,
   Check,
   Percent,
+  Sparkles,
+  X,
 } from "lucide-react";
 import {
   Dialog,
@@ -22,6 +25,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,9 +49,13 @@ export interface CommissionConfig {
 }
 import {
   addPayrollItem,
+  updatePayrollItem,
   deletePayrollItem,
   registerSalaryPayment,
+  proposeAdjustments,
+  applyAdjustments,
 } from "@/app/(app)/coordinacion/sueldos/actions";
+import type { ProposedAdjustment } from "@/lib/payroll-adjustments";
 import { cn } from "@/lib/utils";
 
 interface ClientOption {
@@ -118,6 +126,7 @@ export function SueldosPanel({
             <div className="text-xl font-bold tabular-nums">{fmt(totalNomina)}</div>
           </div>
           <div className="flex items-center gap-2">
+            <AjustesIADialog periodo={periodo} />
             <CommissionDialog periodo={periodo} clientOptions={clientOptions} teamOptions={teamOptions} commission={commission} />
           </div>
         </div>
@@ -273,6 +282,7 @@ function PersonCard({
                   <span className={cn("tabular-nums", it.monto < 0 && "text-red-600")}>
                     {fmt(it.monto)}
                   </span>
+                  <EditItemDialog item={it} clientOptions={clientOptions} />
                   <button
                     onClick={() => removeItem(it.id)}
                     disabled={pending}
@@ -614,6 +624,271 @@ function ExtraItemDialog({
             {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Agregar
           </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Diálogo: editar un ítem manual existente
+// ─────────────────────────────────────────────────────────────────────────
+function EditItemDialog({
+  item,
+  clientOptions,
+}: {
+  item: PersonPayroll["manualItems"][number];
+  clientOptions: ClientOption[];
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [pending, start] = useTransition();
+  const [concepto, setConcepto] = useState(item.concepto);
+  const [monto, setMonto] = useState(item.monto);
+  const [clienteId, setClienteId] = useState(item.clienteId ?? "");
+
+  function submit() {
+    if (!concepto.trim()) return void toast.error("Escribí un concepto.");
+    if (!monto) return void toast.error("El monto no puede ser cero.");
+    start(async () => {
+      const res = await updatePayrollItem({
+        id: item.id,
+        concepto: concepto.trim(),
+        monto,
+        clienteId: clienteId || null,
+      });
+      if (res?.error) return void toast.error(res.error);
+      toast.success("Ítem actualizado.");
+      setOpen(false);
+      router.refresh();
+    });
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) {
+          // Re-sincronizar al abrir, por si el ítem cambió.
+          setConcepto(item.concepto);
+          setMonto(item.monto);
+          setClienteId(item.clienteId ?? "");
+        }
+      }}
+    >
+      <DialogTrigger asChild>
+        <button
+          className="text-muted-foreground hover:text-primary"
+          aria-label="Editar ítem"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Editar ítem ({item.tipo})</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Concepto</Label>
+            <Input value={concepto} onChange={(e) => setConcepto(e.target.value)} />
+          </div>
+          <div>
+            <Label>Monto {item.tipo === "ajuste" && "(puede ser negativo)"}</Label>
+            <Input
+              type="number"
+              value={monto || ""}
+              onChange={(e) => setMonto(Number(e.target.value))}
+              placeholder="$"
+            />
+          </div>
+          <div>
+            <Label>Cliente (opcional)</Label>
+            <Select value={clienteId} onValueChange={setClienteId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sin cliente" />
+              </SelectTrigger>
+              <SelectContent>
+                {clientOptions.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={submit} disabled={pending}>
+            {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Guardar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Diálogo: ajustes del mes con IA (criollo → ítems → preview → aplicar)
+// ─────────────────────────────────────────────────────────────────────────
+function AjustesIADialog({ periodo }: { periodo: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [pending, start] = useTransition();
+  const [texto, setTexto] = useState("");
+  const [items, setItems] = useState<ProposedAdjustment[] | null>(null);
+  const [nota, setNota] = useState("");
+
+  function reset() {
+    setTexto("");
+    setItems(null);
+    setNota("");
+  }
+
+  function proponer() {
+    if (!texto.trim()) return void toast.error("Escribí qué ajustes querés cargar.");
+    start(async () => {
+      const res = await proposeAdjustments({ periodo, instrucciones: texto });
+      if (res?.error) return void toast.error(res.error);
+      if (res?.ok) {
+        setItems(res.items);
+        setNota(res.nota ?? "");
+      }
+    });
+  }
+
+  function aplicar() {
+    if (!items || items.length === 0) return;
+    start(async () => {
+      const res = await applyAdjustments({ periodo, items });
+      if (res?.error) return void toast.error(res.error);
+      toast.success(`${res?.count ?? items.length} ítem(s) cargado(s).`);
+      reset();
+      setOpen(false);
+      router.refresh();
+    });
+  }
+
+  const total = items?.reduce((a, it) => a + it.monto, 0) ?? 0;
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) reset();
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" className="gap-1.5">
+          <Sparkles className="h-4 w-4" /> Ajustes con IA
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Ajustes del mes con IA</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <p className="text-[11px] text-muted-foreground">
+            Escribí en criollo los extras y ajustes del mes y la IA los arma. Ej:
+            <em>
+              {" "}
+              &ldquo;a Brisa sumale 20 mil por carruseles extra, a Guille
+              descontale un adelanto de 50 mil&rdquo;
+            </em>
+            . Revisás antes de aplicar.
+          </p>
+          <Textarea
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            rows={3}
+            placeholder="Ej: a Luz un premio de 30 mil por el cierre de mes…"
+            disabled={pending}
+          />
+
+          {items && (
+            <div className="space-y-2 rounded-md border bg-muted/30 p-2">
+              {nota && (
+                <p className="px-1 text-[11px] italic text-muted-foreground">{nota}</p>
+              )}
+              {items.length === 0 ? (
+                <p className="px-1 text-sm text-muted-foreground">
+                  No quedaron ítems. Editá el texto y proponé de nuevo.
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {items.map((it, i) => (
+                    <li
+                      key={i}
+                      className="flex items-center justify-between gap-2 rounded bg-card px-2 py-1.5 text-sm"
+                    >
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <span
+                          className={cn(
+                            "shrink-0 rounded px-1 text-[9px] font-semibold uppercase",
+                            it.tipo === "ajuste"
+                              ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                              : "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300"
+                          )}
+                        >
+                          {it.tipo}
+                        </span>
+                        <span className="truncate">
+                          <span className="font-medium">{firstName(it.nombre)}</span>{" "}
+                          <span className="text-xs text-muted-foreground">
+                            {it.cliente ? `${it.cliente} — ` : ""}
+                            {it.concepto}
+                          </span>
+                        </span>
+                      </span>
+                      <span className="flex shrink-0 items-center gap-1.5">
+                        <span className={cn("tabular-nums", it.monto < 0 && "text-red-600")}>
+                          {fmt(it.monto)}
+                        </span>
+                        <button
+                          onClick={() => setItems(items.filter((_, j) => j !== i))}
+                          className="text-muted-foreground hover:text-red-600"
+                          aria-label="Quitar de la propuesta"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {items.length > 0 && (
+                <div className="flex items-center justify-between border-t px-1 pt-1.5 text-sm font-semibold">
+                  <span>Total a cargar</span>
+                  <span className="tabular-nums">{fmt(total)}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          {items && items.length > 0 ? (
+            <>
+              <Button variant="outline" onClick={() => setItems(null)} disabled={pending}>
+                Volver
+              </Button>
+              <Button onClick={aplicar} disabled={pending}>
+                {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Aplicar {items.length} ítem(s)
+              </Button>
+            </>
+          ) : (
+            <Button onClick={proponer} disabled={pending}>
+              {pending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="mr-2 h-4 w-4" />
+              )}
+              Proponer ítems
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -1,12 +1,14 @@
 import { describe, it, expect } from "vitest";
 import {
   computeAutoPayroll,
+  computeContentPayroll,
   closerVolumeBonusPct,
   selectFirstMonthCommissions,
   encodeCommissionNote,
   decodeCommissionNote,
   type PayrollClient,
   type PayrollService,
+  type PayrollPublication,
 } from "@/lib/payroll";
 import { DEFAULT_AGENCY_SETTINGS } from "@/lib/coordinacion";
 
@@ -41,7 +43,7 @@ function servicio(over: Partial<PayrollService> = {}): PayrollService {
 }
 
 describe("computeAutoPayroll", () => {
-  it("reparte CM, diseño y edición a cada persona asignada", () => {
+  it("paga el CM por pack (diseño/edición ya no van acá)", () => {
     const out = computeAutoPayroll(
       [cliente({ cm_id: "cm1", disenador_id: "dis1", audiovisual_id: "av1" })],
       [servicio()],
@@ -49,11 +51,13 @@ describe("computeAutoPayroll", () => {
       null
     );
     expect(out.get("cm1")?.[0].monto).toBe(r.cm.Presencia);
-    expect(out.get("dis1")?.[0].monto).toBe(4 * r.diseno_pieza);
-    expect(out.get("av1")?.[0].monto).toBe(4 * r.edicion_reel);
+    expect(out.get("cm1")?.[0].kind).toBe("cm");
+    // El diseño y la edición se pagan por contenido real, no acá.
+    expect(out.get("dis1")?.some((l) => l.kind === "diseno")).not.toBe(true);
+    expect(out.has("av1")).toBe(false);
   });
 
-  it("el acuerdo fijo (override) reemplaza CM/diseño/edición", () => {
+  it("el acuerdo fijo (override) reemplaza el CM", () => {
     const out = computeAutoPayroll(
       [cliente({ cm_id: "cm1", disenador_id: "dis1", audiovisual_id: "av1" })],
       [servicio({ costo_override: 120_000, costo_override_user: "u1" })],
@@ -62,9 +66,8 @@ describe("computeAutoPayroll", () => {
     );
     expect(out.get("u1")?.[0].monto).toBe(120_000);
     expect(out.get("u1")?.[0].kind).toBe("override");
-    // No se generan las líneas separadas.
+    // No se genera la línea de CM separada.
     expect(out.has("cm1")).toBe(false);
-    expect(out.has("dis1")).toBe(false);
   });
 
   it("media buyer cobra en toda cuenta con gestión de redes (pauta incluida)", () => {
@@ -98,6 +101,90 @@ describe("computeAutoPayroll", () => {
     );
     expect(out.has("mb1")).toBe(false);
     expect(out.has("fallbackMB")).toBe(false);
+  });
+});
+
+describe("computeContentPayroll", () => {
+  const periodo = "2026-06";
+  function pub(over: Partial<PayrollPublication> = {}): PayrollPublication {
+    return {
+      cliente_id: "c1",
+      tipo: "post",
+      estado: "publicado",
+      fecha_publicacion: "2026-06-10T12:00:00Z",
+      audiovisual_id: null,
+      ...over,
+    };
+  }
+
+  it("paga diseño por post/carrusel reales al diseñador de la cuenta", () => {
+    const out = computeContentPayroll(
+      [cliente({ disenador_id: "dis1" })],
+      [pub({ tipo: "post" }), pub({ tipo: "carrusel" }), pub({ tipo: "post" })],
+      new Set(),
+      r,
+      periodo
+    );
+    const diseno = out.get("dis1")?.find((l) => l.kind === "diseno");
+    expect(diseno?.monto).toBe(3 * r.diseno_pieza);
+    expect(diseno?.concepto).toContain("3 piezas");
+  });
+
+  it("paga edición al editor de cada reel + portada al diseñador", () => {
+    const out = computeContentPayroll(
+      [cliente({ disenador_id: "dis1", audiovisual_id: "avCuenta" })],
+      [
+        pub({ tipo: "reel", audiovisual_id: "av1" }),
+        pub({ tipo: "reel", audiovisual_id: "av1" }),
+        pub({ tipo: "video", audiovisual_id: null }), // cae al editor de la cuenta
+      ],
+      new Set(),
+      r,
+      periodo
+    );
+    expect(out.get("av1")?.find((l) => l.kind === "edicion")?.monto).toBe(2 * r.edicion_reel);
+    expect(out.get("avCuenta")?.find((l) => l.kind === "edicion")?.monto).toBe(r.edicion_reel);
+    // 3 reels → 3 portadas al diseñador.
+    expect(out.get("dis1")?.find((l) => l.concepto.startsWith("Portadas"))?.monto).toBe(
+      3 * r.portada_reel
+    );
+  });
+
+  it("solo cuenta estados aprobado/publicado del período", () => {
+    const out = computeContentPayroll(
+      [cliente({ disenador_id: "dis1" })],
+      [
+        pub({ tipo: "post", estado: "aprobado" }),
+        pub({ tipo: "post", estado: "en_diseno" }), // no cuenta
+        pub({ tipo: "post", fecha_publicacion: "2026-05-30T12:00:00Z" }), // otro mes
+      ],
+      new Set(),
+      r,
+      periodo
+    );
+    expect(out.get("dis1")?.find((l) => l.kind === "diseno")?.monto).toBe(r.diseno_pieza);
+  });
+
+  it("no paga contenido de cuentas con acuerdo fijo (override)", () => {
+    const out = computeContentPayroll(
+      [cliente({ disenador_id: "dis1" })],
+      [pub({ tipo: "post" }), pub({ tipo: "reel", audiovisual_id: "av1" })],
+      new Set(["c1"]),
+      r,
+      periodo
+    );
+    expect(out.size).toBe(0);
+  });
+
+  it("las historias no se pagan aparte (las cubre la CM)", () => {
+    const out = computeContentPayroll(
+      [cliente({ disenador_id: "dis1", cm_id: "cm1" })],
+      [pub({ tipo: "historia" })],
+      new Set(),
+      r,
+      periodo
+    );
+    expect(out.size).toBe(0);
   });
 });
 

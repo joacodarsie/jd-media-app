@@ -1,15 +1,16 @@
-// Calculador de nómina por persona. Deriva del MISMO modelo de tarifas que el
-// panorama de Coordinación, atribuyendo cada componente del costo de producción
-// a la persona asignada en la cuenta:
-//   - CM por pack         → clients.cm_id
-//   - Diseño por pieza    → clients.disenador_id
-//   - Edición por reel    → clients.audiovisual_id
+// Calculador de nómina por persona. Atribuye cada componente del costo de
+// producción a la persona asignada en la cuenta:
+//   - CM por pack         → clients.cm_id  (incluye historias)
 //   - Media buyer por pack→ clients.media_buyer_id (gestor de pauta de la cuenta),
 //       con fallback al rol paid_media. La gestión de campañas de Meta va
 //       INCLUIDA en el servicio de gestión de redes: toda cuenta con gestión
 //       genera el pago de media buyer (no depende de un servicio de pauta aparte).
 //   - Acuerdo fijo (override) → client_services.costo_override_user (monto completo)
-// El total de la nómina auto debe coincidir con el costo del panorama.
+//
+// El DISEÑO y la EDICIÓN ya NO se pagan por el pack contratado sino por el
+// contenido REAL producido en el mes (publicaciones aprobadas/publicadas):
+// ver `computeContentPayroll`. Así, una cuenta que produjo menos paga menos.
+// El CM y el media buyer siguen siendo por pack (servicio mensual fijo).
 
 import {
   mbCost,
@@ -50,6 +51,7 @@ export interface PersonPayroll {
     concepto: string;
     monto: number;
     cliente: string | null;
+    clienteId: string | null;
   }[];
   total: number;
   registrado: boolean;
@@ -112,9 +114,6 @@ export function computeAutoPayroll(
 
     if (gestion) {
       const pack = (gestion.pack ?? "Personalizado") as RatePack;
-      const pd = gestion.pack_detalle ?? {};
-      const posts = Number(pd.posts ?? 0);
-      const reels = Number(pd.reels ?? 0);
 
       if (gestion.costo_override != null) {
         // Acuerdo particular: una sola persona cobra un fijo por toda la gestión.
@@ -126,6 +125,8 @@ export function computeAutoPayroll(
           kind: "override",
         });
       } else {
+        // CM por pack (incluye historias). Diseño y edición NO se pagan acá:
+        // se pagan por contenido real en computeContentPayroll.
         add(c.cm_id, {
           clienteId: c.id,
           cliente: c.nombre,
@@ -133,34 +134,6 @@ export function computeAutoPayroll(
           monto: rates.cm[pack] ?? 0,
           kind: "cm",
         });
-        if (posts > 0) {
-          add(c.disenador_id, {
-            clienteId: c.id,
-            cliente: c.nombre,
-            concepto: `Diseño · ${posts} ${posts === 1 ? "pieza" : "piezas"}`,
-            monto: posts * rates.diseno_pieza,
-            kind: "diseno",
-          });
-        }
-        if (reels > 0) {
-          add(c.audiovisual_id, {
-            clienteId: c.id,
-            cliente: c.nombre,
-            concepto: `Edición · ${reels} ${reels === 1 ? "reel" : "reels"}`,
-            monto: reels * rates.edicion_reel,
-            kind: "edicion",
-          });
-          // La diseñadora cobra la portada de cada reel.
-          if (rates.portada_reel > 0) {
-            add(c.disenador_id, {
-              clienteId: c.id,
-              cliente: c.nombre,
-              concepto: `Portadas · ${reels} ${reels === 1 ? "reel" : "reels"}`,
-              monto: reels * rates.portada_reel,
-              kind: "diseno",
-            });
-          }
-        }
       }
     }
 
@@ -176,6 +149,119 @@ export function computeAutoPayroll(
         concepto: `Media buyer ${pack}`,
         monto: mbCost(pack, rates),
         kind: "media_buyer",
+      });
+    }
+  }
+
+  return out;
+}
+
+/** Publicación tal cual la necesita el cálculo de nómina por contenido. */
+export interface PayrollPublication {
+  cliente_id: string;
+  tipo: string; // post | reel | carrusel | historia | video | otro
+  estado: string; // ... | aprobado | publicado
+  fecha_publicacion: string | null;
+  /** Editor/a del reel (puede diferir del audiovisual de la cuenta). */
+  audiovisual_id: string | null;
+}
+
+/** Estados que cuentan como contenido entregado y pagable. */
+const CONTENT_PAYABLE_STATES = new Set(["aprobado", "publicado"]);
+
+/**
+ * Calcula las líneas de DISEÑO y EDICIÓN por el contenido REAL del mes, en vez
+ * de por el pack contratado. Cuenta las publicaciones aprobadas/publicadas cuya
+ * `fecha_publicacion` cae en el período:
+ *   - post + carrusel → diseño (clients.disenador_id) · diseno_pieza c/u
+ *   - reel + video    → edición (publication.audiovisual_id, fallback al de la
+ *                       cuenta) · edicion_reel c/u + portada (disenador_id) · portada_reel
+ *   - historia / otro → no se pagan aparte (las cubre la CM por pack)
+ *
+ * Las cuentas con acuerdo fijo (override) se saltean: ese pago cubre toda la
+ * gestión. Función pura → testeable sin DB.
+ */
+export function computeContentPayroll(
+  clients: PayrollClient[],
+  publications: PayrollPublication[],
+  overrideClientIds: Set<string>,
+  rates: AgencyRates,
+  periodo: string
+): Map<string, PayrollLine[]> {
+  const clientById = new Map(clients.map((c) => [c.id, c]));
+
+  // Agregadores por cuenta (y por editor en el caso de edición).
+  const disenoCount = new Map<string, number>(); // clienteId → piezas (post+carrusel)
+  const portadaCount = new Map<string, number>(); // clienteId → reels (portadas)
+  const edicionCount = new Map<string, Map<string, number>>(); // clienteId → editorId → reels
+
+  for (const p of publications) {
+    if (!CONTENT_PAYABLE_STATES.has(p.estado)) continue;
+    if ((p.fecha_publicacion ?? "").slice(0, 7) !== periodo) continue;
+    const c = clientById.get(p.cliente_id);
+    if (!c) continue; // cuenta inactiva o interna
+    if (overrideClientIds.has(p.cliente_id)) continue; // acuerdo fijo cubre todo
+
+    if (p.tipo === "post" || p.tipo === "carrusel") {
+      disenoCount.set(p.cliente_id, (disenoCount.get(p.cliente_id) ?? 0) + 1);
+    } else if (p.tipo === "reel" || p.tipo === "video") {
+      portadaCount.set(p.cliente_id, (portadaCount.get(p.cliente_id) ?? 0) + 1);
+      const editorId = p.audiovisual_id ?? c.audiovisual_id;
+      if (editorId) {
+        if (!edicionCount.has(p.cliente_id)) edicionCount.set(p.cliente_id, new Map());
+        const m = edicionCount.get(p.cliente_id)!;
+        m.set(editorId, (m.get(editorId) ?? 0) + 1);
+      }
+    }
+    // historia / otro: las cubre la CM por pack, no se pagan aparte.
+  }
+
+  const out = new Map<string, PayrollLine[]>();
+  const add = (userId: string | null, line: PayrollLine) => {
+    if (!userId) return;
+    if (!out.has(userId)) out.set(userId, []);
+    out.get(userId)!.push(line);
+  };
+
+  // Diseño (post + carrusel) → diseñador/a de la cuenta.
+  for (const [clienteId, count] of disenoCount) {
+    const c = clientById.get(clienteId)!;
+    if (count <= 0) continue;
+    add(c.disenador_id, {
+      clienteId,
+      cliente: c.nombre,
+      concepto: `Diseño · ${count} ${count === 1 ? "pieza" : "piezas"}`,
+      monto: count * rates.diseno_pieza,
+      kind: "diseno",
+    });
+  }
+
+  // Portadas de reel → diseñador/a de la cuenta.
+  if (rates.portada_reel > 0) {
+    for (const [clienteId, count] of portadaCount) {
+      const c = clientById.get(clienteId)!;
+      if (count <= 0) continue;
+      add(c.disenador_id, {
+        clienteId,
+        cliente: c.nombre,
+        concepto: `Portadas · ${count} ${count === 1 ? "reel" : "reels"}`,
+        monto: count * rates.portada_reel,
+        kind: "diseno",
+      });
+    }
+  }
+
+  // Edición (reel + video) → editor/a de cada pieza.
+  for (const [clienteId, byEditor] of edicionCount) {
+    const c = clientById.get(clienteId)!;
+    for (const [editorId, count] of byEditor) {
+      if (count <= 0) continue;
+      add(editorId, {
+        clienteId,
+        cliente: c.nombre,
+        concepto: `Edición · ${count} ${count === 1 ? "reel" : "reels"}`,
+        monto: count * rates.edicion_reel,
+        kind: "edicion",
       });
     }
   }

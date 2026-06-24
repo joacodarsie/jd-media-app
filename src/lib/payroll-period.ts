@@ -6,17 +6,20 @@
 // self-service de cada colaborador (/mi-perfil), sin duplicar el cálculo.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { nextPeriod } from "./finanzas";
 import { mergeSettings, serviceDeliveryCost, type AgencySettings } from "./coordinacion";
 import { SERVICE_TYPE_LABEL } from "./constants";
 import { computeJornadaSplit } from "./jornada";
 import {
   computeAutoPayroll,
+  computeContentPayroll,
   closerVolumeBonusPct,
   selectFirstMonthCommissions,
   decodeCommissionNote,
   COMERCIAL_FIXED_MENSUAL,
   type PayrollClient,
   type PayrollService,
+  type PayrollPublication,
   type PayrollLine,
   type PersonPayroll,
 } from "./payroll";
@@ -56,6 +59,7 @@ export async function buildPeriodPayroll(
     { data: itemsRaw },
     { data: paymentsRaw },
     { data: sessionsRaw },
+    { data: pubsRaw },
   ] = await Promise.all([
     admin.from("agency_settings").select("packs, rates").eq("id", 1).maybeSingle(),
     admin
@@ -84,6 +88,13 @@ export async function buildPeriodPayroll(
       .from("production_sessions")
       .select("id, fecha, monto, cliente_id, lugar, asistentes")
       .eq("periodo", periodo),
+    // Publicaciones aprobadas/publicadas del período → pago por contenido real.
+    admin
+      .from("publications")
+      .select("cliente_id, tipo, estado, fecha_publicacion, audiovisual_id")
+      .in("estado", ["aprobado", "publicado"])
+      .gte("fecha_publicacion", `${periodo}-01`)
+      .lt("fecha_publicacion", `${nextPeriod(periodo)}-01`),
   ]);
 
   const settings: AgencySettings = mergeSettings(settingsRow);
@@ -118,6 +129,27 @@ export async function buildPeriodPayroll(
 
   // ── Nómina automática (modelo de tarifas) ──
   const autoByUser = computeAutoPayroll(clients, services, settings.rates, fallbackMediaBuyer);
+
+  // ── Diseño y edición por contenido REAL del mes ──
+  // Las cuentas con acuerdo fijo (override) cobran un monto único que cubre toda
+  // la gestión: no se les paga contenido aparte.
+  const overrideClientIds = new Set(
+    services
+      .filter((s) => s.tipo === "gestion_redes" && s.costo_override != null)
+      .map((s) => s.cliente_id)
+  );
+  const publications = (pubsRaw ?? []) as PayrollPublication[];
+  const contentByUser = computeContentPayroll(
+    clients,
+    publications,
+    overrideClientIds,
+    settings.rates,
+    periodo
+  );
+  for (const [uid, lines] of contentByUser) {
+    if (!autoByUser.has(uid)) autoByUser.set(uid, []);
+    autoByUser.get(uid)!.push(...lines);
+  }
 
   // Fijo mensual del/los comercial(es) por gestión de mensajes y leads.
   const comercialFijo = settings.rates.comercial_fijo ?? COMERCIAL_FIXED_MENSUAL;
@@ -317,6 +349,7 @@ export async function buildPeriodPayroll(
         concepto: i.concepto,
         monto: Number(i.monto),
         cliente: i.cliente_id ? clientById.get(i.cliente_id) ?? null : null,
+        clienteId: i.cliente_id,
       })),
       total: auto + manual,
       registrado: !!pago,

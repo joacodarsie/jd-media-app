@@ -3,6 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
+import { currentPeriod } from "@/lib/finanzas";
+import { buildPeriodPayroll } from "@/lib/payroll-period";
+import { friendlyAiError } from "@/lib/ai/errors";
+import {
+  proposePayrollAdjustments,
+  type ProposedAdjustment,
+} from "@/lib/payroll-adjustments";
 
 const PATH = "/coordinacion/sueldos";
 
@@ -33,6 +40,33 @@ export async function addPayrollItem(input: {
     notas: input.notas ?? null,
     creado_por_id: me.id,
   });
+  if (error) return { error: error.message };
+  revalidatePath(PATH);
+  return { ok: true };
+}
+
+export async function updatePayrollItem(input: {
+  id: string;
+  concepto: string;
+  monto: number;
+  clienteId?: string | null;
+}) {
+  await requireRole(["admin"]);
+  if (!input.id || !input.concepto.trim()) {
+    return { error: "Faltan datos (concepto)." };
+  }
+  if (!Number.isFinite(input.monto) || input.monto === 0) {
+    return { error: "El monto debe ser distinto de cero." };
+  }
+  const admin = createAdmin();
+  const { error } = await admin
+    .from("payroll_items")
+    .update({
+      concepto: input.concepto.trim(),
+      monto: input.monto,
+      cliente_id: input.clienteId ?? null,
+    })
+    .eq("id", input.id);
   if (error) return { error: error.message };
   revalidatePath(PATH);
   return { ok: true };
@@ -94,4 +128,68 @@ export async function registerSalaryPayment(input: {
   revalidatePath(PATH);
   revalidatePath("/finanzas");
   return { ok: true };
+}
+
+/**
+ * Asistente de nómina: traduce una instrucción en criollo a ítems propuestos
+ * (extras/ajustes). NO persiste nada — devuelve la propuesta para que el admin
+ * la revise y confirme con `applyAdjustments`.
+ */
+export async function proposeAdjustments(input: { periodo?: string; instrucciones: string }) {
+  await requireRole(["admin"]);
+  const instrucciones = input.instrucciones.trim();
+  if (!instrucciones) return { error: "Escribí qué ajustes querés cargar." };
+
+  const periodo = input.periodo && /^\d{4}-\d{2}$/.test(input.periodo) ? input.periodo : currentPeriod();
+  const admin = createAdmin();
+  const { people, clientOptions } = await buildPeriodPayroll(admin, periodo);
+
+  const team = people.map((p) => ({
+    userId: p.userId,
+    nombre: p.nombre,
+    rol: p.rol,
+    total: p.total,
+  }));
+  const clients = clientOptions.map((c) => ({ id: c.id, nombre: c.nombre }));
+
+  let proposal;
+  try {
+    proposal = await proposePayrollAdjustments(instrucciones, team, clients);
+  } catch (e) {
+    console.error("proposePayrollAdjustments:", e);
+    return { error: friendlyAiError(e) };
+  }
+  if (!proposal) return { error: "La IA no devolvió una propuesta válida. Probá reformular." };
+  if (proposal.items.length === 0) {
+    return { error: "No pude identificar ningún ajuste claro. Probá nombrar a la persona y el monto." };
+  }
+  return { ok: true as const, items: proposal.items, nota: proposal.nota };
+}
+
+/** Aplica los ítems propuestos (ya revisados por el admin) a payroll_items. */
+export async function applyAdjustments(input: {
+  periodo: string;
+  items: ProposedAdjustment[];
+}) {
+  const me = await requireRole(["admin"]);
+  const items = (input.items ?? []).filter(
+    (it) => it.userId && it.concepto.trim() && Number.isFinite(it.monto) && it.monto !== 0
+  );
+  if (items.length === 0) return { error: "No hay ítems para aplicar." };
+
+  const admin = createAdmin();
+  const { error } = await admin.from("payroll_items").insert(
+    items.map((it) => ({
+      user_id: it.userId,
+      periodo: input.periodo,
+      tipo: it.tipo,
+      concepto: it.concepto.trim(),
+      monto: Math.round(it.monto),
+      cliente_id: it.clienteId ?? null,
+      creado_por_id: me.id,
+    }))
+  );
+  if (error) return { error: error.message };
+  revalidatePath(PATH);
+  return { ok: true as const, count: items.length };
 }

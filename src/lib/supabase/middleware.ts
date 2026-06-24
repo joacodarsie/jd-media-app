@@ -28,6 +28,9 @@ const PUBLIC_PATHS = [
   // Páginas legales públicas (requeridas por TikTok/Meta para el alta de la app).
   "/privacidad",
   "/terminos",
+  // Archivo de verificación de dominio de TikTok (signature file en /public).
+  // Debe servirse sin redirigir a login para que TikTok lo lea.
+  "/tiktok",
 ];
 
 export async function updateSession(request: NextRequest) {

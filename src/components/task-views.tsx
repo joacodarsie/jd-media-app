@@ -18,6 +18,7 @@ import {
   Plus,
   Search,
   Sparkles,
+  Table as TableIcon,
   Trash2,
   X,
 } from "lucide-react";
@@ -70,7 +71,7 @@ const TaskCalendar = dynamic(
 
 const ALL = "__all__";
 type QuickFilter = "todas" | "mias" | "vencidas" | "hoy" | "semana";
-type ViewMode = "lista" | "kanban" | "calendario";
+type ViewMode = "lista" | "tabla" | "kanban" | "calendario";
 
 const QUICK_LABELS: Record<QuickFilter, string> = {
   todas: "Todas",
@@ -133,7 +134,7 @@ export function TaskViews({
   // Persistir vista preferida
   useEffect(() => {
     const v = localStorage.getItem("jd:tareas:view") as ViewMode | null;
-    if (v === "lista" || v === "kanban" || v === "calendario") setView(v);
+    if (v === "lista" || v === "tabla" || v === "kanban" || v === "calendario") setView(v);
     const f = localStorage.getItem("jd:tareas:quick") as QuickFilter | null;
     if (f && QUICK_LABELS[f]) setQuick(f);
   }, []);
@@ -425,6 +426,7 @@ export function TaskViews({
         {/* View switch */}
         <div className="flex items-center rounded-md border bg-card p-0.5">
           <ViewBtn icon={List} label="Lista" active={view === "lista"} onClick={() => setView("lista")} />
+          <ViewBtn icon={TableIcon} label="Tabla" active={view === "tabla"} onClick={() => setView("tabla")} />
           <ViewBtn icon={Kanban} label="Kanban" active={view === "kanban"} onClick={() => setView("kanban")} />
           <ViewBtn icon={CalendarDays} label="Cal" active={view === "calendario"} onClick={() => setView("calendario")} />
         </div>
@@ -468,10 +470,25 @@ export function TaskViews({
           )}
         </div>
       )}
+      {view === "tabla" && (
+        <div className="pb-20">
+          {filtered.length === 0 ? (
+            <EmptyState filter={quick} />
+          ) : (
+            <TaskTable
+              tasks={filtered}
+              users={users}
+              clients={clients}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelect}
+            />
+          )}
+        </div>
+      )}
       {view === "kanban" && <KanbanBoard tasks={filtered} />}
       {view === "calendario" && <TaskCalendar tasks={filtered} />}
 
-      {view === "lista" && selectedIds.size > 0 && (
+      {(view === "lista" || view === "tabla") && selectedIds.size > 0 && (
         <BulkActionsBar
           count={selectedIds.size}
           pending={bulkPending}
@@ -818,5 +835,139 @@ function TaskRow({
         <DeleteTaskButton id={t.id} />
       </div>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Vista TABLA (planilla, mismo estilo que la tabla del calendario)
+// ─────────────────────────────────────────────────────────────────────────
+function TaskTable({
+  tasks,
+  users,
+  clients,
+  selectedIds,
+  onToggleSelect,
+}: {
+  tasks: TaskWithRels[];
+  users: Pick<AppUser, "id" | "nombre">[];
+  clients: Pick<Client, "id" | "nombre">[];
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
+}) {
+  return (
+    <div className="overflow-x-auto rounded-xl border bg-card">
+      <table className="w-full min-w-[980px] text-sm">
+        <thead>
+          <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+            <th className="w-8 px-3 py-2.5" />
+            <th className="px-3 py-2.5 font-medium">Tarea</th>
+            <th className="px-3 py-2.5 font-medium">Cliente</th>
+            <th className="px-3 py-2.5 font-medium">Área</th>
+            <th className="px-3 py-2.5 font-medium">Persona</th>
+            <th className="px-3 py-2.5 font-medium">Prioridad</th>
+            <th className="px-3 py-2.5 font-medium">Vence</th>
+            <th className="px-3 py-2.5 font-medium">Estado</th>
+            <th className="px-3 py-2.5 text-right font-medium">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tasks.map((t) => (
+            <TaskTableRow
+              key={t.id}
+              task={t}
+              users={users}
+              clients={clients}
+              selected={selectedIds.has(t.id)}
+              onToggleSelect={() => onToggleSelect(t.id)}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TaskTableRow({
+  task: t,
+  users,
+  clients,
+  selected,
+  onToggleSelect,
+}: {
+  task: TaskWithRels;
+  users: Pick<AppUser, "id" | "nombre">[];
+  clients: Pick<Client, "id" | "nombre">[];
+  selected: boolean;
+  onToggleSelect: () => void;
+}) {
+  const due = dueState(t.fecha_limite, t.estado);
+  return (
+    <tr
+      className={cn(
+        "border-b align-top last:border-0 hover:bg-muted/30",
+        selected && "bg-primary/5"
+      )}
+    >
+      <td className="px-3 py-2.5">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggleSelect}
+          aria-label={`Seleccionar ${t.titulo}`}
+          className="h-4 w-4 cursor-pointer accent-primary"
+        />
+      </td>
+      <td className="px-3 py-2.5">
+        <Link href={`/tareas/${t.id}`} className="font-medium hover:underline">
+          {t.titulo}
+        </Link>
+      </td>
+      <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
+        {t.cliente?.nombre ?? "—"}
+      </td>
+      <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">{t.area}</td>
+      <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
+        {t.asignado?.nombre ?? "Sin asignar"}
+      </td>
+      <td className="whitespace-nowrap px-3 py-2.5">
+        <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", PRIORITY_BADGE[t.prioridad])}>
+          {PRIORITY_LABEL[t.prioridad]}
+        </span>
+      </td>
+      <td className="whitespace-nowrap px-3 py-2.5">
+        {t.fecha_limite ? (
+          <span
+            className={cn(
+              "text-xs",
+              due === "vencida" && "font-semibold text-red-600",
+              due === "hoy" && "font-semibold text-orange-600"
+            )}
+          >
+            {fmtDate(t.fecha_limite)}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </td>
+      <td className="px-3 py-2.5">
+        <TaskStatusSelect id={t.id} estado={t.estado} className="h-8 w-36 text-xs" />
+      </td>
+      <td className="px-3 py-2.5">
+        <div className="flex items-center justify-end gap-1">
+          <TaskFormDialog
+            mode="edit"
+            task={t}
+            users={users}
+            clients={clients}
+            trigger={
+              <Button variant="ghost" size="icon" title="Editar">
+                <Pencil className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            }
+          />
+          <DeleteTaskButton id={t.id} />
+        </div>
+      </td>
+    </tr>
   );
 }

@@ -152,8 +152,10 @@ export function TaskViews({
     const weekEndStr = ymd(weekEnd);
 
     let r = tasks.filter((t) => {
-      // Archivadas se ocultan por defecto; solo aparecen si se filtra explícitamente.
-      if (estado === ALL && t.estado === "archivada") return false;
+      // Por defecto mostramos solo lo que FALTA hacer: lo ya terminado
+      // (completada/archivada) se oculta salvo que se filtre por ese estado.
+      if (estado === ALL && (t.estado === "completada" || t.estado === "archivada"))
+        return false;
       // Quick filter
       if (quick === "mias" && t.asignado_a_id !== currentUserId) return false;
       if (quick === "vencidas") {
@@ -211,22 +213,26 @@ export function TaskViews({
       : null;
     const inMonth = (t: TaskWithRels) =>
       !mk || !t.fecha_limite || t.fecha_limite.slice(0, 7) === mk;
+    // Los chips cuentan trabajo ABIERTO (lo que falta), no lo ya terminado.
+    const isOpen = (t: TaskWithRels) =>
+      t.estado !== "completada" && t.estado !== "archivada";
     return {
-      todas: tasks.filter(inMonth).length,
-      mias: tasks.filter((t) => t.asignado_a_id === currentUserId && inMonth(t))
-        .length,
+      todas: tasks.filter((t) => inMonth(t) && isOpen(t)).length,
+      mias: tasks.filter(
+        (t) => t.asignado_a_id === currentUserId && inMonth(t) && isOpen(t)
+      ).length,
       vencidas: tasks.filter(
         (t) =>
-          t.estado !== "completada" &&
+          isOpen(t) &&
           t.fecha_limite &&
           t.fecha_limite.slice(0, 10) < today &&
           t.asignado_a_id === currentUserId
       ).length,
       hoy: tasks.filter(
-        (t) => t.fecha_limite && t.fecha_limite.slice(0, 10) === today
+        (t) => isOpen(t) && t.fecha_limite && t.fecha_limite.slice(0, 10) === today
       ).length,
       semana: tasks.filter((t) => {
-        if (!t.fecha_limite) return false;
+        if (!isOpen(t) || !t.fecha_limite) return false;
         const d = t.fecha_limite.slice(0, 10);
         return d >= today && d <= weekEndStr;
       }).length,

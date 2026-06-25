@@ -30,6 +30,19 @@ Y en cada \`tema_destacado\` indicás \`red_principal: "instagram"\` y \`redes_r
 # Historias (stories)
 Las historias también son parte del plan. El pack define **días con contenido en stories** al mes (ej: 8, 12 o 20). Por cada uno de esos días generá un tema de historia concreto en \`temas_destacados\` con \`formato: "story"\` y \`red_principal: "instagram"\` (las historias NO se replican en TikTok; opcionalmente espejan en Facebook). Las historias sirven para: detrás de escena, encuestas/preguntas, reposteo de reels y posts, recordatorios, ventas directas, prueba social. Distribuilas a lo largo del mes (no todas juntas). Es la CM quien las arma (van incluidas en su tarifa).
 
+# Objetivo: contenido para crecer y viralizar
+Todo el plan apunta a CRECER la cuenta. Cada formato tiene un para qué distinto, respetalo:
+- **Reels, posts y carruseles** → atraen gente NUEVA y son los que se PAUTAN. Pensalos con un GANCHO fuerte (primer segundo del reel / primera placa del carrusel) y temas de interés amplio del rubro, para alguien que TODAVÍA no conoce la marca. Optimizá para alcance, guardado y compartido (potencial de viralización).
+- **Historias** → para la audiencia que YA te sigue: cercanía, interacción, recordatorios, prueba social.
+Los ángulos que enganchan salen de los dolores, deseos y el lenguaje del público objetivo del diagnóstico. Nada genérico.
+
+# Detalle de diseño en cada tema (campo descripcion)
+La \`descripcion\` de cada tema es el brief que ejecuta el equipo de diseño/edición: tiene que ser concreta y accionable, no quedarse en el título.
+- **Carrusel** → desglosá PLACA POR PLACA: qué TEXTO/dato va escrito en cada placa + una idea de diseño de esa placa (qué se ve, jerarquía visual, ícono/foto/dato, por qué retiene). Placa 1 = gancho que frena el scroll; última = CTA.
+- **Post** → el texto que va sobre la placa + una idea visual concreta (composición, foco, elemento de marca).
+- **Reel/video** → la idea y guion en líneas generales + concepto visual (gancho de los primeros segundos, planos, texto en pantalla).
+- **Historia** → qué muestra y el mecanismo de interacción (encuesta, pregunta, link, recordatorio).
+
 # Reglas duras
 1. **Respetá el pack contratado**: las cantidades en \`cadencia\` por red principal tienen que coincidir EXACTAMENTE con las cuotas del pack (reels, posts, carruseles **y los días de stories**). No infles. Si el pack incluye 8 reels, el plan dice 8 reels en IG (principal), no 12.
 2. **Respetá el diagnóstico aprobado**: los pilares en \`distribucion_pilares\` tienen que ser EXACTAMENTE los mismos del diagnóstico (mismos nombres, idealmente 4).
@@ -108,7 +121,11 @@ export const SAVE_CONTENT_PLAN_TOOL = {
           type: "object",
           properties: {
             titulo: { type: "string" },
-            descripcion: { type: "string" },
+            descripcion: {
+              type: "string",
+              description:
+                "Brief de diseño/producción DETALLADO y accionable (no solo el título). CARRUSEL: desglose placa por placa con el texto/dato de cada placa + idea de diseño (placa 1 = gancho, última = CTA). POST: texto sobre la placa + idea visual. REEL/VIDEO: idea + concepto visual con el gancho de los primeros segundos. HISTORIA: qué muestra + mecanismo de interacción. Pensado para que la pieza tenga potencial de viralizar.",
+            },
             fecha: { type: "string", description: "Fecha sugerida ISO (YYYY-MM-DD) dentro del período. Distribuir homogéneamente." },
             pilar: { type: "string" },
             formato: {

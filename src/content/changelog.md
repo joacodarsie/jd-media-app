@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-06-25 — La IA de contenido piensa para viralizar y arma el diseño placa por placa
+
+- 🎯 **Todo el contenido apunta a crecer la cuenta**: tanto el plan mensual como el "Sugerir con IA" del calendario ahora piensan cada pieza con intención de **viralizar**, basándose en el diagnóstico. **Posts y reels** se piensan para atraer gente nueva y pautar (gancho fuerte, alcance frío); **historias** para la audiencia que ya te sigue (cercanía, interacción).
+- 🎨 **Briefs de diseño mucho más detallados**: cuando propone un carrusel ya no te tira solo el título — desglosa **placa por placa** qué texto/dato va en cada una y una **idea de diseño** (qué se ve, jerarquía, por qué retiene). La placa 1 es el gancho, la última el CTA. Para posts y reels también da el concepto visual concreto. Así el equipo de diseño arranca sin tener que preguntar.
+
 ## 2026-06-24 — Sueldos: más justos, más claros y con recibo
 
 - 🎯 **Diseño y edición se pagan por el contenido REAL del mes** (desde julio): la app cuenta las **publicaciones aprobadas/publicadas** y paga el diseño, la edición y las portadas a **quien hizo cada pieza**. En el calendario, cada reel trae por defecto el **editor** y el **diseñador de portada** del cliente, pero si una pieza la hace otra persona, la marcás ahí y esa persona la cobra. (Junio se liquida por el pack contratado, porque el calendario no reflejó del todo lo producido.) El CM y el media buyer siguen por pack.

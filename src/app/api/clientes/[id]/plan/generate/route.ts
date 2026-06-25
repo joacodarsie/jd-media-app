@@ -213,7 +213,7 @@ export async function POST(
 
         const messageStream = anthropic.messages.stream({
           model: CONTENT_PLAN_MODEL,
-          max_tokens: 6144,
+          max_tokens: 8192,
           system: [
             {
               type: "text",

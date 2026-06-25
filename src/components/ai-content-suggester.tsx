@@ -167,9 +167,9 @@ export function AIContentSuggester({
               </div>
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Descripción visual
+                  Diseño / placas
                 </div>
-                <p className="text-sm">{suggestion.descripcion}</p>
+                <p className="whitespace-pre-wrap text-sm">{suggestion.descripcion}</p>
               </div>
               {suggestion.guion && (
                 <div>

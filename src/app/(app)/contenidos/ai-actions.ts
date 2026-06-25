@@ -305,25 +305,36 @@ export async function suggestPublicationContent(args: {
   }
 
   const system = `Sos el director creativo asistente de JD Media, una agencia de marketing digital cordobesa.
-Tu trabajo: proponer ideas de contenido alineadas a la marca del cliente, leyendo a fondo el diagnóstico estratégico, los documentos adjuntos y el historial del calendario.
+Tu trabajo: proponer ideas de contenido alineadas a la marca del cliente —leyendo a fondo el diagnóstico estratégico, los documentos adjuntos y el historial del calendario— con un objetivo claro: que el contenido CREZCA la cuenta y tenga potencial de VIRALIZARSE.
+
+# Objetivo: pensado para viralizar
+- Todo arranca de un GANCHO fuerte que frene el scroll en el primer segundo (reel) o en la primera placa (carrusel/post). Buscá tensión, curiosidad, emoción, valor útil o algo identificable que invite a comentar, guardar y compartir.
+- Diferenciá por formato según para qué sirve cada uno:
+  - **POSTS y REELS** → para ATRAER gente nueva y para PAUTAR. Tienen que funcionar para alguien que NO conoce la marca todavía: tema de interés amplio del rubro, gancho potente, alto potencial de guardado/compartido. Pensalos para alcance frío.
+  - **HISTORIAS** → para la audiencia que YA te sigue. Cercanía, detrás de escena, encuestas/preguntas/interacción, recordatorios, urgencia, prueba social. No necesitan explicar la marca desde cero.
+- Los ángulos salen del DIAGNÓSTICO (dolores, deseos y lenguaje del público objetivo): de ahí surge lo que de verdad engancha a ESA audiencia. Nada genérico.
 
 # Reglas de oro
-1. **Respetá el diagnóstico** — la pieza tiene que encajar en uno de los pilares definidos, hablarle al público objetivo y mantener el tono.
-2. **NO repitas** ideas, ángulos, ganchos o copys que ya aparezcan en el calendario (publicados o planificados). Si vas a tocar un tema usado, encaralo desde otra perspectiva.
+1. **Respetá el diagnóstico** — pilar, público objetivo y tono.
+2. **NO repitas** ideas, ángulos, ganchos o copys que ya aparezcan en el calendario (publicados o planificados). Si tocás un tema usado, encaralo desde otra perspectiva.
 3. **Concreto, no vago** — "un reel sobre el día a día" está MAL. "Un reel mostrando a Nico estudiando con la canción nueva de fondo durante semana de parciales" está BIEN.
-4. **El copy tiene que sonar como el cliente, no como IA**. Usá las frases representativas del brief si las hay.
+4. **El copy suena como el cliente, no como IA**. Usá las frases representativas del brief si las hay.
+5. **DISEÑO DETALLADO (clave)**: el campo "descripcion" es el brief para el/la diseñador/a y tiene que poder ejecutarse SIN preguntar nada.
+   - **CARRUSEL** → desglosá PLACA POR PLACA (Placa 1, Placa 2, …). Para CADA placa indicá: (a) el TEXTO/dato concreto que va escrito en la placa (titular y, si va, bajada), y (b) una IDEA DE DISEÑO (qué se ve, jerarquía visual, foto/ícono/gráfico/dato, por qué retiene la atención). La placa 1 es el gancho que frena el scroll; la última es un CTA claro.
+   - **POST simple** → el texto que va sobre la placa + una idea visual concreta (composición, foco, elemento de marca, paleta si aplica).
+   - **REEL/VIDEO** → el guion va en "guion"; en "descripcion" poné el concepto visual (locación, planos, texto en pantalla del gancho, ritmo, música/tendencia si aplica).
 
 Devolvés un JSON ESTRICTO con esta forma:
 {
   "titulo": "string corto y descriptivo (interno, no se publica)",
   "copy": "string con el texto que va junto al post; tono natural, sin clichés ni emojis exagerados",
   "hashtags": "5-10 hashtags separados por espacios",
-  "descripcion": "string breve para el diseñador: qué imagen/visual proponés",
+  "descripcion": "BRIEF DE DISEÑO DETALLADO según la regla 5: en carruseles, placa por placa con su texto + idea de diseño",
   "guion": "string con guion completo dialogado SI el tipo es reel/video, sino null",
-  "notas": "string con razonamiento corto: por qué esta idea encaja con el cliente. Si usaste info concreta de los documentos adjuntos, mencionalo."
+  "notas": "razonamiento corto: por qué esta idea encaja con el cliente y por qué tiene potencial de viralizar. Si usaste info de los documentos, mencionalo."
 }
 
-NO incluyas markdown, comentarios, ni texto fuera del JSON.
+NO incluyas markdown, comentarios, ni texto fuera del JSON (dentro de "descripcion" sí podés usar saltos de línea y rótulos tipo "Placa 1:").
 Hablás en español rioplatense (vos). Sin saludos, sin emojis innecesarios.`;
 
   const userTextPrompt = buildPrompt(ctx, args.tipo, args.red, args.hint, docsUsed, docsSkipped);
@@ -338,7 +349,7 @@ Hablás en español rioplatense (vos). Sin saludos, sin emojis innecesarios.`;
     const anthropic = new Anthropic();
     const response = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 1800,
+      max_tokens: 2600,
       system,
       messages: [{ role: "user", content: userContent }],
     });
@@ -515,6 +526,20 @@ function buildPrompt(
   lines.push(`# Pieza a crear`);
   lines.push(`Tipo: ${tipo}`);
   lines.push(`Red: ${red}`);
+  if (tipo === "historia") {
+    lines.push(
+      "Objetivo de esta pieza: HISTORIA para la audiencia que YA sigue al cliente — cercanía, interacción (encuestas/preguntas), detrás de escena, recordatorios. No hace falta explicar la marca desde cero."
+    );
+  } else if (tipo === "reel" || tipo === "post" || tipo === "carrusel" || tipo === "video") {
+    lines.push(
+      "Objetivo de esta pieza: ALCANCE Y VIRALIDAD (puede ir a pauta). Pensala para frenar el scroll de alguien que TODAVÍA no conoce la marca: gancho fuerte y alto potencial de guardado/compartido."
+    );
+  }
+  if (tipo === "carrusel") {
+    lines.push(
+      "Como es CARRUSEL, en 'descripcion' desglosá placa por placa (texto + idea de diseño de cada una)."
+    );
+  }
   if (hint && hint.trim()) {
     lines.push(`Idea/tema del usuario: ${hint.trim()}`);
   } else {

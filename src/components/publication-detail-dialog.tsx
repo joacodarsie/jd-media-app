@@ -41,14 +41,17 @@ export function PublicationDetailDialog({
   clients,
   users,
   trigger,
+  defaultOpen = false,
 }: {
   publication: PublicationWithRels;
   clients: ClientForPub[];
   users: Pick<AppUser, "id" | "nombre">[];
   trigger: React.ReactNode;
+  /** Abre el diálogo de entrada (para deep-links desde una tarea). */
+  defaultOpen?: boolean;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [pending, start] = useTransition();
   const p = publication;
 

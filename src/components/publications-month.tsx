@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
   CalendarDays,
@@ -317,8 +317,27 @@ export function PublicationsMonth({
   const selectedClient =
     fCliente !== "__all__" ? clients.find((c) => c.id === fCliente) ?? null : null;
 
+  // Deep-link: /contenidos?pub=<id> abre directo el detalle de esa pieza
+  // (lo usa el link "ver en el calendario" desde una tarea).
+  const searchParams = useSearchParams();
+  const deepPubId = searchParams.get("pub");
+  const deepPub = useMemo(
+    () => (deepPubId ? publications.find((p) => p.id === deepPubId) ?? null : null),
+    [deepPubId, publications]
+  );
+
   return (
     <div className="space-y-4">
+      {deepPub && (
+        <PublicationDetailDialog
+          key={deepPub.id}
+          publication={deepPub}
+          clients={clients}
+          users={users}
+          defaultOpen
+          trigger={<span className="hidden" aria-hidden />}
+        />
+      )}
       {selectedClient && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card px-4 py-2.5">
           <div className="flex items-center gap-2">

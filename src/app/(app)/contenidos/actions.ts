@@ -134,9 +134,16 @@ export async function changePublicationStatus(id: string, estado: string, notas?
     .update(patch)
     .eq("id", id)
     .select("cliente_id")
-    .single();
+    .maybeSingle();
   if (error) return { error: error.message };
-  invalidate(data?.cliente_id);
+  // Si la RLS no dejó actualizar, el update afecta 0 filas (data = null).
+  if (!data) {
+    return {
+      error:
+        "No tenés permiso para cambiar el estado de esta pieza. Solo el equipo de esa cuenta (CM, diseño, edición, coordinación) puede.",
+    };
+  }
+  invalidate(data.cliente_id);
   return { ok: true };
 }
 

@@ -117,6 +117,11 @@ export function PublicationFormDialog({
     publication?.audiovisual_id ?? NONE
   );
   const [audiovisualTouched, setAudiovisualTouched] = useState(false);
+  // Diseñador/a de la PORTADA (solo aplica a reel/video).
+  const [portadaDisenador, setPortadaDisenador] = useState<string>(
+    publication?.disenador_id ?? NONE
+  );
+  const [portadaTouched, setPortadaTouched] = useState(false);
   const [estado, setEstado] = useState<string>(publication?.estado ?? "idea");
 
   const selectedClient = useMemo(
@@ -131,6 +136,13 @@ export function PublicationFormDialog({
     const auto = autoResponsableId(tipo as PublicationType, selectedClient);
     setAudiovisual(auto ?? NONE);
   }, [tipo, selectedClient, audiovisualTouched, mode, publication]);
+
+  // Diseñador/a de la portada del reel: por defecto, el de la cuenta.
+  useEffect(() => {
+    if (portadaTouched) return;
+    if (mode === "edit" && publication) return;
+    setPortadaDisenador(selectedClient?.disenador_id ?? NONE);
+  }, [selectedClient, portadaTouched, mode, publication]);
 
   // Al abrir el "+" de un día, la fecha debe ser SIEMPRE la del día clickeado.
   // Las celdas del calendario se reusan por índice, así que el estado inicial
@@ -164,6 +176,8 @@ export function PublicationFormDialog({
       asset_url: assetUrl,
       referencia_url: refUrl,
       audiovisual_id: audiovisual === NONE ? null : audiovisual,
+      disenador_id:
+        isReel && portadaDisenador !== NONE ? portadaDisenador : null,
       task_id: publication?.task_id ?? null,
       estado: mode === "edit" ? estado : undefined,
     };
@@ -320,6 +334,36 @@ export function PublicationFormDialog({
               )}
             </div>
           </div>
+
+          {/* Reel/video: además del editor, quién hace la PORTADA (la cobra esa persona). */}
+          {isReel && (
+            <div className="space-y-2 sm:max-w-xs">
+              <Label>Diseñador/a (portada del reel)</Label>
+              <Select
+                value={portadaDisenador}
+                onValueChange={(v) => {
+                  setPortadaDisenador(v);
+                  setPortadaTouched(true);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Sin asignar</SelectItem>
+                  {users.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>{u.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!portadaTouched && portadaDisenador !== NONE && selectedClient && (
+                <p className="text-[10px] text-muted-foreground">
+                  Por defecto, el/la diseñador/a del cliente. Cambialo si la portada
+                  la hace otra persona.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Bloque de creación: orden cronológico (qué se va a hacer ANTES del copy) */}
           {isReel && (

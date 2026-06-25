@@ -237,6 +237,7 @@ export interface Publication {
   referencia_url: string | null;
   creado_por_id: string | null;
   audiovisual_id: string | null;
+  disenador_id: string | null;
   estado: PublicationStatus;
   task_id: string | null;
   notas_revision: string | null;

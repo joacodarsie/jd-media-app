@@ -37,6 +37,7 @@ export interface PublicationInput {
   asset_url: string | null;
   referencia_url: string | null;
   audiovisual_id: string | null;
+  disenador_id: string | null;
   task_id: string | null;
   notas_revision?: string | null;
   estado?: string;
@@ -58,6 +59,7 @@ function clean(input: PublicationInput) {
     asset_url: input.asset_url?.trim() || null,
     referencia_url: input.referencia_url?.trim() || null,
     audiovisual_id: input.audiovisual_id || null,
+    disenador_id: input.disenador_id || null,
     task_id: input.task_id || null,
     notas_revision: input.notas_revision?.trim() || null,
     publicacion_url: input.publicacion_url?.trim() || null,

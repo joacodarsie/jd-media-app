@@ -13,6 +13,7 @@ import { computeJornadaSplit } from "./jornada";
 import {
   computeAutoPayroll,
   computeContentPayroll,
+  computePackContentPayroll,
   computeCoordinationPayroll,
   closerVolumeBonusPct,
   selectFirstMonthCommissions,
@@ -33,6 +34,13 @@ interface ServiceRow extends PayrollService {
   costo_pct: number | null;
   created_at: string | null;
 }
+
+/**
+ * Desde este período (inclusive) el diseño y la edición se pagan por el
+ * CONTENIDO REAL publicado. Los meses anteriores se pagan por el pack contratado
+ * (ej: junio 2026, donde el calendario no reflejó del todo lo producido).
+ */
+const CONTENT_PAYROLL_FROM = "2026-07";
 
 export interface PeriodPayrollResult {
   periodo: string;
@@ -96,7 +104,7 @@ export async function buildPeriodPayroll(
     // Publicaciones aprobadas/publicadas del período → pago por contenido real.
     admin
       .from("publications")
-      .select("cliente_id, tipo, estado, fecha_publicacion, audiovisual_id")
+      .select("cliente_id, tipo, estado, fecha_publicacion, audiovisual_id, disenador_id")
       .in("estado", ["aprobado", "publicado"])
       .gte("fecha_publicacion", `${periodo}-01`)
       .lt("fecha_publicacion", `${nextPeriod(periodo)}-01`),
@@ -149,13 +157,11 @@ export async function buildPeriodPayroll(
       .map((s) => s.cliente_id)
   );
   const publications = (pubsRaw ?? []) as PayrollPublication[];
-  const contentByUser = computeContentPayroll(
-    clients,
-    publications,
-    overrideClientIds,
-    settings.rates,
-    periodo
-  );
+  // Desde julio 2026: por contenido real. Antes: por el pack contratado.
+  const contentByUser =
+    periodo >= CONTENT_PAYROLL_FROM
+      ? computeContentPayroll(clients, publications, overrideClientIds, settings.rates, periodo)
+      : computePackContentPayroll(clients, services, settings.rates);
   for (const [uid, lines] of contentByUser) {
     if (!autoByUser.has(uid)) autoByUser.set(uid, []);
     autoByUser.get(uid)!.push(...lines);

@@ -4,7 +4,7 @@ title: Novedades
 
 ## 2026-06-24 — Sueldos: más justos, más claros y con recibo
 
-- 🎯 **Diseño y edición se pagan por el contenido REAL del mes**: en vez de pagar por el pack contratado, la app cuenta las **publicaciones aprobadas/publicadas** del mes y paga el diseño (post/carrusel), la edición (a quien editó cada reel) y las portadas según lo que realmente salió. Un mes que produjo menos, cuesta menos. El CM y el media buyer siguen por pack.
+- 🎯 **Diseño y edición se pagan por el contenido REAL del mes** (desde julio): la app cuenta las **publicaciones aprobadas/publicadas** y paga el diseño, la edición y las portadas a **quien hizo cada pieza**. En el calendario, cada reel trae por defecto el **editor** y el **diseñador de portada** del cliente, pero si una pieza la hace otra persona, la marcás ahí y esa persona la cobra. (Junio se liquida por el pack contratado, porque el calendario no reflejó del todo lo producido.) El CM y el media buyer siguen por pack.
 - 👥 **Coordinación repartible por mes**: si un mes el rol de coordinación se divide entre dos personas (como en junio: media y media entre Brisa y Luz), lo cargás desde el botón **"Coordinación"** y la app reparte ese 10% como corresponda. Si no tocás nada, va todo a la coordinadora de siempre.
 - 🤖 **Ajustes del mes con IA**: escribís en criollo (*"a Brisa sumale 20 mil por carruseles extra, a Guille descontale un adelanto de 50 mil"*) y la app arma los ítems solos. Los revisás y aplicás.
 - ✏️ **Editar ítems** ya cargados (concepto, monto, cliente) sin tener que borrar y volver a crear.

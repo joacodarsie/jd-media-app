@@ -162,20 +162,40 @@ export interface PayrollPublication {
   tipo: string; // post | reel | carrusel | historia | video | otro
   estado: string; // ... | aprobado | publicado
   fecha_publicacion: string | null;
-  /** Editor/a del reel (puede diferir del audiovisual de la cuenta). */
+  /**
+   * Responsable de producir la pieza: en reel/video es el EDITOR; en
+   * post/carrusel es el DISEÑADOR. Puede diferir del asignado a la cuenta.
+   */
   audiovisual_id: string | null;
+  /** Diseñador/a de la PORTADA del reel (puede diferir del de la cuenta). */
+  disenador_id: string | null;
 }
 
 /** Estados que cuentan como contenido entregado y pagable. */
 const CONTENT_PAYABLE_STATES = new Set(["aprobado", "publicado"]);
 
+/** Acumula una pieza atribuida a una persona dentro de una cuenta. */
+type ContentTally = Map<string, { clienteId: string; cliente: string; personId: string; count: number }>;
+function tallyInc(
+  m: ContentTally,
+  clienteId: string,
+  cliente: string,
+  personId: string
+) {
+  const key = `${clienteId}|${personId}`;
+  const e = m.get(key);
+  if (e) e.count += 1;
+  else m.set(key, { clienteId, cliente, personId, count: 1 });
+}
+
 /**
  * Calcula las líneas de DISEÑO y EDICIÓN por el contenido REAL del mes, en vez
  * de por el pack contratado. Cuenta las publicaciones aprobadas/publicadas cuya
- * `fecha_publicacion` cae en el período:
- *   - post + carrusel → diseño (clients.disenador_id) · diseno_pieza c/u
- *   - reel + video    → edición (publication.audiovisual_id, fallback al de la
- *                       cuenta) · edicion_reel c/u + portada (disenador_id) · portada_reel
+ * `fecha_publicacion` cae en el período, atribuyendo cada pieza a LA PERSONA que
+ * figura en esa publicación (con fallback al equipo de la cuenta):
+ *   - post + carrusel → diseño · diseñador de la pieza (audiovisual_id) → cuenta
+ *   - reel + video    → edición · editor de la pieza (audiovisual_id) → cuenta
+ *                       + portada · diseñador de la pieza (disenador_id) → cuenta
  *   - historia / otro → no se pagan aparte (las cubre la CM por pack)
  *
  * Las cuentas con acuerdo fijo (override) se saltean: ese pago cubre toda la
@@ -190,10 +210,9 @@ export function computeContentPayroll(
 ): Map<string, PayrollLine[]> {
   const clientById = new Map(clients.map((c) => [c.id, c]));
 
-  // Agregadores por cuenta (y por editor en el caso de edición).
-  const disenoCount = new Map<string, number>(); // clienteId → piezas (post+carrusel)
-  const portadaCount = new Map<string, number>(); // clienteId → reels (portadas)
-  const edicionCount = new Map<string, Map<string, number>>(); // clienteId → editorId → reels
+  const diseno: ContentTally = new Map(); // post + carrusel, por diseñador
+  const portada: ContentTally = new Map(); // portadas de reel, por diseñador
+  const edicion: ContentTally = new Map(); // reels, por editor
 
   for (const p of publications) {
     if (!CONTENT_PAYABLE_STATES.has(p.estado)) continue;
@@ -203,15 +222,13 @@ export function computeContentPayroll(
     if (overrideClientIds.has(p.cliente_id)) continue; // acuerdo fijo cubre todo
 
     if (p.tipo === "post" || p.tipo === "carrusel") {
-      disenoCount.set(p.cliente_id, (disenoCount.get(p.cliente_id) ?? 0) + 1);
+      const designerId = p.audiovisual_id ?? c.disenador_id;
+      if (designerId) tallyInc(diseno, c.id, c.nombre, designerId);
     } else if (p.tipo === "reel" || p.tipo === "video") {
-      portadaCount.set(p.cliente_id, (portadaCount.get(p.cliente_id) ?? 0) + 1);
       const editorId = p.audiovisual_id ?? c.audiovisual_id;
-      if (editorId) {
-        if (!edicionCount.has(p.cliente_id)) edicionCount.set(p.cliente_id, new Map());
-        const m = edicionCount.get(p.cliente_id)!;
-        m.set(editorId, (m.get(editorId) ?? 0) + 1);
-      }
+      if (editorId) tallyInc(edicion, c.id, c.nombre, editorId);
+      const designerId = p.disenador_id ?? c.disenador_id;
+      if (designerId) tallyInc(portada, c.id, c.nombre, designerId);
     }
     // historia / otro: las cubre la CM por pack, no se pagan aparte.
   }
@@ -223,46 +240,102 @@ export function computeContentPayroll(
     out.get(userId)!.push(line);
   };
 
-  // Diseño (post + carrusel) → diseñador/a de la cuenta.
-  for (const [clienteId, count] of disenoCount) {
-    const c = clientById.get(clienteId)!;
-    if (count <= 0) continue;
-    add(c.disenador_id, {
-      clienteId,
-      cliente: c.nombre,
-      concepto: `Diseño · ${count} ${count === 1 ? "pieza" : "piezas"}`,
-      monto: count * rates.diseno_pieza,
+  // Diseño (post + carrusel) → diseñador/a de cada pieza.
+  for (const e of diseno.values()) {
+    add(e.personId, {
+      clienteId: e.clienteId,
+      cliente: e.cliente,
+      concepto: `Diseño · ${e.count} ${e.count === 1 ? "pieza" : "piezas"}`,
+      monto: e.count * rates.diseno_pieza,
       kind: "diseno",
     });
   }
 
-  // Portadas de reel → diseñador/a de la cuenta.
+  // Portadas de reel → diseñador/a de cada portada.
   if (rates.portada_reel > 0) {
-    for (const [clienteId, count] of portadaCount) {
-      const c = clientById.get(clienteId)!;
-      if (count <= 0) continue;
-      add(c.disenador_id, {
-        clienteId,
-        cliente: c.nombre,
-        concepto: `Portadas · ${count} ${count === 1 ? "reel" : "reels"}`,
-        monto: count * rates.portada_reel,
+    for (const e of portada.values()) {
+      add(e.personId, {
+        clienteId: e.clienteId,
+        cliente: e.cliente,
+        concepto: `Portadas · ${e.count} ${e.count === 1 ? "reel" : "reels"}`,
+        monto: e.count * rates.portada_reel,
         kind: "diseno",
       });
     }
   }
 
   // Edición (reel + video) → editor/a de cada pieza.
-  for (const [clienteId, byEditor] of edicionCount) {
-    const c = clientById.get(clienteId)!;
-    for (const [editorId, count] of byEditor) {
-      if (count <= 0) continue;
-      add(editorId, {
-        clienteId,
+  for (const e of edicion.values()) {
+    add(e.personId, {
+      clienteId: e.clienteId,
+      cliente: e.cliente,
+      concepto: `Edición · ${e.count} ${e.count === 1 ? "reel" : "reels"}`,
+      monto: e.count * rates.edicion_reel,
+      kind: "edicion",
+    });
+  }
+
+  return out;
+}
+
+/**
+ * Diseño/edición pagados por el PACK CONTRATADO (modelo anterior): se usa para
+ * los meses previos al corte de "pago por contenido real" (ver buildPeriodPayroll),
+ * donde el calendario no necesariamente reflejó lo realmente producido. Atribuye
+ * al equipo de la cuenta (disenador_id / audiovisual_id) la cantidad de piezas
+ * del pack. Saltea cuentas con acuerdo fijo (override). Función pura.
+ */
+export function computePackContentPayroll(
+  clients: PayrollClient[],
+  services: PayrollService[],
+  rates: AgencyRates
+): Map<string, PayrollLine[]> {
+  const byClient = new Map<string, PayrollService[]>();
+  for (const s of services) {
+    if (!byClient.has(s.cliente_id)) byClient.set(s.cliente_id, []);
+    byClient.get(s.cliente_id)!.push(s);
+  }
+
+  const out = new Map<string, PayrollLine[]>();
+  const add = (userId: string | null, line: PayrollLine) => {
+    if (!userId) return;
+    if (!out.has(userId)) out.set(userId, []);
+    out.get(userId)!.push(line);
+  };
+
+  for (const c of clients) {
+    const gestion = (byClient.get(c.id) ?? []).find((s) => s.tipo === "gestion_redes");
+    if (!gestion || gestion.costo_override != null) continue; // sin gestión o acuerdo fijo
+    const pd = gestion.pack_detalle ?? {};
+    const posts = Number(pd.posts ?? 0);
+    const reels = Number(pd.reels ?? 0);
+
+    if (posts > 0) {
+      add(c.disenador_id, {
+        clienteId: c.id,
         cliente: c.nombre,
-        concepto: `Edición · ${count} ${count === 1 ? "reel" : "reels"}`,
-        monto: count * rates.edicion_reel,
+        concepto: `Diseño · ${posts} ${posts === 1 ? "pieza" : "piezas"}`,
+        monto: posts * rates.diseno_pieza,
+        kind: "diseno",
+      });
+    }
+    if (reels > 0) {
+      add(c.audiovisual_id, {
+        clienteId: c.id,
+        cliente: c.nombre,
+        concepto: `Edición · ${reels} ${reels === 1 ? "reel" : "reels"}`,
+        monto: reels * rates.edicion_reel,
         kind: "edicion",
       });
+      if (rates.portada_reel > 0) {
+        add(c.disenador_id, {
+          clienteId: c.id,
+          cliente: c.nombre,
+          concepto: `Portadas · ${reels} ${reels === 1 ? "reel" : "reels"}`,
+          monto: reels * rates.portada_reel,
+          kind: "diseno",
+        });
+      }
     }
   }
 

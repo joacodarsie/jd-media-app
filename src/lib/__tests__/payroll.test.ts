@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   computeAutoPayroll,
   computeContentPayroll,
+  computePackContentPayroll,
   computeCoordinationPayroll,
   closerVolumeBonusPct,
   selectFirstMonthCommissions,
@@ -114,6 +115,7 @@ describe("computeContentPayroll", () => {
       estado: "publicado",
       fecha_publicacion: "2026-06-10T12:00:00Z",
       audiovisual_id: null,
+      disenador_id: null,
       ...over,
     };
   }
@@ -184,6 +186,51 @@ describe("computeContentPayroll", () => {
       new Set(),
       r,
       periodo
+    );
+    expect(out.size).toBe(0);
+  });
+
+  it("si una pieza la hace otra persona, esa persona cobra (no el del cliente)", () => {
+    const out = computeContentPayroll(
+      [cliente({ disenador_id: "disCuenta", audiovisual_id: "avCuenta" })],
+      [
+        pub({ tipo: "post", audiovisual_id: "otroDis" }), // diseño a otra persona
+        pub({ tipo: "reel", audiovisual_id: "otroEd", disenador_id: "otroPortada" }),
+      ],
+      new Set(),
+      r,
+      periodo
+    );
+    expect(out.get("otroDis")?.find((l) => l.kind === "diseno")?.monto).toBe(r.diseno_pieza);
+    expect(out.get("otroEd")?.find((l) => l.kind === "edicion")?.monto).toBe(r.edicion_reel);
+    expect(out.get("otroPortada")?.find((l) => l.concepto.startsWith("Portadas"))?.monto).toBe(
+      r.portada_reel
+    );
+    // El equipo del cliente no cobra esas piezas.
+    expect(out.has("disCuenta")).toBe(false);
+    expect(out.has("avCuenta")).toBe(false);
+  });
+});
+
+describe("computePackContentPayroll", () => {
+  it("paga diseño/edición/portadas por las cantidades del pack al equipo del cliente", () => {
+    const out = computePackContentPayroll(
+      [cliente({ disenador_id: "dis1", audiovisual_id: "av1" })],
+      [servicio({ pack_detalle: { posts: 4, reels: 4 } })],
+      r
+    );
+    // Diseño 4 piezas + portadas 4 reels → diseñador.
+    const dis = out.get("dis1") ?? [];
+    expect(dis.find((l) => l.concepto.startsWith("Diseño"))?.monto).toBe(4 * r.diseno_pieza);
+    expect(dis.find((l) => l.concepto.startsWith("Portadas"))?.monto).toBe(4 * r.portada_reel);
+    expect(out.get("av1")?.find((l) => l.kind === "edicion")?.monto).toBe(4 * r.edicion_reel);
+  });
+
+  it("saltea cuentas con acuerdo fijo (override)", () => {
+    const out = computePackContentPayroll(
+      [cliente({ disenador_id: "dis1", audiovisual_id: "av1" })],
+      [servicio({ costo_override: 120_000, costo_override_user: "u1" })],
+      r
     );
     expect(out.size).toBe(0);
   });

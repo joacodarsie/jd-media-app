@@ -51,9 +51,12 @@ export default async function PortalPage({ params }: { params: { token: string }
 
   const cliente_id = tokenRow.cliente_id;
 
-  // Cargar plan vigente + próximas pubs
+  // Cargar plan vigente + pubs (previas y próximas, para un calendario completo)
   const now = new Date();
   const in8Weeks = new Date(now.getTime() + 56 * 24 * 60 * 60 * 1000);
+  // Mostramos también lo ya publicado de los últimos ~4 meses, así el cliente ve
+  // el historial además de lo que viene.
+  const ago4Months = new Date(now.getTime() - 120 * 24 * 60 * 60 * 1000);
 
   const [{ data: client }, { data: plan }, { data: pubs }, { data: reviewPubs }] = await Promise.all([
     admin.from("clients").select("id, nombre, rubro, pack").eq("id", cliente_id).maybeSingle(),
@@ -69,13 +72,13 @@ export default async function PortalPage({ params }: { params: { token: string }
       .from("publications")
       .select("id, titulo, fecha_publicacion, red, tipo, estado, copy, descripcion, hashtags, asset_url")
       .eq("cliente_id", cliente_id)
-      .gte("fecha_publicacion", now.toISOString())
+      .gte("fecha_publicacion", ago4Months.toISOString())
       .lte("fecha_publicacion", in8Weeks.toISOString())
-      // Mostramos todo lo planificado (incluidas las "idea"), salvo lo
-      // rechazado y lo que ya está en la tarjeta de revisión de arriba.
+      // Mostramos todo lo planificado/publicado, salvo lo rechazado y lo que ya
+      // está en la tarjeta de revisión de arriba.
       .not("estado", "in", "(rechazado,revision_cliente)")
       .order("fecha_publicacion", { ascending: true })
-      .limit(40),
+      .limit(120),
     admin
       .from("publications")
       .select("id, titulo, copy, red, tipo, fecha_publicacion, asset_url")
@@ -401,10 +404,11 @@ export default async function PortalPage({ params }: { params: { token: string }
         {upcoming.length > 0 && (
           <div className="card">
             <div className="card-label">Calendario de contenidos</div>
-            <h2 className="card-title">Lo que viene</h2>
+            <h2 className="card-title">Tu calendario</h2>
             <p style={{ fontSize: 13, color: "#555", margin: "0 0 16px", lineHeight: 1.5 }}>
-              Tocá una pieza para verla en detalle (texto, imagen y más) y dejar
-              tu comentario. Lo que escribas le llega al equipo al instante.
+              Lo que viene y lo que ya publicamos. Tocá una pieza para verla en
+              detalle (texto, imagen y más) y dejar tu comentario — le llega al
+              equipo al instante. Usá las flechas para ver otros meses.
             </p>
             <PortalContent pubs={upcoming} token={params.token} />
           </div>

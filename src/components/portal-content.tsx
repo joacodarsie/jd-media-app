@@ -87,9 +87,19 @@ export function PortalContent({ pubs, token }: { pubs: PortalPub[]; token: strin
     return { byDay, dated, undated, months };
   }, [pubs]);
 
-  // Mes mostrado en el calendario (arranca en el primer mes con piezas o el actual).
-  const firstMonth = months[0] ?? { y: new Date().getFullYear(), m: new Date().getMonth() };
-  const [cursor, setCursor] = useState(firstMonth);
+  // Mes inicial: el actual si tiene piezas; si no, el primer mes futuro con
+  // piezas; si no, el último disponible. Así el cliente cae en "lo que viene" y
+  // navega hacia atrás para ver el historial.
+  const initialMonth = useMemo(() => {
+    const today = new Date();
+    const cur = { y: today.getFullYear(), m: today.getMonth() };
+    if (months.length === 0) return cur;
+    const exact = months.find((x) => x.y === cur.y && x.m === cur.m);
+    if (exact) return exact;
+    const future = months.find((x) => x.y > cur.y || (x.y === cur.y && x.m >= cur.m));
+    return future ?? months[months.length - 1];
+  }, [months]);
+  const [cursor, setCursor] = useState(initialMonth);
   const cursorIdx = months.findIndex((x) => x.y === cursor.y && x.m === cursor.m);
   const canPrev = cursorIdx > 0;
   const canNext = cursorIdx >= 0 && cursorIdx < months.length - 1;

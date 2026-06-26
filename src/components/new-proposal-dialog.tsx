@@ -33,12 +33,18 @@ const NONE = "__none__";
 export function NewProposalDialog({
   services,
   users,
+  coordinadores,
+  defaultCoordinadorId,
   trigger,
 }: {
   services: { slug: string; name: string }[];
   users: { id: string; nombre: string }[];
+  /** Candidatas a coordinar la cuenta (rol coordinación). */
+  coordinadores?: { id: string; nombre: string }[];
+  defaultCoordinadorId?: string | null;
   trigger?: React.ReactNode;
 }) {
+  const coords = coordinadores ?? [];
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
@@ -49,6 +55,7 @@ export function NewProposalDialog({
   const [servicio, setServicio] = useState(NONE);
   const [monto, setMonto] = useState("");
   const [cerradoPor, setCerradoPor] = useState(NONE);
+  const [coordinador, setCoordinador] = useState(defaultCoordinadorId ?? NONE);
 
   function submit() {
     if (!nombre.trim()) return void toast.error("Poné el nombre del cliente.");
@@ -61,6 +68,7 @@ export function NewProposalDialog({
         servicio: servicio === NONE ? null : servicio,
         monto_estimado: monto ? Number(monto) : null,
         cerrado_por_id: cerradoPor === NONE ? null : cerradoPor,
+        coordinador_id: coordinador === NONE ? null : coordinador,
       });
       if ("error" in res) return void toast.error(res.error);
       toast.success("Propuesta creada. Completá el contrato y generá la carta.");
@@ -147,6 +155,28 @@ export function NewProposalDialog({
               Quien cerró la venta — define la comisión del primer mes cuando se active.
             </p>
           </div>
+          {coords.length > 0 && (
+            <div>
+              <Label>Coordinador/a de la cuenta</Label>
+              <Select value={coordinador} onValueChange={setCoordinador}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin asignar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Sin asignar</SelectItem>
+                  {coords.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Después ella asigna los puestos (CM, diseño, audiovisual) desde el
+                onboarding de Gestión de Redes.
+              </p>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button onClick={submit} disabled={pending}>

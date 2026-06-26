@@ -2,6 +2,14 @@
 title: Novedades
 ---
 
+## 2026-06-26 — Comercial más simple: cerrar un cliente en 2 pasos
+
+- 🧭 **El rol Comercial ahora ve su parte**: quienes tienen rol comercial ven en el menú **Comercial** y **Prospección**, y pueden **crear clientes/propuestas** (antes el menú se los ocultaba aunque tuvieran el rol).
+- 💬 **Paso 1 — Pedir los datos**: nueva tarjeta en Comercial con un mensaje listo para copiar y mandarle al cliente pidiéndole lo que hace falta para la carta acuerdo (razón social, DNI/CUIT, domicilio, email, teléfono).
+- 📝 **Paso 2 — Nueva propuesta**: al crear el cliente podés elegir la **coordinadora de la cuenta**. El resto del equipo lo asigna ella después.
+- 👥 **La coordinación asigna los puestos**: en el onboarding de Gestión de Redes hay una tarjeta nueva **"Equipo de la cuenta"** para elegir quién lleva Community Manager, Diseño y Edición Audiovisual. Lo puede hacer el admin o la coordinadora de la cuenta.
+- ℹ️ El paso "Carta acuerdo + cobro enviados" se marca **solo** (automático) cuando ya existe el contrato — por eso no se tilda a mano.
+
 ## 2026-06-26 — Roles dobles y editar el rol de alguien ya cargado
 
 - 👥 **Una persona, dos roles**: al crear (o editar) un usuario podés asignarle un **rol y área secundarios**, para quien cumple dos funciones en la agencia. Suma los **permisos** de los dos roles, lo hace **figurar en las dos áreas** (organigrama y tareas por área) y lo cuenta en **sueldos** donde corresponde (ej. el fijo de comercial).

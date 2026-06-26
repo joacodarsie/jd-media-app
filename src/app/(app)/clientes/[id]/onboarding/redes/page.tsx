@@ -7,6 +7,7 @@ import { tiktokConfigured } from "@/lib/tiktok";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HelpTrigger } from "@/components/help-trigger";
 import { RedesConnectionGuide } from "@/components/redes-connection-guide";
+import { ClientTeamAssign } from "@/components/client-team-assign";
 import { loadOnboarding, OnboardingStepRow } from "../_shared";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +42,13 @@ export default async function OnboardingRedesPage({
   const igUsername = (conn as { ig_username?: string | null } | null)?.ig_username ?? null;
   const ttConnected = !!ttRes.data;
   const ttUsername = (ttRes.data as { username?: string | null } | null)?.username ?? null;
+
+  // Usuarios activos para asignar los puestos de la cuenta.
+  const { data: teamUsers } = await admin
+    .from("users")
+    .select("id, nombre")
+    .eq("activo", true)
+    .order("nombre");
 
   return (
     <div className="space-y-5">
@@ -103,6 +111,16 @@ export default async function OnboardingRedesPage({
           ))}
         </CardContent>
       </Card>
+
+      <ClientTeamAssign
+        clientId={client.id}
+        users={(teamUsers ?? []) as { id: string; nombre: string }[]}
+        initial={{
+          cm_id: client.cm_id,
+          disenador_id: client.disenador_id,
+          audiovisual_id: client.audiovisual_id,
+        }}
+      />
 
       <RedesConnectionGuide
         clientId={client.id}

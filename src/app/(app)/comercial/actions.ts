@@ -2,6 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdmin } from "@/lib/supabase/admin";
+import { requireUser, userHas } from "@/lib/auth";
+
+/** Roles que pueden cerrar ventas / cargar propuestas. */
+const COMERCIAL_ROLES = ["admin", "coordinador", "comercial", "prospecting"];
+function canComercial(me: { rol: string; rol_secundario?: string | null; permisos?: Record<string, boolean> | null }) {
+  return (
+    COMERCIAL_ROLES.includes(me.rol) ||
+    (!!me.rol_secundario && COMERCIAL_ROLES.includes(me.rol_secundario)) ||
+    userHas(me as never, "comercial")
+  );
+}
 
 async function ctx() {
   const supabase = createClient();
@@ -269,6 +281,7 @@ export interface DirectProposalInput {
   servicio: string | null; // slug/tipo de servicio interesado (opcional)
   monto_estimado: number | null;
   cerrado_por_id: string | null;
+  coordinador_id: string | null; // coordinador/a del servicio (asigna puestos después)
 }
 
 /**
@@ -277,11 +290,16 @@ export interface DirectProposalInput {
  * acuerdo. Mismo estado "propuesta" (no cuenta hasta activar al pagar).
  */
 export async function createDirectProposal(input: DirectProposalInput) {
-  const { supabase, userId } = await ctx();
+  const me = await requireUser();
+  if (!canComercial(me)) return { error: "No tenés permiso para crear propuestas." };
   const clientName = (input.nombre?.trim() || input.contacto_nombre?.trim() || "").slice(0, 120);
   if (!clientName) return { error: "Poné al menos el nombre del cliente." };
 
-  const { data: created, error: cErr } = await supabase
+  // Usamos el cliente admin: la RLS de clients solo deja escribir a staff
+  // (admin/coordinador), pero comercial/prospecting también deben poder crear
+  // propuestas. El permiso ya lo validamos arriba con canComercial.
+  const admin = createAdmin();
+  const { data: created, error: cErr } = await admin
     .from("clients")
     .insert({
       nombre: clientName,
@@ -290,7 +308,8 @@ export async function createDirectProposal(input: DirectProposalInput) {
       contacto_email: input.email?.trim() || null,
       contacto_telefono: input.telefono?.trim() || null,
       monto_mensual: input.monto_estimado,
-      cerrado_por_id: input.cerrado_por_id || userId,
+      cerrado_por_id: input.cerrado_por_id || me.id,
+      coordinador_id: input.coordinador_id || null,
       fecha_inicio: null,
     })
     .select("id")
@@ -300,7 +319,7 @@ export async function createDirectProposal(input: DirectProposalInput) {
   }
 
   if (input.servicio) {
-    const { error: csErr } = await supabase.from("client_services").insert({
+    const { error: csErr } = await admin.from("client_services").insert({
       cliente_id: created.id,
       tipo: input.servicio,
       monto_mensual: input.monto_estimado,

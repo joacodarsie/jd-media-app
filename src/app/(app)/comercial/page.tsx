@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { Button } from "@/components/ui/button";
 import { NewProposalDialog } from "@/components/new-proposal-dialog";
+import { RequestClientDataCard } from "@/components/request-client-data-card";
 import { HelpTrigger } from "@/components/help-trigger";
 import { whatsappLink } from "@/lib/payment-reminder";
 
@@ -46,7 +47,10 @@ function followupMessage(nombre: string): string {
 
 export default async function ComercialPage() {
   const me = await requireUser();
-  if (!COMERCIAL_ROLES.includes(me.rol) && !userHas(me, "comercial")) {
+  const rolOk =
+    COMERCIAL_ROLES.includes(me.rol) ||
+    (!!me.rol_secundario && COMERCIAL_ROLES.includes(me.rol_secundario));
+  if (!rolOk && !userHas(me, "comercial")) {
     redirect("/dashboard");
   }
   const supabase = createClient();
@@ -54,7 +58,7 @@ export default async function ComercialPage() {
 
   const [{ data: services }, { data: users }, { data: propuestas }] = await Promise.all([
     supabase.from("services").select("slug, name").eq("active", true).order("orden"),
-    supabase.from("users").select("id, nombre").eq("activo", true).order("nombre"),
+    supabase.from("users").select("id, nombre, rol, rol_secundario").eq("activo", true).order("nombre"),
     // Propuestas (clientes en estado "propuesta"): cartas acuerdo enviadas que
     // todavía no se activaron. Es el embudo real de comercial. Más viejas primero.
     admin
@@ -74,6 +78,19 @@ export default async function ComercialPage() {
   const diasDesde = (iso: string | null): number =>
     iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400_000) : 0;
   const enRiesgo = propuestasRows.filter((p) => diasDesde(p.created_at) >= 3).length;
+
+  // Coordinadoras candidatas (rol coordinación, primario o secundario) para
+  // asignar la cuenta al crear la propuesta.
+  const usersRows = (users ?? []) as {
+    id: string;
+    nombre: string;
+    rol: string;
+    rol_secundario: string | null;
+  }[];
+  const coordinadores = usersRows
+    .filter((u) => u.rol === "coordinador" || u.rol_secundario === "coordinador")
+    .map((u) => ({ id: u.id, nombre: u.nombre }));
+  const defaultCoordinadorId = coordinadores.length === 1 ? coordinadores[0].id : null;
 
   return (
     <div className="space-y-5">
@@ -103,7 +120,12 @@ export default async function ComercialPage() {
               <span className="sm:hidden">Post-meet</span>
             </Link>
           </Button>
-          <NewProposalDialog services={services ?? []} users={users ?? []} />
+          <NewProposalDialog
+            services={services ?? []}
+            users={(users ?? []) as { id: string; nombre: string }[]}
+            coordinadores={coordinadores}
+            defaultCoordinadorId={defaultCoordinadorId}
+          />
         </div>
       </div>
 
@@ -124,6 +146,9 @@ export default async function ComercialPage() {
         </div>
         <span className="shrink-0 text-sm text-primary group-hover:underline">Ir →</span>
       </Link>
+
+      {/* Paso 1 del cierre: pedir los datos al cliente */}
+      <RequestClientDataCard />
 
       {/* Seguimiento de propuestas */}
       <div>

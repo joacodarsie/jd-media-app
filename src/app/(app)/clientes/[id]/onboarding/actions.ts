@@ -61,6 +61,60 @@ export async function toggleOnboardingStep(
 }
 
 /**
+ * Asigna los puestos del cliente (CM, diseño, audiovisual) — y opcionalmente la
+ * coordinadora. Lo puede hacer el admin, cualquier coordinador/a, o la
+ * coordinadora asignada a ESTA cuenta. Pensado para que la coordinación del
+ * servicio defina su equipo desde el onboarding de Gestión de Redes.
+ */
+export async function assignClientTeam(
+  clientId: string,
+  team: {
+    cm_id: string | null;
+    disenador_id: string | null;
+    audiovisual_id: string | null;
+    coordinador_id?: string | null;
+  }
+) {
+  const me = await requireUser();
+  const admin = createAdmin();
+
+  const { data: client } = await admin
+    .from("clients")
+    .select("coordinador_id")
+    .eq("id", clientId)
+    .maybeSingle();
+  if (!client) return { error: "Cliente no encontrado." };
+
+  const esCoordinador =
+    me.rol === "admin" ||
+    me.rol === "coordinador" ||
+    me.rol_secundario === "coordinador" ||
+    me.id === (client as { coordinador_id: string | null }).coordinador_id;
+  if (!esCoordinador) return { error: "No tenés permiso para asignar el equipo." };
+
+  const patch: Record<string, string | null> = {
+    cm_id: team.cm_id || null,
+    disenador_id: team.disenador_id || null,
+    audiovisual_id: team.audiovisual_id || null,
+  };
+  // Solo admin/coordinación general puede cambiar la coordinadora de la cuenta.
+  if (
+    team.coordinador_id !== undefined &&
+    (me.rol === "admin" || me.rol === "coordinador" || me.rol_secundario === "coordinador")
+  ) {
+    patch.coordinador_id = team.coordinador_id || null;
+  }
+
+  const { error } = await admin.from("clients").update(patch).eq("id", clientId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/clientes/${clientId}/onboarding/redes`);
+  revalidatePath(`/clientes/${clientId}/onboarding`);
+  revalidatePath(`/clientes/${clientId}`);
+  return { ok: true as const };
+}
+
+/**
  * Registra el pago recibido del onboarding con el monto efectivo (puede ser una
  * seña parcial) y una nota opcional. Si el monto es > 0 marca el paso como
  * hecho (pago_recibido_at = ahora); si se limpia (monto null/0 y sin nota) lo

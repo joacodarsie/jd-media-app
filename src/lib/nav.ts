@@ -133,11 +133,16 @@ function userHasFeature(user: AppUser, feature: Feature): boolean {
 
 function itemVisible(user: AppUser, i: NavItem, isLiveOwner = false) {
   if (i.liveOwnerOnly && !isLiveOwner) return false;
-  // Si el item declara una feature y el usuario la tiene, le damos acceso
-  // aunque su rol no esté en la lista (permiso puntual, ej: "comercial").
-  if (i.feature && userHasFeature(user, i.feature)) return true;
-  if (i.roles && !i.roles.includes(user.rol)) return false;
-  if (i.feature && !userHasFeature(user, i.feature)) return false;
+  // Visible si el ROL (primario o secundario) está en la lista, O si tiene la
+  // feature. Antes exigía la feature aunque el rol estuviera en la lista, lo que
+  // ocultaba Comercial/Prospección a quien tiene rol "comercial" pero no el
+  // permiso homónimo. Ahora cualquiera de las dos alcanza.
+  const roleOk =
+    !!i.roles &&
+    (i.roles.includes(user.rol) ||
+      (!!user.rol_secundario && i.roles.includes(user.rol_secundario)));
+  const featOk = !!i.feature && userHasFeature(user, i.feature);
+  if (i.roles || i.feature) return roleOk || featOk;
   return true;
 }
 

@@ -142,12 +142,15 @@ export async function inviteNewUser(input: {
   const sb = createClient();
   // Auto-asignar features default segun rol (admin siempre tiene todas via codigo).
   const permisos = defaultPermisosForRole(input.rol as UserRole);
-  // Guardar pass en plaintext para que el admin la pueda ver despues.
-  // Si la columna password_visible no existe (migration 0050), reintentamos
-  // sin ese campo asi no se rompe el alta del usuario.
+  // OJO: el trigger `handle_new_user` ya crea la fila en public.users al crear el
+  // auth user (con rol 'creativa' por defecto). Por eso usamos UPSERT: pisamos esa
+  // fila con el rol/area/permisos reales en vez de un INSERT que chocaría con
+  // users_pkey. Guardamos la pass en plaintext para que el admin la pueda ver;
+  // si la columna password_visible no existe (migration 0050), reintentamos sin
+  // ese campo asi no se rompe el alta.
   let uErr;
   {
-    const res = await sb.from("users").insert({
+    const row = {
       id: created.user.id,
       nombre: input.nombre.trim(),
       email,
@@ -155,20 +158,14 @@ export async function inviteNewUser(input: {
       area: input.area,
       activo: true,
       permisos,
-      password_visible: input.password,
-    });
+    };
+    const res = await sb
+      .from("users")
+      .upsert({ ...row, password_visible: input.password }, { onConflict: "id" });
     uErr = res.error;
     if (uErr && /password_visible/i.test(uErr.message)) {
       // Reintentar sin password_visible
-      const res2 = await sb.from("users").insert({
-        id: created.user.id,
-        nombre: input.nombre.trim(),
-        email,
-        rol: input.rol,
-        area: input.area,
-        activo: true,
-        permisos,
-      });
+      const res2 = await sb.from("users").upsert(row, { onConflict: "id" });
       uErr = res2.error;
     }
   }

@@ -170,7 +170,22 @@ function UserRow({ user }: { user: TeamRow }) {
     <tr className="border-b last:border-0 hover:bg-muted/20">
       <td className="px-3 py-2 font-medium">{user.nombre}</td>
       <td className="px-3 py-2">
-        <ChangeEmailPopover user={user} />
+        <div className="inline-flex items-center gap-1">
+          <ChangeEmailPopover user={user} />
+          <button
+            type="button"
+            onClick={() =>
+              navigator.clipboard.writeText(user.email).then(
+                () => toast.success("Email copiado"),
+                () => toast.error("No se pudo copiar")
+              )
+            }
+            className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            title="Copiar email"
+          >
+            <Copy className="h-3 w-3" />
+          </button>
+        </div>
       </td>
       <td className="px-3 py-2">
         <PasswordCell pass={user.password_visible ?? null} />

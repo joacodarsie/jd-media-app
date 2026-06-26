@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { Button } from "@/components/ui/button";
 import { NewProposalDialog } from "@/components/new-proposal-dialog";
-import { RequestClientDataCard } from "@/components/request-client-data-card";
+import { CopyRequestDataButton } from "@/components/copy-request-data-button";
 import { HelpTrigger } from "@/components/help-trigger";
 import { whatsappLink } from "@/lib/payment-reminder";
 
@@ -120,6 +120,7 @@ export default async function ComercialPage() {
               <span className="sm:hidden">Post-meet</span>
             </Link>
           </Button>
+          <CopyRequestDataButton />
           <NewProposalDialog
             services={services ?? []}
             users={(users ?? []) as { id: string; nombre: string }[]}
@@ -146,9 +147,6 @@ export default async function ComercialPage() {
         </div>
         <span className="shrink-0 text-sm text-primary group-hover:underline">Ir →</span>
       </Link>
-
-      {/* Paso 1 del cierre: pedir los datos al cliente */}
-      <RequestClientDataCard />
 
       {/* Seguimiento de propuestas */}
       <div>

@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { FEATURES, type Feature } from "@/lib/permissions";
-import { defaultPermisosForRole } from "@/lib/role-defaults";
+import { defaultPermisosForRoles } from "@/lib/role-defaults";
 import type { UserRole } from "@/lib/types";
 import { invalidateUsersCache } from "@/lib/cache";
 
@@ -101,6 +101,54 @@ export async function updateUserPermissions(
   return { ok: true };
 }
 
+/**
+ * Cambia el rol/área (primario y secundario) de un usuario ya creado. Suma los
+ * permisos por defecto de los roles a los que ya tiene (ADITIVO: nunca le saca
+ * accesos otorgados a mano). Para cuando alguien pasa a cumplir 2 funciones.
+ */
+export async function updateUserRoles(
+  userId: string,
+  input: {
+    rol: string;
+    area: string;
+    rolSecundario?: string | null;
+    areaSecundaria?: string | null;
+  }
+) {
+  await requireRole(["admin"]);
+  if (!input.rol || !input.area) return { error: "Falta el rol o el área." };
+  const rolSecundario =
+    input.rolSecundario && input.rolSecundario !== input.rol ? input.rolSecundario : null;
+  const areaSecundaria =
+    input.areaSecundaria && input.areaSecundaria !== input.area ? input.areaSecundaria : null;
+
+  const sb = createClient();
+  // Traer permisos actuales para sumarle (no pisar) los defaults de los roles.
+  const { data: cur } = await sb
+    .from("users")
+    .select("permisos")
+    .eq("id", userId)
+    .maybeSingle();
+  const permisos: Record<string, boolean> = {
+    ...(((cur as { permisos?: Record<string, boolean> } | null)?.permisos) ?? {}),
+    ...defaultPermisosForRoles([input.rol as UserRole, rolSecundario as UserRole | null]),
+  };
+
+  const { error } = await sb
+    .from("users")
+    .update({
+      rol: input.rol,
+      area: input.area,
+      rol_secundario: rolSecundario,
+      area_secundaria: areaSecundaria,
+      permisos,
+    })
+    .eq("id", userId);
+  if (error) return { error: error.message };
+  invalidate();
+  return { ok: true as const };
+}
+
 /** Activa o desactiva un usuario en la app (no borra en auth). */
 export async function toggleUserActive(userId: string, activo: boolean) {
   await requireRole(["admin"]);
@@ -117,6 +165,8 @@ export async function inviteNewUser(input: {
   email: string;
   rol: string;
   area: string;
+  rolSecundario?: string | null;
+  areaSecundaria?: string | null;
   password: string;
 }) {
   await requireRole(["admin"]);
@@ -130,6 +180,13 @@ export async function inviteNewUser(input: {
   if (!input.nombre.trim()) {
     return { error: "Falta el nombre." };
   }
+  // El secundario no puede repetir el primario (sería redundante).
+  const rolSecundario =
+    input.rolSecundario && input.rolSecundario !== input.rol ? input.rolSecundario : null;
+  const areaSecundaria =
+    input.areaSecundaria && input.areaSecundaria !== input.area
+      ? input.areaSecundaria
+      : null;
   const admin = createAdmin();
   const { data: created, error: cErr } = await admin.auth.admin.createUser({
     email,
@@ -141,7 +198,11 @@ export async function inviteNewUser(input: {
 
   const sb = createClient();
   // Auto-asignar features default segun rol (admin siempre tiene todas via codigo).
-  const permisos = defaultPermisosForRole(input.rol as UserRole);
+  // Si tiene rol secundario, suma también los defaults de ese rol.
+  const permisos = defaultPermisosForRoles([
+    input.rol as UserRole,
+    rolSecundario as UserRole | null,
+  ]);
   // OJO: el trigger `handle_new_user` ya crea la fila en public.users al crear el
   // auth user (con rol 'creativa' por defecto). Por eso usamos UPSERT: pisamos esa
   // fila con el rol/area/permisos reales en vez de un INSERT que chocaría con
@@ -156,6 +217,8 @@ export async function inviteNewUser(input: {
       email,
       rol: input.rol,
       area: input.area,
+      rol_secundario: rolSecundario,
+      area_secundaria: areaSecundaria,
       activo: true,
       permisos,
     };

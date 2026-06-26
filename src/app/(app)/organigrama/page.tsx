@@ -84,7 +84,7 @@ export default async function OrganigramaPage() {
   const supabase = createClient();
   const { data } = await supabase
     .from("users")
-    .select("id, nombre, area, permisos")
+    .select("id, nombre, area, area_secundaria, permisos")
     .eq("activo", true)
     .order("nombre");
 
@@ -92,6 +92,7 @@ export default async function OrganigramaPage() {
     id: string;
     nombre: string;
     area: string | null;
+    area_secundaria: string | null;
     permisos: Record<string, boolean> | null;
   }>;
 
@@ -102,6 +103,8 @@ export default async function OrganigramaPage() {
   };
   for (const u of rows) {
     push(u.area ?? "Sin área", { id: u.id, nombre: u.nombre });
+    // Quien tiene área secundaria también figura ahí.
+    if (u.area_secundaria) push(u.area_secundaria, { id: u.id, nombre: u.nombre });
   }
   // Quienes tienen el permiso "comercial" (aunque su área sea otra) también
   // aparecen en Comercial: venden los servicios de la agencia.

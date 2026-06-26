@@ -88,7 +88,10 @@ export async function buildPeriodPayroll(
         "cliente_id, tipo, pack, pack_detalle, monto_mensual, facturacion, activo, costo_override, costo_pct, costo_override_user, created_at, media_buyer_user_id, media_buyer_aplica"
       )
       .eq("activo", true),
-    admin.from("users").select("id, nombre, rol, alias_cbu, cbu, titular_cuenta").eq("activo", true),
+    admin
+      .from("users")
+      .select("id, nombre, rol, rol_secundario, alias_cbu, cbu, titular_cuenta")
+      .eq("activo", true),
     admin
       .from("payroll_items")
       .select("id, user_id, tipo, concepto, monto, cliente_id, notas")
@@ -122,10 +125,14 @@ export async function buildPeriodPayroll(
     id: string;
     nombre: string;
     rol: string;
+    rol_secundario: string | null;
     alias_cbu: string | null;
     cbu: string | null;
     titular_cuenta: string | null;
   }[];
+  // Mira rol primario y secundario (quien cumple 2 funciones cuenta para ambas).
+  const isRole = (u: { rol: string; rol_secundario: string | null }, r: string) =>
+    u.rol === r || u.rol_secundario === r;
   const items = (itemsRaw ?? []) as {
     id: string;
     user_id: string;
@@ -143,7 +150,7 @@ export async function buildPeriodPayroll(
     fecha_pago: string | null;
   }[];
 
-  const fallbackMediaBuyer = users.find((u) => u.rol === "paid_media")?.id ?? null;
+  const fallbackMediaBuyer = users.find((u) => isRole(u, "paid_media"))?.id ?? null;
 
   // ── Nómina automática (modelo de tarifas) ──
   const autoByUser = computeAutoPayroll(clients, services, settings.rates, fallbackMediaBuyer);
@@ -170,7 +177,7 @@ export async function buildPeriodPayroll(
   // Fijo mensual del/los comercial(es) por gestión de mensajes y leads.
   const comercialFijo = settings.rates.comercial_fijo ?? COMERCIAL_FIXED_MENSUAL;
   for (const u of users) {
-    if (u.rol !== "comercial") continue;
+    if (!isRole(u, "comercial")) continue;
     if (comercialFijo <= 0) continue;
     if (!autoByUser.has(u.id)) autoByUser.set(u.id, []);
     autoByUser.get(u.id)!.push({
@@ -186,7 +193,7 @@ export async function buildPeriodPayroll(
   // gestión de redes de cada cuenta, atribuida a la coordinadora DE ESA CUENTA
   // (o repartida según la excepción del mes, si la hay).
   const coordPct = settings.rates.comision_coordinacion ?? 0;
-  const fallbackCoordinador = users.find((u) => u.rol === "coordinador")?.id ?? null;
+  const fallbackCoordinador = users.find((u) => isRole(u, "coordinador"))?.id ?? null;
   const gdrByClient = new Map<string, number>();
   for (const s of services) {
     if (s.tipo !== "gestion_redes") continue;

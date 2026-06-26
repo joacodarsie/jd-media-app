@@ -64,6 +64,10 @@ export interface AppUser {
   email: string;
   rol: UserRole;
   area: string;
+  /** Rol secundario opcional, para quien cumple 2 funciones en la agencia. */
+  rol_secundario: UserRole | null;
+  /** Área secundaria opcional (para figurar también ahí). */
+  area_secundaria: string | null;
   avatar_url: string | null;
   activo: boolean;
   position_id: string | null;

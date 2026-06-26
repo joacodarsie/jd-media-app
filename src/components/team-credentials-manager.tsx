@@ -13,6 +13,7 @@ import {
   Eye,
   EyeOff,
   Copy,
+  UserCog,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ import {
   toggleUserActive,
   updateUserEmail,
   updateUserPermissions,
+  updateUserRoles,
 } from "@/app/(app)/accesos/team-actions";
 import { ROLE_LABEL } from "@/lib/constants";
 import type { UserRole } from "@/lib/types";
@@ -62,10 +64,15 @@ export interface TeamRow {
   email: string;
   rol: UserRole;
   area: string;
+  rol_secundario?: UserRole | null;
+  area_secundaria?: string | null;
   activo: boolean;
   permisos?: Record<string, boolean> | null;
   password_visible?: string | null;
 }
+
+/** Valor centinela para "sin rol/área secundaria" en los Select. */
+const NONE = "__none__";
 
 const ROLES: UserRole[] = [
   "admin",
@@ -170,6 +177,14 @@ function UserRow({ user }: { user: TeamRow }) {
       </td>
       <td className="px-3 py-2 text-xs text-muted-foreground">
         {ROLE_LABEL[user.rol] ?? user.rol}
+        {user.rol_secundario && (
+          <span
+            className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary"
+            title="Rol secundario"
+          >
+            +{ROLE_LABEL[user.rol_secundario] ?? user.rol_secundario}
+          </span>
+        )}
       </td>
       <td className="px-3 py-2 text-xs">
         {user.activo ? (
@@ -184,6 +199,7 @@ function UserRow({ user }: { user: TeamRow }) {
       </td>
       <td className="px-3 py-2">
         <div className="flex items-center justify-end gap-1">
+          <EditRolesDialog user={user} />
           <PermissionsDialog user={user} />
           <SetPasswordPopover user={user} />
           <Button
@@ -499,6 +515,136 @@ function RoleDefaultsPreview({ rol }: { rol: UserRole }) {
   );
 }
 
+/** Editar rol/área (primario y secundario) de un usuario ya creado. */
+function EditRolesDialog({ user }: { user: TeamRow }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [rol, setRol] = useState<UserRole>(user.rol);
+  const [area, setArea] = useState(user.area);
+  const [rolSec, setRolSec] = useState<string>(user.rol_secundario ?? NONE);
+  const [areaSec, setAreaSec] = useState<string>(user.area_secundaria ?? NONE);
+  const [pending, start] = useTransition();
+
+  function save() {
+    start(async () => {
+      const res = await updateUserRoles(user.id, {
+        rol,
+        area,
+        rolSecundario: rolSec === NONE ? null : rolSec,
+        areaSecundaria: areaSec === NONE ? null : areaSec,
+      });
+      if (res?.error) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success("Roles actualizados");
+      setOpen(false);
+      router.refresh();
+    });
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="ghost" className="h-8 gap-1 px-2" title="Rol y área">
+          <UserCog className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Rol</span>
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Rol y área de {user.nombre}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">Rol principal</Label>
+              <Select value={rol} onValueChange={(v) => setRol(v as UserRole)}>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLES.map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {ROLE_LABEL[r] ?? r}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Área principal</Label>
+              <Select value={area} onValueChange={setArea}>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {AREAS.map((a) => (
+                    <SelectItem key={a} value={a}>
+                      {a}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="rounded-md border border-dashed p-2">
+            <p className="mb-2 text-[11px] text-muted-foreground">
+              <b>2º rol (opcional)</b> — para quien cumple dos funciones. Suma sus
+              permisos y lo hace figurar también en esa área.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">Rol secundario</Label>
+                <Select value={rolSec} onValueChange={setRolSec}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>— Ninguno</SelectItem>
+                    {ROLES.filter((r) => r !== rol).map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {ROLE_LABEL[r] ?? r}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Área secundaria</Label>
+                <Select value={areaSec} onValueChange={setAreaSec}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>— Ninguna</SelectItem>
+                    {AREAS.filter((a) => a !== area).map((a) => (
+                      <SelectItem key={a} value={a}>
+                        {a}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <p className="rounded-md bg-muted px-2 py-1.5 text-[11px] text-muted-foreground">
+            Guardar <b>suma</b> los permisos por defecto de los roles; nunca quita
+            accesos que ya le diste a mano desde <b>Permisos</b>.
+          </p>
+        </div>
+        <DialogFooter>
+          <Button onClick={save} disabled={pending}>
+            {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Guardar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function InviteDialog() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -506,6 +652,8 @@ function InviteDialog() {
   const [email, setEmail] = useState("");
   const [rol, setRol] = useState<UserRole>("community_manager");
   const [area, setArea] = useState(AREAS[3]);
+  const [rolSec, setRolSec] = useState<string>(NONE);
+  const [areaSec, setAreaSec] = useState<string>(NONE);
   const [pwd, setPwd] = useState("");
   const [pending, start] = useTransition();
 
@@ -514,6 +662,8 @@ function InviteDialog() {
     setEmail("");
     setRol("community_manager");
     setArea(AREAS[3]);
+    setRolSec(NONE);
+    setAreaSec(NONE);
     setPwd("");
   }
 
@@ -523,7 +673,15 @@ function InviteDialog() {
       return;
     }
     start(async () => {
-      const res = await inviteNewUser({ nombre, email, rol, area, password: pwd });
+      const res = await inviteNewUser({
+        nombre,
+        email,
+        rol,
+        area,
+        rolSecundario: rolSec === NONE ? null : rolSec,
+        areaSecundaria: areaSec === NONE ? null : areaSec,
+        password: pwd,
+      });
       if (res?.error) {
         toast.error(res.error);
         return;
@@ -592,6 +750,46 @@ function InviteDialog() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          <div className="rounded-md border border-dashed p-2">
+            <p className="mb-2 text-[11px] text-muted-foreground">
+              <b>2º rol (opcional)</b> — si cumple dos funciones en la agencia.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">Rol secundario</Label>
+                <Select value={rolSec} onValueChange={setRolSec}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>— Ninguno</SelectItem>
+                    {ROLES.filter((r) => r !== rol).map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {ROLE_LABEL[r] ?? r}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Área secundaria</Label>
+                <Select value={areaSec} onValueChange={setAreaSec}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>— Ninguna</SelectItem>
+                    {AREAS.filter((a) => a !== area).map((a) => (
+                      <SelectItem key={a} value={a}>
+                        {a}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           <div>

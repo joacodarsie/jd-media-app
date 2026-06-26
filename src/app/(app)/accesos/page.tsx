@@ -21,17 +21,23 @@ export default async function AccesosPage() {
 
   // Tolerar que la migration 0050 (password_visible) aun no este aplicada.
   async function fetchUsers() {
-    const withPass = await supabase
-      .from("users")
-      .select("id, nombre, email, rol, area, activo, permisos, password_visible")
-      .order("activo", { ascending: false })
-      .order("nombre");
-    if (!withPass.error) return withPass;
-    return supabase
-      .from("users")
-      .select("id, nombre, email, rol, area, activo, permisos")
-      .order("activo", { ascending: false })
-      .order("nombre");
+    // Degradación: 0050 (password_visible) y 0113 (rol/area secundarios) pueden
+    // no estar aplicadas todavía. Probamos columnas de más a menos.
+    const sel = (cols: string) =>
+      supabase
+        .from("users")
+        .select(cols)
+        .order("activo", { ascending: false })
+        .order("nombre");
+    const full = await sel(
+      "id, nombre, email, rol, area, rol_secundario, area_secundaria, activo, permisos, password_visible"
+    );
+    if (!full.error) return full;
+    const noSecondary = await sel(
+      "id, nombre, email, rol, area, activo, permisos, password_visible"
+    );
+    if (!noSecondary.error) return noSecondary;
+    return sel("id, nombre, email, rol, area, activo, permisos");
   }
 
   const [
@@ -57,7 +63,7 @@ export default async function AccesosPage() {
   ]);
 
   const list = pages ?? [];
-  const users = (usersData ?? []) as TeamRow[];
+  const users = (usersData ?? []) as unknown as TeamRow[];
   const hasSecret = !!secret?.valor;
   const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 

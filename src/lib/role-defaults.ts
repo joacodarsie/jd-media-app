@@ -41,9 +41,28 @@ export const ROLE_DEFAULT_FEATURES: Record<UserRole, Feature[]> = {
  * Listo para insertar en users.permisos.
  */
 export function defaultPermisosForRole(rol: UserRole): Record<string, boolean> {
+  return defaultPermisosForRoles([rol]);
+}
+
+/**
+ * Une los defaults de varios roles (para quien cumple 2 funciones). Ignora
+ * null/undefined. El resultado es la SUMA de features de todos los roles.
+ */
+export function defaultPermisosForRoles(
+  roles: (UserRole | null | undefined)[]
+): Record<string, boolean> {
   const out: Record<string, boolean> = {};
-  for (const f of ROLE_DEFAULT_FEATURES[rol] ?? []) {
-    out[f] = true;
+  for (const rol of roles) {
+    if (!rol) continue;
+    for (const f of ROLE_DEFAULT_FEATURES[rol] ?? []) out[f] = true;
   }
   return out;
+}
+
+/** true si el usuario tiene ese rol como primario o secundario. */
+export function hasRole(
+  user: { rol: string; rol_secundario?: string | null },
+  rol: UserRole
+): boolean {
+  return user.rol === rol || user.rol_secundario === rol;
 }

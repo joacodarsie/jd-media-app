@@ -39,10 +39,11 @@ export function isStaff(rol: string) {
   return rol === "admin" || rol === "coordinador";
 }
 
-/** Redirige al dashboard si el rol no está permitido. */
+/** Redirige al dashboard si el rol no está permitido (mira primario y secundario). */
 export async function requireRole(roles: string[]): Promise<AppUser> {
   const user = await requireUser();
-  if (!roles.includes(user.rol)) redirect("/dashboard");
+  const ok = roles.includes(user.rol) || (!!user.rol_secundario && roles.includes(user.rol_secundario));
+  if (!ok) redirect("/dashboard");
   return user;
 }
 

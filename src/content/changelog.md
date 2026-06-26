@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-06-26 — Roles dobles y editar el rol de alguien ya cargado
+
+- 👥 **Una persona, dos roles**: al crear (o editar) un usuario podés asignarle un **rol y área secundarios**, para quien cumple dos funciones en la agencia. Suma los **permisos** de los dos roles, lo hace **figurar en las dos áreas** (organigrama y tareas por área) y lo cuenta en **sueldos** donde corresponde (ej. el fijo de comercial).
+- ✏️ **Editar rol/área sin recrear**: nuevo botón **"Rol"** en cada persona de Accesos. Antes el rol solo se podía elegir al crear; ahora lo cambiás cuando quieras. Sumar un rol **nunca** le saca accesos que ya le diste a mano.
+- 🐛 **Fix**: crear un usuario nuevo tiraba el error "duplicate key… users_pkey". Resuelto.
+
 ## 2026-06-26 — Prospección: verificamos el Instagram antes de pasártelo
 
 - ✅ **Chau links de Instagram muertos**: al descubrir empresas, la app ahora **verifica con búsqueda web** que el Instagram exista de verdad y sea de esa empresa **antes de guardarlo**. Si el handle estaba mal, lo **corrige** con el real; si no encuentra ninguno real, lo deja vacío (mejor sin link que con uno que abre una cuenta vacía o inexistente).

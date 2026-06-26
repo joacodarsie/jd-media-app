@@ -25,7 +25,10 @@ export default async function AreaPage() {
   ]);
 
   const staff = isStaff(me.rol);
-  const areas = staff ? [...AREAS] : [me.area];
+  // Quien no es staff ve su área (y la secundaria si cumple 2 funciones).
+  const areas = staff
+    ? [...AREAS]
+    : [me.area, ...(me.area_secundaria ? [me.area_secundaria] : [])];
 
   return (
     <AreaDashboard

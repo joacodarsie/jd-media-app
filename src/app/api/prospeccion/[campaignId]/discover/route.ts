@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser, isStaff } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { discoverLeads, type CampaignContext } from "@/lib/prospecting/discover";
+import { verifyInstagramBatch } from "@/lib/prospecting/verify";
 import {
   generateOutreachMessage,
   type LeadForMessage,
@@ -98,6 +99,35 @@ export async function POST(
         "La búsqueda no trajo empresas nuevas con contacto. Probá afinar el rubro o la zona.",
     });
 
+  // Verificar/corregir los Instagram con búsqueda web ANTES de guardar y de armar
+  // el mensaje: que no le pasemos al equipo un perfil que no existe o está vacío.
+  // El verificado queda guardado para mostrarlo en la tarjeta. Si todo el paso
+  // falla, los leads quedan con su handle original sin verificar (no se pierde).
+  const igVerif = new Map<
+    string,
+    { instagram: string | null; verificado: boolean }
+  >();
+  try {
+    const verif = await verifyInstagramBatch(
+      leads.map((l) => ({
+        empresa: l.empresa,
+        instagram: l.instagram,
+        sitio_web: l.sitio_web,
+        ciudad: l.ciudad,
+        pais: l.pais,
+      })),
+      c.idioma
+    );
+    for (let i = 0; i < leads.length; i++) {
+      const v = verif[i];
+      if (!v) continue;
+      leads[i].instagram = v.instagram; // corregido o null
+      igVerif.set(leads[i].empresa, { instagram: v.instagram, verificado: v.verificado });
+    }
+  } catch (e) {
+    console.warn("verifyInstagramBatch falló:", (e as Error).message);
+  }
+
   // Auto-generar el primer mensaje de cada lead en paralelo, así llegan listos
   // para enviar (sin tener que clickear lead por lead). Si alguno falla, queda
   // sin mensaje y el botón "Generar mensajes" lo recupera después.
@@ -145,6 +175,7 @@ export async function POST(
       pais: lead.pais,
       sitio_web: lead.sitio_web,
       instagram: lead.instagram,
+      instagram_verificado: igVerif.get(lead.empresa)?.verificado ?? null,
       telefono: lead.telefono,
       email: lead.email,
       por_que: lead.por_que,

@@ -62,22 +62,22 @@ export default async function CampaignDetailPage({
   const servicioNombre = services.find((s) => s.slug === c.servicio)?.name ?? null;
 
   const LEAD_COLS =
-    "id, empresa, descripcion, ciudad, pais, sitio_web, instagram, telefono, email, por_que, fit_score, fuente_url, mensaje, seguimiento, estado, cliente_id";
+    "id, empresa, descripcion, ciudad, pais, sitio_web, instagram, instagram_verificado, telefono, email, por_que, fit_score, fuente_url, mensaje, seguimiento, estado, cliente_id";
   const leadsRes = await admin
     .from("prospecting_leads")
     .select(LEAD_COLS)
     .eq("campaign_id", c.id);
   let leadsData = leadsRes.data;
   const leadsErr = leadsRes.error;
-  // Resiliencia: si todavía no se aplicó la migración 0099 (columna seguimiento),
-  // no rompemos la página — la traemos sin esa columna.
+  // Resiliencia: si todavía no se aplicaron 0099 (seguimiento) o 0112
+  // (instagram_verificado), no rompemos la página — traemos sin esas columnas.
   if (leadsErr && (leadsErr as { code?: string }).code === "42703") {
     const fallback = await admin
       .from("prospecting_leads")
-      .select(LEAD_COLS.replace(", seguimiento", ""))
+      .select(LEAD_COLS.replace(", seguimiento", "").replace(", instagram_verificado", ""))
       .eq("campaign_id", c.id);
     leadsData = ((fallback.data ?? []) as unknown as Record<string, unknown>[]).map(
-      (l) => ({ ...l, seguimiento: null })
+      (l) => ({ ...l, seguimiento: null, instagram_verificado: null })
     ) as typeof leadsData;
   }
 

@@ -9,6 +9,7 @@ import {
   type LeadForMessage,
   type MessageContext,
 } from "@/lib/prospecting/message";
+import { verifyInstagramOne } from "@/lib/prospecting/verify";
 
 async function ctx() {
   const supabase = createClient();
@@ -165,6 +166,66 @@ export async function updateLeadNotes(id: string, notas: string) {
   if (error) return { error: error.message };
   revalidatePath(`/prospeccion/${(data as { campaign_id: string }).campaign_id}`);
   return { ok: true as const };
+}
+
+/**
+ * Verifica con búsqueda web que el Instagram del lead exista y sea de la empresa.
+ * Corrige el handle si está mal, o lo deja en null si no encuentra uno real.
+ * Guarda el resultado en instagram + instagram_verificado y devuelve el estado
+ * para refrescar la card. Para los leads ya cargados con links dudosos.
+ */
+export async function verifyLeadInstagram(id: string) {
+  const { supabase } = await ctx();
+  const { data: lead, error } = await supabase
+    .from("prospecting_leads")
+    .select("id, campaign_id, empresa, instagram, sitio_web, ciudad, pais")
+    .eq("id", id)
+    .single();
+  if (error || !lead) return { error: "No se encontró el lead." };
+  const l = lead as {
+    campaign_id: string;
+    empresa: string;
+    instagram: string | null;
+    sitio_web: string | null;
+    ciudad: string | null;
+    pais: string | null;
+  };
+
+  const { data: camp } = await supabase
+    .from("prospecting_campaigns")
+    .select("idioma")
+    .eq("id", l.campaign_id)
+    .maybeSingle();
+
+  let res;
+  try {
+    res = await verifyInstagramOne(
+      {
+        empresa: l.empresa,
+        instagram: l.instagram,
+        sitio_web: l.sitio_web,
+        ciudad: l.ciudad,
+        pais: l.pais,
+      },
+      (camp as { idioma?: string } | null)?.idioma ?? "es_ar"
+    );
+  } catch (e) {
+    console.error("verifyLeadInstagram:", e);
+    return { error: friendlyAiError(e) };
+  }
+
+  const { error: upErr } = await supabase
+    .from("prospecting_leads")
+    .update({ instagram: res.instagram, instagram_verificado: res.verificado })
+    .eq("id", id);
+  if (upErr) return { error: upErr.message };
+
+  revalidatePath(`/prospeccion/${l.campaign_id}`);
+  return {
+    ok: true as const,
+    instagram: res.instagram,
+    verificado: res.verificado,
+  };
 }
 
 export async function deleteLead(id: string) {

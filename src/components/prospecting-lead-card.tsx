@@ -15,6 +15,9 @@ import {
   Trash2,
   FileText,
   MessageCircle,
+  BadgeCheck,
+  ShieldQuestion,
+  ShieldX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +41,7 @@ import {
   setLeadEstado,
   deleteLead,
   convertLeadToProposal,
+  verifyLeadInstagram,
 } from "@/app/(app)/prospeccion/actions";
 
 export interface LeadRow {
@@ -48,6 +52,7 @@ export interface LeadRow {
   pais: string | null;
   sitio_web: string | null;
   instagram: string | null;
+  instagram_verificado: boolean | null;
   telefono: string | null;
   email: string | null;
   por_que: string | null;
@@ -70,14 +75,17 @@ function fitColor(score: number | null): string {
 export function ProspectingLeadCard({ lead }: { lead: LeadRow }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [busy, setBusy] = useState<"msg" | "convert" | "followup" | null>(null);
+  const [busy, setBusy] = useState<"msg" | "convert" | "followup" | "ig" | null>(null);
   const [copied, setCopied] = useState<"msg" | "followup" | null>(null);
   const [msg, setMsg] = useState(lead.mensaje);
   const [followup, setFollowup] = useState(lead.seguimiento);
+  // El IG puede corregirse/anularse al verificar, así que es estado local.
+  const [igHandle, setIgHandle] = useState(lead.instagram);
+  const [igVerif, setIgVerif] = useState<boolean | null>(lead.instagram_verificado);
 
   const meta = estadoMeta(lead.estado);
   const web = ensureHttp(lead.sitio_web);
-  const ig = instagramUrl(lead.instagram);
+  const ig = instagramUrl(igHandle);
   const wa = msg ? intlWhatsappLink(lead.telefono, msg) : intlWhatsappLink(lead.telefono, "");
   const waFollow = followup ? intlWhatsappLink(lead.telefono, followup) : null;
   // El seguimiento tiene sentido una vez que ya hubo un primer contacto.
@@ -102,6 +110,20 @@ export function ProspectingLeadCard({ lead }: { lead: LeadRow }) {
       if ("error" in res) return void toast.error(res.error);
       setFollowup(res.seguimiento);
       toast.success("Seguimiento generado");
+    });
+  }
+
+  function verifyIg() {
+    setBusy("ig");
+    start(async () => {
+      const res = await verifyLeadInstagram(lead.id);
+      setBusy(null);
+      if ("error" in res) return void toast.error(res.error);
+      setIgHandle(res.instagram);
+      setIgVerif(res.verificado);
+      if (res.verificado) toast.success("Instagram verificado ✓");
+      else if (res.instagram) toast.warning("No se pudo confirmar el perfil");
+      else toast.warning("No se encontró un Instagram real de esta empresa");
     });
   }
 
@@ -180,10 +202,46 @@ export function ProspectingLeadCard({ lead }: { lead: LeadRow }) {
           </a>
         )}
         {ig && (
-          <a href={ig} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border px-2 py-1 hover:bg-muted">
-            <Camera className="h-3 w-3" /> {lead.instagram?.startsWith("@") ? lead.instagram : "Instagram"}
+          <a
+            href={ig}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={
+              igVerif === true
+                ? "Perfil verificado con búsqueda web"
+                : igVerif === false
+                  ? "No se pudo confirmar este perfil — revisalo antes de escribir"
+                  : "Instagram sin verificar"
+            }
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 hover:bg-muted ${
+              igVerif === true
+                ? "border-emerald-400/60 text-emerald-700 dark:text-emerald-300"
+                : igVerif === false
+                  ? "border-amber-400/60 text-amber-700 dark:text-amber-300"
+                  : ""
+            }`}
+          >
+            <Camera className="h-3 w-3" />
+            {igHandle?.startsWith("@") ? igHandle : `@${igHandle}`}
+            {igVerif === true && <BadgeCheck className="h-3 w-3" />}
+            {igVerif === false && <ShieldX className="h-3 w-3" />}
           </a>
         )}
+        {/* Verificar/corregir el IG con búsqueda web (o buscarlo si falta). */}
+        <button
+          type="button"
+          onClick={verifyIg}
+          disabled={pending}
+          title={ig ? "Verificar que el Instagram existe" : "Buscar el Instagram de esta empresa"}
+          className="inline-flex items-center gap-1 rounded-full border border-dashed px-2 py-1 text-muted-foreground hover:bg-muted disabled:opacity-50"
+        >
+          {busy === "ig" ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <ShieldQuestion className="h-3 w-3" />
+          )}
+          {ig ? "Verificar IG" : "Buscar IG"}
+        </button>
         {lead.telefono && (
           <span className="inline-flex items-center gap-1 rounded-full border px-2 py-1">
             <MessageCircle className="h-3 w-3" /> {lead.telefono}

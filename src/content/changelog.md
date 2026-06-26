@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-06-26 — Prospección: verificamos el Instagram antes de pasártelo
+
+- ✅ **Chau links de Instagram muertos**: al descubrir empresas, la app ahora **verifica con búsqueda web** que el Instagram exista de verdad y sea de esa empresa **antes de guardarlo**. Si el handle estaba mal, lo **corrige** con el real; si no encuentra ninguno real, lo deja vacío (mejor sin link que con uno que abre una cuenta vacía o inexistente).
+- 🟢 **Se nota a simple vista**: el chip de Instagram aparece **verde con tilde** cuando está confirmado, y **ámbar** cuando no se pudo confirmar (revisalo antes de escribir).
+- 🔎 **Botón "Verificar IG" / "Buscar IG"** en cada lead: para los que ya tenías cargados, podés verificar (o buscar el que falta) cuando quieras.
+
 ## 2026-06-25 — La IA de contenido piensa para viralizar y arma el diseño placa por placa
 
 - 🎯 **Todo el contenido apunta a crecer la cuenta**: tanto el plan mensual como el "Sugerir con IA" del calendario ahora piensan cada pieza con intención de **viralizar**, basándose en el diagnóstico. **Posts y reels** se piensan para atraer gente nueva y pautar (gancho fuerte, alcance frío); **historias** para la audiencia que ya te sigue (cercanía, interacción).

@@ -67,6 +67,7 @@ CÓMO TRABAJAR
 
 REGLAS DURAS
 - PROHIBIDO inventar datos. Si no encontrás el teléfono/email/IG, poné null. Nunca pongas un número o mail "de ejemplo" ni aproximado.
+- INSTAGRAM: poné el handle SOLO si lo VISTE en un resultado de búsqueda (el perfil real, o un link a instagram.com/<handle> en su web/Google). PROHIBIDO armar el handle a partir del nombre de la empresa ("se debe llamar @nombreempresa"): si no viste el perfil real, poné instagram = null. Un Instagram que no existe o está vacío es peor que ninguno.
 - Solo empresas reales que existan hoy. Nada de marcas genéricas o inventadas.
 - No incluyas competidores nuestros (otras agencias de marketing) salvo que el rubro lo pida explícitamente.
 - Evitá grandes multinacionales que ya tienen agencia interna; apuntá a PyMEs y negocios locales/medianos.

@@ -389,7 +389,7 @@ export async function loadOnboarding(clientId: string): Promise<OnboardingData |
       done: onb.dg_aprobado_at,
       icon: BadgeCheck,
       description:
-        "La Coordinación de Diseño revisa y aprueba la identidad visual del arranque antes de enviarla al grupo del cliente. (Solo el arranque de la cuenta; los posteos del día a día no pasan por acá.)",
+        "La Coordinación de Diseño revisa y aprueba el manual de marca y las plantillas de historias antes de mandarlos al grupo del cliente. (Los posteos del día a día NO pasan por esta aprobación.)",
     },
   ];
 

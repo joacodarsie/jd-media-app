@@ -1,4 +1,4 @@
-import { requireUser, isStaff } from "@/lib/auth";
+import { requireUser, isStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   DocumentsManager,
@@ -32,7 +32,7 @@ export default async function DocumentosPage() {
           admin/coordinación pueden subir o borrar.
         </p>
       </div>
-      <DocumentsManager initial={docs} canEdit={isStaff(me.rol)} />
+      <DocumentsManager initial={docs} canEdit={isStaffUser(me)} />
     </div>
   );
 }

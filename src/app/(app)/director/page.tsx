@@ -1,4 +1,4 @@
-import { requireUser, isStaff } from "@/lib/auth";
+import { requireUser, isStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   DirectorDashboard,
@@ -90,7 +90,7 @@ export default async function DirectorPage({
         reports={reports}
         semanas={semanas}
         selectedSemana={selectedSemana}
-        isStaff={isStaff(me.rol)}
+        isStaff={isStaffUser(me)}
       />
     </div>
   );

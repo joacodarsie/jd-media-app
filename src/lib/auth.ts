@@ -39,6 +39,18 @@ export function isStaff(rol: string) {
   return rol === "admin" || rol === "coordinador";
 }
 
+type RoleBearer = { rol: string; rol_secundario?: string | null };
+
+/** true si alguno de los roles del usuario (primario o secundario) está en la lista. */
+export function userInRoles(u: RoleBearer, roles: string[]): boolean {
+  return roles.includes(u.rol) || (!!u.rol_secundario && roles.includes(u.rol_secundario));
+}
+
+/** Como isStaff pero mirando también el rol secundario (roles dobles). */
+export function isStaffUser(u: RoleBearer): boolean {
+  return isStaff(u.rol) || (!!u.rol_secundario && isStaff(u.rol_secundario));
+}
+
 /** Redirige al dashboard si el rol no está permitido (mira primario y secundario). */
 export async function requireRole(roles: string[]): Promise<AppUser> {
   const user = await requireUser();
@@ -72,9 +84,10 @@ export async function requireFeature(feature: Feature): Promise<AppUser> {
 export async function canAccessClient(
   userId: string,
   userRol: string,
-  clientId: string
+  clientId: string,
+  userRolSecundario: string | null = null
 ): Promise<boolean> {
-  if (isStaff(userRol)) return true;
+  if (isStaff(userRol) || (userRolSecundario && isStaff(userRolSecundario))) return true;
   const supabase = createClient();
   const { data } = await supabase
     .from("clients")
@@ -104,9 +117,9 @@ export async function canAccessClient(
  * o responsable de un servicio activo. Devolver [] significa "no ve ninguna".
  */
 export async function getAccessibleClientIds(
-  user: Pick<AppUser, "id" | "rol">
+  user: Pick<AppUser, "id" | "rol" | "rol_secundario">
 ): Promise<string[] | null> {
-  if (isStaff(user.rol)) return null;
+  if (isStaffUser(user)) return null;
   const supabase = createClient();
   const ids = new Set<string>();
 
@@ -132,7 +145,7 @@ export async function getAccessibleClientIds(
 /** Redirige al dashboard si el usuario no puede acceder al cliente. */
 export async function requireClientAccess(clientId: string): Promise<AppUser> {
   const user = await requireUser();
-  const ok = await canAccessClient(user.id, user.rol, clientId);
+  const ok = await canAccessClient(user.id, user.rol, clientId, user.rol_secundario);
   if (!ok) redirect("/dashboard");
   return user;
 }

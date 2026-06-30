@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink, Pencil } from "lucide-react";
-import { requireUser, isStaff } from "@/lib/auth";
+import { requireUser, isStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/markdown";
@@ -24,7 +24,7 @@ export default async function AgencyPageDetail({
     .maybeSingle();
 
   if (!page) notFound();
-  const canEdit = isStaff(me.rol);
+  const canEdit = isStaffUser(me);
   const isProcess = page.kind === "proceso" || page.kind === "plantilla";
 
   return (

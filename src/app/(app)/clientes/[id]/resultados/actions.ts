@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser, isStaff } from "@/lib/auth";
+import { requireUser, isStaffUser, userInRoles } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import {
   listAvailableIgAccounts,
@@ -20,8 +20,8 @@ import {
 
 const CAN_MANAGE = ["admin", "coordinador", "paid_media"];
 
-function canManage(rol: string): boolean {
-  return isStaff(rol) || CAN_MANAGE.includes(rol);
+function canManage(me: { rol: string; rol_secundario?: string | null }): boolean {
+  return isStaffUser(me) || userInRoles(me, CAN_MANAGE);
 }
 
 /** Lista las cuentas de IG disponibles en el system user, para elegir cuál es la del cliente. */
@@ -29,7 +29,7 @@ export async function listIgAccounts(): Promise<
   { ok: true; cuentas: IgAccountOption[] } | { error: string }
 > {
   const me = await requireUser();
-  if (!canManage(me.rol)) return { error: "Sin acceso." };
+  if (!canManage(me)) return { error: "Sin acceso." };
   try {
     const cuentas = await listAvailableIgAccounts();
     return { ok: true, cuentas };
@@ -45,7 +45,7 @@ export async function connectIgAccount(
   igUsername: string | null
 ): Promise<{ ok: true } | { error: string }> {
   const me = await requireUser();
-  if (!canManage(me.rol)) return { error: "Sin acceso." };
+  if (!canManage(me)) return { error: "Sin acceso." };
   const admin = createAdmin();
   const id = igUserId.trim();
   if (!id) return { error: "Falta el ID de la cuenta de Instagram." };
@@ -68,7 +68,7 @@ export async function disconnectIgAccount(
   clienteId: string
 ): Promise<{ ok: true } | { error: string }> {
   const me = await requireUser();
-  if (!canManage(me.rol)) return { error: "Sin acceso." };
+  if (!canManage(me)) return { error: "Sin acceso." };
   const admin = createAdmin();
   const { error } = await admin
     .from("clients")
@@ -84,7 +84,7 @@ export async function refreshIgResults(
   clienteId: string
 ): Promise<{ ok: true; followers: number; reach: number } | { error: string }> {
   const me = await requireUser();
-  if (!canManage(me.rol)) return { error: "Sin acceso." };
+  if (!canManage(me)) return { error: "Sin acceso." };
   try {
     const res = await syncClientInstagram(clienteId);
     if ("error" in res) return { error: res.error };
@@ -107,7 +107,7 @@ export async function getTiktokAuthUrl(
   clienteId: string
 ): Promise<{ ok: true; url: string } | { error: string }> {
   const me = await requireUser();
-  if (!canManage(me.rol)) return { error: "Sin acceso." };
+  if (!canManage(me)) return { error: "Sin acceso." };
   if (!tiktokConfigured())
     return { error: "TikTok todavía no está configurado en la app." };
   try {
@@ -137,7 +137,7 @@ export async function fetchTiktokResults(
   clienteId: string
 ): Promise<{ ok: true; data: TiktokResults } | { error: string }> {
   const me = await requireUser();
-  if (!canManage(me.rol)) return { error: "Sin acceso." };
+  if (!canManage(me)) return { error: "Sin acceso." };
   if (!tiktokConfigured()) return { error: "TikTok todavía no está configurado." };
 
   const admin = createAdmin();
@@ -200,7 +200,7 @@ export async function disconnectTiktok(
   clienteId: string
 ): Promise<{ ok: true } | { error: string }> {
   const me = await requireUser();
-  if (!canManage(me.rol)) return { error: "Sin acceso." };
+  if (!canManage(me)) return { error: "Sin acceso." };
   const admin = createAdmin();
   const { error } = await admin
     .from("client_tiktok_accounts")

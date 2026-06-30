@@ -19,7 +19,7 @@ import {
   TrendingUp,
   User as UserIcon,
 } from "lucide-react";
-import { requireUser, isStaff } from "@/lib/auth";
+import { requireUser, isStaffUser, userInRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { listEventsForUser } from "@/lib/google-calendar";
@@ -169,11 +169,12 @@ export default async function ClientDetail({
     (c as unknown as { disenador_id?: string | null }).disenador_id === me.id ||
     (c as unknown as { audiovisual_id?: string | null }).audiovisual_id === me.id ||
     (c as unknown as { media_buyer_id?: string | null }).media_buyer_id === me.id ||
+    (c as unknown as { coordinador_id?: string | null }).coordinador_id === me.id ||
     svcList.some((s) => s.activo && (s.responsables ?? []).includes(me.id));
 
   // Los no-staff solo pueden abrir sus cuentas ACTIVAS asignadas. Si entran por
   // URL a una cuenta que no es suya (o inactiva), 404.
-  if (!isStaff(me.rol) && (!assignedToMe || c.estado !== "activo")) {
+  if (!isStaffUser(me) && (!assignedToMe || c.estado !== "activo")) {
     notFound();
   }
 
@@ -220,7 +221,7 @@ export default async function ClientDetail({
     proposalMessage = partes.join("\n");
   }
 
-  const canSeeFinancials = isStaff(me.rol) || assignedToMe;
+  const canSeeFinancials = isStaffUser(me) || assignedToMe;
 
   // Historial de cobros normalizado para la card.
   const hoyStr = new Date().toISOString().slice(0, 10);
@@ -257,7 +258,7 @@ export default async function ClientDetail({
       href: `/clientes/${c.id}/onboarding/redes`,
       label: "Onboarding redes",
       icon: Network,
-      show: (me.rol === "admin" || me.rol === "coordinador") && svcList.some((s) => s.tipo === "gestion_redes"),
+      show: userInRoles(me, ["admin", "coordinador"]) && svcList.some((s) => s.tipo === "gestion_redes"),
     },
     { href: `/clientes/${c.id}/diagnostico`, label: "Diagnóstico", icon: FileBarChart, show: true },
     { href: `/clientes/${c.id}/plan-mensual`, label: "Plan mensual", icon: CalendarDays, show: true },
@@ -269,7 +270,7 @@ export default async function ClientDetail({
       label: "Onboarding publicidad",
       icon: Megaphone,
       show:
-        ["admin", "coordinador", "paid_media"].includes(me.rol) &&
+        userInRoles(me, ["admin", "coordinador", "paid_media"]) &&
         svcList.some((s) => s.tipo === "paid_media" || s.tipo === "gestion_redes"),
     },
     {
@@ -277,7 +278,7 @@ export default async function ClientDetail({
       label: "Análisis de pauta",
       icon: TrendingUp,
       show:
-        ["admin", "coordinador", "paid_media"].includes(me.rol) &&
+        userInRoles(me, ["admin", "coordinador", "paid_media"]) &&
         svcList.some((s) => s.tipo === "paid_media" || s.tipo === "gestion_redes"),
     },
     // Resultados de Instagram (lo que el cliente ve como resultado final). Para
@@ -500,7 +501,7 @@ export default async function ClientDetail({
             <CardContent>
               <DocumentsManager
                 initial={(clientDocs ?? []) as unknown as DocumentRow[]}
-                canEdit={isStaff(me.rol)}
+                canEdit={isStaffUser(me)}
                 clienteId={c.id}
               />
             </CardContent>
@@ -550,7 +551,7 @@ export default async function ClientDetail({
           </div>
 
           {/* Credenciales — solo staff (admin/coordinación) */}
-          {isStaff(me.rol) && (
+          {isStaffUser(me) && (
             <Card>
               <CardContent className="pt-4">
                 <ClientListEditor

@@ -1,12 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser, isStaff } from "@/lib/auth";
+import { requireUser, isStaffUser } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 
 async function ctx() {
   const me = await requireUser();
-  if (!isStaff(me.rol)) throw new Error("Sin acceso.");
+  if (!isStaffUser(me)) throw new Error("Sin acceso.");
   return { me, admin: createAdmin() };
 }
 

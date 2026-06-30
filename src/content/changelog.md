@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-06-26 — Roles dobles completos + retoques de onboarding
+
+- 👥 **El segundo rol ahora vale en toda la app**: quien cumple dos funciones (ej. CM + Coordinación) ve y puede usar las secciones de ambos roles en todos lados — fichas de cliente, agenda, clientes, resultados, documentos, análisis de pauta, etc. (antes el rol secundario solo sumaba permisos sueltos).
+- ✅ **Pasos AUTO del onboarding ahora se pueden tildar a mano**: los pasos que se marcaban solos (como "Carta acuerdo enviada") ya no te bloquean — podés confirmarlos o destildarlos vos igual.
+- 🔓 **La coordinadora de una cuenta puede abrir su ficha** aunque no esté en los puestos de producción (antes el acceso miraba CM/diseño/audiovisual pero no la coordinación).
+
 ## 2026-06-26 — Comercial más simple: cerrar un cliente en 2 pasos
 
 - 🧭 **El rol Comercial ahora ve su parte**: quienes tienen rol comercial ven en el menú **Comercial** y **Prospección**, y pueden **crear clientes/propuestas** (antes el menú se los ocultaba aunque tuvieran el rol).

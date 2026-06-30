@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, TrendingUp, AlertTriangle } from "lucide-react";
-import { requireUser, isStaff } from "@/lib/auth";
+import { requireUser, isStaffUser, userInRoles } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { metaConfigured } from "@/lib/meta/ads";
 import { PaidMediaChat } from "@/components/paid-media-chat";
@@ -27,7 +27,7 @@ export default async function PaidMediaAnalisisPage({
   params: { id: string };
 }) {
   const me = await requireUser();
-  if (!isStaff(me.rol) && !ALLOWED.includes(me.rol)) notFound();
+  if (!isStaffUser(me) && !userInRoles(me, ALLOWED)) notFound();
 
   const admin = createAdmin();
   const [{ data: client }, { data: ads }, { data: snap }, { data: changes }] = await Promise.all([
@@ -51,7 +51,7 @@ export default async function PaidMediaAnalisisPage({
       .order("aplicado_at", { ascending: false })
       .limit(20),
   ]);
-  const canApply = CAN_APPLY.includes(me.rol);
+  const canApply = userInRoles(me, CAN_APPLY);
   const history = (changes ?? []) as AppliedChange[];
 
   if (!client) notFound();

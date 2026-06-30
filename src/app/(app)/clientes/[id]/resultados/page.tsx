@@ -13,7 +13,7 @@ import {
   ExternalLink,
   FileText,
 } from "lucide-react";
-import { requireUser, isStaff } from "@/lib/auth";
+import { requireUser, isStaffUser, userInRoles } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { metaConfigured } from "@/lib/meta/instagram";
 import { IgConnect } from "@/components/ig-connect";
@@ -160,7 +160,7 @@ export default async function ResultadosPage({ params }: { params: { id: string 
   };
 
   // Acceso: staff, media buyer, o el CM asignado a la cuenta.
-  const canSee = isStaff(me.rol) || me.rol === "paid_media" || c.cm_id === me.id;
+  const canSee = isStaffUser(me) || userInRoles(me, ["paid_media"]) || c.cm_id === me.id;
   if (!canSee) notFound();
 
   const connected = !!c.ig_user_id;

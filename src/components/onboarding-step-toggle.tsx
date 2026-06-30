@@ -39,12 +39,6 @@ export function OnboardingStepToggle({
   const [pending, start] = useTransition();
 
   function toggle() {
-    if (autoDerived) {
-      toast.info(
-        "Este paso se marca automáticamente desde los datos del sistema."
-      );
-      return;
-    }
     const next = !done;
     setDone(next);
     start(async () => {
@@ -52,6 +46,9 @@ export function OnboardingStepToggle({
       if (res?.error) {
         toast.error(res.error);
         setDone(!next);
+      } else if (autoDerived && next) {
+        // Estaba marcado solo por los datos del sistema; ahora lo confirmó a mano.
+        toast.success("Paso confirmado");
       }
     });
   }
@@ -63,7 +60,7 @@ export function OnboardingStepToggle({
       disabled={pending}
       title={
         autoDerived
-          ? "Se completa automáticamente con los datos del sistema"
+          ? "Se marcó solo con los datos del sistema — podés confirmarlo o destildarlo"
           : done
           ? "Marcar como pendiente"
           : "Marcar como hecho"

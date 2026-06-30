@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
-import { requireUser, isStaff } from "@/lib/auth";
+import { requireUser, isStaffUser } from "@/lib/auth";
 import { runDirectorWeekly } from "@/lib/director/run";
 import { runMonthStartReports } from "@/lib/director/monthly";
 import type { DirectorIdea } from "@/lib/director/insight";
@@ -20,7 +20,7 @@ async function ctx() {
 /** Dispara el parte semanal del Director ahora (solo staff). Sin notificaciones. */
 export async function runWeeklyNow() {
   const me = await requireUser();
-  if (!isStaff(me.rol)) return { error: "Solo admin/coordinación puede generarlo." };
+  if (!isStaffUser(me)) return { error: "Solo admin/coordinación puede generarlo." };
   const admin = createAdmin();
   const res = await runDirectorWeekly(admin, new Date(), false);
   revalidatePath("/director");
@@ -31,7 +31,7 @@ export async function runWeeklyNow() {
 /** Genera/prepara los reportes mensuales del mes anterior ahora (solo staff). */
 export async function runMonthlyNow() {
   const me = await requireUser();
-  if (!isStaff(me.rol)) return { error: "Solo admin/coordinación puede generarlo." };
+  if (!isStaffUser(me)) return { error: "Solo admin/coordinación puede generarlo." };
   const admin = createAdmin();
   try {
     const res = await runMonthStartReports(admin, new Date());

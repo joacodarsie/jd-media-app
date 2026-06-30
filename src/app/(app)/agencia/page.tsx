@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, ExternalLink, Plus } from "lucide-react";
-import { requireUser, isStaff } from "@/lib/auth";
+import { requireUser, isStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,7 +39,7 @@ export default async function AgenciaPage() {
   const pages = pagesRes.data;
   const links: QuickLinkRow[] = (linksRes.data ?? []) as QuickLinkRow[];
   const services: ServiceInit[] = (servicesRes.data ?? []) as ServiceInit[];
-  const canEdit = isStaff(me.rol);
+  const canEdit = isStaffUser(me);
 
   return (
     <div className="space-y-5">

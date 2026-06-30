@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { extractText, getDocumentProxy } from "unpdf";
-import { requireUser, isStaff } from "@/lib/auth";
+import { requireUser, isStaffUser } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { analyzeCvForPool } from "@/lib/recruitment/analyze-pool";
 import { buildAreaProfiles } from "@/lib/recruitment/area-profile";
@@ -26,7 +26,7 @@ const TIME_BUDGET_MS = 45_000; // cortamos antes del límite de 60s de Hobby
  */
 export async function POST(req: Request) {
   const me = await requireUser();
-  if (!isStaff(me.rol))
+  if (!isStaffUser(me))
     return NextResponse.json({ error: "Sin acceso." }, { status: 403 });
 
   const admin = createAdmin();

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, FileText, Plus } from "lucide-react";
-import { requireUser, isStaff } from "@/lib/auth";
+import { requireUser, isStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { AgencyPageDialog } from "@/components/agency-page-dialog";
@@ -31,7 +31,7 @@ export default async function ProcesosPage() {
     byKind.get(p.kind)!.push(p);
   }
 
-  const canEdit = isStaff(me.rol);
+  const canEdit = isStaffUser(me);
 
   return (
     <div className="space-y-5">

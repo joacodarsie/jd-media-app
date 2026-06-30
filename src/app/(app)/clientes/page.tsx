@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import { requireUser } from "@/lib/auth";
+import { requireUser, isStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveUsers } from "@/lib/cache";
 import type { TaskWithRels } from "@/lib/types";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ClientesPage() {
   const me = await requireUser();
-  const isAdmin = me.rol === "admin" || me.rol === "coordinador";
+  const isAdmin = isStaffUser(me);
   const supabase = createClient();
 
   const todayISO = new Date().toISOString();

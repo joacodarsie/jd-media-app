@@ -1,4 +1,4 @@
-import { requireUser, getAccessibleClientIds } from "@/lib/auth";
+import { requireUser, getAccessibleClientIds, userInRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveUsers, getActiveClients } from "@/lib/cache";
 import type { PublicationWithRels } from "@/lib/types";
@@ -97,7 +97,7 @@ export default async function ContenidosPage({
         users={users}
         unseenByPub={unseenByPub}
         defaultClientId={clienteFiltro}
-        canEdit={["admin", "coordinador", "community_manager"].includes(me.rol)}
+        canEdit={userInRoles(me, ["admin", "coordinador", "community_manager"])}
       />
     </div>
   );

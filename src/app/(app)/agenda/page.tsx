@@ -1,4 +1,4 @@
-import { requireUser } from "@/lib/auth";
+import { requireUser, isStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { listEventsForUser } from "@/lib/google-calendar";
@@ -80,7 +80,7 @@ export default async function AgendaPage() {
     id: u.id as string,
     nombre: u.nombre as string,
   }));
-  const isAdmin = me.rol === "admin" || me.rol === "coordinador";
+  const isAdmin = isStaffUser(me);
 
   // Initial fetch SSR: grilla del mes actual (≈42 días) — cubre Mes default + Lista + Semana.
   const now = new Date();

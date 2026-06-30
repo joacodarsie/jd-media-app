@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireUser, isStaff } from "@/lib/auth";
+import { requireUser, isStaffUser } from "@/lib/auth";
 
 export type DocumentCategory =
   | "onboarding"
@@ -15,7 +15,7 @@ export type DocumentCategory =
 
 async function ctx(requireStaff = true) {
   const me = await requireUser();
-  if (requireStaff && !isStaff(me.rol)) throw new Error("Solo staff puede modificar documentos.");
+  if (requireStaff && !isStaffUser(me)) throw new Error("Solo staff puede modificar documentos.");
   const supabase = createClient();
   return { supabase, me };
 }

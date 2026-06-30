@@ -1,4 +1,4 @@
-import { requireRole } from "@/lib/auth";
+import { requireRole, userInRoles } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { metaConfigured } from "@/lib/meta/ads";
 import { MetaTokenStatus } from "@/components/meta-token-status";
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 export default async function PaidMediaPage() {
   const me = await requireRole(["admin", "coordinador", "paid_media"]);
-  const canApply = ["admin", "paid_media"].includes(me.rol);
+  const canApply = userInRoles(me, ["admin", "paid_media"]);
   const admin = createAdmin();
 
   // Clientes con servicio de pauta activo.

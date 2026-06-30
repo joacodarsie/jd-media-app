@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { extractText, getDocumentProxy } from "unpdf";
-import { requireUser, isStaff } from "@/lib/auth";
+import { requireUser, isStaffUser } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { analyzeCv, type SearchContext } from "@/lib/recruitment/analyze";
 import {
@@ -47,7 +47,7 @@ export async function POST(
   { params }: { params: { searchId: string } }
 ) {
   const me = await requireUser();
-  if (!isStaff(me.rol)) {
+  if (!isStaffUser(me)) {
     return NextResponse.json({ error: "Sin acceso." }, { status: 403 });
   }
   const admin = createAdmin();

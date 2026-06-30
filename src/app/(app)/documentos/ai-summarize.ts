@@ -3,7 +3,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireUser, isStaff } from "@/lib/auth";
+import { requireUser, isStaffUser } from "@/lib/auth";
 import { AI_MODEL_FAST } from "@/lib/ai/models";
 
 const MODEL = AI_MODEL_FAST;
@@ -21,7 +21,7 @@ export async function summarizeClientDocument(documentId: string): Promise<
     return { error: "Falta ANTHROPIC_API_KEY" };
   }
   const me = await requireUser();
-  if (!isStaff(me.rol)) return { error: "Solo staff" };
+  if (!isStaffUser(me)) return { error: "Solo staff" };
 
   const sb = createClient();
   const { data: doc, error: dErr } = await sb

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { requireUser, isStaff } from "@/lib/auth";
+import { requireUser, isStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   STATUS_BADGE,
@@ -252,7 +252,7 @@ export default async function TaskDetail({
             comments={(comments ?? []) as Comment[]}
             users={users ?? []}
             currentUserId={me.id}
-            isStaff={isStaff(me.rol)}
+            isStaff={isStaffUser(me)}
           />
         </CardContent>
       </Card>

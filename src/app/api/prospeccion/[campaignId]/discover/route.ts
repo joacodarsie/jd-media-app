@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser, isStaff } from "@/lib/auth";
+import { requireUser, isStaffUser, userInRoles } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { discoverLeads, type CampaignContext } from "@/lib/prospecting/discover";
 import { verifyInstagramBatch } from "@/lib/prospecting/verify";
@@ -14,9 +14,9 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
-/** Acceso: staff o comercial/prospecting. */
-async function canProspect(rol: string) {
-  return isStaff(rol) || rol === "comercial" || rol === "prospecting";
+/** Acceso: staff o comercial/prospecting (mira rol primario y secundario). */
+function canProspect(me: { rol: string; rol_secundario?: string | null }) {
+  return isStaffUser(me) || userInRoles(me, ["comercial", "prospecting"]);
 }
 
 export async function POST(
@@ -24,7 +24,7 @@ export async function POST(
   { params }: { params: { campaignId: string } }
 ) {
   const me = await requireUser();
-  if (!(await canProspect(me.rol)))
+  if (!canProspect(me))
     return NextResponse.json({ error: "Sin acceso." }, { status: 403 });
 
   const admin = createAdmin();

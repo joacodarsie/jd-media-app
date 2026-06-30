@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser, isStaff } from "@/lib/auth";
+import { requireUser, isStaffUser } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { exchangeGmailCode, fetchGoogleEmail } from "@/lib/gmail";
 
@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     NextResponse.redirect(new URL(`/reclutamiento?gmail=${encodeURIComponent(msg)}`, req.url));
 
   const me = await requireUser();
-  if (!isStaff(me.rol)) return back("error:auth");
+  if (!isStaffUser(me)) return back("error:auth");
   if (error) return back(`error:${error}`);
   if (!code) return back("error:missing_code");
 

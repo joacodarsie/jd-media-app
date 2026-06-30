@@ -1,4 +1,4 @@
-import { requireUser, isStaff } from "@/lib/auth";
+import { requireUser, isStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { AREAS } from "@/lib/constants";
 import type { TaskWithRels } from "@/lib/types";
@@ -24,7 +24,7 @@ export default async function AreaPage() {
       .order("nombre"),
   ]);
 
-  const staff = isStaff(me.rol);
+  const staff = isStaffUser(me);
   // Quien no es staff ve su área (y la secundaria si cumple 2 funciones).
   const areas = staff
     ? [...AREAS]

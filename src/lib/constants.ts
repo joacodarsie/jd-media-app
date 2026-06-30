@@ -25,6 +25,7 @@ export const JD_MEDIA_OWNER = {
 export const AREAS = [
   "Estrategia/Dirección",
   "Coordinación",
+  "Coordinación de Diseño",
   "Diseño",
   "Community Manager",
   "Edición Audiovisual",
@@ -38,6 +39,7 @@ export const AREAS = [
 export const ROLE_LABEL: Record<UserRole, string> = {
   admin: "Admin",
   coordinador: "Coordinación",
+  coordinador_diseno: "Coordinación de Diseño",
   community_manager: "Community Manager",
   diseno: "Diseño",
   audiovisual: "Editor Audiovisual",

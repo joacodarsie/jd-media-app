@@ -77,6 +77,7 @@ const NONE = "__none__";
 const ROLES: UserRole[] = [
   "admin",
   "coordinador",
+  "coordinador_diseno",
   "community_manager",
   "diseno",
   "audiovisual",
@@ -90,6 +91,7 @@ const ROLES: UserRole[] = [
 const AREAS = [
   "Estrategia/Dirección",
   "Coordinación",
+  "Coordinación de Diseño",
   "Diseño",
   "Community Manager",
   "Edición Audiovisual",

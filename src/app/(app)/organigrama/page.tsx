@@ -28,7 +28,12 @@ const ORG: OrgNode = {
       area: "Coordinación",
       note: "Reunión semanal con el equipo · reunión mensual con el cliente",
       children: [
-        { title: "Diseño gráfico", area: "Diseño" },
+        {
+          title: "Coordinación de Diseño",
+          area: "Coordinación de Diseño",
+          note: "Coordina el servicio de diseño · aprueba la identidad visual en el arranque de cada cuenta",
+          children: [{ title: "Diseño gráfico", area: "Diseño" }],
+        },
         { title: "Edición audiovisual", area: "Edición Audiovisual" },
         { title: "Community Management", area: "Community Manager" },
         { title: "Paid Media", area: "Paid Media" },

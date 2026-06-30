@@ -13,13 +13,14 @@ import {
   Megaphone,
   MessageCircle,
   Network,
+  Palette,
   Phone,
   Pencil,
   Sparkles,
   TrendingUp,
   User as UserIcon,
 } from "lucide-react";
-import { requireUser, isStaffUser, userInRoles } from "@/lib/auth";
+import { requireUser, isStaffUser, userInRoles, canSeeAllClients } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { listEventsForUser } from "@/lib/google-calendar";
@@ -174,7 +175,7 @@ export default async function ClientDetail({
 
   // Los no-staff solo pueden abrir sus cuentas ACTIVAS asignadas. Si entran por
   // URL a una cuenta que no es suya (o inactiva), 404.
-  if (!isStaffUser(me) && (!assignedToMe || c.estado !== "activo")) {
+  if (!canSeeAllClients(me) && (!assignedToMe || c.estado !== "activo")) {
     notFound();
   }
 
@@ -259,6 +260,14 @@ export default async function ClientDetail({
       label: "Onboarding redes",
       icon: Network,
       show: userInRoles(me, ["admin", "coordinador"]) && svcList.some((s) => s.tipo === "gestion_redes"),
+    },
+    {
+      href: `/clientes/${c.id}/onboarding/diseno`,
+      label: "Onboarding diseño",
+      icon: Palette,
+      show:
+        userInRoles(me, ["admin", "coordinador", "coordinador_diseno", "diseno"]) &&
+        svcList.some((s) => s.tipo === "gestion_redes" || s.tipo === "diseno_grafico"),
     },
     { href: `/clientes/${c.id}/diagnostico`, label: "Diagnóstico", icon: FileBarChart, show: true },
     { href: `/clientes/${c.id}/plan-mensual`, label: "Plan mensual", icon: CalendarDays, show: true },

@@ -27,6 +27,9 @@ export const ROLE_DEFAULT_FEATURES: Record<UserRole, Feature[]> = {
     "documentos_globales",
   ],
   comercial: ["clientes_credenciales"],
+  // Coordinación de diseño: ve credenciales de cuentas y ve TODOS los clientes
+  // (la visibilidad total se resuelve en canSeeAllClients, no por feature).
+  coordinador_diseno: ["clientes_credenciales"],
   community_manager: [],
   diseno: [],
   audiovisual: [],

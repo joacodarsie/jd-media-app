@@ -11,6 +11,10 @@ import {
   FolderPlus,
   KeyRound,
   UserCircle,
+  Palette,
+  Package,
+  Layers,
+  BadgeCheck,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -68,9 +72,14 @@ export interface OnboardingState {
   drive_creado_at: string | null;
   accesos_cargados_at: string | null;
   perfiles_rediseno_at: string | null;
+  dg_manual_marca_at: string | null;
+  dg_kit_marca_at: string | null;
+  dg_proyecto_canva_at: string | null;
+  dg_plantillas_historias_at: string | null;
+  dg_aprobado_at: string | null;
 }
 
-export type Stage = "inicial" | "redes";
+export type Stage = "inicial" | "redes" | "diseno";
 
 export type StepDef = {
   key:
@@ -85,7 +94,12 @@ export type StepDef = {
     | "accesos_cargados_at"
     | "drive_creado_at"
     | "perfiles_rediseno_at"
-    | "tareas_iniciales_at";
+    | "tareas_iniciales_at"
+    | "dg_manual_marca_at"
+    | "dg_kit_marca_at"
+    | "dg_proyecto_canva_at"
+    | "dg_plantillas_historias_at"
+    | "dg_aprobado_at";
   stage: Stage;
   title: string;
   done: string | null | undefined;
@@ -170,6 +184,11 @@ export async function loadOnboarding(clientId: string): Promise<OnboardingData |
     drive_creado_at: null,
     accesos_cargados_at: null,
     perfiles_rediseno_at: null,
+    dg_manual_marca_at: null,
+    dg_kit_marca_at: null,
+    dg_proyecto_canva_at: null,
+    dg_plantillas_historias_at: null,
+    dg_aprobado_at: null,
   }) as OnboardingState;
 
   // Nombres de los responsables (coordinador de la cuenta / media buyer).
@@ -325,6 +344,52 @@ export async function loadOnboarding(clientId: string): Promise<OnboardingData |
       icon: ListChecks,
       description:
         "Genera automáticamente las tareas según los servicios (auditoría, manual, calendario, etc.).",
+    },
+    // ── ETAPA 3 · DISEÑO GRÁFICO (arranque visual, lo hace el diseñador/a) ──
+    {
+      key: "dg_manual_marca_at",
+      stage: "diseno",
+      title: "Manual de marca creado",
+      done: onb.dg_manual_marca_at,
+      icon: FileText,
+      description:
+        "Armá el manual de marca del cliente en Canva: logo y variantes, paleta, tipografías, usos y tono visual.",
+    },
+    {
+      key: "dg_kit_marca_at",
+      stage: "diseno",
+      title: "Kit de marca armado",
+      done: onb.dg_kit_marca_at,
+      icon: Package,
+      description:
+        "Cargá el kit de marca en Canva (logos, colores y fuentes) para que todo el equipo diseñe con la identidad correcta.",
+    },
+    {
+      key: "dg_proyecto_canva_at",
+      stage: "diseno",
+      title: "Proyecto en Canva del cliente",
+      done: onb.dg_proyecto_canva_at,
+      icon: Palette,
+      description:
+        "Creá la carpeta/proyecto del cliente en Canva con su estructura, lista para producir el contenido.",
+    },
+    {
+      key: "dg_plantillas_historias_at",
+      stage: "diseno",
+      title: "Plantillas de historias",
+      done: onb.dg_plantillas_historias_at,
+      icon: Layers,
+      description:
+        "Diseñá las plantillas base de historias (preguntas, encuestas, placas) para mantener coherencia visual.",
+    },
+    {
+      key: "dg_aprobado_at",
+      stage: "diseno",
+      title: "Aprobado por Coordinación de Diseño",
+      done: onb.dg_aprobado_at,
+      icon: BadgeCheck,
+      description:
+        "La Coordinación de Diseño revisa y aprueba la identidad visual del arranque antes de enviarla al grupo del cliente. (Solo el arranque de la cuenta; los posteos del día a día no pasan por acá.)",
     },
   ];
 

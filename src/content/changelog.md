@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-06-26 — Coordinación de Diseño Gráfico + onboarding de diseño
+
+- 🎨 **Nuevo rol "Coordinación de Diseño"**: distinto de la coordinación de gestión de redes. Coordina el servicio de diseño y aprueba la identidad visual en el arranque de cada cuenta. Figura en el organigrama y **ve todos los clientes**.
+- 🗂️ **Onboarding de Diseño Gráfico** (nueva etapa, como redes y publicidad): al arrancar una cuenta el diseñador/a crea **manual de marca, kit de marca, proyecto en Canva y plantillas de historias**; la **Coordinación de Diseño aprueba** antes de mandarlo al grupo (solo el arranque — los posteos del día a día no pasan por acá).
+- ✅ **Tareas de diseño completas**: las tareas de diseño que habían quedado sin responsable ahora caen en el diseñador/a de cada cuenta (se corrigieron las que faltaban).
+
 ## 2026-06-26 — Roles dobles completos + retoques de onboarding
 
 - 👥 **El segundo rol ahora vale en toda la app**: quien cumple dos funciones (ej. CM + Coordinación) ve y puede usar las secciones de ambos roles en todos lados — fichas de cliente, agenda, clientes, resultados, documentos, análisis de pauta, etc. (antes el rol secundario solo sumaba permisos sueltos).

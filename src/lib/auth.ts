@@ -51,6 +51,15 @@ export function isStaffUser(u: RoleBearer): boolean {
   return isStaff(u.rol) || (!!u.rol_secundario && isStaff(u.rol_secundario));
 }
 
+/**
+ * Quién ve TODOS los clientes: staff (admin/coordinación) y la coordinación de
+ * diseño (es diseñadora de toda la agencia y coordina ese servicio). No implica
+ * acceso a finanzas/global: solo visibilidad de cuentas.
+ */
+export function canSeeAllClients(u: RoleBearer): boolean {
+  return isStaffUser(u) || userInRoles(u, ["coordinador_diseno"]);
+}
+
 /** Redirige al dashboard si el rol no está permitido (mira primario y secundario). */
 export async function requireRole(roles: string[]): Promise<AppUser> {
   const user = await requireUser();
@@ -87,7 +96,7 @@ export async function canAccessClient(
   clientId: string,
   userRolSecundario: string | null = null
 ): Promise<boolean> {
-  if (isStaff(userRol) || (userRolSecundario && isStaff(userRolSecundario))) return true;
+  if (canSeeAllClients({ rol: userRol, rol_secundario: userRolSecundario })) return true;
   const supabase = createClient();
   const { data } = await supabase
     .from("clients")
@@ -119,7 +128,7 @@ export async function canAccessClient(
 export async function getAccessibleClientIds(
   user: Pick<AppUser, "id" | "rol" | "rol_secundario">
 ): Promise<string[] | null> {
-  if (isStaffUser(user)) return null;
+  if (canSeeAllClients(user)) return null;
   const supabase = createClient();
   const ids = new Set<string>();
 

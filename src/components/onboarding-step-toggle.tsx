@@ -17,7 +17,12 @@ type StepKey =
   | "meet_guide_generated_at"
   | "drive_creado_at"
   | "accesos_cargados_at"
-  | "perfiles_rediseno_at";
+  | "perfiles_rediseno_at"
+  | "dg_manual_marca_at"
+  | "dg_kit_marca_at"
+  | "dg_proyecto_canva_at"
+  | "dg_plantillas_historias_at"
+  | "dg_aprobado_at";
 
 export function OnboardingStepToggle({
   clientId,

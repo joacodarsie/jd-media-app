@@ -20,7 +20,12 @@ type StepKey =
   | "meet_guide_generated_at"
   | "drive_creado_at"
   | "accesos_cargados_at"
-  | "perfiles_rediseno_at";
+  | "perfiles_rediseno_at"
+  | "dg_manual_marca_at"
+  | "dg_kit_marca_at"
+  | "dg_proyecto_canva_at"
+  | "dg_plantillas_historias_at"
+  | "dg_aprobado_at";
 
 const VALID_STEPS: StepKey[] = [
   "carta_enviada_at",
@@ -35,6 +40,11 @@ const VALID_STEPS: StepKey[] = [
   "drive_creado_at",
   "accesos_cargados_at",
   "perfiles_rediseno_at",
+  "dg_manual_marca_at",
+  "dg_kit_marca_at",
+  "dg_proyecto_canva_at",
+  "dg_plantillas_historias_at",
+  "dg_aprobado_at",
 ];
 
 export async function toggleOnboardingStep(
@@ -42,8 +52,18 @@ export async function toggleOnboardingStep(
   step: StepKey,
   done: boolean
 ) {
-  await requireUser();
+  const me = await requireUser();
   if (!VALID_STEPS.includes(step)) return { error: "Paso inválido" };
+  // La aprobación de la identidad visual la marca solo la Coordinación de Diseño
+  // (o admin): es quien define el criterio estético del arranque de la cuenta.
+  if (step === "dg_aprobado_at") {
+    const ok =
+      me.rol === "admin" ||
+      me.rol === "coordinador_diseno" ||
+      me.rol_secundario === "coordinador_diseno";
+    if (!ok)
+      return { error: "Solo la Coordinación de Diseño puede aprobar este paso." };
+  }
   const admin = createAdmin();
   const value = done ? new Date().toISOString() : null;
 

@@ -15,6 +15,7 @@ import {
   computeContentPayroll,
   computePackContentPayroll,
   computeDesignCoordinationLines,
+  computeStandaloneDesignLines,
   computeCoordinationPayroll,
   closerVolumeBonusPct,
   selectFirstMonthCommissions,
@@ -182,28 +183,59 @@ export async function buildPeriodPayroll(
     autoByUser.get(uid)!.push(...lines);
   }
 
+  const coordDiseno = users.find((u) => isRole(u, "coordinador_diseno"));
+  const clienteNombre = new Map(clients.map((c) => [c.id, c.nombre]));
+
   // Coordinación de DISEÑO: 5% del diseño publicado del mes + plus por manual de
   // marca aprobado, para quien tenga el rol coordinador_diseno (Bri). Usa la
   // misma base "por publicado" que los diseñadores → solo desde el corte.
-  if (periodo >= CONTENT_PAYROLL_FROM) {
-    const coordDiseno = users.find((u) => isRole(u, "coordinador_diseno"));
-    if (coordDiseno) {
-      const clienteNombre = new Map(clients.map((c) => [c.id, c.nombre]));
-      const manualAprobados = ((dgApprovalsRaw ?? []) as { cliente_id: string }[])
-        .filter((r) => clienteNombre.has(r.cliente_id)) // excluye internas/inactivas
-        .map((r) => ({ clienteId: r.cliente_id, cliente: clienteNombre.get(r.cliente_id)! }));
-      const dgLines = computeDesignCoordinationLines(
-        clients,
-        publications,
-        overrideClientIds,
-        settings.rates,
-        periodo,
-        manualAprobados
-      );
-      if (dgLines.length > 0) {
-        if (!autoByUser.has(coordDiseno.id)) autoByUser.set(coordDiseno.id, []);
-        autoByUser.get(coordDiseno.id)!.push(...dgLines);
-      }
+  if (periodo >= CONTENT_PAYROLL_FROM && coordDiseno) {
+    const manualAprobados = ((dgApprovalsRaw ?? []) as { cliente_id: string }[])
+      .filter((r) => clienteNombre.has(r.cliente_id)) // excluye internas/inactivas
+      .map((r) => ({ clienteId: r.cliente_id, cliente: clienteNombre.get(r.cliente_id)! }));
+    const dgLines = computeDesignCoordinationLines(
+      clients,
+      publications,
+      overrideClientIds,
+      settings.rates,
+      periodo,
+      manualAprobados
+    );
+    if (dgLines.length > 0) {
+      if (!autoByUser.has(coordDiseno.id)) autoByUser.set(coordDiseno.id, []);
+      autoByUser.get(coordDiseno.id)!.push(...dgLines);
+    }
+  }
+
+  // Servicio de DISEÑO GRÁFICO STANDALONE (contrato aparte, sin gestión de
+  // redes): 40% a quien diseña la cuenta (equipo de la cuenta) + 10% a la
+  // coordinación de diseño. Siempre activo (no depende del corte de contenido
+  // real, es un servicio nuevo sin modelo previo).
+  {
+    const clientDisenadorId = new Map<string, string>();
+    for (const c of clients) {
+      if (c.disenador_id) clientDisenadorId.set(c.id, c.disenador_id);
+    }
+    const disenoStandaloneServices = services
+      .filter((s) => s.tipo === "diseno_grafico")
+      .map((s) => ({
+        cliente_id: s.cliente_id,
+        monto_mensual: s.monto_mensual,
+        costo_override: s.costo_override,
+        facturacion: s.facturacion,
+        created_at: s.created_at,
+      }));
+    const dsLinesByUser = computeStandaloneDesignLines(
+      disenoStandaloneServices,
+      clientDisenadorId,
+      clienteNombre,
+      coordDiseno?.id ?? null,
+      settings.rates,
+      periodo
+    );
+    for (const [uid, lines] of dsLinesByUser) {
+      if (!autoByUser.has(uid)) autoByUser.set(uid, []);
+      autoByUser.get(uid)!.push(...lines);
     }
   }
 

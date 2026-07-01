@@ -5,6 +5,7 @@ import {
   productionBase,
   mbCost,
   serviceDeliveryCost,
+  standaloneDesignCost,
   type RatePack,
   type AgencySettings,
 } from "@/lib/coordinacion";
@@ -78,9 +79,14 @@ export default async function CoordinacionPage() {
     }
 
     // Costo de entrega de servicios recurrentes que no son gestión de redes
-    // (web/botly/diseño con %). Los cobros únicos no entran al panorama mensual.
+    // (web/botly/branding con %, diseño gráfico standalone). Los cobros únicos
+    // no entran al panorama mensual.
     for (const sv of svcs) {
       if ((sv.facturacion ?? "mensual") === "unico") continue;
+      if (sv.tipo === "diseno_grafico") {
+        costo += standaloneDesignCost(sv, settings.rates);
+        continue;
+      }
       const dc = serviceDeliveryCost(sv);
       if (dc) costo += dc.monto;
     }

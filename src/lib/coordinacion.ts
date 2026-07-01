@@ -50,6 +50,16 @@ export interface AgencyRates {
    * nueva se deriva de este % sobre `manual_marca`. Cuenta interna excluida.
    */
   comision_coord_diseno: number;
+  /**
+   * Servicio de DISEÑO GRÁFICO STANDALONE (contrato aparte, sin gestión de
+   * redes): % del monto que se paga a quien diseña la cuenta (equipo de la
+   * cuenta → `clients.disenador_id`). El resto lo cobra la coordinación de
+   * diseño (`diseno_standalone_coord_pct`); la agencia se queda el remanente
+   * (por defecto 40% + 10% = 50%, agencia 50%).
+   */
+  diseno_standalone_disenador_pct: number;
+  /** % del servicio de diseño standalone que cobra la coordinación de diseño. */
+  diseno_standalone_coord_pct: number;
 }
 
 export interface AgencySettings {
@@ -76,6 +86,8 @@ export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
     comision_lead_propio: 0.05,
     comision_coordinacion: 0.1,
     comision_coord_diseno: 0.05,
+    diseno_standalone_disenador_pct: 0.4,
+    diseno_standalone_coord_pct: 0.1,
   },
 };
 
@@ -135,15 +147,17 @@ export interface ServiceCostInput {
 
 /**
  * Costo de entrega de un servicio que NO es gestión de redes ni pauta (branding,
- * diseño suelto, web, botly…): un monto fijo (`costo_override`) o un % del monto
+ * web, botly…): un monto fijo (`costo_override`) o un % del monto
  * (`costo_pct`), pagado a `costo_override_user`. Devuelve null si no aplica o si
- * no hay costo configurado. La gestión de redes se costea por-pieza aparte, y la
- * pauta (media buyer) va incluida en gestión.
+ * no hay costo configurado. La gestión de redes se costea por-pieza aparte, la
+ * pauta (media buyer) va incluida en gestión, y el diseño gráfico standalone
+ * tiene su propio reparto fijo (ver `standaloneDesignCost` + `computeStandaloneDesignLines`).
  */
 export function serviceDeliveryCost(
   svc: ServiceCostInput
 ): { monto: number; userId: string | null } | null {
-  if (svc.tipo === "gestion_redes" || svc.tipo === "paid_media") return null;
+  if (svc.tipo === "gestion_redes" || svc.tipo === "paid_media" || svc.tipo === "diseno_grafico")
+    return null;
   if (svc.costo_override != null) {
     return { monto: Number(svc.costo_override), userId: svc.costo_override_user };
   }
@@ -152,6 +166,29 @@ export function serviceDeliveryCost(
     return { monto: Math.round(base * Number(svc.costo_pct)), userId: svc.costo_override_user };
   }
   return null;
+}
+
+/** Servicio de diseño gráfico standalone: campos relevantes para su costo. */
+export interface StandaloneDesignCostInput {
+  monto_mensual: number | null;
+  costo_override: number | null;
+}
+
+/**
+ * Costo TOTAL (agencia) del servicio de diseño gráfico standalone: un acuerdo
+ * fijo (`costo_override`) o el % combinado de diseñador + coordinación de
+ * diseño sobre el monto. Para el reparto persona por persona, ver
+ * `computeStandaloneDesignLines` (payroll.ts).
+ */
+export function standaloneDesignCost(
+  svc: StandaloneDesignCostInput,
+  rates: AgencyRates
+): number {
+  if (svc.costo_override != null) return Number(svc.costo_override);
+  const monto = Number(svc.monto_mensual) || 0;
+  const pct =
+    (rates.diseno_standalone_disenador_pct ?? 0) + (rates.diseno_standalone_coord_pct ?? 0);
+  return Math.round(monto * pct);
 }
 
 /** Costo de un pack estándar (incluye pauta: escenario de lista full-service). */

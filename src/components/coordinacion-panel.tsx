@@ -354,6 +354,41 @@ export function CoordinacionPanel({
               cierres del mes, tope 6% (fórmula fija).
             </p>
           </div>
+          <div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Diseño gráfico standalone (servicio aparte, sin gestión de redes)
+            </h3>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Field label="Diseñador de la cuenta · %">
+                <NumInput
+                  prefix="%"
+                  value={Math.round((rates.diseno_standalone_disenador_pct ?? 0) * 100)}
+                  onChange={(n) => patchRate("diseno_standalone_disenador_pct", n / 100)}
+                />
+              </Field>
+              <Field label="Coordinación de diseño · %">
+                <NumInput
+                  prefix="%"
+                  value={Math.round((rates.diseno_standalone_coord_pct ?? 0) * 100)}
+                  onChange={(n) => patchRate("diseno_standalone_coord_pct", n / 100)}
+                />
+              </Field>
+            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Del monto mensual del servicio de diseño standalone: el diseñador de
+              la cuenta cobra{" "}
+              {Math.round((rates.diseno_standalone_disenador_pct ?? 0) * 100)}% y la
+              coordinación de diseño {Math.round((rates.diseno_standalone_coord_pct ?? 0) * 100)}%.
+              La agencia se queda el{" "}
+              {100 -
+                Math.round(
+                  ((rates.diseno_standalone_disenador_pct ?? 0) +
+                    (rates.diseno_standalone_coord_pct ?? 0)) *
+                    100
+                )}
+              % restante.
+            </p>
+          </div>
           <RateLadder title="Community Manager · por pack" prefix="cm" rates={rates.cm} onChange={patchRate} />
           <RateLadder title="Media Buyer · por pack" prefix="mb" rates={rates.media_buyer} onChange={patchRate} />
         </div>

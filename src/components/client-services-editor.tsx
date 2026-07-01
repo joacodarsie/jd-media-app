@@ -484,7 +484,19 @@ function ServiceDialog({
             </div>
           </div>
 
-          {tipo !== "gestion_redes" && (
+          {tipo === "diseno_grafico" && (
+            <div className="space-y-1 rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+              <Label className="text-sm text-foreground">Reparto automático</Label>
+              <p>
+                Se paga solo en Sueldos: 40% para quien diseña la cuenta (ficha del
+                cliente → Equipo de la cuenta → Diseño) + 10% para la coordinación
+                de diseño. La agencia se queda el 50% restante. Porcentajes
+                editables en Coordinación.
+              </p>
+            </div>
+          )}
+
+          {tipo !== "gestion_redes" && tipo !== "diseno_grafico" && (
             <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
               <Label>Costo de entrega</Label>
               <p className="text-xs text-muted-foreground">

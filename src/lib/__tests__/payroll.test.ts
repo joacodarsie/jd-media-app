@@ -4,6 +4,7 @@ import {
   computeContentPayroll,
   computePackContentPayroll,
   computeDesignCoordinationLines,
+  computeStandaloneDesignLines,
   computeCoordinationPayroll,
   closerVolumeBonusPct,
   selectFirstMonthCommissions,
@@ -289,6 +290,91 @@ describe("computeDesignCoordinationLines", () => {
       [{ clienteId: "c1", cliente: "A" }]
     );
     expect(lines).toHaveLength(0);
+  });
+});
+
+describe("computeStandaloneDesignLines", () => {
+  const periodo = "2026-07";
+  const clientNombre = new Map([["c1", "Cliente A"]]);
+  const disenadorMap = new Map([["c1", "dis1"]]);
+
+  it("reparte 40% al diseñador de la cuenta y 10% a la coordinación de diseño", () => {
+    const byUser = computeStandaloneDesignLines(
+      [{ cliente_id: "c1", monto_mensual: 100000, costo_override: null, facturacion: "mensual", created_at: null }],
+      disenadorMap,
+      clientNombre,
+      "coord1",
+      r,
+      periodo
+    );
+    expect(byUser.get("dis1")?.[0].monto).toBe(Math.round(100000 * r.diseno_standalone_disenador_pct));
+    expect(byUser.get("dis1")?.[0].kind).toBe("diseno");
+    expect(byUser.get("coord1")?.[0].monto).toBe(Math.round(100000 * r.diseno_standalone_coord_pct));
+    expect(byUser.get("coord1")?.[0].kind).toBe("extra");
+  });
+
+  it("acuerdo fijo (costo_override) se paga entero al diseñador, sin split", () => {
+    const byUser = computeStandaloneDesignLines(
+      [{ cliente_id: "c1", monto_mensual: 100000, costo_override: 60000, facturacion: "mensual", created_at: null }],
+      disenadorMap,
+      clientNombre,
+      "coord1",
+      r,
+      periodo
+    );
+    expect(byUser.get("dis1")?.[0].monto).toBe(60000);
+    expect(byUser.has("coord1")).toBe(false);
+  });
+
+  it("cobro único solo se paga en el mes en que se cargó", () => {
+    const byUser = computeStandaloneDesignLines(
+      [
+        { cliente_id: "c1", monto_mensual: 50000, costo_override: null, facturacion: "unico", created_at: "2026-07-05" },
+      ],
+      disenadorMap,
+      clientNombre,
+      "coord1",
+      r,
+      periodo
+    );
+    expect(byUser.get("dis1")?.[0].monto).toBe(Math.round(50000 * r.diseno_standalone_disenador_pct));
+
+    const byUserOtroMes = computeStandaloneDesignLines(
+      [
+        { cliente_id: "c1", monto_mensual: 50000, costo_override: null, facturacion: "unico", created_at: "2026-06-05" },
+      ],
+      disenadorMap,
+      clientNombre,
+      "coord1",
+      r,
+      periodo
+    );
+    expect(byUserOtroMes.size).toBe(0);
+  });
+
+  it("sin diseñador asignado en el equipo de la cuenta, no paga la parte del diseñador", () => {
+    const byUser = computeStandaloneDesignLines(
+      [{ cliente_id: "c1", monto_mensual: 100000, costo_override: null, facturacion: "mensual", created_at: null }],
+      new Map(), // sin disenador_id
+      clientNombre,
+      "coord1",
+      r,
+      periodo
+    );
+    expect(byUser.has("dis1")).toBe(false);
+    expect(byUser.get("coord1")?.[0].monto).toBe(Math.round(100000 * r.diseno_standalone_coord_pct));
+  });
+
+  it("excluye cuentas internas/inactivas (no están en clientNombre)", () => {
+    const byUser = computeStandaloneDesignLines(
+      [{ cliente_id: "cX", monto_mensual: 100000, costo_override: null, facturacion: "mensual", created_at: null }],
+      disenadorMap,
+      clientNombre,
+      "coord1",
+      r,
+      periodo
+    );
+    expect(byUser.size).toBe(0);
   });
 });
 

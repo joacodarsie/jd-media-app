@@ -5,6 +5,7 @@ import {
   packCost,
   mergeSettings,
   serviceDeliveryCost,
+  standaloneDesignCost,
   DEFAULT_AGENCY_SETTINGS,
 } from "@/lib/coordinacion";
 
@@ -64,6 +65,22 @@ describe("serviceDeliveryCost", () => {
   });
   it("sin costo configurado → null", () => {
     expect(serviceDeliveryCost(base)).toBeNull();
+  });
+  it("diseño gráfico standalone no usa este costo (tiene su propio reparto)", () => {
+    expect(serviceDeliveryCost({ ...base, tipo: "diseno_grafico", costo_pct: 0.5 })).toBeNull();
+  });
+});
+
+describe("standaloneDesignCost", () => {
+  it("costo total = % diseñador + % coordinación sobre el monto", () => {
+    expect(standaloneDesignCost({ monto_mensual: 100_000, costo_override: null }, r)).toBe(
+      Math.round(100_000 * (r.diseno_standalone_disenador_pct + r.diseno_standalone_coord_pct))
+    );
+  });
+  it("acuerdo fijo tiene prioridad", () => {
+    expect(standaloneDesignCost({ monto_mensual: 100_000, costo_override: 60_000 }, r)).toBe(
+      60_000
+    );
   });
 });
 

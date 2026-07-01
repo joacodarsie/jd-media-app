@@ -336,6 +336,84 @@ export function computeDesignCoordinationLines(
   return lines;
 }
 
+/** Servicio de diseño gráfico standalone: campos relevantes para su reparto. */
+export interface PayrollStandaloneDesignService {
+  cliente_id: string;
+  monto_mensual: number | null;
+  costo_override: number | null;
+  facturacion: string | null;
+  created_at: string | null;
+}
+
+/**
+ * Reparto del servicio de DISEÑO GRÁFICO STANDALONE (contrato aparte, sin
+ * gestión de redes): 40% a quien diseña la cuenta (`clients.disenador_id`,
+ * el mismo "equipo de la cuenta" que el resto de la app) + 10% a la
+ * coordinación de diseño. La agencia se queda el 50% restante. Un acuerdo
+ * fijo (`costo_override`) se paga entero al diseñador de la cuenta, sin split.
+ * Función pura → testeable sin DB.
+ */
+export function computeStandaloneDesignLines(
+  services: PayrollStandaloneDesignService[],
+  clientDisenadorId: Map<string, string>,
+  clientNombre: Map<string, string>,
+  coordDisenoId: string | null,
+  rates: AgencyRates,
+  periodo: string
+): Map<string, PayrollLine[]> {
+  const out = new Map<string, PayrollLine[]>();
+  const add = (userId: string | null, line: PayrollLine) => {
+    if (!userId) return;
+    if (!out.has(userId)) out.set(userId, []);
+    out.get(userId)!.push(line);
+  };
+
+  for (const s of services) {
+    const cliente = clientNombre.get(s.cliente_id);
+    if (!cliente) continue; // cuenta inactiva o interna
+    const esUnico = (s.facturacion ?? "mensual") === "unico";
+    if (esUnico && (s.created_at ?? "").slice(0, 7) !== periodo) continue;
+    const disenadorId = clientDisenadorId.get(s.cliente_id) ?? null;
+
+    if (s.costo_override != null) {
+      add(disenadorId, {
+        clienteId: s.cliente_id,
+        cliente,
+        concepto: "Diseño gráfico standalone (acuerdo fijo)",
+        monto: Number(s.costo_override),
+        kind: "override",
+      });
+      continue;
+    }
+
+    const monto = Number(s.monto_mensual) || 0;
+    const disenadorPct = rates.diseno_standalone_disenador_pct ?? 0;
+    const coordPct = rates.diseno_standalone_coord_pct ?? 0;
+    const disenadorMonto = Math.round(monto * disenadorPct);
+    if (disenadorMonto > 0) {
+      add(disenadorId, {
+        clienteId: s.cliente_id,
+        cliente,
+        concepto: `Diseño gráfico standalone · ${Math.round(disenadorPct * 100)}%`,
+        monto: disenadorMonto,
+        kind: "diseno",
+      });
+    }
+    const coordMonto = Math.round(monto * coordPct);
+    if (coordMonto > 0) {
+      add(coordDisenoId, {
+        clienteId: s.cliente_id,
+        cliente,
+        concepto: `Coordinación de diseño standalone · ${Math.round(coordPct * 100)}%`,
+        monto: coordMonto,
+        kind: "extra",
+      });
+    }
+  }
+
+  return out;
+}
+
 /**
  * Diseño/edición pagados por el PACK CONTRATADO (modelo anterior): se usa para
  * los meses previos al corte de "pago por contenido real" (ver buildPeriodPayroll),

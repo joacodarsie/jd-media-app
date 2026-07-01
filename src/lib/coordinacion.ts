@@ -44,6 +44,12 @@ export interface AgencyRates {
   comision_lead_propio: number;
   /** % recurrente de la coordinadora de Gestión de Redes sobre el abono de cada cuenta que coordina. */
   comision_coordinacion: number;
+  /**
+   * % de la coordinación de diseño sobre el DISEÑO publicado del mes (post/
+   * carrusel + portadas). El plus por aprobar el manual de marca de una cuenta
+   * nueva se deriva de este % sobre `manual_marca`. Cuenta interna excluida.
+   */
+  comision_coord_diseno: number;
 }
 
 export interface AgencySettings {
@@ -69,6 +75,7 @@ export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
     comision_cierre: 0.1,
     comision_lead_propio: 0.05,
     comision_coordinacion: 0.1,
+    comision_coord_diseno: 0.05,
   },
 };
 

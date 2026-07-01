@@ -14,6 +14,7 @@ import {
   computeAutoPayroll,
   computeContentPayroll,
   computePackContentPayroll,
+  computeDesignCoordinationLines,
   computeCoordinationPayroll,
   closerVolumeBonusPct,
   selectFirstMonthCommissions,
@@ -73,6 +74,7 @@ export async function buildPeriodPayroll(
     { data: sessionsRaw },
     { data: pubsRaw },
     { data: splitRaw },
+    { data: dgApprovalsRaw },
   ] = await Promise.all([
     admin.from("agency_settings").select("packs, rates").eq("id", 1).maybeSingle(),
     admin
@@ -116,6 +118,12 @@ export async function buildPeriodPayroll(
       .from("payroll_coordination_splits")
       .select("user_id, pct")
       .eq("periodo", periodo),
+    // Manuales de marca aprobados por la coordinación de diseño ESTE mes.
+    admin
+      .from("client_onboarding")
+      .select("cliente_id, dg_aprobado_at")
+      .gte("dg_aprobado_at", `${periodo}-01`)
+      .lt("dg_aprobado_at", `${nextPeriod(periodo)}-01`),
   ]);
 
   const settings: AgencySettings = mergeSettings(settingsRow);
@@ -172,6 +180,31 @@ export async function buildPeriodPayroll(
   for (const [uid, lines] of contentByUser) {
     if (!autoByUser.has(uid)) autoByUser.set(uid, []);
     autoByUser.get(uid)!.push(...lines);
+  }
+
+  // Coordinación de DISEÑO: 5% del diseño publicado del mes + plus por manual de
+  // marca aprobado, para quien tenga el rol coordinador_diseno (Bri). Usa la
+  // misma base "por publicado" que los diseñadores → solo desde el corte.
+  if (periodo >= CONTENT_PAYROLL_FROM) {
+    const coordDiseno = users.find((u) => isRole(u, "coordinador_diseno"));
+    if (coordDiseno) {
+      const clienteNombre = new Map(clients.map((c) => [c.id, c.nombre]));
+      const manualAprobados = ((dgApprovalsRaw ?? []) as { cliente_id: string }[])
+        .filter((r) => clienteNombre.has(r.cliente_id)) // excluye internas/inactivas
+        .map((r) => ({ clienteId: r.cliente_id, cliente: clienteNombre.get(r.cliente_id)! }));
+      const dgLines = computeDesignCoordinationLines(
+        clients,
+        publications,
+        overrideClientIds,
+        settings.rates,
+        periodo,
+        manualAprobados
+      );
+      if (dgLines.length > 0) {
+        if (!autoByUser.has(coordDiseno.id)) autoByUser.set(coordDiseno.id, []);
+        autoByUser.get(coordDiseno.id)!.push(...dgLines);
+      }
+    }
   }
 
   // Fijo mensual del/los comercial(es) por gestión de mensajes y leads.

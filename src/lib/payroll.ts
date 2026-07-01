@@ -279,6 +279,64 @@ export function computeContentPayroll(
 }
 
 /**
+ * Coordinación de DISEÑO (Bri): 5% del diseño PUBLICADO del mes (post/carrusel
+ * + portadas de reel), sobre las mismas piezas que se les pagan a los
+ * diseñadores — la cuenta interna y las cuentas con acuerdo fijo quedan afuera.
+ * Además, un plus por cada manual de marca aprobado de una cuenta nueva
+ * (= mismo % sobre `manual_marca`). Todo se atribuye a la coordinación de diseño.
+ * Función pura → testeable sin DB.
+ */
+export function computeDesignCoordinationLines(
+  clients: PayrollClient[],
+  publications: PayrollPublication[],
+  overrideClientIds: Set<string>,
+  rates: AgencyRates,
+  periodo: string,
+  manualAprobados: { clienteId: string; cliente: string }[]
+): PayrollLine[] {
+  const pct = rates.comision_coord_diseno ?? 0;
+  if (pct <= 0) return [];
+  const clientById = new Map(clients.map((c) => [c.id, c]));
+
+  let designBase = 0;
+  for (const p of publications) {
+    if (!CONTENT_PAYABLE_STATES.has(p.estado)) continue;
+    if ((p.fecha_publicacion ?? "").slice(0, 7) !== periodo) continue;
+    const c = clientById.get(p.cliente_id);
+    if (!c) continue; // cuenta inactiva o interna (es_interno)
+    if (overrideClientIds.has(p.cliente_id)) continue; // acuerdo fijo cubre todo
+    if (p.tipo === "post" || p.tipo === "carrusel") designBase += rates.diseno_pieza;
+    else if (p.tipo === "reel" || p.tipo === "video") designBase += rates.portada_reel;
+  }
+
+  const lines: PayrollLine[] = [];
+  const pctMonto = Math.round(designBase * pct);
+  if (pctMonto > 0) {
+    lines.push({
+      clienteId: null,
+      cliente: "—",
+      concepto: `Coordinación de diseño · ${Math.round(pct * 100)}% del diseño del mes`,
+      monto: pctMonto,
+      kind: "extra",
+    });
+  }
+
+  const manualBonus = Math.round((rates.manual_marca ?? 0) * pct);
+  if (manualBonus > 0) {
+    for (const m of manualAprobados) {
+      lines.push({
+        clienteId: m.clienteId,
+        cliente: m.cliente,
+        concepto: `Aprobación manual de marca · ${m.cliente}`,
+        monto: manualBonus,
+        kind: "extra",
+      });
+    }
+  }
+  return lines;
+}
+
+/**
  * Diseño/edición pagados por el PACK CONTRATADO (modelo anterior): se usa para
  * los meses previos al corte de "pago por contenido real" (ver buildPeriodPayroll),
  * donde el calendario no necesariamente reflejó lo realmente producido. Atribuye

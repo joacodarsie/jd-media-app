@@ -3,6 +3,7 @@ import {
   computeAutoPayroll,
   computeContentPayroll,
   computePackContentPayroll,
+  computeDesignCoordinationLines,
   computeCoordinationPayroll,
   closerVolumeBonusPct,
   selectFirstMonthCommissions,
@@ -209,6 +210,85 @@ describe("computeContentPayroll", () => {
     // El equipo del cliente no cobra esas piezas.
     expect(out.has("disCuenta")).toBe(false);
     expect(out.has("avCuenta")).toBe(false);
+  });
+});
+
+describe("computeDesignCoordinationLines", () => {
+  const periodo = "2026-07";
+  function pub(over: Partial<PayrollPublication> = {}): PayrollPublication {
+    return {
+      cliente_id: "c1",
+      tipo: "post",
+      estado: "publicado",
+      fecha_publicacion: "2026-07-10T12:00:00Z",
+      audiovisual_id: null,
+      disenador_id: null,
+      ...over,
+    };
+  }
+
+  it("paga 5% del diseño publicado del mes (post/carrusel + portadas)", () => {
+    const lines = computeDesignCoordinationLines(
+      [cliente({ id: "c1" })],
+      [pub({ tipo: "post" }), pub({ tipo: "carrusel" }), pub({ tipo: "reel" })],
+      new Set(),
+      r,
+      periodo,
+      []
+    );
+    // base = 2×diseno_pieza + 1×portada_reel; 5% de eso
+    const base = 2 * r.diseno_pieza + r.portada_reel;
+    const pctLine = lines.find((l) => l.concepto.includes("del diseño del mes"));
+    expect(pctLine?.monto).toBe(Math.round(base * r.comision_coord_diseno));
+  });
+
+  it("suma un plus por cada manual de marca aprobado", () => {
+    const lines = computeDesignCoordinationLines(
+      [cliente({ id: "c1" })],
+      [],
+      new Set(),
+      r,
+      periodo,
+      [
+        { clienteId: "c1", cliente: "Cliente A" },
+        { clienteId: "c2", cliente: "Cliente B" },
+      ]
+    );
+    const manuales = lines.filter((l) => l.concepto.startsWith("Aprobación manual"));
+    expect(manuales).toHaveLength(2);
+    expect(manuales[0].monto).toBe(Math.round(r.manual_marca * r.comision_coord_diseno));
+  });
+
+  it("excluye override y no cuenta piezas de otras cuentas/meses", () => {
+    const lines = computeDesignCoordinationLines(
+      [cliente({ id: "c1" })],
+      [
+        pub({ tipo: "post" }),
+        pub({ tipo: "post", cliente_id: "cX" }), // cuenta no listada (interna/inactiva)
+        pub({ tipo: "post", fecha_publicacion: "2026-06-10T12:00:00Z" }), // otro mes
+        pub({ tipo: "post", estado: "en_diseno" }), // no pagable
+      ],
+      new Set(),
+      r,
+      periodo,
+      []
+    );
+    // solo 1 post válido cuenta
+    expect(lines.find((l) => l.concepto.includes("del diseño"))?.monto).toBe(
+      Math.round(r.diseno_pieza * r.comision_coord_diseno)
+    );
+  });
+
+  it("con % en 0 no devuelve nada", () => {
+    const lines = computeDesignCoordinationLines(
+      [cliente({ id: "c1" })],
+      [pub({ tipo: "post" })],
+      new Set(),
+      { ...r, comision_coord_diseno: 0 },
+      periodo,
+      [{ clienteId: "c1", cliente: "A" }]
+    );
+    expect(lines).toHaveLength(0);
   });
 });
 

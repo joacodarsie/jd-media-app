@@ -2,6 +2,10 @@
 title: Novedades
 ---
 
+## 2026-06-27 — Pago de la Coordinación de Diseño (automático en Sueldos)
+
+- 💰 **La coordinación de diseño se paga sola**: Bri cobra **5% del diseño publicado del mes** (posts/carruseles + portadas de reel, sobre las mismas piezas que se les pagan a los diseñadores), + un **plus por cada manual de marca aprobado** de una cuenta nueva (5% del manual). La cuenta interna (JD Media) queda afuera. Aparece como línea automática en Sueldos desde julio, y el % es editable.
+
 ## 2026-06-26 — Coordinación de Diseño Gráfico + onboarding de diseño
 
 - 🎨 **Nuevo rol "Coordinación de Diseño"**: distinto de la coordinación de gestión de redes. Coordina el servicio de diseño y aprueba la identidad visual en el arranque de cada cuenta. Figura en el organigrama y **ve todos los clientes**.

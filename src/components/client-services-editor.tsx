@@ -233,15 +233,11 @@ function ServiceDialog({
   const [pending, start] = useTransition();
 
   const [tipo, setTipo] = useState<string>(service?.tipo ?? "gestion_redes");
-  const [responsables, setResponsables] = useState<string[]>(
-    (service as { responsables?: string[] } | undefined)?.responsables ?? []
-  );
-
-  function toggleResponsable(id: string) {
-    setResponsables((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-  }
+  // El equipo del servicio sale del EQUIPO DE LA CUENTA (diseñador/editor/CM),
+  // no de un selector por servicio. Conservamos el valor existente al guardar,
+  // pero ya no se edita acá (era redundante y confuso).
+  const responsables =
+    (service as { responsables?: string[] } | undefined)?.responsables ?? [];
   const [pack, setPack] = useState<string>(service?.pack ?? "Presencia");
   const [fechaInicio, setFechaInicio] = useState(service?.fecha_inicio ?? "");
   const [fechaFin, setFechaFin] = useState(service?.fecha_fin ?? "");
@@ -609,39 +605,6 @@ function ServiceDialog({
                 onChange={(e) => setFechaFin(e.target.value)}
               />
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Quién lleva este servicio</Label>
-            <p className="text-xs text-muted-foreground">
-              Marcá las personas asignadas. Al guardar, a los que sumes les llega
-              una notificación.
-            </p>
-            {users.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                No hay usuarios disponibles.
-              </p>
-            ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {users.map((u) => {
-                  const active = responsables.includes(u.id);
-                  return (
-                    <button
-                      key={u.id}
-                      type="button"
-                      onClick={() => toggleResponsable(u.id)}
-                      className={
-                        active
-                          ? "rounded-full border border-primary bg-primary/15 px-3 py-1 text-xs font-medium"
-                          : "rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground hover:bg-muted"
-                      }
-                    >
-                      {u.nombre}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
           </div>
 
           <div className="space-y-2">

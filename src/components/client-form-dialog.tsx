@@ -133,20 +133,6 @@ export function ClientFormDialog({
   function removeService(i: number) {
     setDraftServices((prev) => prev.filter((_, idx) => idx !== i));
   }
-  function toggleServiceResp(i: number, userId: string) {
-    setDraftServices((prev) =>
-      prev.map((s, idx) =>
-        idx === i
-          ? {
-              ...s,
-              responsables: s.responsables.includes(userId)
-                ? s.responsables.filter((x) => x !== userId)
-                : [...s.responsables, userId],
-            }
-          : s
-      )
-    );
-  }
 
   function submit() {
     if (!nombre.trim()) {
@@ -482,8 +468,8 @@ export function ClientFormDialog({
               <p className="mb-3 mt-1 text-xs text-muted-foreground">
                 Elegí el servicio y, según cuál sea, se abre el desglose (el pack
                 solo aparece en Gestión de redes). El <b>pack y el monto del
-                cliente salen de acá</b> — no hace falta cargarlos dos veces. A los
-                responsables que marques les llega una notificación.
+                cliente salen de acá</b> — no hace falta cargarlos dos veces. El
+                equipo se asigna aparte, en <b>Equipo de la cuenta</b>.
               </p>
               {draftServices.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
@@ -577,34 +563,6 @@ export function ClientFormDialog({
                           >
                             <Trash2 className="h-3.5 w-3.5 text-red-600" />
                           </Button>
-                        </div>
-                        <div className="mt-2 space-y-1">
-                          <Label className="text-xs">Quién lo lleva</Label>
-                          {users.length === 0 ? (
-                            <p className="text-xs text-muted-foreground">
-                              No hay usuarios disponibles.
-                            </p>
-                          ) : (
-                            <div className="flex flex-wrap gap-1.5">
-                              {users.map((u) => {
-                                const active = s.responsables.includes(u.id);
-                                return (
-                                  <button
-                                    key={u.id}
-                                    type="button"
-                                    onClick={() => toggleServiceResp(i, u.id)}
-                                    className={
-                                      active
-                                        ? "rounded-full border border-primary bg-primary/15 px-3 py-1 text-xs font-medium"
-                                        : "rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground hover:bg-muted"
-                                    }
-                                  >
-                                    {u.nombre}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
                         </div>
                       </div>
                     );

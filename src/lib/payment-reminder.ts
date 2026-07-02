@@ -56,14 +56,21 @@ export function buildPaymentReminder(c: ReminderClient, periodo: string): string
 }
 
 /**
- * Link wa.me con el mensaje pre-cargado. Devuelve null si no hay un teléfono
- * usable. Best-effort: limpia el número y antepone el código de Argentina (54)
- * si hace falta.
+ * Limpia un teléfono y antepone el código de Argentina (54) si hace falta.
+ * Devuelve null si no queda un número usable. Best-effort (mismo criterio
+ * para el link wa.me manual y el envío automático por la API de Meta).
  */
-export function whatsappLink(telefono: string | null | undefined, mensaje: string): string | null {
+export function normalizePhone(telefono: string | null | undefined): string | null {
   if (!telefono) return null;
   let digits = telefono.replace(/\D/g, "");
   if (digits.length < 8) return null;
   if (!digits.startsWith("54")) digits = "54" + digits;
+  return digits;
+}
+
+/** Link wa.me con el mensaje pre-cargado. Devuelve null si no hay un teléfono usable. */
+export function whatsappLink(telefono: string | null | undefined, mensaje: string): string | null {
+  const digits = normalizePhone(telefono);
+  if (!digits) return null;
   return `https://wa.me/${digits}?text=${encodeURIComponent(mensaje)}`;
 }

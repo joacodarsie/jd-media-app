@@ -31,6 +31,10 @@ export function reminderAmount(c: ReminderClient): { monto: number; moneda: stri
 /**
  * Mensaje de recordatorio de pago listo para mandar por WhatsApp, adaptado al
  * cliente y al período. Pago ideal: el 1° del mes.
+ *
+ * Sin emoji "astrales" (fuera del plano básico de Unicode, ej. 👋🚀🔹🙌):
+ * WhatsApp Web los corrompe al precargar el texto desde el link wa.me
+ * (aparecen como "�"). Usamos como mucho emoji simples (BMP) si hace falta.
  */
 export function buildPaymentReminder(c: ReminderClient, periodo: string): string {
   const { monto, moneda } = reminderAmount(c);
@@ -39,15 +43,15 @@ export function buildPaymentReminder(c: ReminderClient, periodo: string): string
   const { alias, nombre: banco, titular } = AGENCY.bank;
 
   return [
-    `¡Hola ${saludo(c)}! 👋 Te escribo de ${AGENCY.brand}.`,
+    `¡Hola ${saludo(c)}! Te escribo de ${AGENCY.brand}.`,
     ``,
-    `Arrancamos un nuevo mes 🚀 Te paso el recordatorio del abono de tu cuenta correspondiente a ${mes}: *${montoTxt}*.`,
+    `Arrancamos con ${mes} y te paso el recordatorio de tu abono: *${montoTxt}*.`,
     ``,
-    `Para confirmarlo y seguir a full con tu contenido, podés transferir a:`,
-    `🔹 Alias: *${alias}*`,
-    `🔹 ${banco} — ${titular}`,
+    `Podés transferir a:`,
+    `• Alias: *${alias}*`,
+    `• ${banco} — ${titular}`,
     ``,
-    `Cuando lo tengas, pasame el comprobante y listo 🙌 ¡Gracias y a romperla este mes!`,
+    `Cuando lo tengas, mandame el comprobante y seguimos a full con tu contenido. ¡Gracias!`,
   ].join("\n");
 }
 

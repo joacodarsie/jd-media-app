@@ -6,6 +6,8 @@ interface ReviewPub {
   id: string;
   titulo: string;
   copy: string | null;
+  guion: string | null;
+  descripcion: string | null;
   red: string;
   tipo: string;
   fecha_publicacion: string | null;
@@ -66,9 +68,31 @@ export function PortalReviewCard({ pub, token }: { pub: ReviewPub; token: string
         </div>
       </div>
 
+      {pub.descripcion && (
+        <p className="mt-3 text-xs leading-relaxed" style={{ color: "#444" }}>
+          {pub.descripcion}
+        </p>
+      )}
+
+      {pub.guion && (
+        <div className="mt-3">
+          <div className="mb-1 text-[11px] font-medium uppercase tracking-wide" style={{ color: "#888" }}>
+            Guion
+          </div>
+          <div className="whitespace-pre-wrap rounded-md bg-gray-50 p-3 text-xs leading-relaxed" style={{ color: "#444" }}>
+            {pub.guion.length > 600 ? pub.guion.slice(0, 600) + "…" : pub.guion}
+          </div>
+        </div>
+      )}
+
       {pub.copy && (
-        <div className="mt-3 whitespace-pre-wrap rounded-md bg-gray-50 p-3 text-xs leading-relaxed" style={{ color: "#444" }}>
-          {pub.copy.length > 600 ? pub.copy.slice(0, 600) + "…" : pub.copy}
+        <div className="mt-3">
+          <div className="mb-1 text-[11px] font-medium uppercase tracking-wide" style={{ color: "#888" }}>
+            Texto de la publicación
+          </div>
+          <div className="whitespace-pre-wrap rounded-md bg-gray-50 p-3 text-xs leading-relaxed" style={{ color: "#444" }}>
+            {pub.copy.length > 600 ? pub.copy.slice(0, 600) + "…" : pub.copy}
+          </div>
         </div>
       )}
 

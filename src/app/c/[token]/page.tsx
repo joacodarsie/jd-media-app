@@ -26,6 +26,7 @@ interface UpcomingPub {
   tipo: string;
   estado: string;
   copy: string | null;
+  guion: string | null;
   descripcion: string | null;
   hashtags: string | null;
   asset_url: string | null;
@@ -70,7 +71,7 @@ export default async function PortalPage({ params }: { params: { token: string }
       .maybeSingle(),
     admin
       .from("publications")
-      .select("id, titulo, fecha_publicacion, red, tipo, estado, copy, descripcion, hashtags, asset_url")
+      .select("id, titulo, fecha_publicacion, red, tipo, estado, copy, guion, descripcion, hashtags, asset_url")
       .eq("cliente_id", cliente_id)
       .gte("fecha_publicacion", ago4Months.toISOString())
       .lte("fecha_publicacion", in8Weeks.toISOString())
@@ -81,7 +82,7 @@ export default async function PortalPage({ params }: { params: { token: string }
       .limit(120),
     admin
       .from("publications")
-      .select("id, titulo, copy, red, tipo, fecha_publicacion, asset_url")
+      .select("id, titulo, copy, guion, descripcion, red, tipo, fecha_publicacion, asset_url")
       .eq("cliente_id", cliente_id)
       .eq("estado", "revision_cliente")
       .order("fecha_publicacion", { ascending: true, nullsFirst: false })
@@ -130,6 +131,8 @@ export default async function PortalPage({ params }: { params: { token: string }
     id: string;
     titulo: string;
     copy: string | null;
+    guion: string | null;
+    descripcion: string | null;
     red: string;
     tipo: string;
     fecha_publicacion: string | null;

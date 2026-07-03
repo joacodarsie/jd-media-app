@@ -19,6 +19,7 @@ export interface PortalPub {
   tipo: string;
   estado: string;
   copy: string | null;
+  guion: string | null;
   descripcion: string | null;
   hashtags: string | null;
   asset_url: string | null;
@@ -445,6 +446,13 @@ function PubDetail({ pub, token, onClose }: { pub: PortalPub; token: string; onC
 
         {pub.descripcion && (
           <p style={{ fontSize: 14, color: "#444", lineHeight: 1.6, marginTop: 14 }}>{pub.descripcion}</p>
+        )}
+
+        {pub.guion && (
+          <div style={{ marginTop: 14 }}>
+            <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", color: "#888", marginBottom: 6 }}>Guion</div>
+            <div style={{ whiteSpace: "pre-wrap", fontSize: 14, color: "#333", lineHeight: 1.6, background: "#fafafa", borderRadius: 10, padding: 14 }}>{pub.guion}</div>
+          </div>
         )}
 
         {pub.copy && (

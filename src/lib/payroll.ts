@@ -156,6 +156,71 @@ export function computeAutoPayroll(
   return out;
 }
 
+/**
+ * Extra de ONBOARDING para el equipo, SOLO el primer mes de cada cuenta (el
+ * período que matchea `clients.fecha_inicio`): un % de la tarifa mensual de la
+ * CM y del Paid Media, por el laburo exclusivo del arranque (accesos, rediseño
+ * de perfiles, setup de pauta). El diseño/coordinación cobran el arranque por
+ * el bonus del manual, así que no van acá. Cuentas con acuerdo fijo (override)
+ * quedan afuera. Función pura → testeable sin DB.
+ */
+export function computeOnboardingExtras(
+  clients: PayrollClient[],
+  services: PayrollService[],
+  rates: AgencyRates,
+  periodo: string,
+  fallbackMediaBuyerId: string | null
+): Map<string, PayrollLine[]> {
+  const pct = rates.onboarding_extra_pct ?? 0;
+  const out = new Map<string, PayrollLine[]>();
+  if (pct <= 0) return out;
+
+  const byClient = new Map<string, PayrollService[]>();
+  for (const s of services) {
+    if (!byClient.has(s.cliente_id)) byClient.set(s.cliente_id, []);
+    byClient.get(s.cliente_id)!.push(s);
+  }
+  const add = (userId: string | null, line: PayrollLine) => {
+    if (!userId) return;
+    if (!out.has(userId)) out.set(userId, []);
+    out.get(userId)!.push(line);
+  };
+
+  for (const c of clients) {
+    // Solo el primer mes de la cuenta.
+    if ((c.fecha_inicio ?? "").slice(0, 7) !== periodo) continue;
+    const gestion = (byClient.get(c.id) ?? []).find((s) => s.tipo === "gestion_redes");
+    if (!gestion || gestion.costo_override != null) continue; // sin gestión o acuerdo fijo
+    const pack = (gestion.pack ?? "Personalizado") as RatePack;
+
+    const cmExtra = Math.round((rates.cm[pack] ?? 0) * pct);
+    if (cmExtra > 0) {
+      add(c.cm_id, {
+        clienteId: c.id,
+        cliente: c.nombre,
+        concepto: `Onboarding CM · +${Math.round(pct * 100)}% arranque`,
+        monto: cmExtra,
+        kind: "extra",
+      });
+    }
+
+    if (gestion.media_buyer_aplica !== false) {
+      const mbExtra = Math.round(mbCost(pack, rates) * pct);
+      if (mbExtra > 0) {
+        add(c.media_buyer_id ?? fallbackMediaBuyerId, {
+          clienteId: c.id,
+          cliente: c.nombre,
+          concepto: `Onboarding Paid Media · +${Math.round(pct * 100)}% arranque`,
+          monto: mbExtra,
+          kind: "extra",
+        });
+      }
+    }
+  }
+
+  return out;
+}
+
 /** Publicación tal cual la necesita el cálculo de nómina por contenido. */
 export interface PayrollPublication {
   cliente_id: string;

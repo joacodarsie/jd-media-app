@@ -16,6 +16,7 @@ import {
   computePackContentPayroll,
   computeDesignCoordinationLines,
   computeStandaloneDesignLines,
+  computeOnboardingExtras,
   computeCoordinationPayroll,
   closerVolumeBonusPct,
   selectFirstMonthCommissions,
@@ -237,6 +238,20 @@ export async function buildPeriodPayroll(
       if (!autoByUser.has(uid)) autoByUser.set(uid, []);
       autoByUser.get(uid)!.push(...lines);
     }
+  }
+
+  // Extra de onboarding del equipo (CM + Paid Media), solo el primer mes de
+  // cada cuenta: +% de su tarifa por el laburo exclusivo del arranque.
+  const onboardingExtras = computeOnboardingExtras(
+    clients,
+    services,
+    settings.rates,
+    periodo,
+    fallbackMediaBuyer
+  );
+  for (const [uid, lines] of onboardingExtras) {
+    if (!autoByUser.has(uid)) autoByUser.set(uid, []);
+    autoByUser.get(uid)!.push(...lines);
   }
 
   // Fijo mensual del/los comercial(es) por gestión de mensajes y leads.

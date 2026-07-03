@@ -60,6 +60,21 @@ export interface AgencyRates {
   diseno_standalone_disenador_pct: number;
   /** % del servicio de diseño standalone que cobra la coordinación de diseño. */
   diseno_standalone_coord_pct: number;
+
+  /**
+   * Puesta en marcha: pago ÚNICO del primer mes que cubre el arranque del
+   * cliente (manual + kit + plantillas, meet de onboarding, grupos de WhatsApp,
+   * accesos y creación de cuentas faltantes, setup de Meta Ads). Se cobra
+   * completo al firmar, cualquier día del mes; reemplaza al viejo "manual_marca"
+   * como cargo único de arranque de cara al cliente.
+   */
+  puesta_en_marcha: number;
+  /**
+   * Extra de onboarding para el EQUIPO, solo el primer mes de cada cuenta: % de
+   * la tarifa mensual de CM y de Paid Media que se les suma por el laburo
+   * exclusivo del arranque (accesos, rediseño de perfiles, setup de pauta).
+   */
+  onboarding_extra_pct: number;
 }
 
 export interface AgencySettings {
@@ -88,6 +103,8 @@ export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
     comision_coord_diseno: 0.05,
     diseno_standalone_disenador_pct: 0.4,
     diseno_standalone_coord_pct: 0.1,
+    puesta_en_marcha: 50000,
+    onboarding_extra_pct: 0.25,
   },
 };
 

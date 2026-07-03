@@ -329,6 +329,30 @@ export function CoordinacionPanel({
           </div>
           <div>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Arranque de cliente nuevo
+            </h3>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <Field label="Puesta en marcha (pago único)">
+                <NumInput prefix="$" value={rates.puesta_en_marcha ?? 0} onChange={(n) => patchRate("puesta_en_marcha", n)} />
+              </Field>
+              <Field label="Extra onboarding equipo · %">
+                <NumInput
+                  prefix="%"
+                  value={Math.round((rates.onboarding_extra_pct ?? 0) * 100)}
+                  onChange={(n) => patchRate("onboarding_extra_pct", n / 100)}
+                />
+              </Field>
+            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              La <b>puesta en marcha</b> es el pago único del primer mes (manual + kit +
+              plantillas, meet de onboarding, grupos de WhatsApp, accesos y creación de
+              cuentas, setup de Meta Ads). El <b>extra de onboarding</b> se le suma a la
+              CM y al Paid Media solo el primer mes de cada cuenta ({Math.round((rates.onboarding_extra_pct ?? 0) * 100)}%
+              de su tarifa) por el laburo exclusivo del arranque.
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Comercial / comisiones
             </h3>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

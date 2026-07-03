@@ -5,6 +5,7 @@ import {
   computePackContentPayroll,
   computeDesignCoordinationLines,
   computeStandaloneDesignLines,
+  computeOnboardingExtras,
   computeCoordinationPayroll,
   closerVolumeBonusPct,
   selectFirstMonthCommissions,
@@ -290,6 +291,56 @@ describe("computeDesignCoordinationLines", () => {
       [{ clienteId: "c1", cliente: "A" }]
     );
     expect(lines).toHaveLength(0);
+  });
+});
+
+describe("computeOnboardingExtras", () => {
+  const periodo = "2026-08";
+
+  it("suma 25% a CM y Paid Media solo el primer mes de la cuenta", () => {
+    const out = computeOnboardingExtras(
+      [cliente({ cm_id: "cm1", media_buyer_id: "mb1", fecha_inicio: "2026-08-20" })],
+      [servicio({ pack: "Presencia" })],
+      r,
+      periodo,
+      null
+    );
+    expect(out.get("cm1")?.[0].monto).toBe(Math.round(r.cm.Presencia * r.onboarding_extra_pct));
+    expect(out.get("mb1")?.[0].monto).toBe(Math.round(r.media_buyer.Presencia * r.onboarding_extra_pct));
+  });
+
+  it("no aplica si la cuenta no arrancó en el período", () => {
+    const out = computeOnboardingExtras(
+      [cliente({ cm_id: "cm1", media_buyer_id: "mb1", fecha_inicio: "2026-05-01" })],
+      [servicio()],
+      r,
+      periodo,
+      null
+    );
+    expect(out.size).toBe(0);
+  });
+
+  it("sin Paid Media (media_buyer_aplica=false) solo cobra la CM", () => {
+    const out = computeOnboardingExtras(
+      [cliente({ cm_id: "cm1", media_buyer_id: "mb1", fecha_inicio: "2026-08-01" })],
+      [servicio({ media_buyer_aplica: false })],
+      r,
+      periodo,
+      null
+    );
+    expect(out.has("cm1")).toBe(true);
+    expect(out.has("mb1")).toBe(false);
+  });
+
+  it("acuerdo fijo (override) no genera extras de onboarding", () => {
+    const out = computeOnboardingExtras(
+      [cliente({ cm_id: "cm1", fecha_inicio: "2026-08-01" })],
+      [servicio({ costo_override: 200000, costo_override_user: "u1" })],
+      r,
+      periodo,
+      null
+    );
+    expect(out.size).toBe(0);
   });
 });
 

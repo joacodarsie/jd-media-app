@@ -15,6 +15,7 @@ import {
   Package,
   Layers,
   BadgeCheck,
+  Link2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -72,6 +73,9 @@ export interface OnboardingState {
   drive_creado_at: string | null;
   accesos_cargados_at: string | null;
   perfiles_rediseno_at: string | null;
+  cm_accesos_at: string | null;
+  cm_perfiles_at: string | null;
+  cm_vinculacion_at: string | null;
   dg_manual_marca_at: string | null;
   dg_kit_marca_at: string | null;
   dg_proyecto_canva_at: string | null;
@@ -79,7 +83,7 @@ export interface OnboardingState {
   dg_aprobado_at: string | null;
 }
 
-export type Stage = "inicial" | "redes" | "diseno";
+export type Stage = "inicial" | "redes" | "cm" | "diseno";
 
 export type StepDef = {
   key:
@@ -95,6 +99,9 @@ export type StepDef = {
     | "drive_creado_at"
     | "perfiles_rediseno_at"
     | "tareas_iniciales_at"
+    | "cm_accesos_at"
+    | "cm_perfiles_at"
+    | "cm_vinculacion_at"
     | "dg_manual_marca_at"
     | "dg_kit_marca_at"
     | "dg_proyecto_canva_at"
@@ -184,6 +191,9 @@ export async function loadOnboarding(clientId: string): Promise<OnboardingData |
     drive_creado_at: null,
     accesos_cargados_at: null,
     perfiles_rediseno_at: null,
+    cm_accesos_at: null,
+    cm_perfiles_at: null,
+    cm_vinculacion_at: null,
     dg_manual_marca_at: null,
     dg_kit_marca_at: null,
     dg_proyecto_canva_at: null,
@@ -344,6 +354,34 @@ export async function loadOnboarding(clientId: string): Promise<OnboardingData |
       icon: ListChecks,
       description:
         "Genera automáticamente las tareas según los servicios (auditoría, manual, calendario, etc.).",
+    },
+    // ── ETAPA · COMMUNITY MANAGER (arranque operativo de la cuenta) ──
+    {
+      key: "cm_accesos_at",
+      stage: "cm",
+      title: "Acceso a todas las cuentas del cliente",
+      done: onb.cm_accesos_at,
+      icon: KeyRound,
+      description:
+        "Confirmá que podés entrar a TODAS las cuentas del cliente (Instagram, TikTok, Facebook y las que correspondan) para operarlas.",
+    },
+    {
+      key: "cm_perfiles_at",
+      stage: "cm",
+      title: "Rediseño de perfiles y biografías",
+      done: onb.cm_perfiles_at,
+      icon: UserCircle,
+      description:
+        "Actualizá foto de perfil, biografía, links y destacados de TODAS las cuentas según la nueva identidad.",
+    },
+    {
+      key: "cm_vinculacion_at",
+      stage: "cm",
+      title: "Instagram vinculado a la página de Facebook",
+      done: onb.cm_vinculacion_at,
+      icon: Link2,
+      description:
+        "Verificá que el Instagram del cliente esté correctamente vinculado a su página de Facebook (necesario para publicar y para la pauta).",
     },
     // ── ETAPA 3 · DISEÑO GRÁFICO (arranque visual, lo hace el diseñador/a) ──
     {

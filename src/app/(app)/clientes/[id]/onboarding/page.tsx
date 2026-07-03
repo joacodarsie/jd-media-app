@@ -8,6 +8,7 @@ import {
   Megaphone,
   Network,
   Palette,
+  MessageCircle,
   ChevronRight,
 } from "lucide-react";
 import { requireRole } from "@/lib/auth";
@@ -221,6 +222,22 @@ export default async function OnboardingPage({
               Onboarding de Gestión de Redes
               <span className="block text-xs font-normal text-muted-foreground">
                 Coordinación{coordName ? ` · ${coordName}` : ""}
+              </span>
+            </span>
+          </span>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
+
+        <Link
+          href={`/clientes/${client.id}/onboarding/cm`}
+          className="flex items-center justify-between gap-2 rounded-lg border bg-card px-4 py-3 transition hover:border-primary/40 hover:bg-muted"
+        >
+          <span className="flex items-center gap-2 text-sm font-medium">
+            <MessageCircle className="h-4 w-4 text-primary" />
+            <span>
+              Onboarding de Community Manager
+              <span className="block text-xs font-normal text-muted-foreground">
+                Arranque operativo de la cuenta
               </span>
             </span>
           </span>

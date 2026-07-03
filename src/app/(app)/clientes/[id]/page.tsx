@@ -262,6 +262,14 @@ export default async function ClientDetail({
       show: userInRoles(me, ["admin", "coordinador"]) && svcList.some((s) => s.tipo === "gestion_redes"),
     },
     {
+      href: `/clientes/${c.id}/onboarding/cm`,
+      label: "Onboarding CM",
+      icon: MessageCircle,
+      show:
+        userInRoles(me, ["admin", "coordinador", "community_manager"]) &&
+        svcList.some((s) => s.tipo === "gestion_redes"),
+    },
+    {
       href: `/clientes/${c.id}/onboarding/diseno`,
       label: "Onboarding diseño",
       icon: Palette,

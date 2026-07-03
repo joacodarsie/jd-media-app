@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdmin } from "@/lib/supabase/admin";
 import { AGENCY } from "@/lib/agency";
 import { SERVICE_TYPE_LABEL } from "@/lib/constants";
 import { getDeliverables } from "@/lib/service-deliverables";
+import { mergeSettings } from "@/lib/coordinacion";
 import type { ClientService } from "@/lib/types";
 import { PrintButton } from "@/components/print-button";
 
@@ -61,21 +63,24 @@ export default async function CartaAcuerdoPage({
   await requireUser();
   const supabase = createClient();
 
-  const [{ data: client }, { data: services }] = await Promise.all([
-    supabase
-      .from("clients")
-      .select(
-        "id, nombre, contacto_nombre, contacto_dni_cuit, contacto_domicilio, contacto_email, contrato_numero, contrato_fecha_inicio, contrato_plazo_meses, contrato_dia_cobro, contrato_moneda, contrato_descuento_pct, contrato_descuento_meses, contrato_observaciones"
-      )
-      .eq("id", params.id)
-      .maybeSingle(),
-    supabase
-      .from("client_services")
-      .select("*")
-      .eq("cliente_id", params.id)
-      .eq("activo", true)
-      .order("tipo"),
-  ]);
+  const admin = createAdmin();
+  const [{ data: client }, { data: services }, { data: settingsRow }] =
+    await Promise.all([
+      supabase
+        .from("clients")
+        .select(
+          "id, nombre, contacto_nombre, contacto_dni_cuit, contacto_domicilio, contacto_email, contrato_numero, contrato_fecha_inicio, contrato_plazo_meses, contrato_dia_cobro, contrato_moneda, contrato_descuento_pct, contrato_descuento_meses, contrato_observaciones"
+        )
+        .eq("id", params.id)
+        .maybeSingle(),
+      supabase
+        .from("client_services")
+        .select("*")
+        .eq("cliente_id", params.id)
+        .eq("activo", true)
+        .order("tipo"),
+      admin.from("agency_settings").select("packs, rates").eq("id", 1).maybeSingle(),
+    ]);
 
   if (!client) notFound();
   const c = client as ClientFull;
@@ -102,6 +107,9 @@ export default async function CartaAcuerdoPage({
   const tieneGestionContenido = svc.some(
     (s) => s.tipo === "gestion_redes" || s.tipo === "edicion_audiovisual"
   );
+  const tieneGestionRedes = svc.some((s) => s.tipo === "gestion_redes");
+  // Puesta en marcha: pago único inicial del arranque (solo gestión de redes).
+  const puestaEnMarcha = mergeSettings(settingsRow).rates.puesta_en_marcha ?? 0;
   const diaCobro = c.contrato_dia_cobro ?? 1;
   const plazoMeses = c.contrato_plazo_meses ?? 3;
   const fechaInicio = fmtDate(c.contrato_fecha_inicio);
@@ -595,6 +603,23 @@ export default async function CartaAcuerdoPage({
             </p>
           )}
 
+          {tieneGestionRedes && puestaEnMarcha > 0 && (
+            <p>
+              <strong>Puesta en marcha (pago único inicial):</strong> al inicio
+              del acuerdo, y por única vez, el Cliente abona la suma de{" "}
+              <strong>{fmtMoney(puestaEnMarcha, moneda)}</strong> en concepto de
+              puesta en marcha de la cuenta, que comprende: manual de marca, kit
+              de marca y plantillas de historias; reunión de onboarding; armado de
+              los grupos de trabajo; obtención de accesos y creación de las
+              cuentas o perfiles que resulten necesarios (Instagram, TikTok u
+              otros); y la configuración inicial de las herramientas de campañas
+              (Meta Business). En consecuencia, <strong>el primer mes</strong> el
+              Cliente abona el abono mensual <strong>más</strong> la puesta en
+              marcha; a partir del <strong>segundo mes</strong>, únicamente el
+              abono mensual.
+            </p>
+          )}
+
           {hayUnico && (
             <p>
               Por los servicios de <strong>pago único</strong> contratados
@@ -708,6 +733,13 @@ export default async function CartaAcuerdoPage({
               material crudo entregado y las piezas finales producidas son
               propiedad del Cliente una vez abonados los honorarios del
               período correspondiente.
+            </p>
+            <p>
+              <strong>Jornadas de producción audiovisual:</strong> la producción
+              presencial (jornadas de filmación o fotografía en el domicilio del
+              Cliente o en locación) <strong>no</strong> está incluida en el abono
+              mensual y constituye un servicio adicional, que se cotiza y abona
+              por separado según se acuerde en cada caso.
             </p>
           </section>
         )}

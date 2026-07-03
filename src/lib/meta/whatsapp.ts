@@ -20,12 +20,21 @@ const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`;
 const TEMPLATE_NAME = process.env.WHATSAPP_TEMPLATE_RECORDATORIO ?? "recordatorio_pago_mensual";
 const TEMPLATE_LANG = process.env.WHATSAPP_TEMPLATE_LANG ?? "es_AR";
 
+/**
+ * Token para WhatsApp. Preferimos uno DEDICADO (`WHATSAPP_ACCESS_TOKEN`) para no
+ * tocar el de Ads/Instagram (`META_SYSTEM_USER_TOKEN`), que es un punto único de
+ * falla de esos productos. Si no hay dedicado, cae al de siempre.
+ */
+function whatsappTokenOrNull(): string | null {
+  return process.env.WHATSAPP_ACCESS_TOKEN || process.env.META_SYSTEM_USER_TOKEN || null;
+}
+
 export function whatsappApiConfigured(): boolean {
-  return !!process.env.META_SYSTEM_USER_TOKEN && !!process.env.WHATSAPP_PHONE_NUMBER_ID;
+  return !!whatsappTokenOrNull() && !!process.env.WHATSAPP_PHONE_NUMBER_ID;
 }
 
 function token(): string {
-  const t = process.env.META_SYSTEM_USER_TOKEN;
+  const t = whatsappTokenOrNull();
   if (!t) throw new Error("META_NO_TOKEN");
   return t;
 }

@@ -16,14 +16,25 @@ export default async function PaidMediaPage() {
   const canApply = userInRoles(me, ["admin", "paid_media"]);
   const admin = createAdmin();
 
-  // Clientes con servicio de pauta activo.
+  // Clientes con pauta: los que tienen el servicio de paid_media explícito, MÁS
+  // los de gestión de redes (que incluye paid media interno) salvo que lo hayan
+  // destildado (media_buyer_aplica = false). Así el media buyer ve TODAS las
+  // cuentas que gestiona, no solo las que contrataron pauta como servicio aparte.
   const { data: svcRows } = await admin
     .from("client_services")
-    .select("cliente_id")
-    .eq("tipo", "paid_media")
+    .select("cliente_id, tipo, media_buyer_aplica")
+    .in("tipo", ["paid_media", "gestion_redes"])
     .eq("activo", true);
   const clienteIds = Array.from(
-    new Set(((svcRows ?? []) as { cliente_id: string }[]).map((s) => s.cliente_id))
+    new Set(
+      ((svcRows ?? []) as {
+        cliente_id: string;
+        tipo: string;
+        media_buyer_aplica: boolean | null;
+      }[])
+        .filter((s) => s.tipo === "paid_media" || s.media_buyer_aplica !== false)
+        .map((s) => s.cliente_id)
+    )
   );
 
   if (clienteIds.length === 0) {
@@ -32,7 +43,7 @@ export default async function PaidMediaPage() {
         <Header configured={metaConfigured()} />
         <MetaTokenStatus />
         <p className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
-          No hay clientes con servicio de pauta activo.
+          No hay clientes con pauta activa (gestión de redes o servicio de paid media).
         </p>
       </div>
     );
@@ -45,7 +56,12 @@ export default async function PaidMediaPage() {
     { data: anaRaw },
     { data: changesRaw },
   ] = await Promise.all([
-      admin.from("clients").select("id, nombre").in("id", clienteIds),
+      admin
+        .from("clients")
+        .select("id, nombre")
+        .in("id", clienteIds)
+        .eq("estado", "activo")
+        .eq("es_interno", false),
       admin
         .from("client_ads_onboarding")
         .select("cliente_id, meta_ad_account_id")

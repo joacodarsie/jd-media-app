@@ -105,7 +105,9 @@ export default async function CobrosPage({
           </div>
           <p className="text-xs text-muted-foreground">
             Crea de una el cobro de cada cliente activo con abono mensual cargado.
-            No duplica si ya existían. Después solo marcás cobrado cuando te paguen.
+            A los clientes que arrancan este mes les suma además la{" "}
+            <b>puesta en marcha</b> (pago único de arranque). No duplica si ya
+            existían. Después solo marcás cobrado cuando te paguen.
           </p>
           <GenerateMonthButton kind="invoices" />
         </CardContent>

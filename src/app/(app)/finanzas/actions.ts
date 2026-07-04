@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdmin } from "@/lib/supabase/admin";
 import { requireFeature } from "@/lib/auth";
+import { mergeSettings } from "@/lib/coordinacion";
+import { nextPeriod } from "@/lib/finanzas";
 
 async function ctx() {
   await requireFeature("finanzas");
@@ -109,13 +112,91 @@ export async function deleteInvoice(id: string) {
 }
 
 export async function generateMonthlyInvoices(periodo: string) {
-  const { supabase } = await ctx();
+  const { supabase, userId } = await ctx();
   const { data, error } = await supabase.rpc("jd_generate_invoices_for_period", {
     p_periodo: periodo,
   });
   if (error) return { error: error.message };
+
+  // Además del abono mensual: la PUESTA EN MARCHA (pago único de arranque) para
+  // los clientes cuyo PRIMER mes es este período (fecha_inicio en el rango) y
+  // que tienen gestión de redes. Idempotente: no duplica si ya existe.
+  let arranque = 0;
+  try {
+    arranque = await addPuestaEnMarchaInvoices(periodo, userId);
+  } catch (e) {
+    console.warn("puesta en marcha invoices:", (e as Error).message);
+  }
+
   invalidate();
-  return { ok: true, created: data as number };
+  return { ok: true, created: (data as number) + arranque };
+}
+
+async function addPuestaEnMarchaInvoices(periodo: string, userId: string): Promise<number> {
+  const admin = createAdmin();
+  const { data: settingsRow } = await admin
+    .from("agency_settings")
+    .select("packs, rates")
+    .eq("id", 1)
+    .maybeSingle();
+  const puesta = mergeSettings(settingsRow).rates.puesta_en_marcha ?? 0;
+  if (puesta <= 0) return 0;
+
+  const start = `${periodo}-01`;
+  const end = `${nextPeriod(periodo)}-01`;
+  const { data: clientsRaw } = await admin
+    .from("clients")
+    .select("id, nombre, contrato_moneda, fecha_inicio")
+    .eq("estado", "activo")
+    .eq("es_interno", false)
+    .gte("fecha_inicio", start)
+    .lt("fecha_inicio", end);
+  const list = (clientsRaw ?? []) as {
+    id: string;
+    nombre: string;
+    contrato_moneda: string | null;
+    fecha_inicio: string | null;
+  }[];
+  if (list.length === 0) return 0;
+
+  const ids = list.map((c) => c.id);
+  // Solo los que tienen gestión de redes activa (la puesta en marcha es de ese servicio).
+  const { data: svcs } = await admin
+    .from("client_services")
+    .select("cliente_id")
+    .in("cliente_id", ids)
+    .eq("tipo", "gestion_redes")
+    .eq("activo", true);
+  const conGestion = new Set(((svcs ?? []) as { cliente_id: string }[]).map((s) => s.cliente_id));
+
+  // Los que ya tienen su invoice de puesta en marcha este período (no duplicar).
+  const { data: existing } = await admin
+    .from("client_invoices")
+    .select("cliente_id")
+    .in("cliente_id", ids)
+    .eq("periodo", periodo)
+    .ilike("concepto", "Puesta en marcha%");
+  const yaTienen = new Set(((existing ?? []) as { cliente_id: string }[]).map((i) => i.cliente_id));
+
+  let count = 0;
+  for (const c of list) {
+    if (!conGestion.has(c.id) || yaTienen.has(c.id)) continue;
+    const fecha = (c.fecha_inicio ?? start).slice(0, 10);
+    const { error } = await admin.from("client_invoices").insert({
+      cliente_id: c.id,
+      service_id: null,
+      periodo,
+      concepto: `Puesta en marcha — ${c.nombre}`,
+      monto: puesta,
+      moneda: c.contrato_moneda || "ARS",
+      fecha_emision: fecha,
+      fecha_vencimiento: fecha,
+      creado_por_id: userId,
+    });
+    if (!error) count++;
+    else console.warn("insert puesta en marcha:", error.message);
+  }
+  return count;
 }
 
 // ===========================

@@ -110,6 +110,86 @@ function buildUserText(p: ResultsReadingPayload): string {
   return lines.join("\n");
 }
 
+// ── Guión INTERNO del meet mensual con el cliente ──
+
+export interface MeetGuidePayload extends ResultsReadingPayload {
+  /** Métricas del mes ANTERIOR, para marcar qué subió/bajó (opcional). */
+  prev?: {
+    reach: number | null;
+    seguidoresNuevos: number | null;
+    interactions: number | null;
+    spend: number | null;
+    conversions: number | null;
+  } | null;
+  /** Comentarios/feedback del cliente en el portal este mes (opcional). */
+  comentariosCliente?: string[];
+}
+
+const MEET_SYSTEM = `Sos un/a coordinador/a de JD Media (agencia de Córdoba, Argentina) preparando el GUIÓN INTERNO para conducir la reunión mensual con un cliente. Este texto es SOLO para el equipo (no lo ve el cliente): es tu ayudamemoria para llevar bien el meet, mostrar resultados y detectar oportunidades.
+
+Te paso los números REALES del mes (Instagram orgánico, contenido publicado, historias y, si hubo, pauta), la comparación con el mes anterior cuando está disponible, y los comentarios que dejó el cliente.
+
+Armá un guión claro en español rioplatense (vos), en MARKDOWN, con estas secciones (usá ## para los títulos):
+## Cómo abrir
+1-2 frases para arrancar el meet en tono positivo y humano.
+## Resultados para destacar
+Los logros del mes con los números concretos. Si tenés el mes anterior, decí explícitamente qué subió y cuánto.
+## Para hablar con honestidad
+Lo que no creció o cayó, planteado sin excusas y orientado a la acción. Si algo bajó respecto al mes anterior, marcalo.
+## Oportunidades a proponer
+Ideas concretas para el mes que viene y, cuando corresponda, propuestas de más servicio (más pauta, un formato nuevo, una campaña, subir de pack). Que sean accionables y justificadas por los números.
+## Preguntas para hacerle al cliente
+3-4 preguntas abiertas para entender su negocio, sus próximos lanzamientos y su percepción.
+## Próximos pasos
+Compromisos concretos para cerrar el meet.
+
+Reglas estrictas:
+- USÁ SOLO los números que te paso. NO inventes métricas, ventas ni datos.
+- Si un bloque no tiene datos (ej. no hubo pauta o no hay mes anterior), no lo menciones ni lo inventes.
+- Sé concreto y breve: bullets cortos, nada de relleno. Es un ayudamemoria, no un ensayo.`;
+
+function buildMeetUserText(p: MeetGuidePayload): string {
+  const base = buildUserText(p);
+  const lines: string[] = [base, ""];
+  if (p.prev) {
+    lines.push("Comparación con el mes ANTERIOR (para marcar subió/bajó):");
+    if (p.prev.reach != null) lines.push(`- Alcance mes anterior: ${p.prev.reach}`);
+    if (p.prev.seguidoresNuevos != null) lines.push(`- Seguidores nuevos mes anterior: ${p.prev.seguidoresNuevos}`);
+    if (p.prev.interactions != null) lines.push(`- Interacciones mes anterior: ${p.prev.interactions}`);
+    if (p.prev.spend != null) lines.push(`- Inversión en pauta mes anterior: ${Math.round(p.prev.spend)}`);
+    if (p.prev.conversions != null) lines.push(`- Conversiones mes anterior: ${p.prev.conversions}`);
+    lines.push("");
+  }
+  if (p.comentariosCliente && p.comentariosCliente.length > 0) {
+    lines.push("Comentarios que dejó el cliente este mes:");
+    for (const c of p.comentariosCliente.slice(0, 10)) lines.push(`- ${c}`);
+    lines.push("");
+  }
+  return lines.join("\n");
+}
+
+/** Genera el guión interno del meet. Null si la IA falla o no hay datos. */
+export async function generateMeetGuide(p: MeetGuidePayload): Promise<string | null> {
+  const hayHistorias = !!p.historias && p.historias.count > 0;
+  if (!p.ig.hasData && !p.paid.hasData && !hayHistorias) return null;
+  try {
+    const msg = await client.messages.create({
+      model: MODEL,
+      max_tokens: 1600,
+      system: [{ type: "text", text: MEET_SYSTEM, cache_control: { type: "ephemeral" } }],
+      messages: [{ role: "user", content: buildMeetUserText(p) }],
+    });
+    const text = msg.content
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("")
+      .trim();
+    return text || null;
+  } catch {
+    return null;
+  }
+}
+
 /** Genera la lectura del mes. Null si la IA falla o no hay datos. */
 export async function generateResultsReading(
   p: ResultsReadingPayload

@@ -10,7 +10,8 @@ import {
   igStoriesForReport,
   contentForReport,
 } from "@/lib/social/report";
-import { generateResultsReading as genReading } from "@/lib/social/insight";
+import { generateResultsReading as genReading, generateMeetGuide as genMeetGuide } from "@/lib/social/insight";
+import { prevPeriod } from "@/lib/finanzas";
 
 export interface MonthlyMetrics {
   // Orgánico
@@ -196,6 +197,99 @@ export async function generateResultsReading(clienteId: string, mes: string) {
       year_month: mes,
       ai_resultados: texto,
       ai_resultados_at: new Date().toISOString(),
+      created_by_id: me.id,
+    },
+    { onConflict: "cliente_id,year_month" }
+  );
+  if (error) return { error: error.message };
+  revalidatePath(`/reporte/cliente/${clienteId}`);
+  return { ok: true, texto };
+}
+
+/**
+ * Genera (on-demand) el GUIÓN INTERNO del meet mensual con el cliente: puntos de
+ * conversación para conducir la reunión, basados en las métricas del mes y la
+ * comparación con el mes anterior. Solo lo ve el equipo (no el cliente). Solo staff.
+ */
+export async function generateMeetGuide(clienteId: string, mes: string) {
+  const me = await requireUser();
+  if (!/^\d{4}-\d{2}$/.test(mes)) return { error: "Mes inválido." };
+  const supabase = createClient();
+  if (!(await canEditClientReport(supabase, me.id, me.rol, clienteId))) {
+    return { error: "No tenés permiso para este reporte." };
+  }
+  const admin = createAdmin();
+  const mesPrev = prevPeriod(mes);
+
+  const [{ data: cli }, ig, paid, historias, contenido, igPrev, paidPrev] = await Promise.all([
+    admin.from("clients").select("nombre").eq("id", clienteId).maybeSingle(),
+    igMonthlyForReport(admin, clienteId, mes),
+    paidMonthlyForReport(admin, clienteId, mes),
+    igStoriesForReport(admin, clienteId, mes),
+    contentForReport(admin, clienteId, mes),
+    igMonthlyForReport(admin, clienteId, mesPrev),
+    paidMonthlyForReport(admin, clienteId, mesPrev),
+  ]);
+  if (!ig.hasData && !paid.hasData && historias.count === 0) {
+    return {
+      error:
+        "Todavía no hay datos automáticos este mes (conectá Instagram y/o la cuenta de pauta).",
+    };
+  }
+
+  const texto = await genMeetGuide({
+    nombre: (cli as { nombre?: string } | null)?.nombre ?? "el cliente",
+    mesLabel: monthLabel(mes),
+    ig: {
+      hasData: ig.hasData,
+      followersEnd: ig.followersEnd,
+      seguidoresNuevos: ig.seguidoresNuevos,
+      reach: ig.reach,
+      profileViews: ig.profileViews,
+      interactions: ig.interactions,
+    },
+    paid: {
+      hasData: paid.hasData,
+      moneda: paid.moneda,
+      spend: paid.spend,
+      conversions: paid.conversions,
+      costPerConv: paid.costPerConv,
+      impressions: paid.impressions,
+      clicks: paid.clicks,
+      ctr: paid.ctr,
+    },
+    contenido: {
+      total: contenido.total,
+      posts: contenido.posts,
+      reels: contenido.reels,
+      carruseles: contenido.carruseles,
+      historias: contenido.historias,
+      titulos: contenido.titulos,
+    },
+    historias: {
+      count: historias.count,
+      reach: historias.reach,
+      replies: historias.replies,
+    },
+    prev:
+      igPrev.hasData || paidPrev.hasData
+        ? {
+            reach: igPrev.reach,
+            seguidoresNuevos: igPrev.seguidoresNuevos,
+            interactions: igPrev.interactions,
+            spend: paidPrev.hasData ? paidPrev.spend : null,
+            conversions: paidPrev.hasData ? paidPrev.conversions : null,
+          }
+        : null,
+  });
+  if (!texto) return { error: "No se pudo generar el guión. Reintentá en un rato." };
+
+  const { error } = await admin.from("client_monthly_reports").upsert(
+    {
+      cliente_id: clienteId,
+      year_month: mes,
+      ai_meet_guion: texto,
+      ai_meet_guion_at: new Date().toISOString(),
       created_by_id: me.id,
     },
     { onConflict: "cliente_id,year_month" }

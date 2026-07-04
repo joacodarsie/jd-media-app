@@ -26,6 +26,7 @@ import { MonthlyReportEditor } from "@/components/monthly-report-editor";
 import { igMonthlyForReport, paidMonthlyForReport, igStoriesForReport } from "@/lib/social/report";
 import { prevPeriod } from "@/lib/finanzas";
 import { ResultsReadingButton } from "@/components/results-reading-button";
+import { MeetGuideButton } from "@/components/meet-guide-button";
 import type { MonthlyMetrics } from "@/app/reporte/cliente/[id]/actions";
 
 export const dynamic = "force-dynamic";
@@ -239,7 +240,7 @@ export default async function ReporteClientePage({
       .limit(8),
     supabase
       .from("client_monthly_reports")
-      .select("nota, metricas, ai_resultados")
+      .select("nota, metricas, ai_resultados, ai_meet_guion")
       .eq("cliente_id", params.id)
       .eq("year_month", mes)
       .maybeSingle(),
@@ -257,10 +258,11 @@ export default async function ReporteClientePage({
   ]);
 
   const monthlyReport = (monthly ?? null) as
-    | { nota: string | null; metricas: MonthlyMetrics; ai_resultados: string | null }
+    | { nota: string | null; metricas: MonthlyMetrics; ai_resultados: string | null; ai_meet_guion: string | null }
     | null;
   const nota = monthlyReport?.nota ?? null;
   const aiResultados = monthlyReport?.ai_resultados ?? null;
+  const aiMeetGuion = monthlyReport?.ai_meet_guion ?? null;
   const metricas: MonthlyMetrics = monthlyReport?.metricas ?? {};
   const hasOrganicMetrics = [
     metricas.seguidores_nuevos,
@@ -507,6 +509,13 @@ export default async function ReporteClientePage({
       )}
 
       <div className="mx-auto max-w-4xl px-8 py-10 print:px-0 print:py-0">
+        {/* Guión del meet — solo interno, no se imprime ni lo ve el cliente */}
+        {!isPublic && canEdit && (
+          <div className="mb-6 print:hidden">
+            <MeetGuideButton clienteId={params.id} mes={mes} initialGuion={aiMeetGuion} />
+          </div>
+        )}
+
         {/* Header / Portada */}
         <header className="border-b border-zinc-200 pb-6">
           <div className="flex items-start justify-between">

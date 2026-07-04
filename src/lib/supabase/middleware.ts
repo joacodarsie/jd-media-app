@@ -16,6 +16,7 @@ const PUBLIC_PATHS = [
   "/c/",
   "/api/c/",
   "/contrato/cliente/",
+  "/contrato/unificado",
   "/diagnostico/cliente/",
   "/plan/cliente/",
   // Reporte mensual: público SOLO con ?token válido del portal; sin token la

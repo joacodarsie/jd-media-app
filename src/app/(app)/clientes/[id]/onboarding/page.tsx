@@ -12,6 +12,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { requireRole } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { normalizePhone } from "@/lib/payment-reminder";
 import { SERVICE_TYPE_LABEL } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +39,25 @@ export default async function OnboardingPage({
   const inicialSteps = steps.filter((s) => s.stage === "inicial");
   const inicialDone = inicialSteps.filter((s) => s.done).length;
   const progress = Math.round((inicialDone / inicialSteps.length) * 100);
+
+  // Cuentas hermanas: otras cuentas activas del MISMO titular (mismo teléfono).
+  // Si hay al menos una, se ofrece generar la carta acuerdo UNIFICADA.
+  const miTel = normalizePhone(client.contacto_telefono);
+  let hermanas: { id: string; nombre: string }[] = [];
+  if (miTel) {
+    const supabase = createClient();
+    const { data: otras } = await supabase
+      .from("clients")
+      .select("id, nombre, contacto_telefono")
+      .eq("estado", "activo")
+      .eq("es_interno", false)
+      .neq("id", client.id);
+    hermanas = ((otras ?? []) as { id: string; nombre: string; contacto_telefono: string | null }[])
+      .filter((o) => normalizePhone(o.contacto_telefono) === miTel)
+      .map((o) => ({ id: o.id, nombre: o.nombre }));
+  }
+  // La carta unificada arranca por esta cuenta (define las condiciones comunes).
+  const unifiedIds = [client.id, ...hermanas.map((h) => h.id)].join(",");
 
   return (
     <div className="space-y-5">
@@ -102,7 +123,25 @@ export default async function OnboardingPage({
             >
               <FileText className="h-3.5 w-3.5" /> Ver carta acuerdo (PDF)
             </Link>
+            {hermanas.length > 0 && (
+              <Link
+                href={`/contrato/unificado?ids=${unifiedIds}`}
+                target="_blank"
+                className="inline-flex items-center gap-1.5 rounded-md border border-[#FFD400] px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-[#FFF7CC] dark:hover:bg-[#FFD400]/10"
+              >
+                <FileText className="h-3.5 w-3.5" /> Carta unificada (
+                {hermanas.length + 1} marcas)
+              </Link>
+            )}
           </div>
+          {hermanas.length > 0 && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Mismo titular que{" "}
+              <b>{hermanas.map((h) => h.nombre).join(", ")}</b> (mismo teléfono).
+              La carta unificada cubre todas las marcas en un solo documento, con
+              el detalle y el total combinados.
+            </p>
+          )}
 
           {!hasContractData && (
             <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs dark:border-amber-900 dark:bg-amber-950/40">

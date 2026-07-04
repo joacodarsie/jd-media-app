@@ -56,12 +56,13 @@ export default async function PaidMediaPage() {
     { data: anaRaw },
     { data: changesRaw },
   ] = await Promise.all([
+      // Incluye la cuenta interna (JD Media): hace su propia pauta y también va
+      // acá. clienteIds ya está acotado a cuentas con gestión/paid activa.
       admin
         .from("clients")
         .select("id, nombre")
         .in("id", clienteIds)
-        .eq("estado", "activo")
-        .eq("es_interno", false),
+        .eq("estado", "activo"),
       admin
         .from("client_ads_onboarding")
         .select("cliente_id, meta_ad_account_id")

@@ -52,11 +52,19 @@ export async function POST(req: Request) {
     token = await getValidGmailToken(admin);
   } catch {
     return NextResponse.json(
-      { error: "No se pudo refrescar el acceso a Gmail. Reconectá la casilla." },
+      {
+        error:
+          "El acceso a Gmail se venció (Google lo corta cada ~7 días mientras la app está en modo prueba). Tocá “Reconectar Gmail” acá abajo y volvé a “Analizar todo”.",
+        reconnect: true,
+      },
       { status: 400 }
     );
   }
-  if (!token) return NextResponse.json({ error: "Gmail no está conectado." }, { status: 400 });
+  if (!token)
+    return NextResponse.json(
+      { error: "Gmail no está conectado. Tocá “Reconectar Gmail” acá abajo.", reconnect: true },
+      { status: 400 }
+    );
 
   // Mails ya analizados en el pool → para saltearlos.
   const { data: existing } = await admin

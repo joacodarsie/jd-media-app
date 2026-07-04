@@ -143,13 +143,14 @@ export async function discoverLeads(
   cantidad: number
 ): Promise<DiscoveredLead[]> {
   const n = Math.min(Math.max(cantidad, 1), 12);
-  const userMsg = `Encontrá ${n} empresas reales para este cluster. Investigá bien con varias búsquedas antes de responder y traé el contacto público de cada una con su fuente. Recordá: no inventes ningún dato de contacto.`;
+  const userMsg = `Encontrá ${n} empresas reales para este cluster. Investigá bien con varias búsquedas distintas antes de responder (probá directorios, Google Maps, Instagram, "mejores <rubro> en <zona>", etc.) y traé el contacto público de cada una con su fuente. Recordá: no inventes ningún dato de contacto. Es mejor traer las ${n} completas que quedarte corto.`;
 
   const msg = await client.messages.create({
     model: AI_MODEL_SMART,
-    max_tokens: 6000,
+    // Holgado para que no se trunque el JSON con muchos leads + gancho/idea largos.
+    max_tokens: 12000,
     system: [{ type: "text", text: buildSystem(ctx) }],
-    tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 6 }],
+    tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 10 }],
     messages: [{ role: "user", content: userMsg }],
   });
 

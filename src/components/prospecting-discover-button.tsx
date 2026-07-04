@@ -20,11 +20,13 @@ import {
 export function ProspectingDiscoverButton({ campaignId }: { campaignId: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [cantidad, setCantidad] = useState("6");
+  const [cantidad, setCantidad] = useState("20");
 
   async function run() {
     setLoading(true);
-    const t = toast.loading("Buscando empresas reales… (puede tardar ~1 min)");
+    const t = toast.loading(
+      "Buscando empresas reales… busca en varias tandas, puede tardar 2-3 min."
+    );
     try {
       const res = await fetch(`/api/prospeccion/${campaignId}/discover`, {
         method: "POST",
@@ -66,7 +68,7 @@ export function ProspectingDiscoverButton({ campaignId }: { campaignId: string }
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {["5", "6", "8", "10", "12"].map((n) => (
+          {["6", "10", "15", "20"].map((n) => (
             <SelectItem key={n} value={n}>
               {n}
             </SelectItem>

@@ -57,7 +57,7 @@ export async function POST(
   const excludeEmpresas = ((existing ?? []) as { empresa: string }[]).map((e) => e.empresa);
 
   const body = (await req.json().catch(() => ({}))) as { cantidad?: number };
-  const cantidad = Math.min(Math.max(body.cantidad ?? 6, 1), 12);
+  const cantidad = Math.min(Math.max(body.cantidad ?? 20, 1), 24);
 
   // Nombre/descripción del servicio para contexto del prospector.
   let servicioNombre: string | null = null;
@@ -83,12 +83,32 @@ export async function POST(
     excludeEmpresas,
   };
 
-  let leads;
+  // Buscamos en RONDAS de a 12 (la IA rinde mejor por tanda que pidiéndole 20 de
+  // una) hasta juntar `cantidad`. Entre ronda y ronda sumamos lo encontrado a la
+  // lista de exclusión para que no repita. maxDuration=300s cubre el tiempo extra.
+  const PER_ROUND = 12;
+  const rondas = Math.min(Math.ceil(cantidad / PER_ROUND), 2);
+  const leads: Awaited<ReturnType<typeof discoverLeads>> = [];
+  const vistas = new Set(excludeEmpresas.map((e) => e.toLowerCase().trim()));
   try {
-    leads = await discoverLeads(ctx, cantidad);
+    for (let r = 0; r < rondas && leads.length < cantidad; r++) {
+      const faltan = Math.min(cantidad - leads.length, PER_ROUND);
+      const tanda = await discoverLeads({ ...ctx, excludeEmpresas: [...vistas] }, faltan);
+      for (const l of tanda) {
+        const key = l.empresa.toLowerCase().trim();
+        if (vistas.has(key)) continue; // ya la tenemos (de la campaña o de otra ronda)
+        vistas.add(key);
+        leads.push(l);
+      }
+      if (tanda.length === 0) break; // la IA no trajo nada nuevo: no insistas
+    }
   } catch (e) {
-    console.error("discoverLeads:", e);
-    return NextResponse.json({ error: friendlyAiError(e) }, { status: 400 });
+    // Si ya juntamos algo en una ronda previa, seguimos con eso; si no, error.
+    if (leads.length === 0) {
+      console.error("discoverLeads:", e);
+      return NextResponse.json({ error: friendlyAiError(e) }, { status: 400 });
+    }
+    console.warn("discoverLeads (ronda parcial):", (e as Error).message);
   }
 
   if (leads.length === 0)

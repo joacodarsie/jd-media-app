@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Sparkles, Square } from "lucide-react";
+import { Loader2, Sparkles, Square, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface BatchResult {
@@ -13,6 +13,7 @@ interface BatchResult {
   remaining?: number;
   done?: boolean;
   error?: string;
+  reconnect?: boolean;
 }
 
 /**
@@ -26,10 +27,12 @@ export function RecruitmentPoolImport({ connected }: { connected: boolean }) {
   const [running, setRunning] = useState(false);
   const [imported, setImported] = useState<number | null>(null);
   const [total, setTotal] = useState<number | null>(null);
+  const [needsReconnect, setNeedsReconnect] = useState(false);
   const stopRef = useRef(false);
 
   async function runLoop() {
     setRunning(true);
+    setNeedsReconnect(false);
     stopRef.current = false;
     let sessionOk = 0;
     try {
@@ -43,6 +46,7 @@ export function RecruitmentPoolImport({ connected }: { connected: boolean }) {
         });
         const data = (await res.json().catch(() => ({}))) as BatchResult;
         if (!res.ok || data.error) {
+          if (data.reconnect) setNeedsReconnect(true);
           toast.error(
             data.error ??
               (res.status === 504
@@ -99,6 +103,19 @@ export function RecruitmentPoolImport({ connected }: { connected: boolean }) {
           </Button>
         )}
       </div>
+
+      {needsReconnect && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50/60 p-3 text-sm dark:border-amber-900 dark:bg-amber-950/20">
+          <span className="text-amber-800 dark:text-amber-200">
+            El acceso a Gmail se venció. Reconectá y volvé a tocar “Analizar todo”.
+          </span>
+          <Button asChild size="sm" variant="outline" className="gap-1.5">
+            <a href="/api/gmail/connect">
+              <Mail className="h-3.5 w-3.5" /> Reconectar Gmail
+            </a>
+          </Button>
+        </div>
+      )}
 
       {(running || imported != null) && (
         <div className="space-y-1">

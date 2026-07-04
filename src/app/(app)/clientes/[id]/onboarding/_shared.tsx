@@ -52,6 +52,7 @@ export interface ClientLite {
   contrato_dia_cobro: number | null;
   contrato_moneda: string | null;
   contrato_descuento_pct: number | null;
+  contrato_descuento_monto: number | null;
   contrato_descuento_meses: number | null;
   contrato_observaciones: string | null;
 }
@@ -152,7 +153,7 @@ export async function loadOnboarding(clientId: string): Promise<OnboardingData |
     supabase
       .from("clients")
       .select(
-        "id, nombre, contacto_nombre, contacto_dni_cuit, contacto_domicilio, contacto_email, contacto_telefono, cm_id, disenador_id, audiovisual_id, coordinador_id, media_buyer_id, drive_url, credenciales, contrato_numero, contrato_fecha_inicio, contrato_plazo_meses, contrato_dia_cobro, contrato_moneda, contrato_descuento_pct, contrato_descuento_meses, contrato_observaciones"
+        "id, nombre, contacto_nombre, contacto_dni_cuit, contacto_domicilio, contacto_email, contacto_telefono, cm_id, disenador_id, audiovisual_id, coordinador_id, media_buyer_id, drive_url, credenciales, contrato_numero, contrato_fecha_inicio, contrato_plazo_meses, contrato_dia_cobro, contrato_moneda, contrato_descuento_pct, contrato_descuento_monto, contrato_descuento_meses, contrato_observaciones"
       )
       .eq("id", clientId)
       .maybeSingle(),

@@ -46,6 +46,7 @@ interface ClientRow {
   monto_mensual: number | null;
   contrato_moneda: string | null;
   contrato_descuento_pct: number | null;
+  contrato_descuento_monto: number | null;
 }
 
 export async function GET(req: NextRequest) {
@@ -84,7 +85,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await admin
     .from("clients")
     .select(
-      "id, nombre, contacto_nombre, contacto_telefono, monto_mensual, contrato_moneda, contrato_descuento_pct"
+      "id, nombre, contacto_nombre, contacto_telefono, monto_mensual, contrato_moneda, contrato_descuento_pct, contrato_descuento_monto"
     )
     .eq("estado", "activo")
     .eq("es_interno", false);

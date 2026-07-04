@@ -88,6 +88,7 @@ export default async function OnboardingPage({
               contrato_dia_cobro: client.contrato_dia_cobro,
               contrato_moneda: client.contrato_moneda ?? "ARS",
               contrato_descuento_pct: client.contrato_descuento_pct,
+              contrato_descuento_monto: client.contrato_descuento_monto,
               contrato_descuento_meses: client.contrato_descuento_meses,
               contrato_observaciones: client.contrato_observaciones,
             }}

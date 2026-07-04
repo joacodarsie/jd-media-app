@@ -5,8 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { currentPeriod, periodLabel, fmtCurrency } from "@/lib/finanzas";
 import {
   buildPaymentReminder,
+  buildGroupedPaymentReminder,
   reminderAmount,
   whatsappLink,
+  normalizePhone,
   type ReminderClient,
 } from "@/lib/payment-reminder";
 import { MonthPicker } from "@/components/month-picker";
@@ -37,7 +39,7 @@ export default async function RecordatoriosPage({
   const { data } = await supabase
     .from("clients")
     .select(
-      "id, nombre, pack, monto_mensual, contacto_nombre, contacto_telefono, contrato_moneda, contrato_descuento_pct"
+      "id, nombre, pack, monto_mensual, contacto_nombre, contacto_telefono, contrato_moneda, contrato_descuento_pct, contrato_descuento_monto"
     )
     .eq("estado", "activo")
     .eq("es_interno", false)
@@ -45,24 +47,51 @@ export default async function RecordatoriosPage({
 
   const clients = (data ?? []) as ClientRow[];
 
-  const cards: ReminderCardData[] = clients.map((c) => {
-    const mensaje = buildPaymentReminder(c, periodo);
-    const { monto, moneda } = reminderAmount(c);
-    const sinMonto = !monto || monto <= 0;
-    const link = whatsappLink(c.contacto_telefono, mensaje);
+  // Un mismo titular puede tener varias cuentas (marcas). Las agrupamos por
+  // teléfono normalizado para mandarle UN solo mensaje con el total sumado y el
+  // detalle por marca. Las cuentas sin teléfono usable quedan como tarjeta suelta.
+  const groups = new Map<string, ClientRow[]>();
+  for (const c of clients) {
+    const key = normalizePhone(c.contacto_telefono) ?? `__solo_${c.id}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(c);
+  }
+
+  const cards: ReminderCardData[] = [...groups.values()].map((group) => {
+    const primary = group[0];
+    const esGrupo = group.length > 1;
+    const mensaje = esGrupo
+      ? buildGroupedPaymentReminder(group, periodo)
+      : buildPaymentReminder(primary, periodo);
+
+    // Monto combinado (por moneda) del grupo.
+    const totales = new Map<string, number>();
+    for (const c of group) {
+      const { monto, moneda } = reminderAmount(c);
+      if (monto > 0) totales.set(moneda, (totales.get(moneda) ?? 0) + monto);
+    }
+    const total = [...totales.values()].reduce((a, v) => a + v, 0);
+    const sinMonto = total <= 0;
+    const montoLabel = sinMonto
+      ? "⚠ sin monto cargado"
+      : [...totales.entries()].map(([mon, v]) => fmtCurrency(v, mon)).join(" + ");
+
+    const link = whatsappLink(primary.contacto_telefono, mensaje);
     // El componente re-arma el link con el texto vivo: le paso solo los dígitos.
     const telefono = link ? link.split("/").pop()!.split("?")[0] : null;
     return {
-      id: c.id,
-      nombre: c.nombre,
-      pack: c.pack,
-      montoLabel: sinMonto ? "⚠ sin monto cargado" : fmtCurrency(monto, moneda),
+      id: group.map((c) => c.id).join("-"),
+      nombre: group.map((c) => c.nombre).join(" + "),
+      pack: esGrupo ? `${group.length} cuentas · mismo titular` : primary.pack,
+      montoLabel,
       sinMonto,
       mensaje,
       waLink: link,
       telefono,
     };
   });
+
+  cards.sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
 
   const sinMontoCount = cards.filter((c) => c.sinMonto).length;
 
@@ -82,7 +111,9 @@ export default async function RecordatoriosPage({
         <p className="text-muted-foreground">
           Mensaje listo para mandar por WhatsApp a cada cliente activo, con el
           monto del mes y tu alias. Ideal mandarlo el 1° (o un par de días antes)
-          para cobrar a tiempo y poder pagarle al equipo.
+          para cobrar a tiempo y poder pagarle al equipo. Si un mismo titular
+          tiene varias cuentas con el mismo teléfono, se agrupan en un solo
+          mensaje con el total sumado.
         </p>
       </div>
 

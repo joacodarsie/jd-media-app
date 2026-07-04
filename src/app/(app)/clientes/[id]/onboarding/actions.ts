@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { SERVICE_TYPE_LABEL } from "@/lib/constants";
 import { AGENCY } from "@/lib/agency";
+import { applyContractDiscount } from "@/lib/payment-reminder";
 import type { ServiceType, ClientService } from "@/lib/types";
 
 type StepKey =
@@ -540,7 +541,7 @@ export async function buildPaymentMessage(clientId: string): Promise<
   const { data: client } = await supabase
     .from("clients")
     .select(
-      "nombre, contacto_nombre, contrato_fecha_inicio, contrato_descuento_pct, contrato_descuento_meses, contrato_moneda"
+      "nombre, contacto_nombre, contrato_fecha_inicio, contrato_descuento_pct, contrato_descuento_monto, contrato_descuento_meses, contrato_moneda"
     )
     .eq("id", clientId)
     .maybeSingle();
@@ -558,6 +559,7 @@ export async function buildPaymentMessage(clientId: string): Promise<
     contacto_nombre: string | null;
     contrato_fecha_inicio: string | null;
     contrato_descuento_pct: number | null;
+    contrato_descuento_monto: number | null;
     contrato_descuento_meses: number | null;
     contrato_moneda: string | null;
   };
@@ -568,9 +570,12 @@ export async function buildPaymentMessage(clientId: string): Promise<
   );
 
   const descPct = Number(c.contrato_descuento_pct) || 0;
+  const descMonto = Number(c.contrato_descuento_monto) || 0;
   const descMeses = Number(c.contrato_descuento_meses) || 0;
-  const hayDescuento = descPct > 0 && descMeses > 0;
-  const montoEffective = hayDescuento ? totalMensual * (1 - descPct / 100) : totalMensual;
+  const hayDescuento = (descPct > 0 || descMonto > 0) && descMeses > 0;
+  const montoEffective = hayDescuento
+    ? applyContractDiscount(totalMensual, c)
+    : totalMensual;
 
   // Política nueva (2026-06): el abono corresponde a la TOTALIDAD del servicio
   // del mes, sin importar el día en que se efectúe el pago. No se prorratea por
@@ -617,9 +622,10 @@ export async function buildPaymentMessage(clientId: string): Promise<
   );
 
   if (hayDescuento) {
+    const descTxt = descMonto > 0 ? `de ${fmtMoney(descMonto)}` : `del ${descPct}%`;
     lines.push("");
     lines.push(
-      `📌 Recordá que durante los primeros ${descMeses} ${descMeses === 1 ? "mes" : "meses"} aplica el descuento promocional del ${descPct}%. Luego se factura el monto pleno.`
+      `📌 Recordá que durante los primeros ${descMeses} ${descMeses === 1 ? "mes" : "meses"} aplica el descuento promocional ${descTxt}. Luego se factura el monto pleno.`
     );
   }
 

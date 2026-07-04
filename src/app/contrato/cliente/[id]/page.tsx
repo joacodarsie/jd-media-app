@@ -6,6 +6,7 @@ import { AGENCY } from "@/lib/agency";
 import { SERVICE_TYPE_LABEL } from "@/lib/constants";
 import { getDeliverables } from "@/lib/service-deliverables";
 import { mergeSettings } from "@/lib/coordinacion";
+import { applyContractDiscount } from "@/lib/payment-reminder";
 import type { ClientService } from "@/lib/types";
 import { PrintButton } from "@/components/print-button";
 
@@ -24,6 +25,7 @@ interface ClientFull {
   contrato_dia_cobro: number | null;
   contrato_moneda: string | null;
   contrato_descuento_pct: number | null;
+  contrato_descuento_monto: number | null;
   contrato_descuento_meses: number | null;
   contrato_observaciones: string | null;
 }
@@ -69,7 +71,7 @@ export default async function CartaAcuerdoPage({
       supabase
         .from("clients")
         .select(
-          "id, nombre, contacto_nombre, contacto_dni_cuit, contacto_domicilio, contacto_email, contrato_numero, contrato_fecha_inicio, contrato_plazo_meses, contrato_dia_cobro, contrato_moneda, contrato_descuento_pct, contrato_descuento_meses, contrato_observaciones"
+          "id, nombre, contacto_nombre, contacto_dni_cuit, contacto_domicilio, contacto_email, contrato_numero, contrato_fecha_inicio, contrato_plazo_meses, contrato_dia_cobro, contrato_moneda, contrato_descuento_pct, contrato_descuento_monto, contrato_descuento_meses, contrato_observaciones"
         )
         .eq("id", params.id)
         .maybeSingle(),
@@ -115,11 +117,14 @@ export default async function CartaAcuerdoPage({
   const fechaInicio = fmtDate(c.contrato_fecha_inicio);
 
   const descPct = Number(c.contrato_descuento_pct) || 0;
+  const descMonto = Number(c.contrato_descuento_monto) || 0;
   const descMeses = Number(c.contrato_descuento_meses) || 0;
-  const hayDescuento = descPct > 0 && descMeses > 0;
+  const hayDescuento = (descPct > 0 || descMonto > 0) && descMeses > 0;
   const montoConDescuento = hayDescuento
-    ? totalMensual * (1 - descPct / 100)
+    ? applyContractDiscount(totalMensual, c)
     : null;
+  // Texto del descuento: "del 50%" o "de $30.000".
+  const descTxt = descMonto > 0 ? `de ${fmtMoney(descMonto, moneda)}` : `del ${descPct}%`;
 
   const año = c.contrato_fecha_inicio
     ? new Date(c.contrato_fecha_inicio).getFullYear()
@@ -584,7 +589,7 @@ export default async function CartaAcuerdoPage({
             <div className="promo">
               <strong>Promoción inicial:</strong> durante los primeros{" "}
               {descMeses} {descMeses === 1 ? "mes" : "meses"} de contrato se
-              aplicará un descuento del {descPct}%, por lo cual el monto a
+              aplicará un descuento {descTxt}, por lo cual el monto a
               abonar en dicho período será de{" "}
               <strong>{fmtMoney(montoConDescuento, moneda)}</strong>. A partir
               del mes {descMeses + 1}, los honorarios serán los establecidos

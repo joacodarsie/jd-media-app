@@ -20,6 +20,7 @@ interface Initial {
   contrato_dia_cobro: number | null;
   contrato_moneda: string;
   contrato_descuento_pct: number | null;
+  contrato_descuento_monto: number | null;
   contrato_descuento_meses: number | null;
   contrato_observaciones: string | null;
 }
@@ -44,6 +45,15 @@ export function OnboardingContractForm({
         : { ...f, contrato_numero: initial.contrato_numero }
     );
   }, [initial.contrato_numero]);
+
+  // Tipo de descuento: porcentaje o monto fijo. Se guarda uno u otro (el que no
+  // se usa queda en null). Arranca según lo que ya venga cargado. Es estado
+  // propio para no "saltar" a % mientras todavía no escribiste el monto.
+  const [tipoDesc, setTipoDesc] = useState<"pct" | "monto">(
+    initial.contrato_descuento_monto != null && initial.contrato_descuento_monto > 0
+      ? "monto"
+      : "pct"
+  );
 
   function set<K extends keyof Initial>(key: K, value: Initial[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -149,32 +159,72 @@ export function OnboardingContractForm({
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1">
-          <Label className="text-xs">Descuento promocional (%)</Label>
-          <Input
-            type="number"
-            min={0}
-            max={100}
-            value={form.contrato_descuento_pct ?? ""}
-            onChange={(e) =>
-              set("contrato_descuento_pct", e.target.value ? Number(e.target.value) : null)
-            }
-            placeholder="Ej: 50"
-          />
+      <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
+        <Label className="text-xs font-semibold">Descuento promocional (opcional)</Label>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Tipo</Label>
+            <select
+              value={tipoDesc}
+              onChange={(e) => {
+                const t = e.target.value as "pct" | "monto";
+                setTipoDesc(t);
+                // Al cambiar de tipo, limpiamos el valor del otro para no guardar
+                // los dos a la vez.
+                if (t === "monto") set("contrato_descuento_pct", null);
+                else set("contrato_descuento_monto", null);
+              }}
+              className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+            >
+              <option value="pct">Porcentaje (%)</option>
+              <option value="monto">Monto fijo ($)</option>
+            </select>
+          </div>
+          {tipoDesc === "pct" ? (
+            <div className="space-y-1">
+              <Label className="text-xs">Descuento (%)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={form.contrato_descuento_pct ?? ""}
+                onChange={(e) =>
+                  set("contrato_descuento_pct", e.target.value ? Number(e.target.value) : null)
+                }
+                placeholder="Ej: 50"
+              />
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <Label className="text-xs">Descuento ({form.contrato_moneda})</Label>
+              <Input
+                type="number"
+                min={0}
+                value={form.contrato_descuento_monto ?? ""}
+                onChange={(e) =>
+                  set("contrato_descuento_monto", e.target.value ? Number(e.target.value) : null)
+                }
+                placeholder="Ej: 30000"
+              />
+            </div>
+          )}
+          <div className="space-y-1">
+            <Label className="text-xs">Por cuántos meses</Label>
+            <Input
+              type="number"
+              min={0}
+              value={form.contrato_descuento_meses ?? ""}
+              onChange={(e) =>
+                set("contrato_descuento_meses", e.target.value ? Number(e.target.value) : null)
+              }
+              placeholder="Ej: 3"
+            />
+          </div>
         </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Por cuántos meses</Label>
-          <Input
-            type="number"
-            min={0}
-            value={form.contrato_descuento_meses ?? ""}
-            onChange={(e) =>
-              set("contrato_descuento_meses", e.target.value ? Number(e.target.value) : null)
-            }
-            placeholder="Ej: 3"
-          />
-        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Se aplica sobre el abono durante los primeros meses indicados. Elegí
+          porcentaje o un monto fijo a descontar.
+        </p>
       </div>
 
       <div className="space-y-1">

@@ -14,6 +14,7 @@ interface ContractData {
   contrato_dia_cobro: number | null;
   contrato_moneda: string;
   contrato_descuento_pct: number | null;
+  contrato_descuento_monto: number | null;
   contrato_descuento_meses: number | null;
   contrato_observaciones: string | null;
 }
@@ -33,6 +34,7 @@ export async function saveContractData(clientId: string, data: ContractData) {
       contrato_dia_cobro: data.contrato_dia_cobro,
       contrato_moneda: data.contrato_moneda,
       contrato_descuento_pct: data.contrato_descuento_pct,
+      contrato_descuento_monto: data.contrato_descuento_monto,
       contrato_descuento_meses: data.contrato_descuento_meses,
       contrato_observaciones: data.contrato_observaciones,
     })

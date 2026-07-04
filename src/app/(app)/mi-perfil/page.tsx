@@ -15,6 +15,7 @@ import { GoogleCalendarCard } from "@/components/google-calendar-card";
 import { BrowserNotificationsCard } from "@/components/browser-notifications-card";
 import { ReplayTourButton } from "@/components/replay-tour-button";
 import { PushToggle } from "@/components/push-toggle";
+import { Markdown } from "@/components/markdown";
 import { Bell } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +29,7 @@ export default async function MiPerfilPage() {
     me.position_id
       ? supabase
           .from("positions")
-          .select("id, nombre, area, descripcion, services, pago_default_monto, pago_default_moneda, pago_default_frecuencia")
+          .select("id, nombre, area, descripcion, alcance_incluye, alcance_excluye, kpis, procesos, services, pago_default_monto, pago_default_moneda, pago_default_frecuencia")
           .eq("id", me.position_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -71,28 +72,79 @@ export default async function MiPerfilPage() {
         </CardContent>
       </Card>
 
-      {position && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Briefcase className="h-4 w-4" /> Puesto
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm">
-            <Link
-              href={`/equipo/${position.id}`}
-              className="font-semibold hover:underline"
-            >
-              {(position as Position).nombre}
-            </Link>
-            {(position as Position).descripcion && (
-              <p className="mt-1 text-muted-foreground">
-                {(position as Position).descripcion}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      {position && (() => {
+        const p = position as Position & {
+          alcance_incluye?: string | null;
+          alcance_excluye?: string | null;
+          kpis?: string | null;
+          procesos?: string | null;
+        };
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Briefcase className="h-4 w-4" /> Tu puesto y tu proceso
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <div>
+                <Link href={`/equipo/${p.id}`} className="font-semibold hover:underline">
+                  {p.nombre}
+                </Link>
+                {p.descripcion && (
+                  <p className="mt-1 text-muted-foreground">{p.descripcion}</p>
+                )}
+              </div>
+
+              {(p.alcance_incluye || p.alcance_excluye) && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {p.alcance_incluye && (
+                    <div className="rounded-lg border bg-muted/20 p-3">
+                      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                        Qué entra
+                      </div>
+                      <Markdown>{p.alcance_incluye}</Markdown>
+                    </div>
+                  )}
+                  {p.alcance_excluye && (
+                    <div className="rounded-lg border bg-muted/20 p-3">
+                      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-red-700 dark:text-red-300">
+                        Qué no entra
+                      </div>
+                      <Markdown>{p.alcance_excluye}</Markdown>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {p.kpis && (
+                <div>
+                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    KPIs / objetivos
+                  </div>
+                  <Markdown>{p.kpis}</Markdown>
+                </div>
+              )}
+
+              {p.procesos && (
+                <div>
+                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Tu proceso (SOP)
+                  </div>
+                  <Markdown>{p.procesos}</Markdown>
+                </div>
+              )}
+
+              <Link
+                href={`/equipo/${p.id}`}
+                className="inline-block text-xs font-medium text-primary hover:underline"
+              >
+                Ver el puesto completo →
+              </Link>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       <MiSueldoCard person={miSueldo} periodo={periodo} />
 

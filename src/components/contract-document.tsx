@@ -84,12 +84,20 @@ function marcaTotalMensual(m: ContractMarca): number {
     .reduce((acc, s) => acc + (Number(s.monto_mensual) || 0), 0);
 }
 function marcaTieneDescuento(m: ContractMarca): boolean {
-  return (m.descuento.pct > 0 || m.descuento.monto > 0) && m.descuento.meses > 0;
+  // Hay descuento si se cargó un monto o un porcentaje. Los "meses" solo definen
+  // la duración del texto; si faltan, el descuento igual se muestra.
+  return m.descuento.pct > 0 || m.descuento.monto > 0;
 }
 function descTxt(m: ContractMarca): string {
   return m.descuento.monto > 0
     ? `de ${fmtMoney(m.descuento.monto, m.moneda)}`
     : `del ${m.descuento.pct}%`;
+}
+/** Frase de duración del descuento. Robusta si faltan los meses. */
+function mesesFrase(meses: number): string {
+  return meses > 0
+    ? `los primeros ${meses} ${meses === 1 ? "mes" : "meses"}`
+    : "el período promocional acordado";
 }
 
 function ServiceCard({ s, moneda }: { s: ClientService; moneda: string }) {
@@ -164,6 +172,10 @@ export function ContractDocument({ model }: { model: ContractModel }) {
   const puestaTotal = model.puestaEnMarcha * gestionRedesCount;
 
   const hayAlgunDescuento = marcas.some(marcaTieneDescuento);
+  // Total con el descuento de cada marca aplicado (las sin descuento suman
+  // pleno). Sirve para mostrar el neto combinado del período promocional.
+  const totalConDescuento = marcas.reduce((acc, m) => acc + marcaConDescuento(m), 0);
+  const descuentoTotal = totalMensual - totalConDescuento;
   // Para la carta individual, el monto con descuento combinado (comportamiento
   // histórico: un solo descuento sobre el total).
   const montoConDescuentoSingle =
@@ -634,6 +646,23 @@ export function ContractDocument({ model }: { model: ContractModel }) {
                   <span className="value">{fmtMoney(totalMensual, moneda)}</span>
                 </div>
               )}
+              {hayMensual && hayAlgunDescuento && descuentoTotal > 0 && (
+                <div
+                  className="total-line"
+                  style={{
+                    marginTop: 8,
+                    background: "#FFF7CC",
+                    border: "1px solid #FFD400",
+                  }}
+                >
+                  <span className="label" style={{ color: "#7a5800" }}>
+                    Total con descuento (período promocional)
+                  </span>
+                  <span className="value" style={{ color: "#1a1a1a" }}>
+                    {fmtMoney(totalConDescuento, moneda)}
+                  </span>
+                </div>
+              )}
               {hayUnico && (
                 <div className="total-line" style={{ marginTop: hayMensual ? 8 : 12 }}>
                   <span className="label">Pago único</span>
@@ -662,31 +691,58 @@ export function ContractDocument({ model }: { model: ContractModel }) {
           {/* Descuento: individual = un solo bloque; unificada = detalle por marca. */}
           {hayMensual && !isUnified && montoConDescuentoSingle !== null && (
             <div className="promo">
-              <strong>Promoción inicial:</strong> durante los primeros{" "}
-              {marcas[0].descuento.meses}{" "}
-              {marcas[0].descuento.meses === 1 ? "mes" : "meses"} de contrato se
-              aplicará un descuento {descTxt(marcas[0])}, por lo cual el monto a
+              <strong>Promoción inicial:</strong> durante{" "}
+              {mesesFrase(marcas[0].descuento.meses)} de contrato se aplicará un
+              descuento {descTxt(marcas[0])} sobre el abono, por lo cual el monto a
               abonar en dicho período será de{" "}
-              <strong>{fmtMoney(montoConDescuentoSingle, moneda)}</strong>. A
-              partir del mes {marcas[0].descuento.meses + 1}, los honorarios serán
-              los establecidos sin descuento.
+              <strong>{fmtMoney(montoConDescuentoSingle, moneda)}</strong> por mes.
+              {marcas[0].descuento.meses > 0 && (
+                <>
+                  {" "}
+                  A partir del mes {marcas[0].descuento.meses + 1}, los honorarios
+                  serán los establecidos sin descuento.
+                </>
+              )}
             </div>
           )}
           {hayMensual && isUnified && hayAlgunDescuento && (
             <div className="promo">
-              <strong>Promoción inicial:</strong> se aplican los siguientes
-              descuentos sobre el abono, según la marca:
+              <strong>Promoción inicial:</strong> durante el período promocional se
+              aplica, sobre el abono de cada marca:
               <ul>
-                {marcas.filter(marcaTieneDescuento).map((m) => (
-                  <li key={m.nombre}>
-                    <strong>{m.nombre}:</strong> descuento {descTxt(m)} durante los
-                    primeros {m.descuento.meses}{" "}
-                    {m.descuento.meses === 1 ? "mes" : "meses"} (abona{" "}
-                    <strong>{fmtMoney(marcaConDescuento(m), m.moneda)}</strong> en
-                    ese período). Luego, el abono pleno.
-                  </li>
-                ))}
+                {marcas.map((m) => {
+                  const pleno = marcaTotalMensual(m);
+                  if (pleno <= 0) return null;
+                  if (!marcaTieneDescuento(m)) {
+                    return (
+                      <li key={m.nombre}>
+                        <strong>{m.nombre}:</strong> {fmtMoney(pleno, m.moneda)} por
+                        mes (sin descuento).
+                      </li>
+                    );
+                  }
+                  return (
+                    <li key={m.nombre}>
+                      <strong>{m.nombre}:</strong> {fmtMoney(pleno, m.moneda)} −
+                      descuento {descTxt(m)} ={" "}
+                      <strong>{fmtMoney(marcaConDescuento(m), m.moneda)}</strong> por
+                      mes
+                      {m.descuento.meses > 0
+                        ? ` (${mesesFrase(m.descuento.meses)})`
+                        : ""}
+                      .
+                    </li>
+                  );
+                })}
               </ul>
+              <p style={{ marginTop: 8 }}>
+                <strong>
+                  Total con descuento: {fmtMoney(totalConDescuento, moneda)} por mes
+                </strong>{" "}
+                durante el período promocional — abono pleno{" "}
+                {fmtMoney(totalMensual, moneda)} por mes (descuento total{" "}
+                {fmtMoney(descuentoTotal, moneda)}).
+              </p>
             </div>
           )}
 

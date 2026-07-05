@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { mergeSettings } from "@/lib/coordinacion";
+import { fetchClauseOverrides } from "@/lib/contract-clauses-server";
 import type { ClientService } from "@/lib/types";
 import { ContractDocument, type ContractModel } from "@/components/contract-document";
 
@@ -85,6 +86,7 @@ export default async function CartaAcuerdoPage({
       },
     ],
     backHref: `/clientes/${c.id}/onboarding`,
+    clauseOverrides: await fetchClauseOverrides(admin),
   };
 
   return <ContractDocument model={model} />;

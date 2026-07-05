@@ -2,6 +2,11 @@ import { AGENCY } from "@/lib/agency";
 import { SERVICE_TYPE_LABEL } from "@/lib/constants";
 import { getDeliverables } from "@/lib/service-deliverables";
 import { applyContractDiscount } from "@/lib/payment-reminder";
+import {
+  clauseOverride,
+  renderClauseBody,
+  type ContractClauseOverrides,
+} from "@/lib/contract-clauses";
 import type { ClientService } from "@/lib/types";
 import { PrintButton } from "@/components/print-button";
 
@@ -39,6 +44,8 @@ export interface ContractModel {
   marcas: ContractMarca[];
   /** Link "volver" de la barra superior (solo en pantalla). */
   backHref: string;
+  /** Overrides de cláusulas estáticas (admin). Ausente = texto por defecto. */
+  clauseOverrides?: ContractClauseOverrides | null;
 }
 
 function fmtMoney(n: number, moneda: string) {
@@ -145,6 +152,11 @@ function ServiceCard({ s, moneda }: { s: ClientService; moneda: string }) {
 export function ContractDocument({ model }: { model: ContractModel }) {
   const { marcas, titular, moneda } = model;
   const isUnified = marcas.length > 1;
+  // Texto editado de una cláusula estática, o null (usar el default hardcodeado).
+  const ovBody = (key: string) => {
+    const t = clauseOverride(model.clauseOverrides, key);
+    return t ? renderClauseBody(t) : null;
+  };
 
   // Totales agregados sobre todas las marcas.
   const allServices = marcas.flatMap((m) => m.services);
@@ -595,11 +607,13 @@ export function ContractDocument({ model }: { model: ContractModel }) {
           <h2>
             <span className="num">02</span>Objeto del contrato
           </h2>
-          <p>
-            La Agencia se compromete a brindar los servicios contratados por el
-            Cliente, detallados a continuación, con el alcance específico de cada
-            uno.
-          </p>
+          {ovBody("objeto") ?? (
+            <p>
+              La Agencia se compromete a brindar los servicios contratados por el
+              Cliente, detallados a continuación, con el alcance específico de cada
+              uno.
+            </p>
+          )}
         </section>
 
         {/* 3. Servicios contratados (con entregables) */}
@@ -868,15 +882,20 @@ export function ContractDocument({ model }: { model: ContractModel }) {
             <span className="num">{tienePaid ? "07" : "06"}</span>Obligaciones de
             las partes
           </h2>
-          <p>
-            <strong>La Agencia:</strong> prestar los servicios contratados con
-            profesionalismo, confidencialidad y en los plazos acordados.
-          </p>
-          <p>
-            <strong>El Cliente:</strong> entregar materiales, accesos e información
-            en tiempo y forma; brindar las autorizaciones necesarias; y efectuar el
-            pago correspondiente en las condiciones establecidas.
-          </p>
+          {ovBody("obligaciones") ?? (
+            <>
+              <p>
+                <strong>La Agencia:</strong> prestar los servicios contratados con
+                profesionalismo, confidencialidad y en los plazos acordados.
+              </p>
+              <p>
+                <strong>El Cliente:</strong> entregar materiales, accesos e
+                información en tiempo y forma; brindar las autorizaciones
+                necesarias; y efectuar el pago correspondiente en las condiciones
+                establecidas.
+              </p>
+            </>
+          )}
         </section>
 
         {tieneGestionContenido && (
@@ -885,20 +904,25 @@ export function ContractDocument({ model }: { model: ContractModel }) {
               <span className="num">{tienePaid ? "08" : "07"}</span>Material y
               contenido
             </h2>
-            <p>
-              El Cliente compartirá material crudo (fotos, videos, logos, accesos)
-              por los canales acordados. La Agencia es responsable de la edición,
-              optimización y publicación según calendario. El material crudo
-              entregado y las piezas finales producidas son propiedad del Cliente
-              una vez abonados los honorarios del período correspondiente.
-            </p>
-            <p>
-              <strong>Jornadas de producción audiovisual:</strong> la producción
-              presencial (jornadas de filmación o fotografía en el domicilio del
-              Cliente o en locación) <strong>no</strong> está incluida en el abono
-              mensual y constituye un servicio adicional, que se cotiza y abona por
-              separado según se acuerde en cada caso.
-            </p>
+            {ovBody("material") ?? (
+              <>
+                <p>
+                  El Cliente compartirá material crudo (fotos, videos, logos,
+                  accesos) por los canales acordados. La Agencia es responsable de
+                  la edición, optimización y publicación según calendario. El
+                  material crudo entregado y las piezas finales producidas son
+                  propiedad del Cliente una vez abonados los honorarios del período
+                  correspondiente.
+                </p>
+                <p>
+                  <strong>Jornadas de producción audiovisual:</strong> la producción
+                  presencial (jornadas de filmación o fotografía en el domicilio del
+                  Cliente o en locación) <strong>no</strong> está incluida en el
+                  abono mensual y constituye un servicio adicional, que se cotiza y
+                  abona por separado según se acuerde en cada caso.
+                </p>
+              </>
+            )}
           </section>
         )}
 
@@ -913,12 +937,14 @@ export function ContractDocument({ model }: { model: ContractModel }) {
             </span>
             Propiedad intelectual y uso de materiales
           </h2>
-          <p>
-            El Cliente es propietario de los materiales una vez abonados los
-            honorarios. La Agencia podrá utilizar piezas y resultados en su
-            portfolio o material de difusión, salvo objeción expresa por escrito del
-            Cliente.
-          </p>
+          {ovBody("propiedad") ?? (
+            <p>
+              El Cliente es propietario de los materiales una vez abonados los
+              honorarios. La Agencia podrá utilizar piezas y resultados en su
+              portfolio o material de difusión, salvo objeción expresa por escrito
+              del Cliente.
+            </p>
+          )}
         </section>
 
         <section className="clause">
@@ -932,12 +958,14 @@ export function ContractDocument({ model }: { model: ContractModel }) {
             </span>
             Canales de comunicación oficiales
           </h2>
-          <p>
-            La coordinación oficial del proyecto se realizará por el grupo de
-            WhatsApp creado por La Agencia y/o el correo electrónico de contacto.
-            Mensajes recibidos por otras vías (DM de redes sociales, llamadas no
-            agendadas) podrán no ser atendidos en tiempo y forma.
-          </p>
+          {ovBody("canales") ?? (
+            <p>
+              La coordinación oficial del proyecto se realizará por el grupo de
+              WhatsApp creado por La Agencia y/o el correo electrónico de contacto.
+              Mensajes recibidos por otras vías (DM de redes sociales, llamadas no
+              agendadas) podrán no ser atendidos en tiempo y forma.
+            </p>
+          )}
         </section>
 
         <section className="clause">
@@ -951,10 +979,12 @@ export function ContractDocument({ model }: { model: ContractModel }) {
             </span>
             Confidencialidad
           </h2>
-          <p>
-            Ninguna parte podrá divulgar información sensible obtenida en el marco
-            de este acuerdo sin autorización previa de la otra.
-          </p>
+          {ovBody("confidencialidad") ?? (
+            <p>
+              Ninguna parte podrá divulgar información sensible obtenida en el marco
+              de este acuerdo sin autorización previa de la otra.
+            </p>
+          )}
         </section>
 
         <section className="clause">
@@ -968,16 +998,20 @@ export function ContractDocument({ model }: { model: ContractModel }) {
             </span>
             Limitación de responsabilidad
           </h2>
-          <p>
-            La Agencia se compromete a aplicar las mejores prácticas y conocimientos
-            en marketing digital, pero no puede garantizar resultados específicos
-            (ventas, leads, alcance, etc.), ya que éstos dependen de múltiples
-            factores externos.
-          </p>
-          <p>
-            La Agencia no será responsable por caídas, cambios de políticas o
-            bloqueos de plataformas de terceros (Meta, Google, etc.).
-          </p>
+          {ovBody("limitacion") ?? (
+            <>
+              <p>
+                La Agencia se compromete a aplicar las mejores prácticas y
+                conocimientos en marketing digital, pero no puede garantizar
+                resultados específicos (ventas, leads, alcance, etc.), ya que éstos
+                dependen de múltiples factores externos.
+              </p>
+              <p>
+                La Agencia no será responsable por caídas, cambios de políticas o
+                bloqueos de plataformas de terceros (Meta, Google, etc.).
+              </p>
+            </>
+          )}
         </section>
 
         <section className="clause">
@@ -991,12 +1025,14 @@ export function ContractDocument({ model }: { model: ContractModel }) {
             </span>
             Rescisión
           </h2>
-          <p>
-            Cualquiera de las partes puede rescindir el presente acuerdo con aviso
-            por escrito de 15 días. En caso de incumplimiento grave, incluyendo la
-            falta de pago, La Agencia podrá rescindir el contrato de manera
-            inmediata.
-          </p>
+          {ovBody("rescision") ?? (
+            <p>
+              Cualquiera de las partes puede rescindir el presente acuerdo con aviso
+              por escrito de 15 días. En caso de incumplimiento grave, incluyendo la
+              falta de pago, La Agencia podrá rescindir el contrato de manera
+              inmediata.
+            </p>
+          )}
         </section>
 
         <section className="clause">

@@ -14,6 +14,7 @@ import {
   EyeOff,
   Copy,
   UserCog,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ import {
   setUserPassword,
   toggleUserActive,
   updateUserEmail,
+  updateUserName,
   updateUserPermissions,
   updateUserRoles,
 } from "@/app/(app)/accesos/team-actions";
@@ -170,7 +172,9 @@ function UserRow({ user }: { user: TeamRow }) {
 
   return (
     <tr className="border-b last:border-0 hover:bg-muted/20">
-      <td className="px-3 py-2 font-medium">{user.nombre}</td>
+      <td className="px-3 py-2 font-medium">
+        <ChangeNamePopover user={user} />
+      </td>
       <td className="px-3 py-2">
         <div className="inline-flex items-center gap-1">
           <ChangeEmailPopover user={user} />
@@ -243,6 +247,58 @@ function UserRow({ user }: { user: TeamRow }) {
         </div>
       </td>
     </tr>
+  );
+}
+
+function ChangeNamePopover({ user }: { user: TeamRow }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [nombre, setNombre] = useState(user.nombre);
+  const [pending, start] = useTransition();
+
+  function save() {
+    if (nombre.trim() === user.nombre) {
+      setOpen(false);
+      return;
+    }
+    start(async () => {
+      const res = await updateUserName(user.id, nombre);
+      if (res?.error) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success("Nombre actualizado");
+      setOpen(false);
+      router.refresh();
+    });
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button className="inline-flex items-center gap-1 text-left hover:underline">
+          {user.nombre}
+          <Pencil className="h-3 w-3 text-muted-foreground" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 space-y-2">
+        <Label className="text-xs">Nombre para mostrar</Label>
+        <Input
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+          className="h-8 text-sm"
+        />
+        <div className="flex justify-end gap-2">
+          <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+            Cancelar
+          </Button>
+          <Button size="sm" onClick={save} disabled={pending}>
+            {pending && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+            Guardar
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 

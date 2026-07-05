@@ -16,6 +16,18 @@ function invalidate() {
 }
 
 /** Cambia el email de un usuario (en auth + en la tabla users). */
+/** Cambia el nombre para mostrar de un usuario. */
+export async function updateUserName(userId: string, newName: string) {
+  await requireRole(["admin"]);
+  const nombre = newName.trim();
+  if (nombre.length < 2) return { error: "El nombre es muy corto." };
+  const sb = createClient();
+  const { error } = await sb.from("users").update({ nombre }).eq("id", userId);
+  if (error) return { error: error.message };
+  invalidate();
+  return { ok: true };
+}
+
 export async function updateUserEmail(userId: string, newEmail: string) {
   await requireRole(["admin"]);
   const email = newEmail.trim().toLowerCase();

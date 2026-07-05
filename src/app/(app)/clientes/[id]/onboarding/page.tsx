@@ -131,6 +131,12 @@ export default async function OnboardingPage({
             >
               <FileText className="h-3.5 w-3.5" /> Ver carta acuerdo (PDF)
             </Link>
+            <Link
+              href="/carta-plantilla"
+              className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+            >
+              <FileText className="h-3.5 w-3.5" /> Editar cláusulas de la carta
+            </Link>
           </div>
           <UnifiedContractPicker currentId={client.id} others={otrasCuentas} />
 

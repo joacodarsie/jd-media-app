@@ -9,6 +9,7 @@ import {
 } from "@/lib/contract-clauses";
 import type { ClientService } from "@/lib/types";
 import { PrintButton } from "@/components/print-button";
+import { DocEditToggle } from "@/components/doc-edit-toggle";
 
 // ============================================================================
 // Documento de carta acuerdo. Renderiza tanto la carta INDIVIDUAL (1 marca)
@@ -222,6 +223,11 @@ export function ContractDocument({ model }: { model: ContractModel }) {
           font-size: 13px;
           color: #232323;
         }
+        .doc.editing {
+          outline: 2px dashed #FFD400;
+          outline-offset: 6px;
+        }
+        .doc[contenteditable="true"] :focus { outline: none; }
 
         /* HEADER / portada */
         .brand {
@@ -528,6 +534,7 @@ export function ContractDocument({ model }: { model: ContractModel }) {
             margin: 0;
             padding: 0;
           }
+          .doc.editing { outline: none; }
         }
       `}</style>
 
@@ -539,6 +546,7 @@ export function ContractDocument({ model }: { model: ContractModel }) {
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <a href={model.backHref}>← Volver al onboarding</a>
+          <DocEditToggle />
           <PrintButton />
         </div>
       </div>

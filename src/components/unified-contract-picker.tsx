@@ -8,6 +8,8 @@ interface OtherClient {
   nombre: string;
   /** true si comparte el teléfono del titular (sugerida). */
   sameTitular: boolean;
+  /** true si la cuenta está en estado "propuesta" (todavía no activada). */
+  esPropuesta?: boolean;
 }
 
 /**
@@ -81,6 +83,11 @@ export function UnifiedContractPicker({
                   className="h-4 w-4 accent-[#FFD400]"
                 />
                 <span className="flex-1 truncate">{o.nombre}</span>
+                {o.esPropuesta && (
+                  <span className="shrink-0 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:bg-sky-950 dark:text-sky-300">
+                    propuesta
+                  </span>
+                )}
                 {o.sameTitular && (
                   <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
                     mismo teléfono

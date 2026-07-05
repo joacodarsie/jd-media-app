@@ -41,14 +41,15 @@ export default async function OnboardingPage({
   const inicialDone = inicialSteps.filter((s) => s.done).length;
   const progress = Math.round((inicialDone / inicialSteps.length) * 100);
 
-  // Para la carta acuerdo UNIFICADA (mismo titular, varias marcas): traemos
-  // todas las otras cuentas activas para que el admin elija a mano cuáles
-  // incluir. Las que comparten teléfono con esta se marcan como sugeridas.
+  // Para la carta acuerdo UNIFICADA (mismo titular, varias marcas): traemos las
+  // otras cuentas activas Y en propuesta (una marca puede estar aún en
+  // propuesta cuando se arma la carta) para que el admin elija cuáles incluir.
+  // Las que comparten teléfono con esta se marcan como sugeridas.
   const supabase = createClient();
   const { data: otrasRaw } = await supabase
     .from("clients")
-    .select("id, nombre, contacto_telefono")
-    .eq("estado", "activo")
+    .select("id, nombre, contacto_telefono, estado")
+    .in("estado", ["activo", "propuesta"])
     .eq("es_interno", false)
     .neq("id", client.id)
     .order("nombre");
@@ -57,9 +58,11 @@ export default async function OnboardingPage({
     id: string;
     nombre: string;
     contacto_telefono: string | null;
+    estado: string;
   }[]).map((o) => ({
     id: o.id,
     nombre: o.nombre,
+    esPropuesta: o.estado === "propuesta",
     // Sugerida si comparte el teléfono del titular.
     sameTitular: !!miTel && normalizePhone(o.contacto_telefono) === miTel,
   }));

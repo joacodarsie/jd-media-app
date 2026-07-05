@@ -12,6 +12,7 @@ import {
   Megaphone,
   HandCoins,
   ChevronDown,
+  ClipboardCheck,
 } from "lucide-react";
 import { HelpTrigger } from "@/components/help-trigger";
 import { requireFeature } from "@/lib/auth";
@@ -251,6 +252,12 @@ export default async function FinanzasPage({
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            href="/finanzas/cierre"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
+          >
+            <ClipboardCheck className="h-4 w-4" /> Cerrar el mes
+          </Link>
           <MonthPicker value={period} />
           <div className="rounded-lg border bg-card px-3 py-2 text-right">
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">

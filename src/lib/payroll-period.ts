@@ -45,6 +45,14 @@ interface ServiceRow extends PayrollService {
  */
 const CONTENT_PAYROLL_FROM = "2026-07";
 
+/**
+ * Desde este período (inclusive) aplica el EXTRA DE ONBOARDING del equipo (+% a
+ * CM y Paid Media el primer mes de cada cuenta). Junio 2026 y anteriores quedan
+ * afuera: no se cerró a nadie con ese beneficio, así que no corresponde pagarlo
+ * retroactivamente aunque una cuenta haya arrancado ese mes.
+ */
+const ONBOARDING_EXTRA_FROM = "2026-07";
+
 export interface PeriodPayrollResult {
   periodo: string;
   people: PersonPayroll[];
@@ -241,17 +249,20 @@ export async function buildPeriodPayroll(
   }
 
   // Extra de onboarding del equipo (CM + Paid Media), solo el primer mes de
-  // cada cuenta: +% de su tarifa por el laburo exclusivo del arranque.
-  const onboardingExtras = computeOnboardingExtras(
-    clients,
-    services,
-    settings.rates,
-    periodo,
-    fallbackMediaBuyer
-  );
-  for (const [uid, lines] of onboardingExtras) {
-    if (!autoByUser.has(uid)) autoByUser.set(uid, []);
-    autoByUser.get(uid)!.push(...lines);
+  // cada cuenta: +% de su tarifa por el laburo exclusivo del arranque. Solo
+  // desde ONBOARDING_EXTRA_FROM (junio y antes no aplican).
+  if (periodo >= ONBOARDING_EXTRA_FROM) {
+    const onboardingExtras = computeOnboardingExtras(
+      clients,
+      services,
+      settings.rates,
+      periodo,
+      fallbackMediaBuyer
+    );
+    for (const [uid, lines] of onboardingExtras) {
+      if (!autoByUser.has(uid)) autoByUser.set(uid, []);
+      autoByUser.get(uid)!.push(...lines);
+    }
   }
 
   // Fijo mensual del/los comercial(es) por gestión de mensajes y leads.

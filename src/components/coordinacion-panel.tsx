@@ -343,13 +343,24 @@ export function CoordinacionPanel({
                 />
               </Field>
             </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              La <b>puesta en marcha</b> es el pago único del primer mes (manual + kit +
-              plantillas, meet de onboarding, grupos de WhatsApp, accesos y creación de
-              cuentas, setup de Meta Ads). El <b>extra de onboarding</b> se le suma a la
-              CM y al Paid Media solo el primer mes de cada cuenta ({Math.round((rates.onboarding_extra_pct ?? 0) * 100)}%
-              de su tarifa) por el laburo exclusivo del arranque.
-            </p>
+            <div className="mt-2 space-y-1.5 text-[11px] text-muted-foreground">
+              <p>
+                <b className="text-emerald-700 dark:text-emerald-400">Puesta en marcha (lo que COBRÁS al cliente)</b>:
+                pago único que se suma a la <b>primera factura</b> del cliente, por
+                el arranque (manual + kit + plantillas, meet de onboarding, grupos de
+                WhatsApp, accesos y creación de cuentas, setup de Meta Ads). Es un
+                <b> ingreso</b> de la agencia.
+              </p>
+              <p>
+                <b className="text-amber-700 dark:text-amber-400">Extra de onboarding (lo que PAGÁS al equipo)</b>:
+                un <b>{Math.round((rates.onboarding_extra_pct ?? 0) * 100)}%</b> extra
+                sobre la tarifa de la <b>CM</b> y del <b>Paid Media</b>, solo el
+                primer mes de cada cuenta, por el laburo exclusivo del arranque. Es
+                un <b>egreso</b> (aparece en Sueldos). Aplica <b>desde julio 2026</b>:
+                las cuentas que arrancaron antes (ej. junio) no lo reciben. Si lo
+                ponés en <b>0%</b>, no se paga a nadie.
+              </p>
+            </div>
           </div>
           <div>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">

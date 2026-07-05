@@ -39,6 +39,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { fmtARS, periodLabel, prevPeriod, nextPeriod } from "@/lib/finanzas";
 import { ROLE_LABEL } from "@/lib/constants";
 import { encodeCommissionNote, type PersonPayroll } from "@/lib/payroll";
@@ -269,14 +274,17 @@ function PersonCard({
         {person.autoLines.length > 0 && (
           <ul className="space-y-1 text-sm">
             {person.autoLines.map((l, i) => (
-              <li key={i} className="flex items-center justify-between gap-2">
+              <li key={i} className="group flex items-center justify-between gap-2">
                 <span className="min-w-0 truncate text-muted-foreground">
                   {l.cliente && l.cliente !== "—" && (
                     <span className="text-foreground">{l.cliente}</span>
                   )}{" "}
                   <span className="text-xs">{l.concepto}</span>
                 </span>
-                <span className="shrink-0 tabular-nums">{fmt(l.monto)}</span>
+                <span className="flex shrink-0 items-center gap-1.5">
+                  <span className="tabular-nums">{fmt(l.monto)}</span>
+                  <AutoLineAdjust userId={person.userId} periodo={periodo} line={l} />
+                </span>
               </li>
             ))}
           </ul>
@@ -849,6 +857,102 @@ function ExtraItemDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Ajustar una línea AUTOMÁTICA (calculada): corregir su monto o quitarla.
+// No edita el cálculo: crea un ajuste manual que compensa la diferencia, así
+// queda trazable y solo afecta este período.
+// ─────────────────────────────────────────────────────────────────────────
+function AutoLineAdjust({
+  userId,
+  periodo,
+  line,
+}: {
+  userId: string;
+  periodo: string;
+  line: { clienteId: string | null; cliente: string; concepto: string; monto: number };
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [nuevo, setNuevo] = useState<string>(String(line.monto));
+  const [pending, start] = useTransition();
+
+  function aplicar(nuevoMonto: number) {
+    const delta = Math.round(nuevoMonto - line.monto);
+    if (delta === 0) {
+      setOpen(false);
+      return;
+    }
+    const concepto =
+      nuevoMonto === 0
+        ? `Se quita: ${line.concepto}`
+        : `Corrección: ${line.concepto}`;
+    start(async () => {
+      const res = await addPayrollItem({
+        userId,
+        periodo,
+        tipo: "ajuste",
+        concepto,
+        monto: delta,
+        clienteId: line.clienteId,
+      });
+      if (res?.error) return void toast.error(res.error);
+      toast.success(nuevoMonto === 0 ? "Línea quitada (ajuste)." : "Monto corregido (ajuste).");
+      setOpen(false);
+      router.refresh();
+    });
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          className="text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+          aria-label="Ajustar esta línea"
+          title="Corregir o quitar esta línea"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 space-y-2">
+        <div className="text-xs font-semibold">Ajustar línea automática</div>
+        <p className="text-[11px] text-muted-foreground">
+          {line.concepto}
+          {line.cliente && line.cliente !== "—" ? ` · ${line.cliente}` : ""} —
+          calculada en <b>{fmt(line.monto)}</b>. Corregí el monto o quitala; se
+          registra como un ajuste de este mes.
+        </p>
+        <Label className="text-xs">Monto correcto</Label>
+        <Input
+          type="number"
+          value={nuevo}
+          onChange={(e) => setNuevo(e.target.value)}
+          className="h-8 text-sm"
+        />
+        <div className="flex items-center justify-between gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2 text-xs text-red-600 hover:text-red-700"
+            disabled={pending}
+            onClick={() => aplicar(0)}
+          >
+            <Trash2 className="mr-1 h-3 w-3" /> Quitar
+          </Button>
+          <Button
+            size="sm"
+            className="h-7 px-3 text-xs"
+            disabled={pending || nuevo === ""}
+            onClick={() => aplicar(Number(nuevo))}
+          >
+            {pending && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+            Corregir
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 

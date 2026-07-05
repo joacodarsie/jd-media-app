@@ -16,6 +16,8 @@ export default async function AreaPage() {
       .select(
         "*, cliente:clients(id,nombre), asignado:users!tasks_asignado_a_id_fkey(id,nombre,avatar_url)"
       )
+      // Sin archivadas (completadas hace +30 días): no son trabajo activo.
+      .neq("estado", "archivada")
       .order("fecha_limite", { ascending: true, nullsFirst: false }),
     supabase
       .from("users")

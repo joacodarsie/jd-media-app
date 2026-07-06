@@ -4,7 +4,7 @@ import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { getExchangeRates } from "@/lib/exchange";
-import { toARS, fmtARS, currentPeriod, periodLabel } from "@/lib/finanzas";
+import { toARS, fmtARS } from "@/lib/finanzas";
 import {
   mergeSettings,
   productionBase,
@@ -147,7 +147,6 @@ export default async function RentabilidadPage({
     }
   }
 
-  const period = currentPeriod();
   let totalEgresosSinImputar = 0;
 
   if (mode === "cashflow") {

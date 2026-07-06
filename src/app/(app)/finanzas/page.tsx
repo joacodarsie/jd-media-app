@@ -463,8 +463,7 @@ export default async function FinanzasPage({
         <div className="grid gap-3 p-4 pt-0 sm:grid-cols-2 lg:grid-cols-3">
           <AnalisisLink href="/finanzas/registro" title="Registro (Excel)" desc="Planilla mes a mes: entró, salió, neto y crecimiento. Ordenable y descargable a Excel." />
           <AnalisisLink href="/finanzas/movimientos" title="Movimientos" desc="Todo lo que entró y salió, con vista detalle o evolución del margen mes a mes." />
-          <AnalisisLink href="/finanzas/salud" title="Margen por cliente (modelo)" desc="Cuánto deja cada cuenta según el costo de producción estimado." />
-          <AnalisisLink href="/finanzas/rentabilidad" title="Rentabilidad por cliente (real)" desc="Cuánto deja cada cuenta según cobros y gastos reales." />
+          <AnalisisLink href="/finanzas/rentabilidad" title="Rentabilidad por cliente" desc="Cuánto deja cada cuenta según cobros y gastos reales." />
           <AnalisisLink href="/finanzas/vencimientos" title="Vencimientos" desc="Qué pagás y cuándo: plataformas, equipo y gastos." />
           <AnalisisLink href="/finanzas/proyeccion" title="Proyección" desc="MRR, LTV y caja de los próximos meses." />
           <AnalisisLink href="/finanzas/suscripciones" title="Suscripciones" desc="Plataformas SaaS que paga la agencia." />

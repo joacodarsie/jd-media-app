@@ -45,7 +45,7 @@ export const NAV_GROUPS: NavGroup[] = [
         href: "/director",
         label: "Director IA",
         icon: "Sparkles",
-        roles: ["admin", "coordinador", "community_manager"],
+        roles: ["admin", "coordinador"],
       },
       { href: "/chat", label: "Chat equipo", icon: "Hash" },
     ],

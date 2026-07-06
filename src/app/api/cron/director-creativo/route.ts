@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdmin } from "@/lib/supabase/admin";
-import { runDirectorWeekly } from "@/lib/director/run";
+import { runHealthDigest } from "@/lib/director/health-digest";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 /**
- * Director Creativo IA — cron semanal (viernes). La lógica vive en
- * lib/director/run.ts para reutilizarla desde el botón de trigger manual.
+ * Director IA — cron quincenal (día 1 y 15). Avisa al owner + digest el estado
+ * de salud de las cuentas (semáforo bien/regular/mal) para el seguimiento en
+ * /director. El tablero es en vivo; esto solo dispara el recordatorio.
  *
  * Auth: header Authorization: Bearer <CRON_SECRET>
  */
@@ -24,6 +25,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const admin = createAdmin();
-  const res = await runDirectorWeekly(admin, new Date(), true);
+  const res = await runHealthDigest(admin, new Date());
   return NextResponse.json(res);
 }

@@ -472,6 +472,7 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
   const [conManual, setConManual] = useState(false);
   const [conCloser, setConCloser] = useState(false);
   const [conReferido, setConReferido] = useState(false);
+  const [conOnboarding, setConOnboarding] = useState(false);
 
   // Costo fijo de producción (no depende del precio).
   const costoFijo =
@@ -483,11 +484,20 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
   const costo = costoFijo + coordMonto; // costo recurrente mensual real
   const margenRec = precio - costo;
 
-  // One-time del 1er mes: manual de marca + comisiones (% del precio cotizado).
+  // Extra de onboarding del 1er mes: % extra que le pagás a la CM y al Paid Media
+  // ese primer mes, sobre su tarifa, por el arranque de la cuenta.
+  const onbPct = rates.onboarding_extra_pct ?? 0;
+  const cmBase = rates.cm?.["Personalizado"] ?? 0;
+  const mbBase = incluyePauta ? mbCost("Personalizado", rates) : 0;
+  const onboardingExtra = conOnboarding ? Math.round((cmBase + mbBase) * onbPct) : 0;
+
+  // One-time del 1er mes: manual de marca + comisiones (% del precio cotizado) +
+  // extra de onboarding del equipo.
   const oneTime =
     (conManual ? rates.manual_marca : 0) +
     (conCloser ? Math.round(precio * (rates.comision_cierre ?? 0.1)) : 0) +
-    (conReferido ? Math.round(precio * (rates.comision_lead_propio ?? 0.05)) : 0);
+    (conReferido ? Math.round(precio * (rates.comision_lead_propio ?? 0.05)) : 0) +
+    onboardingExtra;
   const margenMes1 = margenRec - oneTime;
   const hayOneTime = oneTime > 0;
 
@@ -515,6 +525,7 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
           <Check label={`Manual de marca 1er mes (${fmt(rates.manual_marca)})`} checked={conManual} onChange={setConManual} />
           <Check label={`Comisión cierre ${Math.round((rates.comision_cierre ?? 0) * 100)}% (1er mes)`} checked={conCloser} onChange={setConCloser} />
           <Check label={`Comisión lead propio ${Math.round((rates.comision_lead_propio ?? 0) * 100)}% (1er mes)`} checked={conReferido} onChange={setConReferido} />
+          <Check label={`Extra onboarding equipo ${Math.round(onbPct * 100)}% (1er mes)`} checked={conOnboarding} onChange={setConOnboarding} />
         </div>
 
         <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-3">
@@ -550,11 +561,13 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
         )}
 
         <p className="text-[11px] text-muted-foreground">
-          La ganancia recurrente = precio − costo mensual (producción + coordinación,
-          siempre incluida + pauta si la marcás). Como referencia, los packs rinden
-          entre 24% y 40%; bajar del 25% deja la cuenta muy fina. Las historias las
-          hace la CM (ya incluidas en su tarifa). El manual y la comisión del closer
-          son costos de una sola vez del primer mes.
+          La <b>ganancia recurrente</b> (2° mes en adelante) = precio − costo mensual
+          (producción + coordinación + pauta si la marcás). La <b>ganancia del 1er
+          mes</b> descuenta además los costos de arranque que tildes. El{" "}
+          <b>extra de onboarding</b> es el {Math.round(onbPct * 100)}% que le pagás a
+          la CM y al Paid Media <b>solo ese primer mes</b>, sobre su tarifa, por el
+          laburo del arranque. Como referencia, los packs rinden 24–40%; bajar del
+          25% deja la cuenta muy fina.
         </p>
       </div>
     </section>

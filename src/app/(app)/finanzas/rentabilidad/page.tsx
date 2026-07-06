@@ -2,10 +2,25 @@ import Link from "next/link";
 import { ArrowLeft, TrendingUp, TrendingDown, Wallet, AlertCircle } from "lucide-react";
 import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdmin } from "@/lib/supabase/admin";
 import { getExchangeRates } from "@/lib/exchange";
 import { toARS, fmtARS, currentPeriod, periodLabel } from "@/lib/finanzas";
+import {
+  mergeSettings,
+  productionBase,
+  mbCost,
+  serviceDeliveryCost,
+  standaloneDesignCost,
+  type AgencySettings,
+  type RatePack,
+} from "@/lib/coordinacion";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+
+const RATE_PACKS: string[] = ["Presencia", "Crecimiento", "Escala", "Personalizado"];
+function asPack(p: string | null): RatePack {
+  return p && RATE_PACKS.includes(p) ? (p as RatePack) : "Personalizado";
+}
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +63,11 @@ interface ServiceRow {
   activo: boolean;
   tipo: string;
   pack: string | null;
+  facturacion: string | null;
+  pack_detalle: Record<string, number> | null;
+  costo_override: number | null;
+  costo_pct: number | null;
+  costo_override_user: string | null;
 }
 
 export default async function RentabilidadPage({
@@ -63,11 +83,13 @@ export default async function RentabilidadPage({
   // mode: "devengado" = todo lo facturado / programado, sin importar si cobró/pagó
   const mode = searchParams.mode === "devengado" ? "devengado" : "cashflow";
 
-  const [clientsRes, invRes, expRes, payRes, svcRes] = await Promise.all([
+  const admin = createAdmin();
+  const [clientsRes, invRes, expRes, payRes, svcRes, settingsRes] = await Promise.all([
     supabase
       .from("clients")
       .select("id, nombre, estado")
       .eq("es_interno", false)
+      .eq("estado", "activo")
       .order("nombre"),
     supabase
       .from("client_invoices")
@@ -80,10 +102,16 @@ export default async function RentabilidadPage({
       .select("cliente_id, monto, moneda, fecha_pago, fecha_programada, periodo"),
     supabase
       .from("client_services")
-      .select("cliente_id, monto_mensual, moneda, activo, tipo, pack")
+      .select(
+        "cliente_id, monto_mensual, moneda, activo, tipo, pack, facturacion, pack_detalle, costo_override, costo_pct, costo_override_user"
+      )
       .eq("activo", true),
+    admin.from("agency_settings").select("packs, rates").eq("id", 1).maybeSingle(),
   ]);
 
+  const settings: AgencySettings = mergeSettings(
+    settingsRes.data as Partial<AgencySettings> | null
+  );
   const clients = (clientsRes.data ?? []) as ClientRow[];
   const invs = (invRes.data ?? []) as InvRow[];
   const exps = (expRes.data ?? []) as ExpRow[];
@@ -119,32 +147,66 @@ export default async function RentabilidadPage({
     }
   }
 
-  // Egresos imputados a cliente
-  // En cashflow: solo lo efectivamente pagado (fecha_pago).
-  // En devengado: solo lo del mes corriente (programado/pagado de este período),
-  // para que sea comparable al ingreso mensual contratado.
   const period = currentPeriod();
   let totalEgresosSinImputar = 0;
-  for (const x of exps) {
-    const incluir =
-      mode === "cashflow" ? !!x.fecha_pago : x.periodo === period;
-    if (!incluir) continue;
-    const ars = toARS(Number(x.monto), x.moneda, rates);
-    if (x.cliente_id && byClient.has(x.cliente_id)) {
-      byClient.get(x.cliente_id)!.egresosGastos += ars;
-    } else {
-      totalEgresosSinImputar += ars;
+
+  if (mode === "cashflow") {
+    // Cashflow: solo lo efectivamente pagado (fecha_pago), imputado a cliente.
+    for (const x of exps) {
+      if (!x.fecha_pago) continue;
+      const ars = toARS(Number(x.monto), x.moneda, rates);
+      if (x.cliente_id && byClient.has(x.cliente_id)) byClient.get(x.cliente_id)!.egresosGastos += ars;
+      else totalEgresosSinImputar += ars;
     }
-  }
-  for (const p of pays) {
-    const incluir =
-      mode === "cashflow" ? !!p.fecha_pago : p.periodo === period;
-    if (!incluir) continue;
-    const ars = toARS(Number(p.monto), p.moneda, rates);
-    if (p.cliente_id && byClient.has(p.cliente_id)) {
-      byClient.get(p.cliente_id)!.egresosEquipo += ars;
-    } else {
-      totalEgresosSinImputar += ars;
+    for (const p of pays) {
+      if (!p.fecha_pago) continue;
+      const ars = toARS(Number(p.monto), p.moneda, rates);
+      if (p.cliente_id && byClient.has(p.cliente_id)) byClient.get(p.cliente_id)!.egresosEquipo += ars;
+      else totalEgresosSinImputar += ars;
+    }
+  } else {
+    // Devengado / modelo: costo REAL que le corresponde a cada cliente por mes
+    // según las tarifas de Coordinación (CM por pack + diseño + edición + media
+    // buyer + entrega de otros servicios + comisión de coordinación). Es el costo
+    // RECURRENTE (2° mes en adelante); el arranque del 1er mes se cotiza aparte.
+    const rt = settings.rates;
+    const packQty = new Map(settings.packs.map((p) => [p.id, p]));
+    const svcByClient = new Map<string, ServiceRow[]>();
+    for (const s of svcs) {
+      if ((s.facturacion ?? "mensual") === "unico") continue;
+      if (!svcByClient.has(s.cliente_id)) svcByClient.set(s.cliente_id, []);
+      svcByClient.get(s.cliente_id)!.push(s);
+    }
+    for (const c of clients) {
+      const cs = svcByClient.get(c.id) ?? [];
+      const gestion = cs.find((s) => s.tipo === "gestion_redes");
+      let costo = 0;
+      if (gestion) {
+        const pack = asPack(gestion.pack);
+        if (gestion.costo_override != null) {
+          costo += Number(gestion.costo_override) + mbCost(pack, rt);
+        } else {
+          const std = packQty.get(pack as never) as { posts: number; reels: number } | undefined;
+          const pd = gestion.pack_detalle ?? {};
+          const posts = std ? std.posts : Number(pd.posts ?? 0);
+          const reels = std ? std.reels : Number(pd.reels ?? 0);
+          costo += productionBase(pack, posts, reels, rt) + mbCost(pack, rt);
+        }
+      }
+      for (const sv of cs) {
+        if (sv.tipo === "diseno_grafico") {
+          costo += standaloneDesignCost(sv, rt);
+          continue;
+        }
+        const dc = serviceDeliveryCost(sv);
+        if (dc) costo += dc.monto;
+      }
+      // Comisión de coordinación (la coordinadora cobra su % del abono de las
+      // cuentas que coordina).
+      const ingresoARS = byClient.get(c.id)?.ingresos ?? 0;
+      if (gestion) costo += Math.round(ingresoARS * (rt.comision_coordinacion ?? 0));
+      const e = byClient.get(c.id);
+      if (e) e.egresosEquipo = costo;
     }
   }
 
@@ -185,11 +247,14 @@ export default async function RentabilidadPage({
 
       <div>
         <h1 className="text-2xl font-bold">Rentabilidad por cliente</h1>
-        <p className="text-muted-foreground">
-          Cuánto te deja cada cliente. En{" "}
-          <b>devengado</b> usa el monto mensual contratado en los servicios
-          activos del cliente, comparado contra egresos del mes en curso
-          ({periodLabel(currentPeriod())}).
+        <p className="max-w-3xl text-muted-foreground">
+          Cuánto te deja cada cuenta activa por mes. Tenés dos miradas:{" "}
+          <b>Cashflow real</b> = plata que entró/salió de verdad (si está vacío es
+          porque todavía no cargaste cobros/pagos). <b>Devengado / modelo</b> = el
+          abono contratado menos el <b>costo real del equipo</b> según tus tarifas
+          de Coordinación (CM, diseño, edición, media buyer y coordinación). Es la
+          rentabilidad <b>recurrente</b> (de 2° mes en adelante); el arranque del
+          1er mes tiene costos extra que se cotizan aparte.
         </p>
       </div>
 
@@ -222,7 +287,7 @@ export default async function RentabilidadPage({
         <p className="text-xs text-muted-foreground">
           {mode === "cashflow"
             ? "Solo lo cobrado y pagado efectivamente (histórico real)."
-            : "Ingresos según el monto mensual contratado en cada servicio activo. Útil para ver el modelo de negocio aunque no hayas facturado todavía."}
+            : "Abono contratado − costo del equipo según tus tarifas de Coordinación. Muestra el margen recurrente de cada cuenta aunque todavía no hayas cargado cobros/pagos."}
         </p>
       </div>
 

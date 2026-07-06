@@ -35,6 +35,11 @@ export default async function SueldosPage({
           fijos y la comisión de cierre del primer mes de cada cliente nuevo.
           Sumá, editá o ajustá ítems a mano. Solo vos lo ves.
         </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          <strong>Elegí el mes TRABAJADO.</strong> Cada mes se paga al mes
+          siguiente (ej: lo de junio lo pagás en julio). El lápiz junto al total
+          de cada persona te deja <strong>fijar el sueldo entero</strong> de una.
+        </p>
       </div>
       <SueldosPanel
         periodo={periodo}

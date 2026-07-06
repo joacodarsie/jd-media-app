@@ -71,6 +71,7 @@ import {
   proposeAdjustments,
   applyAdjustments,
   setCoordinationSplit,
+  setPayrollTotal,
 } from "@/app/(app)/coordinacion/sueldos/actions";
 import type { ProposedAdjustment } from "@/lib/payroll-adjustments";
 import { cn } from "@/lib/utils";
@@ -126,8 +127,12 @@ export function SueldosPanel({
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <div className="min-w-[140px] text-center text-sm font-semibold capitalize">
-            {periodLabel(periodo)}
+          <div className="min-w-[150px] text-center leading-tight">
+            <div className="text-sm font-semibold capitalize">{periodLabel(periodo)}</div>
+            <div className="text-[10px] text-muted-foreground">
+              trabajado · se paga en{" "}
+              <span className="font-medium capitalize">{periodLabel(nextPeriod(periodo))}</span>
+            </div>
           </div>
           <button
             onClick={() => goPeriod(nextPeriod(periodo))}
@@ -253,7 +258,10 @@ function PersonCard({
           <div className="text-xs text-muted-foreground">{roleLabel(person.rol)}</div>
         </div>
         <div className="text-right">
-          <div className="text-xl font-bold tabular-nums">{fmt(person.total)}</div>
+          <div className="flex items-center justify-end gap-1.5">
+            <div className="text-xl font-bold tabular-nums">{fmt(person.total)}</div>
+            <SetTotalDialog person={person} periodo={periodo} />
+          </div>
           {person.registrado && (
             <span
               className={cn(
@@ -957,6 +965,100 @@ function AutoLineAdjust({
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Fijar el TOTAL final del sueldo de una persona (forma fácil de "editar el
+// sueldo entero"). No pisa el cálculo: crea/actualiza un único ajuste de
+// conciliación que cierra la diferencia. Volver a fijarlo lo recalcula.
+// ─────────────────────────────────────────────────────────────────────────
+function SetTotalDialog({
+  person,
+  periodo,
+}: {
+  person: PersonPayroll;
+  periodo: string;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [pending, start] = useTransition();
+  const [valor, setValor] = useState<string>(String(Math.round(person.total)));
+
+  const target = Number(valor);
+  const valido = valor !== "" && Number.isFinite(target) && target >= 0;
+  const delta = valido ? Math.round(target - person.total) : 0;
+
+  function guardar() {
+    if (!valido) return void toast.error("Poné un total válido.");
+    start(async () => {
+      const res = await setPayrollTotal({
+        userId: person.userId,
+        periodo,
+        currentTotal: person.total,
+        target: Math.round(target),
+      });
+      if (res?.error) return void toast.error(res.error);
+      toast.success("Total del sueldo fijado.");
+      setOpen(false);
+      router.refresh();
+    });
+  }
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) setValor(String(Math.round(person.total)));
+      }}
+    >
+      <PopoverTrigger asChild>
+        <button
+          className="text-muted-foreground hover:text-foreground"
+          aria-label="Fijar el total del sueldo"
+          title="Fijar el total del sueldo"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 space-y-2">
+        <div className="text-xs font-semibold">Fijar total del sueldo</div>
+        <p className="text-[11px] text-muted-foreground">
+          Poné el total que le vas a pagar a <b>{firstName(person.nombre)}</b> este mes.
+          No se toca el cálculo: se agrega un ajuste que cierra la diferencia.
+          Calculado hoy: <b>{fmt(person.total)}</b>.
+        </p>
+        <Label className="text-xs">Total a pagar</Label>
+        <Input
+          type="number"
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+          className="h-8 text-sm"
+        />
+        {valido && delta !== 0 && (
+          <p className="text-[11px] text-muted-foreground">
+            Se cargará un ajuste de{" "}
+            <span className={cn("font-medium tabular-nums", delta < 0 && "text-red-600")}>
+              {delta > 0 ? "+" : ""}
+              {fmt(delta)}
+            </span>{" "}
+            para llegar a {fmt(target)}.
+          </p>
+        )}
+        <div className="flex justify-end pt-1">
+          <Button
+            size="sm"
+            className="h-7 px-3 text-xs"
+            disabled={pending || !valido}
+            onClick={guardar}
+          >
+            {pending && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+            Fijar total
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Diálogo: editar un ítem manual existente
 // ─────────────────────────────────────────────────────────────────────────
 function EditItemDialog({
@@ -1135,7 +1237,7 @@ function AjustesIADialog({ periodo }: { periodo: string }) {
           />
 
           {items && (
-            <div className="space-y-2 rounded-md border bg-muted/30 p-2">
+            <div className="max-h-[50vh] space-y-2 overflow-y-auto rounded-md border bg-muted/30 p-2">
               {nota && (
                 <p className="px-1 text-[11px] italic text-muted-foreground">{nota}</p>
               )}

@@ -45,6 +45,74 @@ export async function addPayrollItem(input: {
   return { ok: true };
 }
 
+/**
+ * Fija el TOTAL final del sueldo de una persona para el mes. No toca el cálculo
+ * automático: crea (o actualiza) un único ítem de ajuste "conciliación" que
+ * cierra la diferencia entre lo calculado y el total que querés pagar. Volver a
+ * fijarlo lo recalcula (no se apila); si el ajuste queda en 0, se borra.
+ *
+ * `currentTotal` es el total mostrado en pantalla (ya incluye el ajuste previo,
+ * si lo hubiera), así el delta contra el target es correcto.
+ */
+export async function setPayrollTotal(input: {
+  userId: string;
+  periodo: string;
+  currentTotal: number;
+  target: number;
+}) {
+  const me = await requireRole(["admin"]);
+  if (!input.userId) return { error: "Falta la persona." };
+  if (!/^\d{4}-\d{2}$/.test(input.periodo)) return { error: "Período inválido." };
+  if (!Number.isFinite(input.target) || input.target < 0) {
+    return { error: "El total debe ser un número válido (0 o más)." };
+  }
+  const admin = createAdmin();
+  const MARKER = "FIJAR_TOTAL";
+  const CONCEPTO = "Ajuste a total fijado";
+
+  const { data: existing } = await admin
+    .from("payroll_items")
+    .select("id, monto")
+    .eq("user_id", input.userId)
+    .eq("periodo", input.periodo)
+    .eq("notas", MARKER)
+    .maybeSingle();
+
+  const prev = existing ? Number(existing.monto) : 0;
+  const nuevoMonto = Math.round(prev + (input.target - input.currentTotal));
+
+  // Si la conciliación queda en 0, el total ya coincide con lo calculado: borro el ítem.
+  if (nuevoMonto === 0) {
+    if (existing) {
+      const { error } = await admin.from("payroll_items").delete().eq("id", existing.id);
+      if (error) return { error: error.message };
+    }
+    revalidatePath(PATH);
+    return { ok: true as const };
+  }
+
+  if (existing) {
+    const { error } = await admin
+      .from("payroll_items")
+      .update({ monto: nuevoMonto, concepto: CONCEPTO })
+      .eq("id", existing.id);
+    if (error) return { error: error.message };
+  } else {
+    const { error } = await admin.from("payroll_items").insert({
+      user_id: input.userId,
+      periodo: input.periodo,
+      tipo: "ajuste",
+      concepto: CONCEPTO,
+      monto: nuevoMonto,
+      notas: MARKER,
+      creado_por_id: me.id,
+    });
+    if (error) return { error: error.message };
+  }
+  revalidatePath(PATH);
+  return { ok: true as const };
+}
+
 export async function updatePayrollItem(input: {
   id: string;
   concepto: string;

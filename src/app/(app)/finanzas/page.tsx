@@ -101,7 +101,6 @@ export default async function FinanzasPage({
     { data: paymentsRaw },
     { data: expensesRaw },
     { data: subsRaw },
-    { data: svcRaw },
     { data: adSpendRaw },
     { data: internalRaw },
     { data: debtsRaw },
@@ -125,11 +124,6 @@ export default async function FinanzasPage({
         "id, categoria, proveedor, concepto, monto, moneda, periodo, fecha_programada, fecha_pago"
       ),
     supabase.from("subscriptions").select("costo, moneda, ciclo").eq("activa", true),
-    // Abonos recurrentes activos (ingreso mensual esperado).
-    supabase
-      .from("client_services")
-      .select("cliente_id, monto_mensual, moneda, facturacion, activo")
-      .eq("activo", true),
     // Pauta de Meta del mes (la de JD Media = costo propio de la agencia).
     supabase
       .from("paid_media_snapshots")
@@ -150,29 +144,19 @@ export default async function FinanzasPage({
   const payments = (paymentsRaw ?? []) as unknown as PaymentRow[];
   const expenses = (expensesRaw ?? []) as unknown as ExpenseRow[];
   const subs = (subsRaw ?? []) as SubRow[];
-  const svcs = (svcRaw ?? []) as {
-    cliente_id: string;
-    monto_mensual: number | null;
-    moneda: string;
-    facturacion: string | null;
-  }[];
   const adSpend = (adSpendRaw ?? []) as { cliente_id: string; spend: number; moneda: string }[];
   const internalIds = new Set(((internalRaw ?? []) as { id: string }[]).map((c) => c.id));
   const clients = clientsData as { id: string; nombre: string }[];
   const users = usersData as { id: string; nombre: string }[];
   const ars = (m: number, mon: string) => toARS(Number(m), mon, rates);
-  const activeClientIds = new Set(clients.map((c) => c.id));
 
   // ===== GANANCIA del mes = Ingresos − Sueldos − Plataformas − Publicidad =====
-  // Ingresos: abono mensual de los clientes activos (lo que te pagan por mes).
-  const ingresos = svcs
-    .filter(
-      (v) =>
-        activeClientIds.has(v.cliente_id) &&
-        (v.facturacion ?? "mensual") !== "unico" &&
-        v.monto_mensual != null
-    )
-    .reduce((a, v) => a + ars(v.monto_mensual as number, v.moneda), 0);
+  // Ingresos del mes = lo efectivamente COBRADO en el período (facturas con
+  // fecha de cobro dentro del mes). Varía mes a mes, coherente con la ganancia
+  // real (antes mostraba el abono de los clientes de hoy, igual para todo mes).
+  const ingresos = invoices
+    .filter((i) => i.fecha_cobro && i.fecha_cobro.startsWith(period))
+    .reduce((a, i) => a + ars(i.monto, i.moneda), 0);
   const sueldos = payroll.totalNomina;
   const plataformas = subs.reduce(
     (a, s) => a + ars(s.costo, s.moneda) / (CICLO_MESES[s.ciclo] ?? 1),
@@ -192,9 +176,6 @@ export default async function FinanzasPage({
   const mesesParaSaldar = deudaTotal > 0 && ganancia > 0 ? Math.ceil(deudaTotal / ganancia) : null;
 
   // ===== Cashflow del mes (lo efectivamente movido) =====
-  const cobrado = invoices
-    .filter((i) => i.fecha_cobro && i.fecha_cobro.startsWith(period))
-    .reduce((a, i) => a + ars(i.monto, i.moneda), 0);
   const pagadoEquipo = payments
     .filter((p) => p.fecha_pago && p.fecha_pago.startsWith(period))
     .reduce((a, p) => a + ars(p.monto, p.moneda), 0);
@@ -287,23 +268,20 @@ export default async function FinanzasPage({
                 {fmtARS(ganancia)}
               </div>
               <div className="mt-0.5 text-[11px] text-muted-foreground">
-                Lo que te queda después de pagar todo. Ingresos − sueldos − plataformas − publicidad.
+                Lo que te queda después de pagar todo. Cobrado del mes − sueldos − plataformas − publicidad.
               </div>
             </div>
             {/* Desglose */}
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <Breakdown label="Ingresos" value={ingresos} sign="+" icon={TrendingUp} />
+              <Breakdown label="Cobrado" value={ingresos} sign="+" icon={TrendingUp} href="/finanzas/cobros" />
               <Breakdown label="Sueldos" value={sueldos} sign="−" icon={Users} href="/coordinacion/sueldos" />
               <Breakdown label="Plataformas" value={plataformas} sign="−" icon={Repeat} href="/finanzas/suscripciones" />
               <Breakdown label="Publicidad" value={publicidad} sign="−" icon={Megaphone} href="/paid-media" />
             </div>
           </div>
 
-          {/* Cashflow real + lo que falta */}
+          {/* Lo que falta para cerrar el mes */}
           <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 border-t pt-3 text-xs text-muted-foreground">
-            <span>
-              Cobrado hasta ahora: <b className="text-foreground">{fmtARS(cobrado)}</b>
-            </span>
             {porCobrar > 0 && (
               <Link href="/finanzas/cobros" className="text-emerald-700 hover:underline dark:text-emerald-400">
                 Falta cobrar {fmtARS(porCobrar)}
@@ -483,6 +461,7 @@ export default async function FinanzasPage({
           <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
         </summary>
         <div className="grid gap-3 p-4 pt-0 sm:grid-cols-2 lg:grid-cols-3">
+          <AnalisisLink href="/finanzas/registro" title="Registro (Excel)" desc="Planilla mes a mes: entró, salió, neto y crecimiento. Ordenable y descargable a Excel." />
           <AnalisisLink href="/finanzas/movimientos" title="Movimientos" desc="Todo lo que entró y salió, con vista detalle o evolución del margen mes a mes." />
           <AnalisisLink href="/finanzas/salud" title="Margen por cliente (modelo)" desc="Cuánto deja cada cuenta según el costo de producción estimado." />
           <AnalisisLink href="/finanzas/rentabilidad" title="Rentabilidad por cliente (real)" desc="Cuánto deja cada cuenta según cobros y gastos reales." />

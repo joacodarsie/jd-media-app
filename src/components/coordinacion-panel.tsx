@@ -343,22 +343,15 @@ export function CoordinacionPanel({
                 />
               </Field>
             </div>
-            <div className="mt-2 space-y-1.5 text-[11px] text-muted-foreground">
+            <div className="mt-2 space-y-1 text-[11px] text-muted-foreground">
               <p>
-                <b className="text-emerald-700 dark:text-emerald-400">Puesta en marcha (lo que COBRÁS al cliente)</b>:
-                pago único que se suma a la <b>primera factura</b> del cliente, por
-                el arranque (manual + kit + plantillas, meet de onboarding, grupos de
-                WhatsApp, accesos y creación de cuentas, setup de Meta Ads). Es un
-                <b> ingreso</b> de la agencia.
+                <b className="text-emerald-700 dark:text-emerald-400">Puesta en marcha</b>:
+                lo que le <b>COBRÁS al cliente</b> (se suma a su 1ª factura).
               </p>
               <p>
-                <b className="text-amber-700 dark:text-amber-400">Extra de onboarding (lo que PAGÁS al equipo)</b>:
-                un <b>{Math.round((rates.onboarding_extra_pct ?? 0) * 100)}%</b> extra
-                sobre la tarifa de la <b>CM</b> y del <b>Paid Media</b>, solo el
-                primer mes de cada cuenta, por el laburo exclusivo del arranque. Es
-                un <b>egreso</b> (aparece en Sueldos). Aplica <b>desde julio 2026</b>:
-                las cuentas que arrancaron antes (ej. junio) no lo reciben. Si lo
-                ponés en <b>0%</b>, no se paga a nadie.
+                <b className="text-amber-700 dark:text-amber-400">Extra de onboarding</b>:
+                lo que le <b>PAGÁS al equipo</b> (CM + Paid Media) el 1er mes de cada
+                cuenta. Aplica desde julio 2026; en 0% no se paga a nadie.
               </p>
             </div>
           </div>
@@ -366,27 +359,21 @@ export function CoordinacionPanel({
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Comercial / comisiones
             </h3>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Field label="Fijo mensual (gestión de mensajes)">
-                <NumInput prefix="$" value={rates.comercial_fijo ?? 0} onChange={(n) => patchRate("comercial_fijo", n)} />
-              </Field>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <Field label="Cierre · % del 1er mes">
                 <NumInput prefix="%" value={Math.round((rates.comision_cierre ?? 0) * 100)} onChange={(n) => patchRate("comision_cierre", n / 100)} />
               </Field>
               <Field label="Lead propio · % del 1er mes">
                 <NumInput prefix="%" value={Math.round((rates.comision_lead_propio ?? 0) * 100)} onChange={(n) => patchRate("comision_lead_propio", n / 100)} />
               </Field>
-              <Field label="Coordinación GdR · % recurrente">
+              <Field label="Comisión de coordinación · % del abono">
                 <NumInput prefix="%" value={Math.round((rates.comision_coordinacion ?? 0) * 100)} onChange={(n) => patchRate("comision_coordinacion", n / 100)} />
               </Field>
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">
-              Cierre + lead propio ={" "}
-              {Math.round(((rates.comision_cierre ?? 0) + (rates.comision_lead_propio ?? 0)) * 100)}% del
-              1er mes. El fijo del comercial va aparte de las comisiones. La
-              coordinación cobra ese % del abono de gestión de redes de cada
-              cuenta que coordina, todos los meses. Bonus por volumen del closer: +2% cada 2
-              cierres del mes, tope 6% (fórmula fija).
+              Comisión del comercial que cierra: <b>cierre + lead propio</b> sobre el
+              1er mes. La <b>coordinación</b> cobra su % del abono de cada cuenta que
+              coordina, todos los meses.
             </p>
           </div>
           <div>

@@ -30,7 +30,17 @@ export function friendlyAiError(err: unknown): string {
 
   // Credencial faltante/ inválida (config del servidor).
   if (status === 401 || msg.includes("authentication") || msg.includes("api key")) {
-    return "Hay un problema de configuración con la IA. Avisale al administrador.";
+    return "Hay un problema de configuración con la IA (credencial). Avisale al administrador para revisar la API key.";
+  }
+
+  // Modelo no encontrado / sin acceso para la cuenta.
+  if (status === 404 || msg.includes("not_found") || msg.includes("model:")) {
+    return "El modelo de IA no está disponible para la cuenta. Avisale al administrador para revisar el acceso al modelo.";
+  }
+
+  // Permiso denegado (403): normalmente facturación/permiso de la cuenta.
+  if (status === 403 || msg.includes("permission")) {
+    return "La cuenta de IA no tiene permiso para esta operación (revisá facturación o permisos). Avisale al administrador.";
   }
 
   return "Ocurrió un error al consultar la IA. Probá de nuevo en un momento.";

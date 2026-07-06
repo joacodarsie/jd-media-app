@@ -4,6 +4,24 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { requireUser, userHas } from "@/lib/auth";
+import { PACK_DEFAULTS } from "@/lib/constants";
+
+/**
+ * Para un servicio de gestión de redes, devuelve el pack y su detalle (posts/
+ * reels/historias) por defecto, así el servicio NUNCA queda sin pack. Los otros
+ * servicios no llevan pack. `pack` recibido tiene prioridad si viene.
+ */
+function gestionPackFields(tipo: string | null, pack?: string | null) {
+  if (tipo !== "gestion_redes") return { pack: null, pack_detalle: {} };
+  const p = pack && PACK_DEFAULTS[pack] ? pack : "Presencia";
+  const def = PACK_DEFAULTS[p];
+  return {
+    pack: p,
+    pack_detalle: def
+      ? { posts: def.posts, historias_dias: def.historias_dias, reels: def.reels }
+      : {},
+  };
+}
 
 /** Roles que pueden cerrar ventas / cargar propuestas. */
 const COMERCIAL_ROLES = ["admin", "coordinador", "comercial", "prospecting"];
@@ -169,6 +187,7 @@ export async function convertLeadToClient(leadId: string) {
     const { error: csErr } = await supabase.from("client_services").insert({
       cliente_id: created.id,
       tipo: lead.servicio_interesado,
+      ...gestionPackFields(lead.servicio_interesado),
       monto_mensual: lead.monto_estimado,
       moneda: lead.moneda ?? "ARS",
       fecha_inicio: new Date().toISOString().slice(0, 10),
@@ -250,6 +269,7 @@ export async function createProposalFromLead(leadId: string) {
     const { error: csErr } = await supabase.from("client_services").insert({
       cliente_id: created.id,
       tipo: lead.servicio_interesado,
+      ...gestionPackFields(lead.servicio_interesado),
       monto_mensual: lead.monto_estimado,
       moneda: lead.moneda ?? "ARS",
       fecha_inicio: null,
@@ -279,6 +299,7 @@ export interface DirectProposalInput {
   email: string | null;
   telefono: string | null;
   servicio: string | null; // slug/tipo de servicio interesado (opcional)
+  pack: string | null; // pack de gestión de redes (si el servicio es gestión)
   monto_estimado: number | null;
   cerrado_por_id: string | null;
   coordinador_id: string | null; // coordinador/a del servicio (asigna puestos después)
@@ -322,6 +343,7 @@ export async function createDirectProposal(input: DirectProposalInput) {
     const { error: csErr } = await admin.from("client_services").insert({
       cliente_id: created.id,
       tipo: input.servicio,
+      ...gestionPackFields(input.servicio, input.pack),
       monto_mensual: input.monto_estimado,
       moneda: "ARS",
       fecha_inicio: null,

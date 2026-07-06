@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createDirectProposal } from "@/app/(app)/comercial/actions";
+import { CLIENT_PACK_LABEL } from "@/lib/constants";
 
 const NONE = "__none__";
 
@@ -53,6 +54,7 @@ export function NewProposalDialog({
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
   const [servicio, setServicio] = useState(NONE);
+  const [pack, setPack] = useState("Presencia");
   const [monto, setMonto] = useState("");
   const [cerradoPor, setCerradoPor] = useState(NONE);
   const [coordinador, setCoordinador] = useState(defaultCoordinadorId ?? NONE);
@@ -66,6 +68,7 @@ export function NewProposalDialog({
         email: email || null,
         telefono: telefono || null,
         servicio: servicio === NONE ? null : servicio,
+        pack: servicio === "gestion_redes" ? pack : null,
         monto_estimado: monto ? Number(monto) : null,
         cerrado_por_id: cerradoPor === NONE ? null : cerradoPor,
         coordinador_id: coordinador === NONE ? null : coordinador,
@@ -131,6 +134,23 @@ export function NewProposalDialog({
                 </SelectContent>
               </Select>
             </div>
+            {servicio === "gestion_redes" && (
+              <div>
+                <Label>Pack</Label>
+                <Select value={pack} onValueChange={setPack}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(CLIENT_PACK_LABEL).map(([v, l]) => (
+                      <SelectItem key={v} value={v}>
+                        {l}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div>
               <Label>Monto mensual (ARS)</Label>
               <Input type="number" inputMode="numeric" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="$" />

@@ -327,6 +327,8 @@ export function buildGenerateUserMessage(args: {
   serviciosContratados?: string[];
   redes?: { red: string; handle?: string | null }[];
   transcript: string;
+  /** Instrucciones libres del admin para tener en cuenta al generar. */
+  instrucciones?: string | null;
 }): string {
   const lines: string[] = [];
   lines.push(`# Cliente`);
@@ -346,9 +348,21 @@ export function buildGenerateUserMessage(args: {
   lines.push("");
   lines.push(args.transcript);
   lines.push("");
+  const instrucciones = (args.instrucciones ?? "").trim();
+  if (instrucciones) {
+    lines.push(`# Indicaciones adicionales del equipo (tenelas MUY en cuenta)`);
+    lines.push(
+      `Priorizá esto por sobre lo genérico, sin inventar datos que no estén en la transcripción:`
+    );
+    lines.push("");
+    lines.push(instrucciones);
+    lines.push("");
+  }
   lines.push(
     `# Tu tarea
-Generá el diagnóstico inicial completo llamando a la tool \`save_diagnostic\` con las 14 secciones. Aplicá las reglas de calidad y el nivel de profundidad de los ejemplos.`
+Generá el diagnóstico inicial completo llamando a la tool \`save_diagnostic\` con las 14 secciones. Aplicá las reglas de calidad y el nivel de profundidad de los ejemplos${
+      instrucciones ? ", respetando las indicaciones adicionales del equipo" : ""
+    }.`
   );
   return lines.join("\n");
 }

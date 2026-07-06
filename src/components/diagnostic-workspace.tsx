@@ -58,6 +58,8 @@ export function DiagnosticWorkspace({ clienteId, clienteNombre, active, history 
   // ── Upload de PDF ─────────────────────────────────────────────────
   const [file, setFile] = useState<File | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  // Indicaciones libres para que la IA tenga en cuenta al generar el informe.
+  const [instrucciones, setInstrucciones] = useState("");
 
   function pickFile(f: File | null | undefined) {
     if (!f) return;
@@ -115,7 +117,12 @@ export function DiagnosticWorkspace({ clienteId, clienteNombre, active, history 
       const res = await fetch("/api/diagnostico/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cliente_id: clienteId, transcript_text, source_pdf_path }),
+        body: JSON.stringify({
+          cliente_id: clienteId,
+          transcript_text,
+          source_pdf_path,
+          instrucciones: instrucciones.trim() || null,
+        }),
       });
       if (!res.ok || !res.body) {
         const txt = await res.text().catch(() => "");
@@ -290,6 +297,22 @@ export function DiagnosticWorkspace({ clienteId, clienteNombre, active, history 
               </Button>
             </div>
           )}
+
+          <div className="space-y-1.5">
+            <label htmlFor="diag-instrucciones" className="text-sm font-medium">
+              Indicaciones para la IA <span className="text-muted-foreground">(opcional)</span>
+            </label>
+            <Textarea
+              id="diag-instrucciones"
+              value={instrucciones}
+              onChange={(e) => setInstrucciones(e.target.value)}
+              rows={3}
+              placeholder="Algo puntual que la IA tenga en cuenta al armar el informe. Ej: “enfocá en el público premium”, “el objetivo principal es vender el curso online”, “ignorá lo que dijeron sobre TikTok, no lo vamos a hacer”."
+            />
+            <p className="text-xs text-muted-foreground">
+              Se suma a la transcripción. Dejalo vacío si no hace falta.
+            </p>
+          </div>
 
           <Button
             onClick={handleUploadAndGenerate}

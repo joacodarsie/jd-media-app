@@ -45,6 +45,7 @@ export async function POST(req: Request) {
     cliente_id?: string;
     transcript_text?: string;
     source_pdf_path?: string | null;
+    instrucciones?: string | null;
   } | null;
 
   if (!body?.cliente_id || !body.transcript_text) {
@@ -91,6 +92,9 @@ export async function POST(req: Request) {
     }
   }
 
+  const instrucciones =
+    typeof body.instrucciones === "string" ? body.instrucciones.slice(0, 4000) : null;
+
   const userMessage = buildGenerateUserMessage({
     clienteNombre: client.nombre,
     rubro: (client as { rubro?: string | null }).rubro,
@@ -98,6 +102,7 @@ export async function POST(req: Request) {
     serviciosContratados,
     redes,
     transcript,
+    instrucciones,
   });
 
   // SSE stream — la clave para evitar el 504 del gateway.

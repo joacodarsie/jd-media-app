@@ -8,7 +8,7 @@ import { AI_MODEL_FAST } from "@/lib/ai/models";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Hobby plan max es 60s. Con thinking adaptive + tools puede acercarse al limite.
+// Hobby plan max es 60s. Con tools puede acercarse al limite.
 export const maxDuration = 60;
 
 const client = new Anthropic();
@@ -150,7 +150,8 @@ export async function POST(req: Request) {
         system,
         tools: TOOLS,
         messages,
-        thinking: { type: "adaptive" },
+        // Haiku 4.5 (AI_MODEL_FAST) no soporta thinking adaptivo ni extendido:
+        // mandarlo devuelve 400. El popup no necesita razonamiento profundo.
       });
     } catch (e) {
       console.error("[chat] anthropic error", e);

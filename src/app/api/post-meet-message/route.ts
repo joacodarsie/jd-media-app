@@ -173,7 +173,7 @@ export async function POST(req: Request) {
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 4000,
-      thinking: { type: "enabled", budget_tokens: 1600 },
+      thinking: { type: "adaptive" },
       system: systemPrompt(),
       messages,
     });

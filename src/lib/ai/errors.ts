@@ -43,5 +43,12 @@ export function friendlyAiError(err: unknown): string {
     return "La cuenta de IA no tiene permiso para esta operación (revisá facturación o permisos). Avisale al administrador.";
   }
 
+  // Request inválido (400): parámetro/config no soportada por el modelo (p. ej.
+  // thinking en un modelo que no lo admite). No es transitorio: hay que revisar
+  // el código, no reintentar.
+  if (status === 400 || msg.includes("invalid_request") || msg.includes("bad request")) {
+    return "Hay un problema de configuración con la IA (la consulta no es válida para el modelo). Avisale al administrador.";
+  }
+
   return "Ocurrió un error al consultar la IA. Probá de nuevo en un momento.";
 }

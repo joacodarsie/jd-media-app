@@ -98,7 +98,7 @@ export async function fetchGoogleEmail(accessToken: string): Promise<string> {
   return json.email;
 }
 
-async function refreshAccessToken(refreshToken: string) {
+export async function refreshAccessToken(refreshToken: string) {
   const res = await fetch(GOOGLE_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },

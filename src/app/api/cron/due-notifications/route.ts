@@ -13,6 +13,7 @@ import { runPaidMediaDaily } from "@/lib/paid-media/sync";
 import { runInstagramDaily } from "@/lib/social/sync";
 import { runAccountAlerts } from "@/lib/social/alerts";
 import { checkMetaToken } from "@/lib/meta/health";
+import { checkGoogleHealth, notifyGoogleHealth } from "@/lib/integrations/health";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -194,6 +195,22 @@ export async function GET(req: NextRequest) {
     metaToken = { error: e instanceof Error ? e.message : String(e) };
   }
 
+  // Salud de las conexiones de Google (Gmail reclutamiento + Calendars):
+  // refresca los tokens (los mantiene frescos) y avisa a los admins si alguna
+  // conexión se cayó (refresh token vencido/revocado), deduplicado 20h.
+  let googleHealth: unknown = null;
+  try {
+    const status = await checkGoogleHealth(admin);
+    const notified = await notifyGoogleHealth(admin, status);
+    googleHealth = {
+      checked: status.checked,
+      broken: status.broken.map((b) => ({ label: b.label, error: b.error })),
+      notified,
+    };
+  } catch (e) {
+    googleHealth = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   // Alertas de cuentas: IG perdiendo seguidores, pauta sin conversiones.
   // Va después de los syncs (usa los snapshots recién guardados).
   let accountAlerts: unknown = null;
@@ -217,6 +234,7 @@ export async function GET(req: NextRequest) {
     paid_media: paidMedia,
     instagram,
     meta_token: metaToken,
+    google_health: googleHealth,
     account_alerts: accountAlerts,
   });
 }

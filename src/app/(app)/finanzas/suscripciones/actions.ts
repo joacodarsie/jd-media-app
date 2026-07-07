@@ -16,7 +16,8 @@ async function ctx() {
   return { supabase, userId: user.id };
 }
 
-const PATH = "/finanzas/suscripciones";
+// Las suscripciones viven dentro de Gastos (vista "Suscripciones").
+const PATH = "/finanzas/gastos";
 
 export type SubscriptionCiclo = "mensual" | "trimestral" | "anual";
 

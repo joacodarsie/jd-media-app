@@ -244,7 +244,7 @@ Respondé EXCLUSIVAMENTE un objeto JSON válido (sin markdown, sin texto antes n
     { "titulo": string, "detalle": string, "prioridad": "alta"|"media"|"baja", "link": string|null }
   ]
 }
-Para "link" usá rutas internas de la app cuando ayuden: "/finanzas/cobros" (cobranzas), "/coordinacion/sueldos" (sueldos), "/finanzas/suscripciones" (plataformas), "/finanzas/deudas" (deudas), "/coordinacion/riesgo" (churn), "/comercial" (vender más). Si no aplica, null.
+Para "link" usá rutas internas de la app cuando ayuden: "/finanzas/cobros" (cobranzas), "/coordinacion/sueldos" (sueldos), "/finanzas/gastos?v=subs" (plataformas), "/finanzas/deudas" (deudas), "/coordinacion/riesgo" (churn), "/comercial" (vender más). Si no aplica, null.
 Hablá en español rioplatense, claro y sin tecnicismos innecesarios.`;
 
 /** Llama a la IA con la foto financiera y devuelve el consejo estructurado. */

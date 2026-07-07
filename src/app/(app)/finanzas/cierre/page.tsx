@@ -210,7 +210,7 @@ export default async function CierreMesPage({
         icon={Bell}
         title="Mandar los recordatorios de cobro"
         desc="Mensaje de WhatsApp listo para cada cliente con su monto. Este paso es manual, se marca solo cuando lo hacés."
-        action={<StepLink href={`/finanzas/recordatorios?m=${period}`}>Ir a recordatorios</StepLink>}
+        action={<StepLink href={`/finanzas/cobros?v=recordatorios&m=${period}`}>Ir a recordatorios</StepLink>}
       />
 
       <Step

@@ -23,7 +23,7 @@ interface Item {
 }
 
 const TIPO_META: Record<Tipo, { label: string; icon: typeof Repeat; href: string; color: string }> = {
-  plataforma: { label: "Plataforma", icon: Repeat, href: "/finanzas/suscripciones", color: "text-violet-600" },
+  plataforma: { label: "Plataforma", icon: Repeat, href: "/finanzas/gastos?v=subs", color: "text-violet-600" },
   equipo: { label: "Equipo", icon: Users, href: "/finanzas/pagos", color: "text-amber-600" },
   gasto: { label: "Gasto", icon: Receipt, href: "/finanzas/gastos", color: "text-orange-600" },
   cobro: { label: "Cobro", icon: TrendingUp, href: "/finanzas/cobros", color: "text-emerald-600" },

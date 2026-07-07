@@ -276,7 +276,7 @@ export default async function FinanzasPage({
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Breakdown label="Cobrado" value={ingresos} sign="+" icon={TrendingUp} href="/finanzas/cobros" />
               <Breakdown label="Sueldos" value={sueldos} sign="−" icon={Users} href="/coordinacion/sueldos" />
-              <Breakdown label="Plataformas" value={plataformas} sign="−" icon={Repeat} href="/finanzas/suscripciones" />
+              <Breakdown label="Plataformas" value={plataformas} sign="−" icon={Repeat} href="/finanzas/gastos?v=subs" />
               <Breakdown label="Publicidad" value={publicidad} sign="−" icon={Megaphone} href="/paid-media" />
             </div>
           </div>
@@ -467,8 +467,6 @@ export default async function FinanzasPage({
           <AnalisisLink href="/finanzas/rentabilidad" title="Rentabilidad por cliente" desc="Cuánto deja cada cuenta según cobros y gastos reales." />
           <AnalisisLink href="/finanzas/vencimientos" title="Vencimientos" desc="Qué pagás y cuándo: plataformas, equipo y gastos." />
           <AnalisisLink href="/finanzas/proyeccion" title="Proyección" desc="MRR, LTV y caja de los próximos meses." />
-          <AnalisisLink href="/finanzas/suscripciones" title="Suscripciones" desc="Plataformas SaaS que paga la agencia." />
-          <AnalisisLink href="/finanzas/recordatorios" title="Recordatorios de cobro" desc="Mensaje de WhatsApp por cliente, a un toque." />
           {isAdmin && (
             <AnalisisLink href="/finanzas/deudas" title="Deudas" desc="Lo que debés, para ver tu posición real. Privado." />
           )}

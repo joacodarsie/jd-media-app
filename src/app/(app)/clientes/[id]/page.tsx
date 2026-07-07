@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import type { Client, TaskWithRels } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Markdown } from "@/components/markdown";
 import { HelpTrigger } from "@/components/help-trigger";
 import { TaskList } from "@/components/task-list";
@@ -421,63 +422,222 @@ export default async function ClientDetail({
         )}
       </div>
 
-      {/* ── Layout principal: contenido + columna lateral ── */}
-      <div className="grid gap-5 lg:grid-cols-3">
-        {/* Columna principal */}
-        <div className="space-y-5 lg:col-span-2">
-          {/* Mensaje para el cliente (solo propuestas) */}
-          {esPropuesta && canSeeFinancials && (
-            <Card className="border-violet-300 dark:border-violet-900">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <MessageCircle className="h-4 w-4 text-violet-600" />
-                  Enviar al cliente
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-xs text-muted-foreground">
-                  Revisá que los servicios y montos de abajo estén bien, generá la{" "}
-                  <Link
-                    href={`/contrato/cliente/${c.id}`}
-                    target="_blank"
-                    className="font-medium text-foreground underline underline-offset-2"
-                  >
-                    carta acuerdo
-                  </Link>{" "}
-                  (imprimila como PDF para adjuntarla) y mandá este mensaje con los
-                  datos de transferencia.
-                </p>
-                <ProposalMessageCard
-                  telefono={c.contacto_telefono ?? null}
-                  mensaje={proposalMessage}
-                />
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Servicios contratados */}
-          <Card>
-            <CardContent className="pt-6">
-              <ClientServicesEditor
-                clienteId={c.id}
-                services={svcList}
-                users={users ?? []}
-                canEdit={me.rol === "admin"}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Historial de cobros */}
-          {canSeeFinancials && (
-            <MovimientosHistorialCard
-              title="Historial de cobros"
-              rows={cobroRows}
-              estadoLabels={{ pagado: "Cobrado", pendiente: "Pendiente", vencido: "Vencido" }}
-              emptyText="Todavía no hay cobros registrados para este cliente."
+      {/* Mensaje para el cliente (solo propuestas) — siempre visible, es el
+          próximo paso del flujo comercial. */}
+      {esPropuesta && canSeeFinancials && (
+        <Card className="border-violet-300 dark:border-violet-900">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <MessageCircle className="h-4 w-4 text-violet-600" />
+              Enviar al cliente
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Revisá que los servicios y montos (pestaña Resumen) estén bien,
+              generá la{" "}
+              <Link
+                href={`/contrato/cliente/${c.id}`}
+                target="_blank"
+                className="font-medium text-foreground underline underline-offset-2"
+              >
+                carta acuerdo
+              </Link>{" "}
+              (imprimila como PDF para adjuntarla) y mandá este mensaje con los
+              datos de transferencia.
+            </p>
+            <ProposalMessageCard
+              telefono={c.contacto_telefono ?? null}
+              mensaje={proposalMessage}
             />
-          )}
+          </CardContent>
+        </Card>
+      )}
 
-          {/* Tareas */}
+      {/* ── Contenido en pestañas ── */}
+      <Tabs defaultValue="resumen">
+        <TabsList className="h-auto w-full flex-wrap justify-start gap-1 sm:w-auto">
+          <TabsTrigger value="resumen">Resumen</TabsTrigger>
+          <TabsTrigger value="tareas">
+            Tareas{activas.length > 0 ? ` (${activas.length})` : ""}
+          </TabsTrigger>
+          {canSeeFinancials && <TabsTrigger value="cobros">Cobros</TabsTrigger>}
+          <TabsTrigger value="documentos">Documentos y links</TabsTrigger>
+        </TabsList>
+
+        {/* ── Resumen: servicios + panel lateral ── */}
+        <TabsContent value="resumen" className="mt-4">
+          <div className="grid gap-5 lg:grid-cols-3">
+            <div className="space-y-5 lg:col-span-2">
+              {/* Servicios contratados */}
+              <Card>
+                <CardContent className="pt-6">
+                  <ClientServicesEditor
+                    clienteId={c.id}
+                    services={svcList}
+                    users={users ?? []}
+                    canEdit={me.rol === "admin"}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Notas */}
+              {c.notas && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Notas</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Markdown>{c.notas}</Markdown>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Columna lateral */}
+            <div className="space-y-4">
+              {/* Portal del cliente (link público) */}
+              <ClientPortalLink
+                clienteId={c.id}
+                initialToken={(portalToken as { token?: string } | null)?.token ?? null}
+                initialLastSeen={(portalToken as { last_seen_at?: string | null } | null)?.last_seen_at ?? null}
+              />
+
+              {/* Estado del cliente */}
+              {c.estado === "propuesta" ? (
+                <div className="rounded-lg border border-violet-300 bg-violet-50 p-3 dark:border-violet-900 dark:bg-violet-950/30">
+                  <div className="mb-2 text-xs text-violet-700 dark:text-violet-300">
+                    Estado: <b>Propuesta</b> · activala cuando pague
+                  </div>
+                  {canEdit && (
+                    <ClientActivateButton id={c.id} nombre={c.nombre} size="sm" />
+                  )}
+                </div>
+              ) : (
+                <ClientStatusToggle
+                  id={c.id}
+                  currentStatus={c.estado}
+                  fechaActivado={c.fecha_activado ?? null}
+                  fechaInactivado={c.fecha_inactivado ?? null}
+                />
+              )}
+
+              {/* Links rápidos */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Links</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  {quickLinks.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Sin links cargados.</p>
+                  ) : (
+                    quickLinks.map((l) => {
+                      const Icon = l.icon;
+                      return (
+                        <a
+                          key={l.label}
+                          href={l.href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={cn(
+                            "flex items-center gap-2 rounded-md border bg-muted/30 p-2 hover:bg-muted",
+                            l.muted && "text-xs text-muted-foreground"
+                          )}
+                        >
+                          <Icon className={cn("h-4 w-4 text-primary", l.muted && "h-3.5 w-3.5")} />
+                          <span className="truncate">{l.label}</span>
+                        </a>
+                      );
+                    })
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Equipo asignado */}
+              {(c.cm || c.disenador || c.audiovisual) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Equipo asignado</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    {c.cm && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Community Manager</span>
+                        <span className="font-medium">{c.cm.nombre}</span>
+                      </div>
+                    )}
+                    {c.disenador && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Diseñador/a</span>
+                        <span className="font-medium">{c.disenador.nombre}</span>
+                      </div>
+                    )}
+                    {c.audiovisual && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Editor/a audiovisual</span>
+                        <span className="font-medium">{c.audiovisual.nombre}</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Contacto */}
+              {canSeeFinancials &&
+                (c.contacto_nombre || c.contacto_email || c.contacto_telefono) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Contacto</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2 text-sm">
+                      {c.contacto_nombre && (
+                        <div className="flex items-center gap-2">
+                          <UserIcon className="h-4 w-4 text-muted-foreground" />
+                          {c.contacto_nombre}
+                        </div>
+                      )}
+                      {c.contacto_email && (
+                        <a
+                          href={`mailto:${c.contacto_email}`}
+                          className="flex items-center gap-2 hover:underline"
+                        >
+                          <Mail className="h-4 w-4 text-muted-foreground" />
+                          {c.contacto_email}
+                        </a>
+                      )}
+                      {c.contacto_telefono && (
+                        <a
+                          href={`tel:${c.contacto_telefono}`}
+                          className="flex items-center gap-2 hover:underline"
+                        >
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          {c.contacto_telefono}
+                        </a>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+              {/* Datos para facturar */}
+              {canSeeFinancials && c.datos_facturacion && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Datos para facturar</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm">
+                    <p className="whitespace-pre-line">{c.datos_facturacion}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Próximas reuniones */}
+              <ClientMeetingsCard events={clientEvents} />
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ── Tareas ── */}
+        <TabsContent value="tareas" className="mt-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-base">
@@ -504,7 +664,22 @@ export default async function ClientDetail({
               )}
             </CardContent>
           </Card>
+        </TabsContent>
 
+        {/* ── Cobros ── */}
+        {canSeeFinancials && (
+          <TabsContent value="cobros" className="mt-4">
+            <MovimientosHistorialCard
+              title="Historial de cobros"
+              rows={cobroRows}
+              estadoLabels={{ pagado: "Cobrado", pendiente: "Pendiente", vencido: "Vencido" }}
+              emptyText="Todavía no hay cobros registrados para este cliente."
+            />
+          </TabsContent>
+        )}
+
+        {/* ── Documentos y links ── */}
+        <TabsContent value="documentos" className="mt-4 space-y-5">
           {/* Documentos del cliente (IA los usa como contexto) */}
           <Card>
             <CardHeader>
@@ -593,159 +768,8 @@ export default async function ClientDetail({
             </Card>
           )}
 
-          {/* Notas */}
-          {c.notas && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Notas</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Markdown>{c.notas}</Markdown>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Columna lateral */}
-        <div className="space-y-4">
-          {/* Portal del cliente (link público) */}
-          <ClientPortalLink
-            clienteId={c.id}
-            initialToken={(portalToken as { token?: string } | null)?.token ?? null}
-            initialLastSeen={(portalToken as { last_seen_at?: string | null } | null)?.last_seen_at ?? null}
-          />
-
-          {/* Estado del cliente */}
-          {c.estado === "propuesta" ? (
-            <div className="rounded-lg border border-violet-300 bg-violet-50 p-3 dark:border-violet-900 dark:bg-violet-950/30">
-              <div className="mb-2 text-xs text-violet-700 dark:text-violet-300">
-                Estado: <b>Propuesta</b> · activala cuando pague
-              </div>
-              {canEdit && (
-                <ClientActivateButton id={c.id} nombre={c.nombre} size="sm" />
-              )}
-            </div>
-          ) : (
-            <ClientStatusToggle
-              id={c.id}
-              currentStatus={c.estado}
-              fechaActivado={c.fecha_activado ?? null}
-              fechaInactivado={c.fecha_inactivado ?? null}
-            />
-          )}
-
-          {/* Links rápidos */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Links</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              {quickLinks.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Sin links cargados.</p>
-              ) : (
-                quickLinks.map((l) => {
-                  const Icon = l.icon;
-                  return (
-                    <a
-                      key={l.label}
-                      href={l.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={cn(
-                        "flex items-center gap-2 rounded-md border bg-muted/30 p-2 hover:bg-muted",
-                        l.muted && "text-xs text-muted-foreground"
-                      )}
-                    >
-                      <Icon className={cn("h-4 w-4 text-primary", l.muted && "h-3.5 w-3.5")} />
-                      <span className="truncate">{l.label}</span>
-                    </a>
-                  );
-                })
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Equipo asignado */}
-          {(c.cm || c.disenador || c.audiovisual) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Equipo asignado</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                {c.cm && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Community Manager</span>
-                    <span className="font-medium">{c.cm.nombre}</span>
-                  </div>
-                )}
-                {c.disenador && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Diseñador/a</span>
-                    <span className="font-medium">{c.disenador.nombre}</span>
-                  </div>
-                )}
-                {c.audiovisual && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Editor/a audiovisual</span>
-                    <span className="font-medium">{c.audiovisual.nombre}</span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Contacto */}
-          {canSeeFinancials &&
-            (c.contacto_nombre || c.contacto_email || c.contacto_telefono) && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Contacto</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  {c.contacto_nombre && (
-                    <div className="flex items-center gap-2">
-                      <UserIcon className="h-4 w-4 text-muted-foreground" />
-                      {c.contacto_nombre}
-                    </div>
-                  )}
-                  {c.contacto_email && (
-                    <a
-                      href={`mailto:${c.contacto_email}`}
-                      className="flex items-center gap-2 hover:underline"
-                    >
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      {c.contacto_email}
-                    </a>
-                  )}
-                  {c.contacto_telefono && (
-                    <a
-                      href={`tel:${c.contacto_telefono}`}
-                      className="flex items-center gap-2 hover:underline"
-                    >
-                      <Phone className="h-4 w-4 text-muted-foreground" />
-                      {c.contacto_telefono}
-                    </a>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-          {/* Datos para facturar */}
-          {canSeeFinancials && c.datos_facturacion && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Datos para facturar</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm">
-                <p className="whitespace-pre-line">{c.datos_facturacion}</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Próximas reuniones */}
-          <ClientMeetingsCard events={clientEvents} />
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

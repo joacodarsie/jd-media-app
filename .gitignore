@@ -40,3 +40,6 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# Tooling local de Claude Code (launch.json para preview)
+.claude/

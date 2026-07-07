@@ -5,6 +5,7 @@ import { AGENCY } from "@/lib/agency";
 import type { MonthlyContentPlan } from "@/lib/content-plans/schema";
 import { PortalReviewCard } from "@/components/portal-review-card";
 import { PortalContent } from "@/components/portal-content";
+import { PortalIgChart } from "@/components/portal-ig-chart";
 
 export const dynamic = "force-dynamic";
 
@@ -93,7 +94,7 @@ export default async function PortalPage({ params }: { params: { token: string }
 
   // Resultados del mes en curso (Instagram + paid) + lectura IA, si hay.
   const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const [igM, paidM, { data: monthlyRow }] = await Promise.all([
+  const [igM, paidM, { data: monthlyRow }, { data: igHistRaw }] = await Promise.all([
     igMonthlyForReport(admin, cliente_id, mesActual),
     paidMonthlyForReport(admin, cliente_id, mesActual),
     admin
@@ -102,6 +103,14 @@ export default async function PortalPage({ params }: { params: { token: string }
       .eq("cliente_id", cliente_id)
       .eq("year_month", mesActual)
       .maybeSingle(),
+    // Historial completo de seguidores para el gráfico de evolución (los
+    // snapshots son 1 por día; el componente muestrea si crece mucho).
+    admin
+      .from("ig_snapshots")
+      .select("fecha, followers")
+      .eq("cliente_id", cliente_id)
+      .gt("followers", 0)
+      .order("fecha", { ascending: true }),
   ]);
   const aiResultados = (monthlyRow as { ai_resultados?: string | null } | null)?.ai_resultados ?? null;
   const fmtN = (n: number) => Math.round(n).toLocaleString("es-AR");
@@ -121,7 +130,11 @@ export default async function PortalPage({ params }: { params: { token: string }
         { lbl: "Clicks", val: fmtN(paidM.clicks) },
       ].filter(Boolean) as { lbl: string; val: string }[])
     : [];
-  const hayResultados = igCells.length > 0 || paidCells.length > 0 || !!aiResultados;
+  const igHist = (igHistRaw ?? []) as { fecha: string; followers: number }[];
+  const igDelta =
+    igHist.length >= 2 ? igHist[igHist.length - 1].followers - igHist[0].followers : 0;
+  const hayResultados =
+    igCells.length > 0 || paidCells.length > 0 || !!aiResultados || igHist.length >= 2;
 
   const planContent: MonthlyContentPlan | null = plan?.content
     ? (plan.content as MonthlyContentPlan)
@@ -277,6 +290,39 @@ export default async function PortalPage({ params }: { params: { token: string }
                   ))}
                 </div>
               </>
+            )}
+            {igHist.length >= 2 && (
+              <div style={{ margin: "4px 0 16px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "baseline",
+                    justifyContent: "space-between",
+                    flexWrap: "wrap",
+                    gap: 8,
+                    margin: "0 0 4px",
+                  }}
+                >
+                  <p style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: "0.1em", margin: 0 }}>
+                    Evolución de seguidores
+                  </p>
+                  {igDelta > 0 && (
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "#1a1a1a",
+                        background: "#FFD400",
+                        borderRadius: 999,
+                        padding: "2px 10px",
+                      }}
+                    >
+                      +{fmtN(igDelta)} seguidores
+                    </span>
+                  )}
+                </div>
+                <PortalIgChart points={igHist} />
+              </div>
             )}
             {paidCells.length > 0 && (
               <>

@@ -78,7 +78,10 @@ export function TemplatesManager({
   const [scope, setScope] = useState(ALL);
 
   // Defensiva: si initial llega no-array (caso raro), tratamos como vacio.
-  const safeInitial: TemplateRow[] = Array.isArray(initial) ? initial : [];
+  const safeInitial: TemplateRow[] = useMemo(
+    () => (Array.isArray(initial) ? initial : []),
+    [initial]
+  );
 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();

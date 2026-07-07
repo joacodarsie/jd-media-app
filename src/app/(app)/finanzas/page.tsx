@@ -88,7 +88,6 @@ export default async function FinanzasPage({
   const isAdmin = me.rol === "admin";
   const supabase = createClient();
   const admin = createAdmin();
-  const rates = await getExchangeRates();
   const period =
     searchParams.m && /^\d{4}-\d{2}$/.test(searchParams.m) ? searchParams.m : currentPeriod();
   const today = new Date().toISOString().slice(0, 10);
@@ -107,6 +106,7 @@ export default async function FinanzasPage({
     clientsData,
     usersData,
     payroll,
+    rates,
   ] = await Promise.all([
     supabase
       .from("client_invoices")
@@ -138,6 +138,7 @@ export default async function FinanzasPage({
     getActiveClients(),
     getActiveUsers(),
     buildPeriodPayroll(admin, period),
+    getExchangeRates(),
   ]);
 
   const invoices = (invoicesRaw ?? []) as unknown as InvoiceRow[];

@@ -366,3 +366,51 @@ Generá el diagnóstico inicial completo llamando a la tool \`save_diagnostic\` 
   );
   return lines.join("\n");
 }
+
+/**
+ * Construye el mensaje user para REVISAR un diagnóstico ya generado en base a
+ * las correcciones que mandó el cliente (texto + lo transcripto de audios; las
+ * imágenes van aparte como bloques de visión).
+ *
+ * Regla clave: aplicar SOLO lo que pide el cliente y dejar TODO lo demás
+ * idéntico. No es una regeneración desde cero.
+ */
+export function buildReviseUserMessage(args: {
+  clienteNombre: string;
+  /** El diagnóstico actual, serializado como JSON (la misma forma que save_diagnostic espera). */
+  currentContentJson: string;
+  /** Correcciones del cliente en texto (incluye lo transcripto de audios). */
+  correcciones: string;
+  /** Cuántas imágenes/capturas se adjuntan (van como bloques aparte). */
+  imageCount?: number;
+}): string {
+  const lines: string[] = [];
+  lines.push(`# Contexto`);
+  lines.push(
+    `Ya generamos y le enviamos al cliente **${args.clienteNombre}** el informe de diagnóstico de abajo. El cliente lo revisó y nos mandó correcciones. Tu tarea es aplicar esas correcciones al informe.`
+  );
+  lines.push("");
+  lines.push(`# Diagnóstico actual (JSON con las 14 secciones)`);
+  lines.push("```json");
+  lines.push(args.currentContentJson);
+  lines.push("```");
+  lines.push("");
+  lines.push(`# Correcciones que pidió el cliente`);
+  if (args.imageCount && args.imageCount > 0) {
+    lines.push(
+      `(Se adjuntan ${args.imageCount} captura(s) más abajo — interpretá lo que muestran y lo que el cliente marca en ellas.)`
+    );
+  }
+  lines.push("");
+  lines.push(args.correcciones.trim() || "(Ver las capturas adjuntas.)");
+  lines.push("");
+  lines.push(
+    `# Reglas de la revisión (MUY importante)
+- Devolvé el diagnóstico COMPLETO llamando a \`save_diagnostic\` con las 14 secciones (no un fragmento).
+- Aplicá **solo** lo que el cliente pide. Todo lo que no menciona debe quedar **idéntico** al JSON actual: mismo texto, mismo orden, mismos datos.
+- Interpretá la intención: el cliente habla en criollo/informal ("cambiá esto", "esto no va", "en realidad somos 3 socios"). Traducí eso a los campos correctos del informe.
+- No inventes datos nuevos que el cliente no haya aportado. Si una corrección es ambigua, hacé el cambio más conservador y fiel a lo que dijo.
+- Respetá el idioma, el tono y el nivel de detalle del informe original.`
+  );
+  return lines.join("\n");
+}

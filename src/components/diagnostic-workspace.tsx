@@ -30,6 +30,7 @@ import type {
   DiagnosticRow,
   ActionItem,
 } from "@/lib/diagnostics/schema";
+import { DiagnosticCorrections } from "@/components/diagnostic-corrections";
 
 interface Props {
   clienteId: string;
@@ -393,6 +394,12 @@ export function DiagnosticWorkspace({ clienteId, clienteNombre, active, history 
           )}
         </div>
       </div>
+
+      {/* Correcciones del cliente: solo cuando ya está aprobado (= se lo mandaste
+          al cliente y te devolvió cambios). Genera una versión nueva en draft. */}
+      {isApproved && (
+        <DiagnosticCorrections clienteId={clienteId} baseDiagnosticId={current.id} />
+      )}
 
       {/* Renderizamos las secciones — vista de solo lectura si aprobado, editable si draft */}
       <DiagnosticEditor content={content} editable={isDraft} onChange={updateContent} />

@@ -14,15 +14,14 @@ import {
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
-import { PAY_FREQUENCY_LABEL, ROLE_LABEL } from "@/lib/constants";
+import { ROLE_LABEL } from "@/lib/constants";
 import { fmtDate } from "@/lib/dates";
 import { currentPeriod } from "@/lib/finanzas";
 import { buildPeriodPayroll } from "@/lib/payroll-period";
-import type { AppUser, Compensation, Position, UserRole } from "@/lib/types";
+import type { AppUser, Position, UserRole } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PersonalInfoDialog } from "@/components/personal-info-dialog";
-import { CompensationFormDialog } from "@/components/compensation-form-dialog";
 import { MiSueldoCard } from "@/components/mi-sueldo-card";
 import {
   MovimientosHistorialCard,
@@ -45,7 +44,7 @@ export default async function PersonaDetail({
   const supabase = createClient();
   const admin = createAdmin();
   const periodo = currentPeriod();
-  const [{ data: user }, { data: comp }, payroll, { data: paymentsRaw }] =
+  const [{ data: user }, payroll, { data: paymentsRaw }] =
     await Promise.all([
       supabase
         .from("users")
@@ -53,11 +52,6 @@ export default async function PersonaDetail({
           "id, nombre, email, avatar_url, area, rol, position_id, secondary_position_ids, activo, telefono, fecha_ingreso"
         )
         .eq("id", params.id)
-        .maybeSingle(),
-      supabase
-        .from("compensation")
-        .select("user_id, monto, moneda, frecuencia, forma_pago, notas, updated_at")
-        .eq("user_id", params.id)
         .maybeSingle(),
       // Sueldo del mes en curso (acceso ya gateado a admin o la propia persona).
       buildPeriodPayroll(admin, periodo).catch(() => null),
@@ -76,22 +70,11 @@ export default async function PersonaDetail({
     ? ((
         await supabase
           .from("positions")
-          .select(
-            "id, nombre, area, descripcion, services, pago_default_monto, pago_default_moneda, pago_default_frecuencia, pago_default_forma, pago_default_notas"
-          )
+          .select("id, nombre, area, descripcion, services")
           .eq("id", u.position_id)
           .maybeSingle()
       ).data as Position | null)
     : null;
-  const c = comp as Compensation | null;
-
-  const eff = c ?? {
-    monto: position?.pago_default_monto ?? null,
-    moneda: position?.pago_default_moneda ?? "ARS",
-    frecuencia: position?.pago_default_frecuencia ?? null,
-    forma_pago: position?.pago_default_forma ?? null,
-    notas: position?.pago_default_notas ?? null,
-  };
 
   // Sueldo calculado del mes en curso para esta persona.
   const miSueldo = payroll?.people.find((p) => p.userId === params.id) ?? null;
@@ -200,60 +183,14 @@ export default async function PersonaDetail({
           </CardContent>
         </Card>
 
-        {/* Pago */}
+        {/* Datos bancarios (el sueldo real del mes está en la card de arriba) */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-base">
-              Compensación pactada{" "}
-              <span className="text-xs font-normal text-muted-foreground">
-                · referencia
-              </span>
-            </CardTitle>
-            {isAdmin && (
-              <CompensationFormDialog
-                userId={u.id}
-                userName={u.nombre}
-                current={c}
-                trigger={
-                  <Button variant="ghost" size="sm">
-                    <Pencil className="mr-1 h-3 w-3" /> Editar
-                  </Button>
-                }
-              />
-            )}
+          <CardHeader>
+            <CardTitle className="text-base">Datos bancarios</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            {eff.monto == null ? (
-              <p className="text-muted-foreground">
-                Sin compensación cargada todavía.
-              </p>
-            ) : (
+            {u.cbu || u.alias_cbu || u.titular_cuenta ? (
               <>
-                <div className="text-2xl font-bold tabular-nums">
-                  {eff.moneda} {Number(eff.monto).toLocaleString("es-AR")}
-                  {eff.frecuencia && (
-                    <span className="ml-2 text-xs font-normal text-muted-foreground">
-                      · {PAY_FREQUENCY_LABEL[eff.frecuencia] ?? eff.frecuencia}
-                    </span>
-                  )}
-                </div>
-                {eff.forma_pago && (
-                  <Row icon={CreditCard} label="Forma de pago">
-                    {eff.forma_pago}
-                  </Row>
-                )}
-                <p className="text-[10px] text-muted-foreground">
-                  {c ? "Override individual." : "Heredado del puesto."}
-                </p>
-              </>
-            )}
-
-            {/* Datos bancarios */}
-            {(u.cbu || u.alias_cbu || u.titular_cuenta) && (
-              <div className="mt-3 space-y-2 border-t pt-3">
-                <h4 className="text-xs font-semibold text-muted-foreground">
-                  Datos bancarios
-                </h4>
                 {u.alias_cbu && (
                   <Row icon={KeyRound} label="Alias">
                     <code className="select-all rounded bg-muted px-1.5 py-0.5 text-xs">
@@ -273,7 +210,9 @@ export default async function PersonaDetail({
                     {u.titular_cuenta}
                   </Row>
                 )}
-              </div>
+              </>
+            ) : (
+              <p className="text-muted-foreground">Sin datos bancarios cargados.</p>
             )}
           </CardContent>
         </Card>

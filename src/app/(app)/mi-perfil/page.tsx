@@ -5,9 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { currentPeriod } from "@/lib/finanzas";
 import { buildPeriodPayroll } from "@/lib/payroll-period";
-import type { Compensation, Position } from "@/lib/types";
+import type { Position } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CompensationCard } from "@/components/compensation-card";
 import { MiSueldoCard } from "@/components/mi-sueldo-card";
 import { BankDetailsCard } from "@/components/bank-details-card";
 import { WhatsAppOptinCard } from "@/components/whatsapp-optin-card";
@@ -25,7 +24,7 @@ export default async function MiPerfilPage() {
   const supabase = createClient();
 
   const periodo = currentPeriod();
-  const [{ data: position }, { data: comp }, payroll] = await Promise.all([
+  const [{ data: position }, payroll] = await Promise.all([
     me.position_id
       ? supabase
           .from("positions")
@@ -33,11 +32,6 @@ export default async function MiPerfilPage() {
           .eq("id", me.position_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
-    supabase
-      .from("compensation")
-      .select("user_id, monto, moneda, frecuencia, notas, updated_at")
-      .eq("user_id", me.id)
-      .maybeSingle(),
     // Nómina del mes en curso; solo renderizamos la fila de la persona logueada.
     buildPeriodPayroll(createAdmin(), periodo).catch(() => null),
   ]);
@@ -154,11 +148,6 @@ export default async function MiPerfilPage() {
         initialTitular={
           (me as unknown as { titular_cuenta?: string | null }).titular_cuenta ?? null
         }
-      />
-
-      <CompensationCard
-        compensation={(comp as Compensation) ?? null}
-        position={(position as Position) ?? null}
       />
 
       <GoogleCalendarCard userId={me.id} isAdmin={me.rol === "admin"} />

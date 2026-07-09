@@ -113,7 +113,7 @@ export function FinancialRegistry({ rows }: { rows: RegistryRow[] }) {
       <div className="overflow-x-auto rounded-xl border bg-card">
         <table className="w-full min-w-[720px] text-sm">
           <thead>
-            <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+            <tr className="border-b bg-muted/50 text-left text-xs uppercase tracking-wide text-foreground/70">
               <Th col="periodo" label="Mes" />
               <Th col="ingresos" label="Ingresos" right />
               <Th col="sueldos" label="Sueldos" right />
@@ -134,11 +134,17 @@ export function FinancialRegistry({ rows }: { rows: RegistryRow[] }) {
               sorted.map((r) => {
                 const vacio = r.ingresos === 0 && r.egresos === 0;
                 return (
-                  <tr key={r.periodo} className={cn("border-b last:border-0", vacio && "opacity-40")}>
-                    <td className="px-3 py-2 font-medium capitalize">{periodLabel(r.periodo)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-emerald-600">{fmtARS(r.ingresos)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtARS(r.sueldos)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{fmtARS(r.gastos)}</td>
+                  <tr
+                    key={r.periodo}
+                    className={cn(
+                      "border-b last:border-0 odd:bg-muted/20 hover:bg-muted/40",
+                      vacio && "text-muted-foreground"
+                    )}
+                  >
+                    <td className="px-3 py-2 font-medium capitalize text-foreground">{periodLabel(r.periodo)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums font-medium text-emerald-600 dark:text-emerald-400">{fmtARS(r.ingresos)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-foreground">{fmtARS(r.sueldos)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-foreground">{fmtARS(r.gastos)}</td>
                     <td className="px-3 py-2 text-right tabular-nums text-amber-700 dark:text-amber-400">{fmtARS(r.egresos)}</td>
                     <td className={cn("px-3 py-2 text-right font-semibold tabular-nums", r.neto < 0 ? "text-red-600" : "text-emerald-600")}>
                       {fmtARS(r.neto)}

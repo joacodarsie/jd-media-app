@@ -19,11 +19,22 @@ import {
   type RatePack,
 } from "./coordinacion";
 
+/**
+ * De dónde sale cada peso de la nómina. Es lo que permite agrupar la nómina por
+ * PUESTO (ver `lib/payroll-summary`), así que cada concepto que se paga distinto
+ * tiene su propio kind — no metas cosas nuevas dentro de `extra`.
+ */
 export type PayrollLineKind =
   | "cm"
   | "diseno"
   | "edicion"
   | "media_buyer"
+  | "coordinacion"
+  | "coord_diseno"
+  | "comercial_fijo"
+  | "jornada"
+  | "onboarding"
+  | "servicio"
   | "override"
   | "comision"
   | "extra"
@@ -200,7 +211,7 @@ export function computeOnboardingExtras(
         cliente: c.nombre,
         concepto: `Onboarding CM · +${Math.round(pct * 100)}% arranque`,
         monto: cmExtra,
-        kind: "extra",
+        kind: "onboarding",
       });
     }
 
@@ -212,7 +223,7 @@ export function computeOnboardingExtras(
           cliente: c.nombre,
           concepto: `Onboarding Paid Media · +${Math.round(pct * 100)}% arranque`,
           monto: mbExtra,
-          kind: "extra",
+          kind: "onboarding",
         });
       }
     }
@@ -382,7 +393,7 @@ export function computeDesignCoordinationLines(
       cliente: "—",
       concepto: `Coordinación de diseño · ${Math.round(pct * 100)}% del diseño del mes`,
       monto: pctMonto,
-      kind: "extra",
+      kind: "coord_diseno",
     });
   }
 
@@ -394,7 +405,7 @@ export function computeDesignCoordinationLines(
         cliente: m.cliente,
         concepto: `Aprobación manual de marca · ${m.cliente}`,
         monto: manualBonus,
-        kind: "extra",
+        kind: "coord_diseno",
       });
     }
   }
@@ -471,7 +482,7 @@ export function computeStandaloneDesignLines(
         cliente,
         concepto: `Coordinación de diseño standalone · ${Math.round(coordPct * 100)}%`,
         monto: coordMonto,
-        kind: "extra",
+        kind: "coord_diseno",
       });
     }
   }
@@ -591,7 +602,7 @@ export function computeCoordinationPayroll(
           cliente: c.nombre,
           concepto: `Coordinación gestión de redes (${pctLabel(coordPct * s.pct)})`,
           monto,
-          kind: "comision",
+          kind: "coordinacion",
         });
       }
     } else {
@@ -600,7 +611,7 @@ export function computeCoordinationPayroll(
         cliente: c.nombre,
         concepto: `Coordinación gestión de redes (${pctLabel(coordPct)})`,
         monto: pool,
-        kind: "comision",
+        kind: "coordinacion",
       });
     }
   }

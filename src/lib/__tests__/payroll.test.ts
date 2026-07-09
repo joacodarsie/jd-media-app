@@ -361,7 +361,7 @@ describe("computeStandaloneDesignLines", () => {
     expect(byUser.get("dis1")?.[0].monto).toBe(Math.round(100000 * r.diseno_standalone_disenador_pct));
     expect(byUser.get("dis1")?.[0].kind).toBe("diseno");
     expect(byUser.get("coord1")?.[0].monto).toBe(Math.round(100000 * r.diseno_standalone_coord_pct));
-    expect(byUser.get("coord1")?.[0].kind).toBe("extra");
+    expect(byUser.get("coord1")?.[0].kind).toBe("coord_diseno");
   });
 
   it("acuerdo fijo (costo_override) se paga entero al diseñador, sin split", () => {

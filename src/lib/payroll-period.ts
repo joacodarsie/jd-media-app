@@ -63,6 +63,8 @@ export interface PeriodPayrollResult {
   commission: { cierre: number; leadPropio: number };
   /** Comisión base de coordinación (ej 0.10) y reparto excepcional del mes. */
   coordinacion: { pct: number; split: { userId: string; pct: number }[] };
+  /** Tarifas y packs vigentes: alimentan el "cómo se paga cada puesto". */
+  settings: AgencySettings;
 }
 
 /**
@@ -276,7 +278,7 @@ export async function buildPeriodPayroll(
       cliente: "—",
       concepto: "Gestión de mensajes (fijo mensual)",
       monto: comercialFijo,
-      kind: "extra",
+      kind: "comercial_fijo",
     });
   }
 
@@ -371,7 +373,7 @@ export async function buildPeriodPayroll(
       cliente: "—",
       concepto: `Jornada de producción (dirige) · ${detalle}`,
       monto: split.director,
-      kind: "extra",
+      kind: "jornada",
     });
     if (acompananteId && split.acompanante != null) {
       if (!autoByUser.has(acompananteId)) autoByUser.set(acompananteId, []);
@@ -380,7 +382,7 @@ export async function buildPeriodPayroll(
         cliente: "—",
         concepto: `Jornada de producción (acompaña) · ${detalle}`,
         monto: split.acompanante,
-        kind: "extra",
+        kind: "jornada",
       });
     }
   }
@@ -404,7 +406,7 @@ export async function buildPeriodPayroll(
       cliente: clientById.get(s.cliente_id) ?? "—",
       concepto: `${SERVICE_TYPE_LABEL[s.tipo] ?? s.tipo}${esUnico ? " (proyecto)" : ""}`,
       monto: dc.monto,
-      kind: "extra",
+      kind: "servicio",
     });
   }
 
@@ -495,5 +497,6 @@ export async function buildPeriodPayroll(
       leadPropio: settings.rates.comision_lead_propio ?? 0.05,
     },
     coordinacion: { pct: coordPct, split: coordSplit },
+    settings,
   };
 }

@@ -23,6 +23,7 @@ export default async function SueldosPage({
     teamOptions,
     commission,
     coordinacion,
+    settings,
   } = await buildPeriodPayroll(admin, periodo);
 
   return (
@@ -30,10 +31,8 @@ export default async function SueldosPage({
       <div>
         <h1 className="text-2xl font-bold">Sueldos</h1>
         <p className="text-muted-foreground">
-          Nómina del mes: CM y media buyer por pack, <strong>diseño y edición
-          por el contenido real publicado/aprobado del mes</strong>, acuerdos
-          fijos y la comisión de cierre del primer mes de cada cliente nuevo.
-          Sumá, editá o ajustá ítems a mano. Solo vos lo ves.
+          Cuánto le pagás al equipo este mes, en qué se va y con qué regla se
+          calcula cada puesto. Solo vos lo ves.
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
           <strong>Elegí el mes TRABAJADO.</strong> Cada mes se paga al mes
@@ -50,6 +49,7 @@ export default async function SueldosPage({
         teamOptions={teamOptions}
         commission={commission}
         coordinacion={coordinacion}
+        settings={settings}
       />
     </div>
   );

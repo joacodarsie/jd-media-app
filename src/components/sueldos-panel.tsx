@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -47,6 +47,10 @@ import {
 import { fmtARS, periodLabel, prevPeriod, nextPeriod } from "@/lib/finanzas";
 import { ROLE_LABEL } from "@/lib/constants";
 import { encodeCommissionNote, type PersonPayroll } from "@/lib/payroll";
+import { payModelRules, summarizePayroll } from "@/lib/payroll-summary";
+import type { AgencySettings } from "@/lib/coordinacion";
+import { SueldosResumen } from "@/components/sueldos-resumen";
+import { SueldosModelo } from "@/components/sueldos-modelo";
 
 export type { PersonPayroll } from "@/lib/payroll";
 
@@ -90,6 +94,14 @@ interface TeamOption {
 const fmt = (n: number) => fmtARS(n);
 const firstName = (n: string) => n.split(" ")[0];
 
+/** Las tres preguntas del módulo: cuánto pago, a quién, y con qué regla. */
+type Vista = "resumen" | "personas" | "modelo";
+const VISTAS: { id: Vista; label: string }[] = [
+  { id: "resumen", label: "Resumen del mes" },
+  { id: "personas", label: "Por persona" },
+  { id: "modelo", label: "Cómo se paga cada puesto" },
+];
+
 export function SueldosPanel({
   periodo,
   people,
@@ -99,6 +111,7 @@ export function SueldosPanel({
   teamOptions,
   commission,
   coordinacion,
+  settings,
 }: {
   periodo: string;
   people: PersonPayroll[];
@@ -108,8 +121,13 @@ export function SueldosPanel({
   teamOptions: TeamOption[];
   commission: CommissionConfig;
   coordinacion: CoordinacionConfig;
+  settings: AgencySettings;
 }) {
   const router = useRouter();
+  const [vista, setVista] = useState<Vista>("resumen");
+
+  const summary = useMemo(() => summarizePayroll(people), [people]);
+  const rules = useMemo(() => payModelRules(settings), [settings]);
 
   function goPeriod(p: string) {
     router.push(`/coordinacion/sueldos?periodo=${p}`);
@@ -168,11 +186,32 @@ export function SueldosPanel({
         </div>
       </div>
 
-      {/* ── Personas ── */}
-      {people.length === 0 ? (
+      {/* ── Vistas ── */}
+      <div className="flex flex-wrap gap-1 rounded-xl border bg-card p-1">
+        {VISTAS.map((v) => (
+          <button
+            key={v.id}
+            onClick={() => setVista(v.id)}
+            className={cn(
+              "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+              vista === v.id
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-muted"
+            )}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      {vista === "modelo" ? (
+        <SueldosModelo settings={settings} rules={rules} />
+      ) : people.length === 0 ? (
         <p className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
           No hay sueldos para este mes.
         </p>
+      ) : vista === "resumen" ? (
+        <SueldosResumen periodo={periodo} summary={summary} rules={rules} people={people} />
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {people.map((p) => (

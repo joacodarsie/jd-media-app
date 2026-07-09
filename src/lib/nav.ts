@@ -102,6 +102,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Métricas",
     items: [
+      { href: "/objetivos", label: "Objetivos", icon: "Goal" },
       { href: "/global", label: "Productividad", icon: "BarChart3", feature: "global" },
       { href: "/finanzas", label: "Finanzas", icon: "Wallet", feature: "finanzas" },
       // Coordinación agrupa: Panel, Sueldos y Jornadas (pestañas).

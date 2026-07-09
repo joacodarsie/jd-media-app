@@ -170,9 +170,13 @@ export default async function RentabilidadPage({
     // RECURRENTE (2° mes en adelante); el arranque del 1er mes se cotiza aparte.
     const rt = settings.rates;
     const packQty = new Map(settings.packs.map((p) => [p.id, p]));
+    // Incluimos TODOS los servicios activos (también los de pago único, como un
+    // diseño/branding one-shot). El ingreso de arriba ya los cuenta, así que el
+    // costo tiene que contarlos también; si no, un servicio con costo (ej: diseño
+    // donde la agencia se queda el 50%) figuraba con 100% de margen. Los que no
+    // tienen costo configurado suman 0 y no cambian nada.
     const svcByClient = new Map<string, ServiceRow[]>();
     for (const s of svcs) {
-      if ((s.facturacion ?? "mensual") === "unico") continue;
       if (!svcByClient.has(s.cliente_id)) svcByClient.set(s.cliente_id, []);
       svcByClient.get(s.cliente_id)!.push(s);
     }

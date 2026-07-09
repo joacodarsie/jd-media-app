@@ -53,8 +53,22 @@ function initials(nombre: string) {
     .toUpperCase();
 }
 
-function OrgCard({ node, people }: { node: OrgNode; people: Map<string, Person[]> }) {
-  const team = people.get(node.area) ?? [];
+function OrgCard({
+  node,
+  people,
+  ancestorIds,
+}: {
+  node: OrgNode;
+  people: Map<string, Person[]>;
+  /** IDs ya listados en nodos ANCESTROS: no se repiten en los hijos. Así quien
+   *  coordina un área (p.ej. Brisa en Coordinación de Diseño) no vuelve a
+   *  aparecer en el área que coordina (Diseño gráfico). */
+  ancestorIds: Set<string>;
+}) {
+  const team = (people.get(node.area) ?? []).filter((p) => !ancestorIds.has(p.id));
+  // Los hijos heredan a los ancestros + los de este nodo.
+  const childAncestors = new Set(ancestorIds);
+  for (const p of team) childAncestors.add(p.id);
   return (
     <li>
       <div className="org-card">
@@ -76,7 +90,7 @@ function OrgCard({ node, people }: { node: OrgNode; people: Map<string, Person[]
       {node.children && node.children.length > 0 && (
         <ul>
           {node.children.map((c) => (
-            <OrgCard key={c.area + c.title} node={c} people={people} />
+            <OrgCard key={c.area + c.title} node={c} people={people} ancestorIds={childAncestors} />
           ))}
         </ul>
       )}
@@ -259,7 +273,12 @@ export default async function OrganigramaPage() {
               {ORG.children && (
                 <ul>
                   {ORG.children.map((c) => (
-                    <OrgCard key={c.area + c.title} node={c} people={people} />
+                    <OrgCard
+                      key={c.area + c.title}
+                      node={c}
+                      people={people}
+                      ancestorIds={new Set((people.get(ORG.area) ?? []).map((p) => p.id))}
+                    />
                   ))}
                 </ul>
               )}

@@ -781,24 +781,33 @@ function ExtraItemDialog({
   const [monto, setMonto] = useState(0);
   const [clienteId, setClienteId] = useState("");
 
-  function submit() {
+  function reset() {
+    setConcepto("");
+    setMonto(0);
+    setClienteId("");
+  }
+
+  // seguir=true → deja el diálogo abierto para cargar otro ítem (útil para
+  // desgloses largos: coordinación + varias cuentas + manuales, de corrido).
+  function submit(seguir: boolean) {
     if (!concepto.trim()) return void toast.error("Escribí un concepto.");
     if (!monto) return void toast.error("El monto no puede ser cero.");
+    // "Descuento" resta: guardamos el monto en negativo. "Suma" en positivo.
+    const signed = tipo === "ajuste" ? -Math.abs(monto) : Math.abs(monto);
     start(async () => {
       const res = await addPayrollItem({
         userId,
         periodo,
         tipo,
         concepto: concepto.trim(),
-        monto,
+        monto: signed,
         clienteId: clienteId || null,
       });
       if (res?.error) return void toast.error(res.error);
-      toast.success("Ítem agregado.");
-      setConcepto("");
-      setMonto(0);
-      setClienteId("");
-      setOpen(false);
+      const cli = clientOptions.find((c) => c.id === clienteId);
+      toast.success(`Sumado: ${concepto.trim()}${cli ? ` (${cli.nombre})` : ""}.`);
+      reset();
+      if (!seguir) setOpen(false);
       router.refresh();
     });
   }
@@ -807,45 +816,58 @@ function ExtraItemDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" variant="outline" className="gap-1.5">
-          <Plus className="h-4 w-4" /> Extra
+          <Plus className="h-4 w-4" /> Agregar ítem
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Ítem para {firstName(nombre)}</DialogTitle>
+          <DialogTitle>Agregar ítem a {firstName(nombre)}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="flex gap-2">
-            {(["extra", "ajuste"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTipo(t)}
-                className={cn(
-                  "flex-1 rounded-md border px-3 py-1.5 text-sm capitalize",
-                  tipo === t ? "border-primary bg-primary/10" : "text-muted-foreground"
-                )}
-              >
-                {t}
-              </button>
-            ))}
+          <div>
+            <Label className="mb-1.5 block">¿Suma o descuenta?</Label>
+            <div className="flex gap-2">
+              {(
+                [
+                  { t: "extra" as const, label: "Suma (+)" },
+                  { t: "ajuste" as const, label: "Descuento (−)" },
+                ]
+              ).map(({ t, label }) => (
+                <button
+                  key={t}
+                  onClick={() => setTipo(t)}
+                  className={cn(
+                    "flex-1 rounded-md border px-3 py-1.5 text-sm",
+                    tipo === t ? "border-primary bg-primary/10" : "text-muted-foreground"
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {tipo === "extra"
+                ? "Se suma al sueldo (ej: un manual, videos extra, comisión de una cuenta)."
+                : "Se resta del sueldo (ej: un adelanto que ya le diste)."}
+            </p>
           </div>
           <div>
-            <Label>Concepto</Label>
+            <Label>¿Por qué? (concepto)</Label>
             <Input
               value={concepto}
               onChange={(e) => setConcepto(e.target.value)}
-              placeholder={tipo === "ajuste" ? "Ej: descuento adelanto" : "Ej: carruseles extra"}
+              placeholder={tipo === "ajuste" ? "Ej: adelanto de sueldo" : "Ej: manual de marca · coordinación · 2 reels"}
             />
           </div>
           <div>
-            <Label>Monto {tipo === "ajuste" && "(puede ser negativo)"}</Label>
-            <Input type="number" value={monto || ""} onChange={(e) => setMonto(Number(e.target.value))} placeholder="$" />
+            <Label>Monto (siempre en positivo)</Label>
+            <Input type="number" value={monto || ""} onChange={(e) => setMonto(Math.abs(Number(e.target.value)))} placeholder="$" />
           </div>
           <div>
-            <Label>Cliente (opcional)</Label>
+            <Label>¿A qué cuenta se atribuye? (opcional)</Label>
             <Select value={clienteId} onValueChange={setClienteId}>
               <SelectTrigger>
-                <SelectValue placeholder="Sin cliente" />
+                <SelectValue placeholder="Sin cuenta (general)" />
               </SelectTrigger>
               <SelectContent>
                 {clientOptions.map((c) => (
@@ -855,12 +877,20 @@ function ExtraItemDialog({
                 ))}
               </SelectContent>
             </Select>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Sirve para saber qué cuenta te cuesta cuánto (Rentabilidad). Dejalo
+              en &quot;general&quot; si no aplica a una cuenta puntual.
+            </p>
           </div>
         </div>
-        <DialogFooter>
-          <Button onClick={submit} disabled={pending}>
+        <DialogFooter className="gap-2 sm:justify-between">
+          <Button variant="outline" onClick={() => submit(true)} disabled={pending}>
             {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Agregar
+            Agregar y seguir
+          </Button>
+          <Button onClick={() => submit(false)} disabled={pending}>
+            {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Agregar y cerrar
           </Button>
         </DialogFooter>
       </DialogContent>

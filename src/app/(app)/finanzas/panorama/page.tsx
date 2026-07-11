@@ -40,7 +40,7 @@ export default async function PanoramaPage({
       .eq("es_interno", false),
     admin
       .from("client_services")
-      .select("id, cliente_id, tipo, monto_mensual, moneda, facturacion, costo_override")
+      .select("id, cliente_id, tipo, monto_mensual, moneda, facturacion, costo_override, created_at")
       .eq("activo", true),
     admin
       .from("subscriptions")
@@ -71,9 +71,13 @@ export default async function PanoramaPage({
     const abono = gestion ? Number(gestion.monto_mensual) || 0 : 0;
     ingresosRecurrentes += abono;
 
-    // Servicios de cobro único (branding, proyectos): ingreso extraordinario.
+    // Servicios de cobro único (branding, proyectos): ingreso extraordinario
+    // SOLO del mes en que se cargaron (misma regla que la nómina) — si no, un
+    // branding de abril inflaría los ingresos de todos los meses siguientes.
     const extra = ss
-      .filter((s) => s.facturacion === "unico")
+      .filter(
+        (s) => s.facturacion === "unico" && (s.created_at ?? "").slice(0, 7) === periodo
+      )
       .reduce((a, s) => a + (Number(s.monto_mensual) || 0), 0);
     ingresosExtraordinarios += extra;
 

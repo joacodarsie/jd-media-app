@@ -6,7 +6,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, TrendingUp, Info } from "lucide-react";
+import { FileText, Loader2, Plus, Trash2, TrendingUp, Info } from "lucide-react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import {
 import { fmtARS, periodLabel } from "@/lib/finanzas";
 import { cn } from "@/lib/utils";
 import { updateClientAbono } from "@/app/(app)/finanzas/panorama/actions";
+import { generateMonthlyInvoices } from "@/app/(app)/finanzas/actions";
 import {
   createSubscription,
   updateSubscription,
@@ -185,12 +186,15 @@ function ModeloVsReal({ data }: { data: PanoramaData }) {
 
   return (
     <section className="rounded-xl border bg-card">
-      <div className="border-b px-4 py-3">
-        <h2 className="text-base font-semibold">Lo que debería ser vs. lo que terminó siendo</h2>
-        <p className="text-xs text-muted-foreground">
-          <b>Debería</b>: según lo pactado (abonos, nómina calculada, fijos).{" "}
-          <b>Real</b>: lo efectivamente cobrado y pagado este mes.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
+        <div>
+          <h2 className="text-base font-semibold">Lo que debería ser vs. lo que terminó siendo</h2>
+          <p className="text-xs text-muted-foreground">
+            <b>Debería</b>: según lo pactado (abonos, nómina calculada, fijos).{" "}
+            <b>Real</b>: lo efectivamente cobrado y pagado este mes.
+          </p>
+        </div>
+        <GenerarFacturasButton periodo={data.periodo} />
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[480px] text-sm">
@@ -243,7 +247,8 @@ function ModeloVsReal({ data }: { data: PanoramaData }) {
       {sinRegistros ? (
         <p className="mx-4 mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
           Este mes no hay cobros ni pagos registrados, por eso Real está en cero.
-          Generá las facturas del mes en{" "}
+          Arrancá con <b>«Generar facturas del mes»</b> (arriba a la derecha),
+          marcá cada cobro cuando entre en{" "}
           <Link href="/finanzas/cobros" className="font-semibold underline">
             Cobros
           </Link>{" "}
@@ -261,6 +266,37 @@ function ModeloVsReal({ data }: { data: PanoramaData }) {
         </p>
       )}
     </section>
+  );
+}
+
+/**
+ * Crea las facturas del mes (abono de cada cuenta + puesta en marcha de las
+ * nuevas) con la acción que ya usa Cobros. Idempotente: no duplica si ya
+ * existen. Es el paso 1 para que la columna "Real" cuente algo.
+ */
+function GenerarFacturasButton({ periodo }: { periodo: string }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+
+  function generar() {
+    start(async () => {
+      const res = await generateMonthlyInvoices(periodo);
+      if (res?.error) return void toast.error(res.error);
+      const n = res?.created ?? 0;
+      toast.success(
+        n > 0
+          ? `${n} factura(s) del mes creadas. Registrá cada cobro cuando entre la plata.`
+          : "Las facturas del mes ya estaban generadas."
+      );
+      router.refresh();
+    });
+  }
+
+  return (
+    <Button size="sm" variant="outline" className="gap-1.5" onClick={generar} disabled={pending}>
+      {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+      Generar facturas del mes
+    </Button>
   );
 }
 

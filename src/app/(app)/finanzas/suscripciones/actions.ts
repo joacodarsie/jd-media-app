@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireFeature } from "@/lib/auth";
 import { currentPeriod } from "@/lib/finanzas";
+import { getExchangeRates } from "@/lib/exchange";
+import { freezeExpense } from "@/lib/finanzas/fx";
 import type { ExpenseCategory } from "@/app/(app)/finanzas/actions";
 
 async function ctx() {
@@ -124,15 +126,30 @@ export async function registerSubscriptionPayment(id: string) {
     .maybeSingle();
 
   if (!existing) {
+    // Suscripción en dólares: el gasto nace pagado, así que se congela en ARS a
+    // la cotización de HOY (dólar cripto), anotando el original en notas.
+    let monto = Number(sub.costo);
+    let moneda = sub.moneda as string;
+    let notas: string | null = null;
+    if (moneda !== "ARS") {
+      const rates = await getExchangeRates();
+      const frozen = freezeExpense(monto, moneda, null, rates, today);
+      if (frozen) {
+        monto = frozen.montoARS;
+        moneda = "ARS";
+        notas = frozen.notas;
+      }
+    }
     const { error } = await supabase.from("expenses").insert({
       categoria: sub.categoria,
       proveedor: sub.nombre,
       concepto,
-      monto: sub.costo,
-      moneda: sub.moneda,
+      monto,
+      moneda,
       periodo,
       fecha_pago: today,
       recurrente: true,
+      notas,
       creado_por_id: userId,
     });
     if (error) return { error: error.message };

@@ -63,6 +63,14 @@ export interface PanoramaData {
     activa: boolean;
     montoMensualARS: number;
   }[];
+  /** Lo efectivamente cobrado/pagado del período (vs el modelo). */
+  real: {
+    cobrado: number;
+    porCobrar: number;
+    equipoPagado: number;
+    equipoPendiente: number;
+    gastosPagados: number;
+  };
 }
 
 const CATEGORIA_LABEL: Record<string, string> = {
@@ -131,12 +139,128 @@ export function PanoramaAgencia({ data }: { data: PanoramaData }) {
         </div>
       </section>
 
+      {/* ── MODELO VS REAL ── */}
+      <ModeloVsReal data={data} />
+
       {/* ── PLANILLA: CUENTAS ── */}
       <CuentasGrid cuentas={data.cuentas} recurrentes={data.ingresosRecurrentes} />
 
       {/* ── PLANILLA: COSTOS FIJOS ── */}
       <FijosGrid fijos={data.fijos} total={data.costosFijos} usd={data.usd} />
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Modelo vs Real: lo que DEBERÍA pasar según lo pactado, contra lo que
+// efectivamente se cobró y pagó este mes.
+// ─────────────────────────────────────────────────────────────────────────
+function ModeloVsReal({ data }: { data: PanoramaData }) {
+  const modeloIngresos = data.ingresosRecurrentes + data.ingresosExtraordinarios;
+  const modeloEquipo = data.costosOperativos;
+  const modeloFijos = data.costosFijos;
+  const modeloNeto = modeloIngresos - modeloEquipo - modeloFijos;
+
+  const r = data.real;
+  const realNeto = r.cobrado - r.equipoPagado - r.gastosPagados;
+  const sinRegistros =
+    r.cobrado + r.porCobrar + r.equipoPagado + r.equipoPendiente + r.gastosPagados === 0;
+
+  const rows = [
+    {
+      label: "Ingresos",
+      modelo: modeloIngresos,
+      real: r.cobrado,
+      hint: r.porCobrar > 0 ? `${fmt(r.porCobrar)} facturado sin cobrar` : null,
+    },
+    {
+      label: "Equipo",
+      modelo: modeloEquipo,
+      real: r.equipoPagado,
+      hint: r.equipoPendiente > 0 ? `${fmt(r.equipoPendiente)} registrado sin pagar` : null,
+    },
+    { label: "Costos fijos / gastos", modelo: modeloFijos, real: r.gastosPagados, hint: null },
+    { label: "Neto", modelo: modeloNeto, real: realNeto, hint: null, strong: true },
+  ];
+
+  return (
+    <section className="rounded-xl border bg-card">
+      <div className="border-b px-4 py-3">
+        <h2 className="text-base font-semibold">Lo que debería ser vs. lo que terminó siendo</h2>
+        <p className="text-xs text-muted-foreground">
+          <b>Debería</b>: según lo pactado (abonos, nómina calculada, fijos).{" "}
+          <b>Real</b>: lo efectivamente cobrado y pagado este mes.
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[480px] text-sm">
+          <thead>
+            <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <th className="px-4 py-2 font-medium" />
+              <th className="px-2 py-2 text-right font-medium">Debería (modelo)</th>
+              <th className="px-2 py-2 text-right font-medium">Real</th>
+              <th className="px-4 py-2 text-right font-medium">Diferencia</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const diff = row.real - row.modelo;
+              return (
+                <tr key={row.label} className={cn("border-b last:border-0", row.strong && "font-semibold")}>
+                  <td className="px-4 py-2">
+                    {row.label}
+                    {row.hint && (
+                      <div className="text-[10px] font-normal text-amber-600">{row.hint}</div>
+                    )}
+                  </td>
+                  <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">
+                    {fmt(row.modelo)}
+                  </td>
+                  <td className="px-2 py-2 text-right tabular-nums">{fmt(row.real)}</td>
+                  <td
+                    className={cn(
+                      "px-4 py-2 text-right text-xs tabular-nums",
+                      diff === 0
+                        ? "text-muted-foreground"
+                        : row.label === "Ingresos" || row.label === "Neto"
+                        ? diff > 0
+                          ? "text-emerald-600"
+                          : "text-amber-600"
+                        : diff > 0
+                        ? "text-amber-600"
+                        : "text-emerald-600"
+                    )}
+                  >
+                    {diff > 0 ? "+" : ""}
+                    {fmt(diff)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {sinRegistros ? (
+        <p className="mx-4 mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+          Este mes no hay cobros ni pagos registrados, por eso Real está en cero.
+          Generá las facturas del mes en{" "}
+          <Link href="/finanzas/cobros" className="font-semibold underline">
+            Cobros
+          </Link>{" "}
+          y registrá los pagos al equipo desde{" "}
+          <Link href="/coordinacion/sueldos" className="font-semibold underline">
+            Sueldos
+          </Link>{" "}
+          — recién ahí esta columna cuenta la historia real.
+        </p>
+      ) : (
+        <p className="px-4 py-2.5 text-[11px] text-muted-foreground">
+          En un mes en curso lo Real siempre va por detrás del modelo (todavía falta
+          cobrar y pagar). Cerrado el mes, la diferencia que quede es lo que no se
+          cobró o se pagó distinto a lo pactado.
+        </p>
+      )}
+    </section>
   );
 }
 

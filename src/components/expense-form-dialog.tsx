@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, Trash2 } from "lucide-react";
@@ -96,6 +96,19 @@ export function ExpenseFormDialog(props: CreateProps | EditProps) {
   const [recurrente, setRecurrente] = useState(initial.recurrente);
   const [notas, setNotas] = useState(initial.notas ?? "");
   const [clienteId, setClienteId] = useState<string>(initial.cliente_id ?? NO_CLIENT);
+
+  // Cotización cripto (informativa) para gastos en dólares: estima el ARS de hoy.
+  // El congelado real lo hace el servidor al registrar el pago.
+  const [cripto, setCripto] = useState<number | null>(null);
+  useEffect(() => {
+    if (moneda === "ARS" || cripto !== null) return;
+    fetch("https://dolarapi.com/v1/dolares/cripto")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.compra && d?.venta) setCripto(Math.round((d.compra + d.venta) / 2));
+      })
+      .catch(() => {}); // sin cotización no pasa nada: es solo un hint
+  }, [moneda, cripto]);
 
   function submit() {
     if (!concepto.trim()) {
@@ -230,6 +243,19 @@ export function ExpenseFormDialog(props: CreateProps | EditProps) {
               </Select>
             </div>
           </div>
+          {moneda !== "ARS" && (
+            <p className="rounded-md border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-[11px] text-muted-foreground">
+              {moneda === "USD" && cripto && Number(monto) > 0 && (
+                <>
+                  ≈ <b className="text-foreground">${Math.round(Number(monto) * cripto).toLocaleString("es-AR")}</b>{" "}
+                  al dólar cripto de hoy (${cripto.toLocaleString("es-AR")}).{" "}
+                </>
+              )}
+              Al registrar el pago, el monto se <b className="text-foreground">fija en pesos
+              a la cotización {moneda === "USD" ? "cripto" : ""} de ese día</b> y queda
+              anotada en el gasto.
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-xs">Período</Label>

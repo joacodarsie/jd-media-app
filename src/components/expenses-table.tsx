@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowUpDown, Pencil, Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toARS, fmtARS, fmtCurrency } from "@/lib/finanzas";
+import { fmtARS, fmtCurrency } from "@/lib/finanzas";
+import { expenseRate, parseFrozenNote } from "@/lib/finanzas/fx";
 import type { ExchangeRates } from "@/lib/exchange";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -94,7 +95,7 @@ export function ExpensesTable({
           return ad.localeCompare(bd) * mul;
         }
         case "monto":
-          return (toARS(Number(a.monto), a.moneda, rates) - toARS(Number(b.monto), b.moneda, rates)) * mul;
+          return (expenseARS(a, rates) - expenseARS(b, rates)) * mul;
         case "periodo":
           return a.periodo.localeCompare(b.periodo) * mul;
       }
@@ -102,7 +103,7 @@ export function ExpensesTable({
     return list;
   }, [rows, q, sortBy, sortDir, rates]);
 
-  const total = filtered.reduce((acc, e) => acc + toARS(Number(e.monto), e.moneda, rates), 0);
+  const total = filtered.reduce((acc, e) => acc + expenseARS(e, rates), 0);
 
   return (
     <div className="space-y-3">
@@ -188,11 +189,7 @@ export function ExpensesTable({
                     <div className="font-semibold tabular-nums">
                       {fmtCurrency(Number(e.monto), e.moneda)}
                     </div>
-                    {e.moneda !== "ARS" && (
-                      <div className="text-[10px] text-muted-foreground">
-                        {fmtARS(toARS(Number(e.monto), e.moneda, rates))}
-                      </div>
-                    )}
+                    <MontoSubline e={e} rates={rates} />
                   </div>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -309,11 +306,7 @@ export function ExpensesTable({
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">
                         <div className="font-semibold">{fmtCurrency(Number(e.monto), e.moneda)}</div>
-                        {e.moneda !== "ARS" && (
-                          <div className="text-[10px] text-muted-foreground">
-                            {fmtARS(toARS(Number(e.monto), e.moneda, rates))}
-                          </div>
-                        )}
+                        <MontoSubline e={e} rates={rates} />
                       </td>
                       <td className="px-3 py-2">
                         <MarkPaidButton id={e.id} kind="expense" paidAt={e.fecha_pago} />
@@ -352,6 +345,45 @@ export function ExpensesTable({
       </div>
     </div>
   );
+}
+
+/** Valor ARS de un gasto: los USD pendientes se estiman al dólar CRIPTO (es
+ *  como se pagan); los ya pagados en USD quedaron congelados en ARS. */
+function expenseARS(e: { monto: number | string; moneda: string }, rates: ExchangeRates): number {
+  const rate = expenseRate(e.moneda, rates) ?? 1;
+  return Number(e.monto) * rate;
+}
+
+/** Sublínea bajo el monto: cotización congelada (pagado) o estimado cripto (pendiente). */
+function MontoSubline({
+  e,
+  rates,
+}: {
+  e: { monto: number | string; moneda: string; notas: string | null };
+  rates: ExchangeRates;
+}) {
+  const frozen = parseFrozenNote(e.notas);
+  if (frozen) {
+    return (
+      <div className="text-[10px] text-muted-foreground">
+        {frozen.moneda === "USD" ? "US$" : "€"}
+        {frozen.montoOriginal.toLocaleString("es-AR")} @ $
+        {frozen.cotizacion.toLocaleString("es-AR")} ·{" "}
+        {new Date(frozen.fecha + "T12:00:00").toLocaleDateString("es-AR", {
+          day: "2-digit",
+          month: "short",
+        })}
+      </div>
+    );
+  }
+  if (e.moneda !== "ARS") {
+    return (
+      <div className="text-[10px] text-muted-foreground">
+        ≈ {fmtARS(expenseARS(e, rates))} (cripto hoy)
+      </div>
+    );
+  }
+  return null;
 }
 
 function labelFor(k: "todos" | "pendientes" | "pagados") {

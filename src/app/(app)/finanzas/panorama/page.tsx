@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
-import { currentPeriod, periodLabel, prevPeriod, nextPeriod, toARSFijos } from "@/lib/finanzas";
+import { currentPeriod, periodLabel, prevPeriod, nextPeriod, toARS, toARSFijos } from "@/lib/finanzas";
 import { buildPeriodPayroll } from "@/lib/payroll-period";
 import { getExchangeRates } from "@/lib/exchange";
 import { PanoramaAgencia, type PanoramaData } from "@/components/panorama-agencia";
@@ -20,26 +20,39 @@ export default async function PanoramaPage({
   const admin = createAdmin();
   const periodo = searchParams.periodo ?? currentPeriod();
 
-  const [rates, payroll, { data: clientsRaw }, { data: svcRaw }, { data: subsRaw }, { data: usersRaw }] =
-    await Promise.all([
-      getExchangeRates(),
-      buildPeriodPayroll(admin, periodo),
-      admin
-        .from("clients")
-        .select("id, nombre, coordinador_id")
-        .eq("estado", "activo")
-        .eq("es_interno", false),
-      admin
-        .from("client_services")
-        .select("id, cliente_id, tipo, monto_mensual, moneda, facturacion, costo_override")
-        .eq("activo", true),
-      admin
-        .from("subscriptions")
-        .select("id, nombre, categoria, costo, moneda, ciclo, activa, notas")
-        .order("moneda")
-        .order("costo", { ascending: false }),
-      admin.from("users").select("id, nombre").eq("activo", true),
-    ]);
+  const [
+    rates,
+    payroll,
+    { data: clientsRaw },
+    { data: svcRaw },
+    { data: subsRaw },
+    { data: usersRaw },
+    { data: invoicesRaw },
+    { data: teamPayRaw },
+    { data: expensesRaw },
+  ] = await Promise.all([
+    getExchangeRates(),
+    buildPeriodPayroll(admin, periodo),
+    admin
+      .from("clients")
+      .select("id, nombre, coordinador_id")
+      .eq("estado", "activo")
+      .eq("es_interno", false),
+    admin
+      .from("client_services")
+      .select("id, cliente_id, tipo, monto_mensual, moneda, facturacion, costo_override")
+      .eq("activo", true),
+    admin
+      .from("subscriptions")
+      .select("id, nombre, categoria, costo, moneda, ciclo, activa, notas")
+      .order("moneda")
+      .order("costo", { ascending: false }),
+    admin.from("users").select("id, nombre").eq("activo", true),
+    // Lo REAL del período: facturas, pagos al equipo y gastos.
+    admin.from("client_invoices").select("monto, moneda, fecha_cobro").eq("periodo", periodo),
+    admin.from("team_payments").select("monto, moneda, fecha_pago").eq("periodo", periodo),
+    admin.from("expenses").select("monto, moneda, fecha_pago").eq("periodo", periodo),
+  ]);
 
   const uname = new Map((usersRaw ?? []).map((u) => [u.id, u.nombre]));
   const svcByClient = new Map<string, typeof svcRaw>();
@@ -92,6 +105,30 @@ export default async function PanoramaPage({
   });
   const costosFijos = fijos.reduce((a, f) => a + f.montoMensualARS, 0);
 
+  // ── Lo REAL del período: cobrado / pagado vs lo que el modelo dice ──
+  type MoneyRow = { monto: number; moneda: string };
+  const sum = (rows: (MoneyRow & { done: boolean })[], done: boolean) =>
+    rows.filter((r) => r.done === done).reduce((a, r) => a + toARS(Number(r.monto), r.moneda, rates), 0);
+  const invoices = ((invoicesRaw ?? []) as { monto: number; moneda: string; fecha_cobro: string | null }[]).map(
+    (r) => ({ ...r, done: !!r.fecha_cobro })
+  );
+  const teamPays = ((teamPayRaw ?? []) as { monto: number; moneda: string; fecha_pago: string | null }[]).map(
+    (r) => ({ ...r, done: !!r.fecha_pago })
+  );
+  // Gastos: los pagados en USD ya quedaron congelados en ARS; los pendientes se
+  // estiman al cripto (toARSFijos).
+  const gastos = ((expensesRaw ?? []) as { monto: number; moneda: string; fecha_pago: string | null }[]);
+  const gastosPagados = gastos
+    .filter((g) => g.fecha_pago)
+    .reduce((a, g) => a + toARSFijos(Number(g.monto), g.moneda, rates), 0);
+  const real = {
+    cobrado: sum(invoices, true),
+    porCobrar: sum(invoices, false),
+    equipoPagado: sum(teamPays, true),
+    equipoPendiente: sum(teamPays, false),
+    gastosPagados,
+  };
+
   const data: PanoramaData = {
     periodo,
     usd: rates.USDC,
@@ -102,6 +139,7 @@ export default async function PanoramaPage({
     costosFijos,
     cuentas,
     fijos,
+    real,
   };
 
   return (

@@ -6,6 +6,8 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { requireFeature } from "@/lib/auth";
 import { mergeSettings } from "@/lib/coordinacion";
 import { nextPeriod } from "@/lib/finanzas";
+import { getExchangeRates } from "@/lib/exchange";
+import { freezeExpense, parseFrozenNote, stripFrozenNote } from "@/lib/finanzas/fx";
 
 async function ctx() {
   await requireFeature("finanzas");
@@ -315,18 +317,34 @@ export interface ExpenseInput {
 
 export async function createExpense(input: ExpenseInput) {
   const { supabase, userId } = await ctx();
+
+  // Si nace YA PAGADO en moneda extranjera, se congela: monto fijo en ARS a la
+  // cotización del día de pago (dólar cripto), con el original anotado en notas.
+  let monto = input.monto;
+  let moneda = input.moneda || "ARS";
+  let notas = input.notas?.trim() || null;
+  if (input.fecha_pago && moneda !== "ARS") {
+    const rates = await getExchangeRates();
+    const frozen = freezeExpense(monto, moneda, notas, rates, input.fecha_pago);
+    if (frozen) {
+      monto = frozen.montoARS;
+      moneda = "ARS";
+      notas = frozen.notas;
+    }
+  }
+
   const { error } = await supabase.from("expenses").insert({
     categoria: input.categoria,
     proveedor: input.proveedor?.trim() || null,
     concepto: input.concepto.trim(),
-    monto: input.monto,
-    moneda: input.moneda || "ARS",
+    monto,
+    moneda,
     periodo: input.periodo,
     fecha_programada: input.fecha_programada ?? null,
     fecha_pago: input.fecha_pago ?? null,
     metodo_pago: input.metodo_pago?.trim() || null,
     recurrente: input.recurrente ?? false,
-    notas: input.notas?.trim() || null,
+    notas,
     cliente_id: input.cliente_id ?? null,
     creado_por_id: userId,
   });
@@ -357,10 +375,29 @@ export async function updateExpense(id: string, input: Partial<ExpenseInput>) {
 
 export async function markExpensePaid(id: string, fecha_pago: string, metodo_pago?: string | null) {
   const { supabase } = await ctx();
-  const { error } = await supabase
+  const patch: Record<string, unknown> = {
+    fecha_pago,
+    metodo_pago: metodo_pago?.trim() || null,
+  };
+
+  // Gasto en moneda extranjera: al pagarlo se CONGELA en ARS a la cotización de
+  // hoy (dólar cripto), y la cotización queda anotada en notas.
+  const { data: row } = await supabase
     .from("expenses")
-    .update({ fecha_pago, metodo_pago: metodo_pago?.trim() || null })
-    .eq("id", id);
+    .select("monto, moneda, notas")
+    .eq("id", id)
+    .maybeSingle();
+  if (row && row.moneda !== "ARS") {
+    const rates = await getExchangeRates();
+    const frozen = freezeExpense(Number(row.monto), row.moneda, row.notas, rates, fecha_pago);
+    if (frozen) {
+      patch.monto = frozen.montoARS;
+      patch.moneda = "ARS";
+      patch.notas = frozen.notas;
+    }
+  }
+
+  const { error } = await supabase.from("expenses").update(patch).eq("id", id);
   if (error) return { error: error.message };
   invalidate();
   revalidatePath("/finanzas/gastos");
@@ -369,10 +406,23 @@ export async function markExpensePaid(id: string, fecha_pago: string, metodo_pag
 
 export async function markExpenseUnpaid(id: string) {
   const { supabase } = await ctx();
-  const { error } = await supabase
+  const patch: Record<string, unknown> = { fecha_pago: null, metodo_pago: null };
+
+  // Si el pago había congelado un monto en moneda extranjera, restaurar el
+  // original (vuelve a flotar hasta que se pague de nuevo).
+  const { data: row } = await supabase
     .from("expenses")
-    .update({ fecha_pago: null, metodo_pago: null })
-    .eq("id", id);
+    .select("notas")
+    .eq("id", id)
+    .maybeSingle();
+  const frozen = parseFrozenNote(row?.notas ?? null);
+  if (frozen) {
+    patch.monto = frozen.montoOriginal;
+    patch.moneda = frozen.moneda;
+    patch.notas = stripFrozenNote(row?.notas ?? null);
+  }
+
+  const { error } = await supabase.from("expenses").update(patch).eq("id", id);
   if (error) return { error: error.message };
   invalidate();
   revalidatePath("/finanzas/gastos");

@@ -53,6 +53,14 @@ const CONTENT_PAYROLL_FROM = "2026-07";
  */
 const ONBOARDING_EXTRA_FROM = "2026-07";
 
+/**
+ * Desde este período (inclusive) las cuentas INTERNAS (ej. JD MEDIA) generan
+ * nómina: el equipo cobra por gestionar las redes propias de la agencia (CM por
+ * pack + edición por reel publicado). Antes NO se pagaba así, y meses ya cerrados
+ * y conciliados (junio 2026) no deben alterarse retroactivamente.
+ */
+const INTERNAL_PAYROLL_FROM = "2026-07";
+
 export interface PeriodPayrollResult {
   periodo: string;
   people: PersonPayroll[];
@@ -89,13 +97,14 @@ export async function buildPeriodPayroll(
     { data: dgApprovalsRaw },
   ] = await Promise.all([
     admin.from("agency_settings").select("packs, rates").eq("id", 1).maybeSingle(),
+    // Trae también las cuentas internas (ej. JD MEDIA); más abajo se filtran
+    // según el período (ver INTERNAL_PAYROLL_FROM).
     admin
       .from("clients")
       .select(
-        "id, nombre, cm_id, disenador_id, audiovisual_id, media_buyer_id, coordinador_id, cerrado_por_id, fecha_inicio"
+        "id, nombre, cm_id, disenador_id, audiovisual_id, media_buyer_id, coordinador_id, cerrado_por_id, fecha_inicio, es_interno"
       )
-      .eq("estado", "activo")
-      .eq("es_interno", false),
+      .eq("estado", "activo"),
     admin
       .from("client_services")
       .select(
@@ -139,7 +148,11 @@ export async function buildPeriodPayroll(
   ]);
 
   const settings: AgencySettings = mergeSettings(settingsRow);
-  const clients = (clientsRaw ?? []) as PayrollClient[];
+  // Las cuentas internas solo generan nómina desde INTERNAL_PAYROLL_FROM; antes
+  // se excluyen para no tocar meses ya conciliados.
+  const clients = ((clientsRaw ?? []) as (PayrollClient & { es_interno?: boolean })[]).filter(
+    (c) => !c.es_interno || periodo >= INTERNAL_PAYROLL_FROM
+  ) as PayrollClient[];
   const services = (servicesRaw ?? []) as ServiceRow[];
   const users = (usersRaw ?? []) as {
     id: string;

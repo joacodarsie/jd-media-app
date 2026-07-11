@@ -4,7 +4,7 @@ import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveUsers } from "@/lib/cache";
 import { getExchangeRates } from "@/lib/exchange";
-import { toARS, fmtARS } from "@/lib/finanzas";
+import { toARSFijos, fmtARS } from "@/lib/finanzas";
 import { Card, CardContent } from "@/components/ui/card";
 import { ExpensesTable, type ExpenseTableRow } from "@/components/expenses-table";
 import { expenseCategoryLabel } from "@/lib/finanzas/expense-categories";
@@ -74,8 +74,9 @@ export default async function GastosPage({
     const users = usersData as { id: string; nombre: string }[];
 
     const activas = subs.filter((s) => s.activa);
+    // Suscripciones en USD → dólar cripto (así se pagan), igual que el Panorama.
     const totalMensualARS = activas.reduce(
-      (a, s) => a + toARS(monthlyARS(s), s.moneda, rates),
+      (a, s) => a + toARSFijos(monthlyARS(s), s.moneda, rates),
       0
     );
     const totalAnualARS = totalMensualARS * 12;
@@ -101,14 +102,14 @@ export default async function GastosPage({
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <MiniCard label="Suscripciones activas" value={String(activas.length)} />
-          <MiniCard label="Costo mensual (ARS)" value={fmtARS(totalMensualARS)} sub="normalizado al blue" />
+          <MiniCard label="Costo mensual (ARS)" value={fmtARS(totalMensualARS)} sub="al dólar cripto" />
           <MiniCard label="Proyección anual" value={fmtARS(totalAnualARS)} sub="× 12 meses" />
         </div>
 
         <SubscriptionsManager
           subs={subs}
           users={users}
-          usdRate={rates.USD}
+          usdRate={rates.USDC}
           eurRate={rates.EUR}
         />
       </div>
@@ -150,7 +151,7 @@ export default async function GastosPage({
   const byCategory = new Map<string, number>();
   for (const e of rows) {
     const k = e.categoria;
-    byCategory.set(k, (byCategory.get(k) ?? 0) + toARS(Number(e.monto), e.moneda, rates));
+    byCategory.set(k, (byCategory.get(k) ?? 0) + toARSFijos(Number(e.monto), e.moneda, rates));
   }
   const categorias = Array.from(byCategory.entries()).sort((a, b) => b[1] - a[1]);
 

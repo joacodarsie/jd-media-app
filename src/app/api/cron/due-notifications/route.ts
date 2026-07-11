@@ -85,6 +85,16 @@ export async function GET(req: NextRequest) {
     .lt("fecha_completada", cutoff)
     .select("id");
 
+  // Higiene: purgar notificaciones LEÍDAS de más de 60 días (la tabla crece
+  // sin tope y nadie vuelve a mirarlas). Las no leídas se conservan.
+  const notifCutoff = new Date(Date.now() - 60 * 86400_000).toISOString();
+  const { data: purgedNotifs } = await admin
+    .from("notifications")
+    .delete()
+    .eq("leida", true)
+    .lt("created_at", notifCutoff)
+    .select("id");
+
   // Director Creativo — chequeos de fecha (van acá para no sumar crons en Hobby).
   // Envueltos en try/catch para que un fallo nunca corte las notificaciones.
   const now = new Date();
@@ -227,6 +237,7 @@ export async function GET(req: NextRequest) {
     processed_failed: failed,
     finance_notified: financeNotified,
     tasks_archived: archivedRows?.length ?? 0,
+    notifications_purged: purgedNotifs?.length ?? 0,
     month_end: monthEnd,
     month_start: monthStart,
     cobros_generados: cobrosGenerados,

@@ -5,7 +5,8 @@
  * Cache: 12 horas (revalidate en fetch de Next).
  */
 
-const FALLBACK = { USD: 1350, EUR: 1450, USDC: 1560 };
+// Actualizados 2026-07: si la API cae, mejor errar por poco que usar un dólar viejo.
+const FALLBACK = { USD: 1500, EUR: 1750, USDC: 1560 };
 
 interface DolarApiItem {
   casa: string;

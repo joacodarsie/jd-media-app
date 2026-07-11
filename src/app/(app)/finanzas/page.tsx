@@ -73,6 +73,7 @@ interface ExpenseRow {
   periodo: string;
   fecha_programada: string | null;
   fecha_pago: string | null;
+  recurrente: boolean;
 }
 interface SubRow {
   costo: number;
@@ -122,7 +123,7 @@ export default async function FinanzasPage({
     supabase
       .from("expenses")
       .select(
-        "id, categoria, proveedor, concepto, monto, moneda, periodo, fecha_programada, fecha_pago"
+        "id, categoria, proveedor, concepto, monto, moneda, periodo, fecha_programada, fecha_pago, recurrente"
       ),
     supabase.from("subscriptions").select("costo, moneda, ciclo").eq("activa", true),
     // Pauta de Meta del mes (la de JD Media = costo propio de la agencia).
@@ -170,7 +171,13 @@ export default async function FinanzasPage({
   const publicidad = adSpend
     .filter((x) => internalIds.has(x.cliente_id))
     .reduce((a, x) => a + ars(x.spend, x.moneda), 0);
-  const ganancia = ingresos - sueldos - plataformas - publicidad;
+  // Gastos PUNTUALES pagados del mes (equipamiento, trámites…): los recurrentes
+  // ya están contados en `plataformas` vía suscripciones, así que se excluyen
+  // para no duplicar.
+  const gastosPuntuales = expenses
+    .filter((e) => e.periodo === period && e.fecha_pago && !e.recurrente)
+    .reduce((a, e) => a + toARSFijos(Number(e.monto), e.moneda, rates), 0);
+  const ganancia = ingresos - sueldos - plataformas - publicidad - gastosPuntuales;
 
   // Deudas (solo admin): total y meses para saldar al ritmo de ganancia actual.
   const deudaTotal = ((debtsRaw ?? []) as { monto: number; moneda: string }[]).reduce(
@@ -280,7 +287,8 @@ export default async function FinanzasPage({
                 {fmtARS(ganancia)}
               </div>
               <div className="mt-0.5 text-[11px] text-muted-foreground">
-                Lo que te queda después de pagar todo. Cobrado del mes − sueldos − plataformas − publicidad.
+                Lo que te queda después de pagar todo. Cobrado del mes − sueldos −
+                plataformas − publicidad{gastosPuntuales > 0 && " − gastos puntuales"}.
               </div>
             </div>
             {/* Desglose */}
@@ -289,6 +297,9 @@ export default async function FinanzasPage({
               <Breakdown label="Sueldos" value={sueldos} sign="−" icon={Users} href="/coordinacion/sueldos" />
               <Breakdown label="Plataformas" value={plataformas} sign="−" icon={Repeat} href="/finanzas/gastos?v=subs" />
               <Breakdown label="Publicidad" value={publicidad} sign="−" icon={Megaphone} href="/paid-media" />
+              {gastosPuntuales > 0 && (
+                <Breakdown label="Gastos puntuales" value={gastosPuntuales} sign="−" icon={Receipt} href="/finanzas/gastos" />
+              )}
             </div>
           </div>
 

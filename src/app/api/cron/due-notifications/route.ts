@@ -14,6 +14,7 @@ import { runInstagramDaily } from "@/lib/social/sync";
 import { runAccountAlerts } from "@/lib/social/alerts";
 import { checkMetaToken } from "@/lib/meta/health";
 import { checkGoogleHealth, notifyGoogleHealth } from "@/lib/integrations/health";
+import { generateInvoicesForPeriod } from "@/lib/finanzas/invoices";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -128,10 +129,11 @@ export async function GET(req: NextRequest) {
   if (esPrimerDiaDeMes) {
     const periodo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     try {
-      const { data, error } = await admin.rpc("jd_generate_invoices_for_period", {
-        p_periodo: periodo,
-      });
-      cobrosGenerados = error ? { error: error.message } : { created: data };
+      // OJO: antes esto llamaba al RPC jd_generate_invoices_for_period, que
+      // exige un usuario staff logueado (auth.uid()) y desde el cron SIEMPRE
+      // fallaba con 'solo staff'. La lib corre con el admin client y además
+      // agrega la puesta en marcha de las cuentas nuevas.
+      cobrosGenerados = await generateInvoicesForPeriod(admin, periodo, null);
     } catch (e) {
       cobrosGenerados = { error: e instanceof Error ? e.message : String(e) };
     }

@@ -25,6 +25,7 @@ import {
   nextPeriod,
   periodLabel,
   toARS,
+  toARSFijos,
   fmtARS,
   fmtCurrency,
 } from "@/lib/finanzas";
@@ -159,8 +160,10 @@ export default async function FinanzasPage({
     .filter((i) => i.fecha_cobro && i.fecha_cobro.startsWith(period))
     .reduce((a, i) => a + ars(i.monto, i.moneda), 0);
   const sueldos = payroll.totalNomina;
+  // Suscripciones / costos fijos: los dólares van al cripto (USDC), que es como
+  // la agencia realmente los paga.
   const plataformas = subs.reduce(
-    (a, s) => a + ars(s.costo, s.moneda) / (CICLO_MESES[s.ciclo] ?? 1),
+    (a, s) => a + toARSFijos(Number(s.costo), s.moneda, rates) / (CICLO_MESES[s.ciclo] ?? 1),
     0
   );
   // Publicidad propia: pauta de JD Media (cliente interno) del mes.

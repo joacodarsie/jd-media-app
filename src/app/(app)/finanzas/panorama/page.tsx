@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
-import { currentPeriod, periodLabel, prevPeriod, nextPeriod, toARS } from "@/lib/finanzas";
+import { currentPeriod, periodLabel, prevPeriod, nextPeriod, toARSFijos } from "@/lib/finanzas";
 import { buildPeriodPayroll } from "@/lib/payroll-period";
 import { getExchangeRates } from "@/lib/exchange";
 import { PanoramaAgencia, type PanoramaData } from "@/components/panorama-agencia";
@@ -87,14 +87,14 @@ export default async function PanoramaPage({
       moneda: s.moneda,
       ciclo: s.ciclo,
       activa: s.activa,
-      montoMensualARS: s.activa ? toARS(mensualOrigen, s.moneda, rates) : 0,
+      montoMensualARS: s.activa ? toARSFijos(mensualOrigen, s.moneda, rates) : 0,
     };
   });
   const costosFijos = fijos.reduce((a, f) => a + f.montoMensualARS, 0);
 
   const data: PanoramaData = {
     periodo,
-    usd: rates.USD,
+    usd: rates.USDC,
     usdSource: rates.source,
     ingresosRecurrentes,
     ingresosExtraordinarios,

@@ -94,8 +94,8 @@ export function PanoramaAgencia({ data }: { data: PanoramaData }) {
             <p className="text-xs capitalize text-muted-foreground">{periodLabel(data.periodo)}</p>
           </div>
           <span className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] text-muted-foreground">
-            Dólar {fmt(data.usd)}{" "}
-            {data.usdSource === "fallback" ? "(estimado)" : "(blue en vivo)"}
+            Dólar cripto {fmt(data.usd)}{" "}
+            {data.usdSource === "fallback" ? "(estimado)" : "(USDC en vivo)"}
           </span>
         </div>
 

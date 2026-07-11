@@ -37,6 +37,16 @@ export function toARS(monto: number, moneda: string, rates: ExchangeRates): numb
   return monto * tasa;
 }
 
+/**
+ * Igual que `toARS` pero para COSTOS FIJOS / suscripciones: los dólares se
+ * convierten con el cripto/USDC (lo que la agencia realmente paga), no con el
+ * blue. Usar en la conversión de subscriptions (panorama y ganancia de Finanzas).
+ */
+export function toARSFijos(monto: number, moneda: string, rates: ExchangeRates): number {
+  const tasa = moneda === "USD" ? rates.USDC : moneda === "EUR" ? rates.EUR : 1;
+  return monto * tasa;
+}
+
 export function fmtARS(n: number): string {
   return `ARS ${Math.round(n).toLocaleString("es-AR")}`;
 }

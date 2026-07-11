@@ -234,6 +234,14 @@ export default async function FinanzasPage({
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {isAdmin && (
+            <Link
+              href="/finanzas/panorama"
+              className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-muted"
+            >
+              <TrendingUp className="h-4 w-4" /> Panorama
+            </Link>
+          )}
           <Link
             href="/finanzas/cierre"
             className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"

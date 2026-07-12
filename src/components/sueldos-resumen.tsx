@@ -7,6 +7,7 @@ import { fmtARS, periodLabel } from "@/lib/finanzas";
 import type { PayRule, PayrollSummary } from "@/lib/payroll-summary";
 import type { PersonPayroll } from "@/lib/payroll";
 import { cn } from "@/lib/utils";
+import { StatCard } from "@/components/ui/stat-card";
 
 const fmt = (n: number) => fmtARS(n);
 const firstName = (n: string) => n.split(" ")[0];
@@ -30,13 +31,13 @@ export function SueldosResumen({
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-4">
-        <Stat label="Total nómina" value={fmt(summary.total)} sub={periodLabel(periodo)} />
-        <Stat label="Personas" value={String(people.length)} sub="cobran este mes" />
-        <Stat label="Ya pagado" value={fmt(pagado)} tone={pagado > 0 ? "good" : undefined} />
-        <Stat
+        <StatCard label="Total nómina" value={fmt(summary.total)} sub={periodLabel(periodo)} subCapitalize />
+        <StatCard label="Personas" value={String(people.length)} sub="cobran este mes" subCapitalize />
+        <StatCard label="Ya pagado" value={fmt(pagado)} tone={pagado > 0 ? "good" : undefined} />
+        <StatCard
           label="Falta pagar"
           value={fmt(pendiente)}
-          tone={pendiente > 0 ? "bad" : "good"}
+          tone={pendiente > 0 ? "warn" : "good"}
         />
       </div>
 
@@ -137,33 +138,6 @@ export function SueldosResumen({
   );
 }
 
-function Stat({
-  label,
-  value,
-  sub,
-  tone,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  tone?: "good" | "bad";
-}) {
-  return (
-    <div className="bg-card p-3">
-      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div
-        className={cn(
-          "text-lg font-bold tabular-nums",
-          tone === "good" && "text-emerald-600",
-          tone === "bad" && "text-amber-600"
-        )}
-      >
-        {value}
-      </div>
-      {sub && <div className="text-[10px] capitalize text-muted-foreground">{sub}</div>}
-    </div>
-  );
-}
 
 function Badge({ tone, children }: { tone: "good" | "warn"; children: React.ReactNode }) {
   return (

@@ -111,39 +111,6 @@ export async function assignUserSecondaryPositions(
   return { ok: true };
 }
 
-export interface CompensationInput {
-  user_id: string;
-  monto: number | null;
-  moneda: string | null;
-  frecuencia: string | null;
-  forma_pago: string | null;
-  notas: string | null;
-}
-
-export async function upsertCompensation(input: CompensationInput) {
-  const { supabase } = await ctx();
-  const { error } = await supabase.from("compensation").upsert(
-    {
-      user_id: input.user_id,
-      monto: input.monto,
-      moneda: input.moneda || "ARS",
-      frecuencia: input.frecuencia || "mensual",
-      forma_pago: input.forma_pago?.trim() || null,
-      notas: input.notas?.trim() || null,
-    },
-    { onConflict: "user_id" }
-  );
-  if (error) return { error: error.message };
-  revalidatePath("/equipo");
-  revalidatePath("/mi-perfil");
-  return { ok: true };
-}
-
-export async function clearCompensation(userId: string) {
-  const { supabase } = await ctx();
-  const { error } = await supabase.from("compensation").delete().eq("user_id", userId);
-  if (error) return { error: error.message };
-  revalidatePath("/equipo");
-  revalidatePath("/mi-perfil");
-  return { ok: true };
-}
+// (Las actions de "compensación pactada" se borraron junto con la card de
+// Compensación: el sueldo real vive en Sueldos/Coordinación. La tabla
+// `compensation` sigue existiendo porque finanzas/pagos la lee.)

@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowUpDown, Pencil, Plus, Search } from "lucide-react";
+import { Pencil, Plus, Search } from "lucide-react";
+import { SortTh } from "@/components/ui/sort-th";
 import { cn } from "@/lib/utils";
 import { toARS, fmtARS, fmtCurrency } from "@/lib/finanzas";
 import type { ExchangeRates } from "@/lib/exchange";
@@ -194,19 +195,19 @@ export function PaymentsTable({
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
               <tr>
-                <Th onClick={() => toggleSort("persona")} active={sortBy === "persona"} dir={sortDir}>
+                <SortTh onClick={() => toggleSort("persona")} active={sortBy === "persona"} dir={sortDir}>
                   Persona
-                </Th>
+                </SortTh>
                 <th className="px-3 py-2">Concepto</th>
-                <Th onClick={() => toggleSort("periodo")} active={sortBy === "periodo"} dir={sortDir}>
+                <SortTh onClick={() => toggleSort("periodo")} active={sortBy === "periodo"} dir={sortDir}>
                   Período
-                </Th>
-                <Th onClick={() => toggleSort("fecha")} active={sortBy === "fecha"} dir={sortDir}>
+                </SortTh>
+                <SortTh onClick={() => toggleSort("fecha")} active={sortBy === "fecha"} dir={sortDir}>
                   Programado
-                </Th>
-                <Th onClick={() => toggleSort("monto")} active={sortBy === "monto"} dir={sortDir} align="right">
+                </SortTh>
+                <SortTh onClick={() => toggleSort("monto")} active={sortBy === "monto"} dir={sortDir} align="right">
                   Monto
-                </Th>
+                </SortTh>
                 <th className="px-3 py-2">Estado</th>
                 <th className="px-2 py-2" />
               </tr>
@@ -292,34 +293,3 @@ export function PaymentsTable({
   );
 }
 
-function Th({
-  children,
-  onClick,
-  active,
-  dir,
-  align = "left",
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  active?: boolean;
-  dir: "asc" | "desc";
-  align?: "left" | "right";
-}) {
-  return (
-    <th className={cn("px-3 py-2", align === "right" && "text-right")}>
-      <button
-        type="button"
-        onClick={onClick}
-        className={cn(
-          "inline-flex items-center gap-1 hover:text-foreground",
-          active && "text-foreground"
-        )}
-      >
-        {children}
-        <ArrowUpDown
-          className={cn("h-3 w-3 opacity-50", active && "opacity-100", active && dir === "desc" && "rotate-180")}
-        />
-      </button>
-    </th>
-  );
-}

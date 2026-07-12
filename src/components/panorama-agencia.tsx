@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { fmtARS, periodLabel } from "@/lib/finanzas";
 import { cn } from "@/lib/utils";
+import { StatCard } from "@/components/ui/stat-card";
 import { updateClientAbono } from "@/app/(app)/finanzas/panorama/actions";
 import { generateMonthlyInvoices } from "@/app/(app)/finanzas/actions";
 import {
@@ -109,15 +110,15 @@ export function PanoramaAgencia({ data }: { data: PanoramaData }) {
         </div>
 
         <div className="grid grid-cols-2 gap-px overflow-hidden bg-border sm:grid-cols-3 lg:grid-cols-5">
-          <Stat label="Entra (abonos)" value={fmt(data.ingresosRecurrentes)} tone="good" />
-          <Stat
+          <StatCard label="Entra (abonos)" value={fmt(data.ingresosRecurrentes)} tone="good" />
+          <StatCard
             label="Extraordinarios"
             value={fmt(data.ingresosExtraordinarios)}
             sub="proyectos / branding"
           />
-          <Stat label="Equipo (nómina)" value={fmt(data.costosOperativos)} tone="bad" />
-          <Stat label="Costos fijos" value={fmt(data.costosFijos)} tone="bad" />
-          <Stat
+          <StatCard label="Equipo (nómina)" value={fmt(data.costosOperativos)} tone="bad" />
+          <StatCard label="Costos fijos" value={fmt(data.costosFijos)} tone="bad" />
+          <StatCard
             label="Te queda (neto)"
             value={fmt(neto)}
             sub={`margen ${Math.round(margen)}%`}
@@ -669,33 +670,3 @@ function FijoDialog() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-function Stat({
-  label,
-  value,
-  sub,
-  tone,
-  strong,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  tone?: "good" | "bad";
-  strong?: boolean;
-}) {
-  return (
-    <div className={cn("bg-card p-3", strong && "bg-primary/5")}>
-      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div
-        className={cn(
-          "font-bold tabular-nums",
-          strong ? "text-xl" : "text-lg",
-          tone === "good" && "text-emerald-600",
-          tone === "bad" && "text-red-600"
-        )}
-      >
-        {value}
-      </div>
-      {sub && <div className="text-[10px] text-muted-foreground">{sub}</div>}
-    </div>
-  );
-}

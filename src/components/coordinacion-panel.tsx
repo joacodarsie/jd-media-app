@@ -16,6 +16,7 @@ import {
 } from "@/lib/coordinacion";
 import { saveAgencySettings } from "@/app/(app)/coordinacion/actions";
 import { cn } from "@/lib/utils";
+import { StatCard } from "@/components/ui/stat-card";
 
 export interface PanoramaRow {
   id: string;
@@ -169,14 +170,14 @@ export function CoordinacionPanel({
           </p>
         </div>
         <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
-          <Stat label="Ingreso mensual" value={fmt(tot.ingreso)} />
-          <Stat label="Costo producción" value={fmt(tot.costo)} muted />
-          <Stat
+          <StatCard label="Ingreso mensual" value={fmt(tot.ingreso)} />
+          <StatCard label="Costo producción" value={fmt(tot.costo)} muted />
+          <StatCard
             label="Margen mensual"
             value={fmt(tot.margen)}
             tone={tot.margen >= 0 ? "good" : "bad"}
           />
-          <Stat label="Margen %" value={`${pctOf(tot.margen, tot.ingreso)}%`} tone="good" />
+          <StatCard label="Margen %" value={`${pctOf(tot.margen, tot.ingreso)}%`} tone="good" />
         </div>
         <div className="overflow-x-auto p-4">
           <table className="w-full min-w-[560px] text-sm">
@@ -276,10 +277,10 @@ export function CoordinacionPanel({
           </div>
 
           <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-4">
-            <Stat label="Margen recurrente" value={fmt(sim.margenRec)} sub={`/mes · ${pctOf(sim.margenRec, sim.p.precio)}%`} tone="good" />
-            <Stat label="Costos 1er mes" value={fmt(sim.oneTime)} sub="una vez" muted />
-            <Stat label="Margen 1er mes" value={fmt(sim.margenMes1)} sub={`${pctOf(sim.margenMes1, sim.p.precio)}% del 1er mes`} tone={sim.margenMes1 >= 0 ? "good" : "bad"} />
-            <Stat label="Ganancia año 1" value={fmt(sim.anio1)} sub="mes1 + 11 recurrentes" tone="good" />
+            <StatCard label="Margen recurrente" value={fmt(sim.margenRec)} sub={`/mes · ${pctOf(sim.margenRec, sim.p.precio)}%`} tone="good" />
+            <StatCard label="Costos 1er mes" value={fmt(sim.oneTime)} sub="una vez" muted />
+            <StatCard label="Margen 1er mes" value={fmt(sim.margenMes1)} sub={`${pctOf(sim.margenMes1, sim.p.precio)}% del 1er mes`} tone={sim.margenMes1 >= 0 ? "good" : "bad"} />
+            <StatCard label="Ganancia año 1" value={fmt(sim.anio1)} sub="mes1 + 11 recurrentes" tone="good" />
           </div>
         </div>
       </section>
@@ -529,19 +530,19 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
         </div>
 
         <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-3">
-          <Stat
+          <StatCard
             label="Costo mensual"
             value={fmt(costo)}
             sub={`incl. coordinación ${fmt(coordMonto)}`}
             muted
           />
-          <Stat
+          <StatCard
             label="Ganancia recurrente"
             value={fmt(margenRec)}
             sub="por mes"
             tone={margenRec >= 0 ? "good" : "bad"}
           />
-          <Stat
+          <StatCard
             label="Margen %"
             value={`${pctOf(margenRec, precio)}%`}
             tone={margenRec >= 0 ? "good" : "bad"}
@@ -550,8 +551,8 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
 
         {hayOneTime && (
           <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2">
-            <Stat label="Costos 1er mes" value={fmt(oneTime)} sub="una vez (manual + comisión)" muted />
-            <Stat
+            <StatCard label="Costos 1er mes" value={fmt(oneTime)} sub="una vez (manual + comisión)" muted />
+            <StatCard
               label="Ganancia 1er mes"
               value={fmt(margenMes1)}
               sub={`${pctOf(margenMes1, precio)}% del 1er mes`}
@@ -622,36 +623,6 @@ function RateLadder({
   );
 }
 
-function Stat({
-  label,
-  value,
-  sub,
-  tone,
-  muted,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  tone?: "good" | "bad";
-  muted?: boolean;
-}) {
-  return (
-    <div className="bg-card p-3">
-      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div
-        className={cn(
-          "text-lg font-bold tabular-nums",
-          tone === "good" && "text-emerald-600",
-          tone === "bad" && "text-red-600",
-          muted && "text-muted-foreground"
-        )}
-      >
-        {value}
-      </div>
-      {sub && <div className="text-[10px] text-muted-foreground">{sub}</div>}
-    </div>
-  );
-}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

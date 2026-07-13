@@ -54,6 +54,8 @@ export interface PanoramaData {
     extra: number;
     coordinador: string | null;
     acuerdoFijo: boolean;
+    /** Roles sin asignar (CM/diseño/edición) que inflan el margen de la cuenta. */
+    faltaEquipo: string[];
   }[];
   fijos: {
     id: string;
@@ -309,6 +311,7 @@ function CuentasGrid({
   cuentas: PanoramaData["cuentas"];
   recurrentes: number;
 }) {
+  const conHueco = cuentas.filter((c) => c.faltaEquipo.length > 0);
   return (
     <section className="rounded-xl border bg-card">
       <div className="border-b px-4 py-3">
@@ -317,6 +320,15 @@ function CuentasGrid({
           El abono de cada cuenta. Tocá el número para editarlo — se guarda solo.
         </p>
       </div>
+
+      {conHueco.length > 0 && (
+        <div className="border-b bg-amber-50 px-4 py-2.5 text-[11px] text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+          <b>{conHueco.length} cuenta{conHueco.length > 1 ? "s" : ""} sin equipo completo.</b>{" "}
+          Al no tener asignado el rol, ese costo no entra en la nómina y el margen
+          de la cuenta se ve más alto de lo real. Asigná el equipo en la ficha de
+          cada cuenta.
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[520px] text-sm">
           <thead>
@@ -331,10 +343,24 @@ function CuentasGrid({
             {cuentas.map((c) => (
               <tr key={c.clienteId} className="border-b last:border-0 odd:bg-muted/20">
                 <td className="px-4 py-1.5 font-medium">
-                  {c.nombre}
+                  <Link
+                    href={`/clientes/${c.clienteId}`}
+                    className="hover:underline"
+                    title="Abrir la ficha de la cuenta"
+                  >
+                    {c.nombre}
+                  </Link>
                   {c.acuerdoFijo && (
                     <span className="ml-1.5 rounded bg-amber-100 px-1 text-[9px] font-semibold uppercase text-amber-700 dark:bg-amber-950 dark:text-amber-300">
                       acuerdo fijo
+                    </span>
+                  )}
+                  {c.faltaEquipo.length > 0 && (
+                    <span
+                      className="ml-1.5 rounded bg-red-100 px-1 text-[9px] font-semibold uppercase text-red-700 dark:bg-red-950 dark:text-red-300"
+                      title={`Sin asignar: ${c.faltaEquipo.join(", ")}`}
+                    >
+                      falta {c.faltaEquipo.join(" · ")}
                     </span>
                   )}
                 </td>

@@ -35,7 +35,7 @@ export default async function PanoramaPage({
     buildPeriodPayroll(admin, periodo),
     admin
       .from("clients")
-      .select("id, nombre, coordinador_id")
+      .select("id, nombre, coordinador_id, cm_id, disenador_id, audiovisual_id")
       .eq("estado", "activo")
       .eq("es_interno", false),
     admin
@@ -81,6 +81,17 @@ export default async function PanoramaPage({
       .reduce((a, s) => a + (Number(s.monto_mensual) || 0), 0);
     ingresosExtraordinarios += extra;
 
+    // Equipo faltante: una cuenta con gestión de redes que factura pero no tiene
+    // CM / diseñador / editor asignado no genera esos costos en la nómina, así
+    // que su margen se ve inflado. Los acuerdos fijos cubren todo con un monto,
+    // así que no aplican.
+    const faltaEquipo: string[] = [];
+    if (gestion && gestion.costo_override == null && abono > 0) {
+      if (!c.cm_id) faltaEquipo.push("CM");
+      if (!c.disenador_id) faltaEquipo.push("diseño");
+      if (!c.audiovisual_id) faltaEquipo.push("edición");
+    }
+
     cuentas.push({
       clienteId: c.id,
       nombre: c.nombre,
@@ -89,6 +100,7 @@ export default async function PanoramaPage({
       extra,
       coordinador: c.coordinador_id ? uname.get(c.coordinador_id) ?? null : null,
       acuerdoFijo: gestion?.costo_override != null,
+      faltaEquipo,
     });
   }
   cuentas.sort((a, b) => b.abono - a.abono);

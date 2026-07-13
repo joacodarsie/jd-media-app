@@ -9,6 +9,10 @@ import { getActiveClients, getActiveUsers } from "@/lib/cache";
 import { RealtimeBadgesSync } from "@/components/realtime-badges-sync";
 import { WelcomeTour } from "@/components/welcome-tour";
 import type { QuickLinkRow } from "@/components/quick-links-manager";
+import {
+  ReviewFlagsBanner,
+  type ReviewFlagRow,
+} from "@/components/review-flags-banner";
 
 export default async function AppLayout({
   children,
@@ -80,7 +84,7 @@ export default async function AppLayout({
 
   // Carga rápida de plata: widget flotante solo para admin.
   const isAdmin = user.rol === "admin";
-  const [quickClients, quickUsers, quickSubsRes, quickDebtsRes] = await Promise.all([
+  const [quickClients, quickUsers, quickSubsRes, quickDebtsRes, reviewFlagsRes] = await Promise.all([
     isAdmin ? getActiveClients() : Promise.resolve([]),
     isAdmin ? getActiveUsers() : Promise.resolve([]),
     isAdmin
@@ -97,6 +101,15 @@ export default async function AppLayout({
           .eq("saldada", false)
           .order("acreedor")
       : Promise.resolve({ data: [] }),
+    // Aura "sin testear": features nuevas pendientes de aprobar (solo admin).
+    // Si la migración 0125 no está aplicada, la query falla en silencio y no hay banner.
+    isAdmin
+      ? supabase
+          .from("review_flags")
+          .select("id, ruta, label, nota")
+          .is("approved_at", null)
+          .order("created_at")
+      : Promise.resolve({ data: [] }),
   ]);
   const quickSubs = ((quickSubsRes as { data: unknown[] | null }).data ?? []) as {
     id: string;
@@ -110,6 +123,8 @@ export default async function AppLayout({
     monto: number;
     moneda: string;
   }[];
+  const reviewFlags = ((reviewFlagsRes as { data: unknown[] | null }).data ??
+    []) as ReviewFlagRow[];
 
   return (
     <AppShell
@@ -121,6 +136,9 @@ export default async function AppLayout({
       isLiveOwner={isLiveOwner}
     >
       <RealtimeBadgesSync userId={user.id} />
+      {isAdmin && reviewFlags.length > 0 && (
+        <ReviewFlagsBanner flags={reviewFlags} />
+      )}
       {children}
       <AIChatLauncher />
       {isAdmin && (

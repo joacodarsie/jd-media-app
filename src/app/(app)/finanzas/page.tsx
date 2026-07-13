@@ -484,8 +484,7 @@ export default async function FinanzasPage({
           <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
         </summary>
         <div className="grid gap-3 p-4 pt-0 sm:grid-cols-2 lg:grid-cols-3">
-          <AnalisisLink href="/finanzas/registro" title="Registro (Excel)" desc="Planilla mes a mes: entró, salió, neto y crecimiento. Ordenable y descargable a Excel." />
-          <AnalisisLink href="/finanzas/movimientos" title="Movimientos" desc="Todo lo que entró y salió, con vista detalle o evolución del margen mes a mes." />
+          <AnalisisLink href="/finanzas/movimientos" title="Movimientos" desc="Todo lo que entró y salió: detalle, evolución por mes o planilla estilo Excel descargable." />
           <AnalisisLink href="/finanzas/rentabilidad" title="Rentabilidad por cliente" desc="Cuánto deja cada cuenta según cobros y gastos reales." />
           <AnalisisLink href="/finanzas/vencimientos" title="Vencimientos" desc="Qué pagás y cuándo: plataformas, equipo y gastos." />
           <AnalisisLink href="/finanzas/proyeccion" title="Proyección" desc="MRR, LTV y caja de los próximos meses." />

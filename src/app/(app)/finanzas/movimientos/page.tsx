@@ -18,6 +18,7 @@ import {
   periodLabel,
 } from "@/lib/finanzas";
 import { Card, CardContent } from "@/components/ui/card";
+import { FinancialRegistry } from "@/components/financial-registry";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -45,7 +46,7 @@ interface MonthRow {
 }
 
 type Filtro = "todos" | "in" | "out";
-type Vista = "detalle" | "mes";
+type Vista = "detalle" | "mes" | "registro";
 
 export default async function MovimientosPage({
   searchParams,
@@ -55,7 +56,8 @@ export default async function MovimientosPage({
   await requireFeature("finanzas");
   const supabase = createClient();
   const rates = await getExchangeRates();
-  const vista: Vista = searchParams.v === "mes" ? "mes" : "detalle";
+  const vista: Vista =
+    searchParams.v === "mes" ? "mes" : searchParams.v === "registro" ? "registro" : "detalle";
   const filtro: Filtro =
     searchParams.t === "in" ? "in" : searchParams.t === "out" ? "out" : "todos";
 
@@ -227,7 +229,8 @@ export default async function MovimientosPage({
         <h1 className="text-2xl font-bold">Movimientos</h1>
         <p className="text-muted-foreground">
           Todo lo que entró y salió (cobros, pagos al equipo y gastos). Mirá el{" "}
-          <b>detalle</b> movimiento por movimiento o la <b>evolución por mes</b>.
+          <b>detalle</b> movimiento por movimiento, la <b>evolución por mes</b> o
+          la <b>planilla</b> estilo Excel.
         </p>
       </div>
 
@@ -237,6 +240,7 @@ export default async function MovimientosPage({
           [
             { key: "detalle", label: "Detalle", href: `/finanzas/movimientos${suffix ? `?t=${filtro}` : ""}` },
             { key: "mes", label: "Por mes", href: "/finanzas/movimientos?v=mes" },
+            { key: "registro", label: "Planilla (Excel)", href: "/finanzas/movimientos?v=registro" },
           ] as const
         ).map((opt) => (
           <Link
@@ -254,7 +258,18 @@ export default async function MovimientosPage({
         ))}
       </div>
 
-      {vista === "mes" ? (
+      {vista === "registro" ? (
+        // Planilla estilo Excel (ex sección "Registro"): mes a mes, entró /
+        // salió / neto / crecimiento, sobre la misma serie de esta página.
+        <FinancialRegistry
+          rows={series.map((s) => ({
+            periodo: s.periodo,
+            ingresos: s.ingresos,
+            sueldos: s.equipo,
+            gastos: s.gastos,
+          }))}
+        />
+      ) : vista === "mes" ? (
         <>
           {/* KPIs */}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

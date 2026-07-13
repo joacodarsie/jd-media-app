@@ -30,6 +30,7 @@ export type PayrollLineKind =
   | "edicion"
   | "media_buyer"
   | "coordinacion"
+  | "coord_general"
   | "coord_diseno"
   | "comercial_fijo"
   | "jornada"

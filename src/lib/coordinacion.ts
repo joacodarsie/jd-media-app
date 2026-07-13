@@ -45,6 +45,12 @@ export interface AgencyRates {
   /** % recurrente de la coordinadora de Gestión de Redes sobre el abono de cada cuenta que coordina. */
   comision_coordinacion: number;
   /**
+   * % de la COORDINACIÓN GENERAL (Leo, mano derecha) sobre TODO lo que facturan
+   * los clientes, de cualquier servicio. Se atribuye a quien tenga el área
+   * "Coordinación General".
+   */
+  comision_coord_general: number;
+  /**
    * % de la coordinación de diseño sobre el DISEÑO publicado del mes (post/
    * carrusel + portadas). El plus por aprobar el manual de marca de una cuenta
    * nueva se deriva de este % sobre `manual_marca`. Cuenta interna excluida.
@@ -100,6 +106,7 @@ export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
     comision_cierre: 0.1,
     comision_lead_propio: 0.05,
     comision_coordinacion: 0.1,
+    comision_coord_general: 0.05,
     comision_coord_diseno: 0.05,
     diseno_standalone_disenador_pct: 0.4,
     diseno_standalone_coord_pct: 0.1,

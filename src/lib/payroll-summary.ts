@@ -18,6 +18,7 @@ export type PuestoKey =
   | "edicion"
   | "media_buyer"
   | "coordinacion"
+  | "coord_general"
   | "coord_diseno"
   | "comercial"
   | "jornada"
@@ -34,6 +35,7 @@ const KIND_TO_PUESTO: Record<PayrollLineKind, PuestoKey> = {
   edicion: "edicion",
   media_buyer: "media_buyer",
   coordinacion: "coordinacion",
+  coord_general: "coord_general",
   coord_diseno: "coord_diseno",
   comision: "comercial",
   comercial_fijo: "comercial",
@@ -51,6 +53,7 @@ export const PUESTO_LABEL: Record<PuestoKey, string> = {
   edicion: "Edición audiovisual",
   media_buyer: "Pauta (Media Buyer)",
   coordinacion: "Coordinación de redes",
+  coord_general: "Coordinación general",
   coord_diseno: "Coordinación de diseño",
   comercial: "Comercial",
   jornada: "Jornadas de producción",
@@ -68,6 +71,7 @@ const PUESTO_ORDER: PuestoKey[] = [
   "edicion",
   "media_buyer",
   "coordinacion",
+  "coord_general",
   "coord_diseno",
   "comercial",
   "jornada",
@@ -223,6 +227,15 @@ export function payModelRules(settings: AgencySettings): PayRule[] {
       detalles: [
         "Es recurrente: se cobra todos los meses, sobre lo que paga cada cliente.",
         'Si un mes el rol se repartió entre dos personas, se divide con el botón "Coordinación".',
+      ],
+    },
+    {
+      key: "coord_general",
+      label: PUESTO_LABEL.coord_general,
+      regla: `${pct(r.comision_coord_general ?? 0)} de TODO lo que facturan los clientes, de cualquier servicio.`,
+      detalles: [
+        "Es la comisión de la coordinación general (mano derecha de la dirección).",
+        "Se atribuye a quien tenga el área 'Coordinación General'.",
       ],
     },
     {

@@ -104,7 +104,7 @@ export async function buildPeriodPayroll(
       .eq("activo", true),
     admin
       .from("users")
-      .select("id, nombre, rol, rol_secundario, alias_cbu, cbu, titular_cuenta")
+      .select("id, nombre, rol, rol_secundario, area, area_secundaria, alias_cbu, cbu, titular_cuenta")
       .eq("activo", true),
     admin
       .from("payroll_items")
@@ -146,6 +146,8 @@ export async function buildPeriodPayroll(
     nombre: string;
     rol: string;
     rol_secundario: string | null;
+    area: string | null;
+    area_secundaria: string | null;
     alias_cbu: string | null;
     cbu: string | null;
     titular_cuenta: string | null;
@@ -310,6 +312,35 @@ export async function buildPeriodPayroll(
   for (const [uid, lines] of coordByUser) {
     if (!autoByUser.has(uid)) autoByUser.set(uid, []);
     autoByUser.get(uid)!.push(...lines);
+  }
+
+  // Comisión de COORDINACIÓN GENERAL (Leo): % de TODO lo que facturan los
+  // clientes, de cualquier servicio. Se atribuye a quien tenga el área
+  // "Coordinación General". Los servicios de cobro único cuentan solo su mes.
+  const coordGeneralPct = settings.rates.comision_coord_general ?? 0;
+  const coordGeneral = users.find(
+    (u) => u.area === "Coordinación General" || u.area_secundaria === "Coordinación General"
+  );
+  if (coordGeneralPct > 0 && coordGeneral) {
+    const clienteIds = new Set(clients.map((c) => c.id));
+    let facturacionTotal = 0;
+    for (const s of services) {
+      if (!clienteIds.has(s.cliente_id)) continue; // solo cuentas reales (no internas)
+      const esUnico = (s.facturacion ?? "mensual") === "unico";
+      if (esUnico && (s.created_at ?? "").slice(0, 7) !== periodo) continue;
+      facturacionTotal += Number(s.monto_mensual) || 0;
+    }
+    const monto = Math.round(facturacionTotal * coordGeneralPct);
+    if (monto > 0) {
+      if (!autoByUser.has(coordGeneral.id)) autoByUser.set(coordGeneral.id, []);
+      autoByUser.get(coordGeneral.id)!.push({
+        clienteId: null,
+        cliente: "—",
+        concepto: `Coordinación general · ${Math.round(coordGeneralPct * 100)}% de la facturación`,
+        monto,
+        kind: "coord_general",
+      });
+    }
   }
 
   // ── Comisión de cierre AUTOMÁTICA del primer mes ──

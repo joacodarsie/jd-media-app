@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireUser } from "@/lib/auth";
+import { createAdmin } from "@/lib/supabase/admin";
+import { requireUser, isStaffUser } from "@/lib/auth";
 
 async function ctx() {
   const supabase = createClient();
@@ -11,6 +12,16 @@ async function ctx() {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("No autenticado");
   return { supabase, userId: user.id };
+}
+
+// Cliente admin para las ESCRITURAS del calendario (crear/editar/mover/borrar).
+// Motivo: la RLS de publications solo deja actualizar al staff/creador/editor,
+// así que un CM (que no es "staff") no podía editar el contenido de SU cuenta
+// aunque la app se lo permite (ensureCalendarEditor). Las escrituras ya están
+// gateadas por rol a nivel app; el admin evita el bloqueo silencioso de la RLS.
+// (Existe la migración 0107 que arregla la RLS; esto no depende de aplicarla.)
+function writeDb() {
+  return createAdmin();
 }
 
 // Quién puede EDITAR el calendario (crear/editar/mover fecha/borrar publicaciones).
@@ -76,7 +87,7 @@ export async function createPublication(input: PublicationInput) {
   const gate = await ensureCalendarEditor();
   if (gate) return { error: gate };
   const { supabase, userId } = await ctx();
-  const { data, error } = await supabase
+  const { data, error } = await writeDb()
     .from("publications")
     .insert({ ...clean(input), creado_por_id: userId })
     .select("id, cliente_id, task_id")
@@ -111,10 +122,9 @@ export async function createPublication(input: PublicationInput) {
 export async function updatePublication(id: string, input: PublicationInput) {
   const gate = await ensureCalendarEditor();
   if (gate) return { error: gate };
-  const { supabase } = await ctx();
   const payload: Record<string, unknown> = clean(input);
   if (input.estado) payload.estado = input.estado;
-  const { data, error } = await supabase
+  const { data, error } = await writeDb()
     .from("publications")
     .update(payload)
     .eq("id", id)
@@ -126,25 +136,44 @@ export async function updatePublication(id: string, input: PublicationInput) {
 }
 
 export async function changePublicationStatus(id: string, estado: string, notas?: string) {
-  const { supabase } = await ctx();
-  const patch: Record<string, unknown> = { estado };
-  if (notas !== undefined) patch.notas_revision = notas?.trim() || null;
-  const { data, error } = await supabase
+  const admin = writeDb();
+  // Traemos la cuenta de la pieza para verificar que quien cambia el estado sea
+  // del EQUIPO de esa cuenta (o staff). Antes lo hacía la RLS, pero como un CM
+  // no es "staff" el update le fallaba en silencio.
+  const { data: pub } = await admin
     .from("publications")
-    .update(patch)
-    .eq("id", id)
     .select("cliente_id")
+    .eq("id", id)
     .maybeSingle();
-  if (error) return { error: error.message };
-  // Si la RLS no dejó actualizar, el update afecta 0 filas (data = null).
-  if (!data) {
+  if (!pub) return { error: "No se encontró la publicación." };
+  if (!(await userOnClientTeam(pub.cliente_id))) {
     return {
       error:
         "No tenés permiso para cambiar el estado de esta pieza. Solo el equipo de esa cuenta (CM, diseño, edición, coordinación) puede.",
     };
   }
-  invalidate(data.cliente_id);
+  const patch: Record<string, unknown> = { estado };
+  if (notas !== undefined) patch.notas_revision = notas?.trim() || null;
+  const { error } = await admin.from("publications").update(patch).eq("id", id);
+  if (error) return { error: error.message };
+  invalidate(pub.cliente_id);
   return { ok: true };
+}
+
+/** True si el usuario es staff o parte del equipo asignado a la cuenta. */
+async function userOnClientTeam(clienteId: string | null): Promise<boolean> {
+  if (!clienteId) return false;
+  const me = await requireUser();
+  if (isStaffUser(me)) return true;
+  const { data: c } = await createAdmin()
+    .from("clients")
+    .select("cm_id, disenador_id, audiovisual_id, coordinador_id, media_buyer_id")
+    .eq("id", clienteId)
+    .maybeSingle();
+  if (!c) return false;
+  return [c.cm_id, c.disenador_id, c.audiovisual_id, c.coordinador_id, c.media_buyer_id].includes(
+    me.id
+  );
 }
 
 /**
@@ -173,7 +202,7 @@ export async function updatePublicationDate(id: string, date: string | null) {
       fechaIso = `${date}T15:00:00.000Z`;
     }
   }
-  const { data, error } = await supabase
+  const { data, error } = await writeDb()
     .from("publications")
     .update({ fecha_publicacion: fechaIso })
     .eq("id", id)
@@ -237,8 +266,7 @@ export async function setPublicationAsset(id: string, url: string) {
 export async function deletePublication(id: string) {
   const gate = await ensureCalendarEditor();
   if (gate) return { error: gate };
-  const { supabase } = await ctx();
-  const { data, error } = await supabase
+  const { data, error } = await writeDb()
     .from("publications")
     .delete()
     .eq("id", id)
@@ -253,8 +281,7 @@ export async function bulkDeletePublications(ids: string[]) {
   if (!ids.length) return { ok: true, deleted: 0 };
   const gate = await ensureCalendarEditor();
   if (gate) return { error: gate };
-  const { supabase } = await ctx();
-  const { error } = await supabase
+  const { error } = await writeDb()
     .from("publications")
     .delete()
     .in("id", ids);
@@ -268,8 +295,7 @@ export async function bulkChangePublicationStatus(ids: string[], estado: string)
   if (!ids.length) return { ok: true };
   const gate = await ensureCalendarEditor();
   if (gate) return { error: gate };
-  const { supabase } = await ctx();
-  const { error } = await supabase
+  const { error } = await writeDb()
     .from("publications")
     .update({ estado })
     .in("id", ids);

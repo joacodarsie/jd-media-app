@@ -36,6 +36,10 @@ export interface ObjectiveRow {
   ideas: ObjectiveIdea[];
   estado: "activo" | "logrado" | "pausado";
   orden: number;
+  /** Progreso numérico opcional (ej: 15 de 50 clientes). */
+  meta?: number | null;
+  progreso?: number | null;
+  unidad?: string | null;
 }
 
 interface Group {
@@ -215,6 +219,9 @@ function ObjectiveCard({
               )}
             </div>
 
+            {/* Progreso numérico (si tiene meta) */}
+            <ProgressBar obj={obj} canEdit={canEdit} />
+
             {/* Estado */}
             <div className="flex flex-wrap items-center gap-1.5">
               {(Object.keys(ESTADO_META) as ObjectiveRow["estado"][]).map((e) => (
@@ -298,6 +305,145 @@ function ObjectiveCard({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * Barra de progreso numérico del objetivo (ej: 15 de 50 clientes). Solo se
+ * muestra si el objetivo tiene `meta`. Los que editan pueden actualizar el
+ * "vamos X" en el momento sin abrir el editor completo.
+ */
+function ProgressBar({ obj, canEdit }: { obj: ObjectiveRow; canEdit: boolean }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [editing, setEditing] = useState(false);
+  const meta = obj.meta ?? null;
+
+  // Sin meta: si puede editar, ofrecemos ponerle una; si no, no mostramos nada.
+  if (meta == null) {
+    if (!canEdit) return null;
+    return <SetMetaButton obj={obj} />;
+  }
+
+  const progreso = Number(obj.progreso ?? 0);
+  const pct = meta > 0 ? Math.min(100, Math.max(0, (progreso / meta) * 100)) : 0;
+  const unidad = obj.unidad ?? "";
+
+  function guardar(nuevo: number) {
+    start(async () => {
+      const r = await updateObjective({ id: obj.id, progreso: nuevo });
+      if (!r.ok) return void toast.error(r.error);
+      setEditing(false);
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-baseline justify-between gap-2 text-xs">
+        <span className="font-medium">
+          {editing ? (
+            <input
+              type="number"
+              defaultValue={progreso}
+              autoFocus
+              disabled={pending}
+              onBlur={(e) => guardar(Number(e.target.value))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") guardar(Number((e.target as HTMLInputElement).value));
+                if (e.key === "Escape") setEditing(false);
+              }}
+              className="w-16 rounded border bg-background px-1 py-0.5 text-right tabular-nums"
+            />
+          ) : (
+            <button
+              disabled={!canEdit}
+              onClick={() => setEditing(true)}
+              className={cn("tabular-nums", canEdit && "rounded px-1 hover:bg-muted")}
+              title={canEdit ? "Actualizar el avance" : undefined}
+            >
+              {progreso}
+            </button>
+          )}{" "}
+          <span className="text-muted-foreground">
+            de {meta} {unidad}
+          </span>
+        </span>
+        <span className="tabular-nums text-muted-foreground">{Math.round(pct)}%</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-muted">
+        <div
+          className={cn("h-full rounded-full", pct >= 100 ? "bg-emerald-500" : "bg-primary")}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Botón para ponerle una meta numérica a un objetivo que no la tiene. */
+function SetMetaButton({ obj }: { obj: ObjectiveRow }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [open, setOpen] = useState(false);
+  const [meta, setMeta] = useState("");
+  const [progreso, setProgreso] = useState("");
+  const [unidad, setUnidad] = useState("");
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+      >
+        + medir con una meta numérica
+      </button>
+    );
+  }
+
+  function guardar() {
+    const m = Number(meta);
+    if (!Number.isFinite(m) || m <= 0) return void toast.error("Poné una meta válida.");
+    start(async () => {
+      const r = await updateObjective({
+        id: obj.id,
+        meta: m,
+        progreso: Number(progreso) || 0,
+        unidad: unidad.trim() || null,
+      });
+      if (!r.ok) return void toast.error(r.error);
+      setOpen(false);
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 text-xs">
+      <input
+        type="number"
+        value={progreso}
+        onChange={(e) => setProgreso(e.target.value)}
+        placeholder="vamos"
+        className="w-16 rounded border bg-background px-1.5 py-1 tabular-nums"
+      />
+      <span className="text-muted-foreground">de</span>
+      <input
+        type="number"
+        value={meta}
+        onChange={(e) => setMeta(e.target.value)}
+        placeholder="meta"
+        className="w-16 rounded border bg-background px-1.5 py-1 tabular-nums"
+      />
+      <input
+        value={unidad}
+        onChange={(e) => setUnidad(e.target.value)}
+        placeholder="unidad (ej: clientes)"
+        className="w-32 rounded border bg-background px-1.5 py-1"
+      />
+      <Button size="sm" className="h-7 px-2 text-xs" onClick={guardar} disabled={pending}>
+        Guardar
+      </Button>
+    </div>
   );
 }
 

@@ -19,12 +19,22 @@ export default async function ObjetivosPage() {
   let rows: ObjectiveRow[] = [];
   let tablaLista = true;
   try {
-    const { data, error } = await admin
+    // Lectura resiliente: intentamos con las columnas de progreso (migración
+    // 0124); si todavía no está aplicada, caemos al select viejo sin romper.
+    const withProgress = await admin
       .from("agency_objectives")
-      .select("id, area, titulo, detalle, ideas, estado, orden")
+      .select("id, area, titulo, detalle, ideas, estado, orden, meta, progreso, unidad")
       .order("orden", { ascending: true });
-    if (error) tablaLista = false;
-    else rows = (data ?? []) as ObjectiveRow[];
+    if (!withProgress.error) {
+      rows = (withProgress.data ?? []) as ObjectiveRow[];
+    } else {
+      const { data, error } = await admin
+        .from("agency_objectives")
+        .select("id, area, titulo, detalle, ideas, estado, orden")
+        .order("orden", { ascending: true });
+      if (error) tablaLista = false;
+      else rows = (data ?? []) as ObjectiveRow[];
+    }
   } catch {
     tablaLista = false;
   }

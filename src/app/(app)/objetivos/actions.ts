@@ -58,6 +58,9 @@ export async function updateObjective(input: {
   titulo?: string;
   detalle?: string | null;
   estado?: "activo" | "logrado" | "pausado";
+  meta?: number | null;
+  progreso?: number | null;
+  unidad?: string | null;
 }): Promise<Result> {
   await requireRole(["admin", "coordinador"]);
   const patch: Record<string, unknown> = {};
@@ -68,6 +71,9 @@ export async function updateObjective(input: {
   }
   if (input.detalle !== undefined) patch.detalle = input.detalle?.trim() || null;
   if (input.estado !== undefined) patch.estado = input.estado;
+  if (input.meta !== undefined) patch.meta = input.meta;
+  if (input.progreso !== undefined) patch.progreso = input.progreso;
+  if (input.unidad !== undefined) patch.unidad = input.unidad?.trim() || null;
   if (Object.keys(patch).length === 0) return { ok: true };
 
   const admin = createAdmin();

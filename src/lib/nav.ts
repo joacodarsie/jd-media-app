@@ -39,7 +39,9 @@ export const NAV_GROUPS: NavGroup[] = [
         href: "/jdmedia/live",
         label: "JDmedIA en vivo",
         icon: "Radio",
-        liveOwnerOnly: true,
+        // Antes owner-only por email; ahora por feature otorgable en /accesos
+        // (admin la tiene siempre). Consume muchos tokens.
+        feature: "jdmedia_live",
       },
       {
         href: "/director",

@@ -10,6 +10,8 @@ export const FEATURES = [
   "clientes_credenciales", // ver credenciales del cliente en su detalle
   "documentos_globales", // crear/editar documentos generales en /documentos
   "comercial",           // acceso al pipeline comercial (vender) sin ser del rol comercial
+  "leads_ia",            // usar el buscador de leads con IA (Prospección/Reclutamiento) — consume tokens
+  "jdmedia_live",        // usar JDmedIA en vivo (comparte pantalla) — consume tokens
 ] as const;
 
 export type Feature = (typeof FEATURES)[number];
@@ -21,6 +23,8 @@ export const FEATURE_LABEL: Record<Feature, string> = {
   clientes_credenciales: "Ver credenciales de los clientes",
   documentos_globales: "Editar documentos generales de la agencia",
   comercial: "Vender (pipeline comercial)",
+  leads_ia: "Buscador de leads con IA (caro en tokens)",
+  jdmedia_live: "JDmedIA en vivo · comparte pantalla (caro en tokens)",
 };
 
 export const FEATURE_DESCRIPTION: Record<Feature, string> = {
@@ -35,4 +39,8 @@ export const FEATURE_DESCRIPTION: Record<Feature, string> = {
     "Subir/eliminar los documentos generales de la agencia (manuales, plantillas).",
   comercial:
     "Permite usar el pipeline comercial y cerrar ventas, aunque su rol principal sea otro.",
+  leads_ia:
+    "Usar el buscador de leads con IA en Prospección y Reclutamiento. Consume muchos tokens (dólares): dáselo solo a quien lo use de verdad.",
+  jdmedia_live:
+    "Usar JDmedIA en vivo (la guía que comparte pantalla y responde en tiempo real). Consume muchos tokens: dáselo solo a quien lo necesite.",
 };

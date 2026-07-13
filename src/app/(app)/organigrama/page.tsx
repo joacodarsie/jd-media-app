@@ -22,25 +22,32 @@ const ORG: OrgNode = {
   title: "Dirección General",
   area: "Estrategia/Dirección",
   children: [
-    { title: "Comercial", area: "Comercial", note: "Cierre de ventas" },
     {
-      title: "Coordinación · Gestión de Redes",
-      area: "Coordinación",
-      note: "Reunión semanal con el equipo · reunión mensual con el cliente",
+      title: "Coordinación General",
+      area: "Coordinación General",
+      note: "Mano derecha de la dirección · coordina a las demás coordinaciones y da seguimiento general",
       children: [
+        { title: "Comercial", area: "Comercial", note: "Cierre de ventas" },
+        {
+          title: "Coordinación · Gestión de Redes",
+          area: "Coordinación",
+          note: "Reunión semanal con el equipo · reunión mensual con el cliente",
+          children: [
+            { title: "Edición audiovisual", area: "Edición Audiovisual" },
+            { title: "Community Management", area: "Community Manager" },
+            { title: "Paid Media", area: "Paid Media" },
+          ],
+        },
         {
           title: "Coordinación de Diseño",
           area: "Coordinación de Diseño",
           note: "Coordina el servicio de diseño · aprueba la identidad visual en el arranque de cada cuenta",
           children: [{ title: "Diseño gráfico", area: "Diseño" }],
         },
-        { title: "Edición audiovisual", area: "Edición Audiovisual" },
-        { title: "Community Management", area: "Community Manager" },
-        { title: "Paid Media", area: "Paid Media" },
+        { title: "Botly", area: "Botly" },
+        { title: "Desarrollo Web", area: "Desarrollo Web" },
       ],
     },
-    { title: "Botly", area: "Botly" },
-    { title: "Desarrollo Web", area: "Desarrollo Web" },
   ],
 };
 

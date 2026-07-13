@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser, isStaffUser, userInRoles } from "@/lib/auth";
+import { requireUser, userHas } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { discoverLeads, type CampaignContext } from "@/lib/prospecting/discover";
 import { verifyInstagramBatch } from "@/lib/prospecting/verify";
@@ -14,18 +14,18 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
-/** Acceso: staff o comercial/prospecting (mira rol primario y secundario). */
-function canProspect(me: { rol: string; rol_secundario?: string | null }) {
-  return isStaffUser(me) || userInRoles(me, ["comercial", "prospecting"]);
-}
-
 export async function POST(
   req: Request,
   { params }: { params: { campaignId: string } }
 ) {
   const me = await requireUser();
-  if (!canProspect(me))
-    return NextResponse.json({ error: "Sin acceso." }, { status: 403 });
+  // Buscar leads con IA consume tokens (dólares): gateado por la feature
+  // `leads_ia`, que el dueño otorga en /accesos. Admin la tiene siempre.
+  if (!userHas(me, "leads_ia"))
+    return NextResponse.json(
+      { error: "No tenés acceso al buscador de leads con IA. Pedíselo al admin." },
+      { status: 403 }
+    );
 
   const admin = createAdmin();
   const { data: camp, error: cErr } = await admin

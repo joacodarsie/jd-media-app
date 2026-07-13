@@ -21,6 +21,8 @@ interface ClientRow extends Client {
   cm?: { id: string; nombre: string } | null;
   disenador?: { id: string; nombre: string } | null;
   audiovisual?: { id: string; nombre: string } | null;
+  /** Roles sin asignar según los servicios contratados (CM/diseño/edición). */
+  faltaEquipo?: string[];
 }
 
 interface UpcomingPub {
@@ -267,8 +269,16 @@ function ClientCard({
   if (client.disenador) equipo.push({ rol: "Diseño", nombre: client.disenador.nombre });
   if (client.audiovisual) equipo.push({ rol: "AV", nombre: client.audiovisual.nombre });
 
+  const falta = client.faltaEquipo ?? [];
+
   return (
-    <details className="group rounded-lg border bg-card transition-colors hover:border-primary/40">
+    <details
+      className={cn(
+        "group rounded-lg border bg-card transition-colors hover:border-primary/40",
+        // Equipo incompleto: borde ámbar a la izquierda para que salte a la vista.
+        falta.length > 0 && "border-l-4 border-l-amber-400 dark:border-l-amber-500"
+      )}
+    >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -287,6 +297,14 @@ function ClientCard({
             >
               {CLIENT_STATUS_LABEL[client.estado]}
             </span>
+            {falta.length > 0 && (
+              <span
+                className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                title={`Falta asignar: ${falta.join(", ")}. Asignalo en la ficha de la cuenta.`}
+              >
+                falta {falta.join(" · ")}
+              </span>
+            )}
           </div>
           <div className="mt-0.5 text-xs text-muted-foreground">
             {client.pack} · {client.cm?.nombre ?? "Sin CM"}

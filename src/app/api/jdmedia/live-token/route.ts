@@ -1,5 +1,5 @@
 import { GoogleGenAI, Modality } from "@google/genai";
-import { requireUser } from "@/lib/auth";
+import { requireUser, userHas } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,9 +45,16 @@ Cómo actuar:
 export async function POST() {
   const me = await requireUser();
 
+  // JDmedIA en vivo consume muchos tokens: acceso por la feature `jdmedia_live`
+  // (el dueño la otorga en /accesos; admin la tiene siempre). Se mantiene el
+  // email owner como override histórico por si quedó configurado.
   const owner = process.env.JDMEDIA_LIVE_OWNER_EMAIL;
-  if (!owner || me.email !== owner) {
-    return Response.json({ error: "No autorizado." }, { status: 403 });
+  const isOwnerEmail = !!owner && me.email === owner;
+  if (!userHas(me, "jdmedia_live") && !isOwnerEmail) {
+    return Response.json(
+      { error: "No tenés acceso a JDmedIA en vivo. Pedíselo al admin." },
+      { status: 403 }
+    );
   }
   if (!process.env.GOOGLE_AI_API_KEY) {
     return Response.json(

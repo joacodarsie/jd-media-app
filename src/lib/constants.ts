@@ -24,6 +24,7 @@ export const JD_MEDIA_OWNER = {
 
 export const AREAS = [
   "Estrategia/Dirección",
+  "Coordinación General",
   "Coordinación",
   "Coordinación de Diseño",
   "Diseño",

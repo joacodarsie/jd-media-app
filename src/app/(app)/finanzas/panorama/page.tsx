@@ -6,6 +6,7 @@ import { currentPeriod, periodLabel, prevPeriod, nextPeriod, toARS, toARSFijos }
 import { buildPeriodPayroll } from "@/lib/payroll-period";
 import { getExchangeRates } from "@/lib/exchange";
 import { PanoramaAgencia, type PanoramaData } from "@/components/panorama-agencia";
+import { missingTeam } from "@/lib/team-coverage";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,7 @@ export default async function PanoramaPage({
       .eq("es_interno", false),
     admin
       .from("client_services")
-      .select("id, cliente_id, tipo, monto_mensual, moneda, facturacion, costo_override, created_at")
+      .select("id, cliente_id, tipo, monto_mensual, moneda, facturacion, costo_override, created_at, activo")
       .eq("activo", true),
     admin
       .from("subscriptions")
@@ -81,16 +82,9 @@ export default async function PanoramaPage({
       .reduce((a, s) => a + (Number(s.monto_mensual) || 0), 0);
     ingresosExtraordinarios += extra;
 
-    // Equipo faltante: una cuenta con gestión de redes que factura pero no tiene
-    // CM / diseñador / editor asignado no genera esos costos en la nómina, así
-    // que su margen se ve inflado. Los acuerdos fijos cubren todo con un monto,
-    // así que no aplican.
-    const faltaEquipo: string[] = [];
-    if (gestion && gestion.costo_override == null && abono > 0) {
-      if (!c.cm_id) faltaEquipo.push("CM");
-      if (!c.disenador_id) faltaEquipo.push("diseño");
-      if (!c.audiovisual_id) faltaEquipo.push("edición");
-    }
+    // Equipo faltante según los servicios contratados (branding solo pide
+    // diseño; gestión de redes pide CM+diseño+edición). Ver lib/team-coverage.
+    const faltaEquipo = missingTeam(c, ss);
 
     cuentas.push({
       clienteId: c.id,

@@ -6,6 +6,7 @@ import type { TaskWithRels } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { ClientsDashboard } from "@/components/clients-dashboard";
 import { ClientFormDialog } from "@/components/client-form-dialog";
+import { missingTeam } from "@/lib/team-coverage";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default async function ClientesPage() {
 
   const todayISO = new Date().toISOString();
 
-  const [{ data: clients }, { data: tasks }, users, { data: pubs }, { data: myServices }] =
+  const [{ data: clients }, { data: tasks }, users, { data: pubs }, { data: myServices }, { data: allServices }] =
     await Promise.all([
       supabase
         .from("clients")
@@ -49,7 +50,31 @@ export default async function ClientesPage() {
             .select("cliente_id")
             .eq("activo", true)
             .contains("responsables", [me.id]),
+      // Servicios activos de todas las cuentas → para marcar equipo incompleto
+      // (solo staff, que es quien asigna). Los no-staff no lo necesitan.
+      isAdmin
+        ? supabase
+            .from("client_services")
+            .select("cliente_id, tipo, activo, facturacion, costo_override")
+            .eq("activo", true)
+        : Promise.resolve({ data: [] as never[] }),
     ]);
+
+  // Equipo faltante por cuenta (según servicios contratados): CM/diseño/edición
+  // sin asignar inflan el margen. Solo se calcula para staff.
+  const faltaEquipoByClient = new Map<string, string[]>();
+  if (isAdmin) {
+    const svcByClient = new Map<string, { tipo: string; activo: boolean; facturacion: string | null; costo_override: number | null }[]>();
+    for (const s of (allServices ?? []) as { cliente_id: string; tipo: string; activo: boolean; facturacion: string | null; costo_override: number | null }[]) {
+      if (!svcByClient.has(s.cliente_id)) svcByClient.set(s.cliente_id, []);
+      svcByClient.get(s.cliente_id)!.push(s);
+    }
+    for (const c of (clients ?? []) as { id: string; cm_id: string | null; disenador_id: string | null; audiovisual_id: string | null; estado: string }[]) {
+      if (c.estado !== "activo") continue;
+      const falta = missingTeam(c, svcByClient.get(c.id) ?? []);
+      if (falta.length) faltaEquipoByClient.set(c.id, falta);
+    }
+  }
 
   // Los no-staff solo ven sus cuentas ACTIVAS: asignadas por rol (cm / diseño /
   // audiovisual) o por ser responsables de un servicio activo.
@@ -78,6 +103,13 @@ export default async function ClientesPage() {
       allowed.has((p as { cliente_id: string }).cliente_id)
     );
   }
+
+  // Adjuntar el equipo faltante a cada cliente visible (para el borde de aviso).
+  visibleClients = visibleClients.map((c) => {
+    const id = (c as { id: string }).id;
+    const falta = faltaEquipoByClient.get(id);
+    return falta ? { ...(c as object), faltaEquipo: falta } : c;
+  }) as typeof visibleClients;
 
   return (
     <div className="space-y-5">

@@ -41,7 +41,9 @@ from (values
   ('/agencia', 'Hub institucional: "Roles y acciones por puesto"',
    'Página nueva en Fundamentos. En /procesos también está "Ingreso de un colaborador nuevo".'),
   ('/clientes', 'Aviso de equipo incompleto por servicio',
-   'Cuentas sin CM/diseño/edición según sus servicios: borde ámbar + badge "falta …". Magic debería aparecer marcada hasta que le asignes equipo.')
+   'Cuentas sin CM/diseño/edición según sus servicios: borde ámbar + badge "falta …". Magic debería aparecer marcada hasta que le asignes equipo.'),
+  ('/contenidos/guiones', 'Guiones del mes (pedido de Luz)',
+   'Todo el calendario en una hoja: pestañas por cuenta, secciones edición/diseño/historias, filtro por persona, copiar e imprimir. Probar con Origen o Magic y avisarle a Luz.')
 ) as v(ruta, label, nota)
 where not exists (
   select 1 from public.review_flags rf

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireUser, getAccessibleClientIds, userInRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveUsers, getActiveClients } from "@/lib/cache";
@@ -68,14 +69,22 @@ export default async function ContenidosPage({
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold">
-          Calendario de contenidos
-          <HelpTrigger
-            slug="contenidos-calendario"
-            label="Cómo usar el calendario"
-            size="md"
-          />
-        </h1>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            Calendario de contenidos
+            <HelpTrigger
+              slug="contenidos-calendario"
+              label="Cómo usar el calendario"
+              size="md"
+            />
+          </h1>
+          <Link
+            href="/contenidos/guiones"
+            className="rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
+          >
+            📄 Guiones del mes
+          </Link>
+        </div>
         <p className="text-muted-foreground">
           Todo el contenido planificado de la agencia, en un mes. Arrastrá una
           publicación a otro día para reprogramarla.

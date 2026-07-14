@@ -5,7 +5,9 @@ import { AI_MODEL_SMART } from "@/lib/ai/models";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// Reuniones largas + thinking superan los 60s del gateway → mismo transporte
+// SSE que diagnostico/generate y revise (evita el 504 "Task timed out").
+export const maxDuration = 300;
 
 const client = new Anthropic();
 const MODEL = AI_MODEL_SMART;
@@ -169,22 +171,64 @@ export async function POST(req: Request) {
     ];
   }
 
-  try {
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 4000,
-      thinking: { type: "adaptive" },
-      system: systemPrompt(),
-      messages,
-    });
-    const reply = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("\n")
-      .trim();
-    return NextResponse.json({ message: reply });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Error inesperado";
-    return NextResponse.json({ error: msg }, { status: 500 });
-  }
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (obj: unknown) =>
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+      const heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(`: ping\n\n`));
+        } catch {
+          /* cerrado */
+        }
+      }, 10_000);
+
+      try {
+        const messageStream = client.messages.stream({
+          model: MODEL,
+          max_tokens: 4000,
+          thinking: { type: "adaptive" },
+          system: systemPrompt(),
+          messages,
+        });
+
+        let full = "";
+        for await (const event of messageStream) {
+          if (
+            event.type === "content_block_delta" &&
+            event.delta.type === "text_delta"
+          ) {
+            full += event.delta.text;
+            send({ type: "delta", text: event.delta.text });
+          }
+        }
+        await messageStream.finalMessage();
+        send({ type: "done", message: full.trim() });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Error inesperado";
+        try {
+          send({ type: "error", error: msg });
+        } catch {
+          /* cerrado */
+        }
+      } finally {
+        clearInterval(heartbeat);
+        try {
+          controller.close();
+        } catch {
+          /* cerrado */
+        }
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    },
+  });
 }

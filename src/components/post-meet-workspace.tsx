@@ -282,6 +282,61 @@ export function PostMeetWorkspace() {
     return images.map((im) => ({ media_type: im.media_type, data: im.data }));
   }
 
+  /**
+   * Llama a la API (SSE) y devuelve el mensaje final. onDelta recibe el texto
+   * acumulado para mostrarlo en vivo mientras se genera. Si la API respondió
+   * JSON (errores de validación 400/500), tira ese error.
+   */
+  async function callPostMeet(
+    body: unknown,
+    onDelta: (partial: string) => void
+  ): Promise<string> {
+    const res = await fetch("/api/post-meet-message", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const ct = res.headers.get("content-type") ?? "";
+    if (!ct.includes("text/event-stream")) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(data.error ?? "Error generando el mensaje");
+    }
+    if (!res.body) throw new Error("Sin respuesta del servidor");
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let full = "";
+    let final: string | null = null;
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const chunks = buffer.split("\n\n");
+      buffer = chunks.pop() ?? "";
+      for (const chunk of chunks) {
+        const line = chunk.split("\n").find((l) => l.startsWith("data: "));
+        if (!line) continue;
+        const evt = JSON.parse(line.slice(6)) as {
+          type: string;
+          text?: string;
+          message?: string;
+          error?: string;
+        };
+        if (evt.type === "delta") {
+          full += evt.text ?? "";
+          onDelta(full);
+        } else if (evt.type === "done") {
+          final = evt.message ?? full;
+        } else if (evt.type === "error") {
+          throw new Error(evt.error ?? "Error generando el mensaje");
+        }
+      }
+    }
+    if (final === null)
+      throw new Error("Se cortó la generación. Probá de nuevo.");
+    return final;
+  }
+
   async function generate() {
     const text = context.trim();
     if (text.length < 30) {
@@ -295,22 +350,15 @@ export function PostMeetWorkspace() {
     setHistory([]);
     setCopied(false);
     try {
-      const res = await fetch("/api/post-meet-message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const reply = await callPostMeet(
+        {
           context: text,
           clientName: clientName.trim(),
           instructions: instructions.trim() || undefined,
           images: images.length ? imagePayload() : undefined,
-        }),
-      });
-      const data = (await res.json()) as { message?: string; error?: string };
-      if (!res.ok || data.error) {
-        toast.error(data.error ?? "Error generando mensaje");
-        return;
-      }
-      const reply = data.message ?? "";
+        },
+        (partial) => setMessage(partial)
+      );
       setMessage(reply);
       // Inicializamos el history conversacional para iterar despues.
       const extra = instructions.trim() ? `\n\nIndicaciones extra:\n${instructions.trim()}` : "";
@@ -345,21 +393,14 @@ export function PostMeetWorkspace() {
     }
     setTweaking(true);
     try {
-      const res = await fetch("/api/post-meet-message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const reply = await callPostMeet(
+        {
           history,
           userMessage: prompt,
           images: images.length ? imagePayload() : undefined,
-        }),
-      });
-      const data = (await res.json()) as { message?: string; error?: string };
-      if (!res.ok || data.error) {
-        toast.error(data.error ?? "Error ajustando mensaje");
-        return;
-      }
-      const reply = data.message ?? "";
+        },
+        (partial) => setMessage(partial)
+      );
       setMessage(reply);
       setHistory((h) => [
         ...h,

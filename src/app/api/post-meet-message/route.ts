@@ -187,7 +187,10 @@ export async function POST(req: Request) {
       try {
         const messageStream = client.messages.stream({
           model: MODEL,
-          max_tokens: 4000,
+          // El thinking comparte presupuesto con el texto: con transcripciones
+          // largas el modelo piensa mucho y 4000 dejaba el mensaje CORTADO a
+          // las pocas palabras. 16k da aire de sobra (el mensaje son ~500 tok).
+          max_tokens: 16384,
           thinking: { type: "adaptive" },
           system: systemPrompt(),
           messages,
@@ -203,9 +206,18 @@ export async function POST(req: Request) {
             send({ type: "delta", text: event.delta.text });
           }
         }
-        await messageStream.finalMessage();
+        const finalMsg = await messageStream.finalMessage();
+        if (finalMsg.stop_reason === "max_tokens") {
+          send({
+            type: "error",
+            error:
+              "El mensaje quedó cortado (transcripción muy larga). Probá con un resumen o una transcripción más corta.",
+          });
+          return;
+        }
         send({ type: "done", message: full.trim() });
       } catch (e) {
+        console.error("[post-meet-message] stream error", e);
         const msg = e instanceof Error ? e.message : "Error inesperado";
         try {
           send({ type: "error", error: msg });

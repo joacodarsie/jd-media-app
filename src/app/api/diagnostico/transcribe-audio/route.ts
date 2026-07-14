@@ -8,7 +8,9 @@ export const dynamic = "force-dynamic";
 
 // Modelo de transcripción: flash estándar (multimodal, acepta audio inline).
 // Es aparte del modelo "live" de la voz de JDmedIA.
-const TRANSCRIBE_MODEL = "gemini-2.5-flash";
+// Alias "-latest": Google retiró gemini-2.5-flash para proyectos nuevos
+// (404 NOT_FOUND); el alias apunta siempre al flash estable vigente.
+const TRANSCRIBE_MODEL = "gemini-flash-latest";
 
 // Formatos de audio que aceptamos (grabados en el navegador o subidos).
 const OK_MIME = new Set([

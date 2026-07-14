@@ -6,11 +6,12 @@ export const runtime = "nodejs";
 export const maxDuration = 120;
 export const dynamic = "force-dynamic";
 
-// Modelo de transcripción: flash estándar (multimodal, acepta audio inline).
-// Es aparte del modelo "live" de la voz de JDmedIA.
+// Modelos de transcripción, en orden de preferencia (multimodales, aceptan
+// audio inline). Es aparte del modelo "live" de la voz de JDmedIA.
 // Alias "-latest": Google retiró gemini-2.5-flash para proyectos nuevos
-// (404 NOT_FOUND); el alias apunta siempre al flash estable vigente.
-const TRANSCRIBE_MODEL = "gemini-flash-latest";
+// (404 NOT_FOUND); el alias apunta siempre al flash estable vigente. Si el
+// flash está saturado (503 UNAVAILABLE), caemos al lite.
+const TRANSCRIBE_MODELS = ["gemini-flash-latest", "gemini-flash-lite-latest"];
 
 // Formatos de audio que aceptamos (grabados en el navegador o subidos).
 const OK_MIME = new Set([
@@ -70,24 +71,33 @@ export async function POST(req: Request) {
     const base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
     const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
 
-    const res = await ai.models.generateContent({
-      model: TRANSCRIBE_MODEL,
-      contents: [
-        {
-          role: "user",
-          parts: [
+    let text = "";
+    let lastErr: unknown = null;
+    for (const model of TRANSCRIBE_MODELS) {
+      try {
+        const res = await ai.models.generateContent({
+          model,
+          contents: [
             {
-              text:
-                "Transcribí este audio en español rioplatense, tal como se dice. " +
-                "Devolvé SOLO la transcripción, sin comentarios, sin comillas y sin encabezados.",
+              role: "user",
+              parts: [
+                {
+                  text:
+                    "Transcribí este audio en español rioplatense, tal como se dice. " +
+                    "Devolvé SOLO la transcripción, sin comentarios, sin comillas y sin encabezados.",
+                },
+                { inlineData: { mimeType, data: base64 } },
+              ],
             },
-            { inlineData: { mimeType, data: base64 } },
           ],
-        },
-      ],
-    });
-
-    const text = (res.text ?? "").trim();
+        });
+        text = (res.text ?? "").trim();
+        if (text) break;
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    if (!text && lastErr) throw lastErr;
     if (!text) {
       return NextResponse.json(
         { error: "No se pudo transcribir el audio (¿se escucha bien?). Probá de nuevo o escribí a mano." },

@@ -3,6 +3,7 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { igMonthlyForReport, paidMonthlyForReport } from "@/lib/social/report";
 import { AGENCY } from "@/lib/agency";
 import type { MonthlyContentPlan } from "@/lib/content-plans/schema";
+import { isPlanOfPastMonth } from "@/lib/content-plans/staleness";
 import { PortalReviewCard } from "@/components/portal-review-card";
 import { PortalContent } from "@/components/portal-content";
 import { PortalIgChart } from "@/components/portal-ig-chart";
@@ -136,9 +137,13 @@ export default async function PortalPage({ params }: { params: { token: string }
   const hayResultados =
     igCells.length > 0 || paidCells.length > 0 || !!aiResultados || igHist.length >= 2;
 
-  const planContent: MonthlyContentPlan | null = plan?.content
-    ? (plan.content as MonthlyContentPlan)
-    : null;
+  // Un plan de un mes ya pasado ("Junio 2026" mirado en julio) confunde: el
+  // cliente lo lee como lo vigente aunque el calendario de abajo ya tenga el
+  // mes nuevo. Si el label nombra un mes anterior, no se muestra.
+  const planContent: MonthlyContentPlan | null =
+    plan?.content && !isPlanOfPastMonth(plan.periodo_label)
+      ? (plan.content as MonthlyContentPlan)
+      : null;
   const upcoming = (pubs ?? []) as UpcomingPub[];
   const toReview = (reviewPubs ?? []) as Array<{
     id: string;

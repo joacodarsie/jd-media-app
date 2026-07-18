@@ -10,6 +10,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { mergeSettings } from "@/lib/coordinacion";
+import { isClientPausedFor } from "@/lib/client-pause";
 
 export interface GeneratedInvoices {
   abonos: number;
@@ -25,7 +26,7 @@ export async function generateInvoicesForPeriod(
     await Promise.all([
       admin
         .from("clients")
-        .select("id, nombre, fecha_inicio, contrato_moneda")
+        .select("id, nombre, fecha_inicio, contrato_moneda, pausas")
         .eq("estado", "activo")
         .eq("es_interno", false),
       admin
@@ -37,12 +38,15 @@ export async function generateInvoicesForPeriod(
       admin.from("agency_settings").select("packs, rates").eq("id", 1).maybeSingle(),
     ]);
 
-  const clients = (clientsRaw ?? []) as {
+  const clients = ((clientsRaw ?? []) as {
     id: string;
     nombre: string;
     fecha_inicio: string | null;
     contrato_moneda: string | null;
-  }[];
+    pausas: string[] | null;
+  }[])
+    // Una cuenta pausada este mes no se factura (retoma sola el mes siguiente).
+    .filter((c) => !isClientPausedFor(c.pausas, periodo));
   const clientById = new Map(clients.map((c) => [c.id, c]));
   const existing = (existingRaw ?? []) as {
     service_id: string | null;

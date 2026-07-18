@@ -68,11 +68,10 @@ export interface AgencyRates {
   diseno_standalone_coord_pct: number;
 
   /**
-   * Puesta en marcha: pago ÚNICO del primer mes que cubre el arranque del
-   * cliente (manual + kit + plantillas, meet de onboarding, grupos de WhatsApp,
-   * accesos y creación de cuentas faltantes, setup de Meta Ads). Se cobra
-   * completo al firmar, cualquier día del mes; reemplaza al viejo "manual_marca"
-   * como cargo único de arranque de cara al cliente.
+   * Puesta en marcha: pago único inicial de arranque. DESACTIVADA (0) desde
+   * 2026-07: se reemplazó por el modelo de "semana 1 sin publicación" (el primer
+   * mes se descuenta una semana de contenido en vez de cobrar un cargo aparte).
+   * Se deja el parámetro por si se reactiva; en 0 no se factura.
    */
   puesta_en_marcha: number;
   /**
@@ -118,7 +117,7 @@ export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
     comision_coord_diseno: 0.05,
     diseno_standalone_disenador_pct: 0.4,
     diseno_standalone_coord_pct: 0.1,
-    puesta_en_marcha: 50000,
+    puesta_en_marcha: 0,
     onboarding_extra_pct: 0,
     plus_primer_mes: 10000,
   },

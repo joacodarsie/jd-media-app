@@ -288,6 +288,34 @@ export async function toggleClientStatus(id: string, currentStatus: string) {
 }
 
 /**
+ * Pausa o despausa un mes puntual del cliente ('YYYY-MM'). Un mes pausado no
+ * genera cobro, ni nómina de equipo, ni cuenta en el panorama de ese mes; la
+ * cuenta sigue activa. Toggle idempotente sobre el array `clients.pausas`.
+ */
+export async function toggleClientPausa(id: string, periodo: string) {
+  await ctx();
+  if (!/^\d{4}-\d{2}$/.test(periodo)) return { error: "Período inválido." };
+  const admin = createAdmin();
+  const { data, error: readErr } = await admin
+    .from("clients")
+    .select("pausas")
+    .eq("id", id)
+    .single();
+  if (readErr) return { error: readErr.message };
+  const actuales: string[] = ((data as { pausas?: string[] | null } | null)?.pausas ?? []) as string[];
+  const pausada = actuales.includes(periodo);
+  const next = pausada
+    ? actuales.filter((p) => p !== periodo)
+    : [...actuales, periodo].sort();
+  const { error } = await admin.from("clients").update({ pausas: next }).eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/clientes");
+  revalidatePath(`/clientes/${id}`);
+  revalidatePath("/finanzas/panorama");
+  return { ok: true, pausada: !pausada };
+}
+
+/**
  * Activa un cliente que estaba en estado "propuesta" (marcó el pago). Lo pasa a
  * "activo" y setea la fecha de inicio = hoy, con lo cual arranca su primer mes:
  * empieza a contar en Finanzas y se dispara la comisión de cierre del comercial

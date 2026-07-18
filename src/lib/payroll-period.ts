@@ -10,6 +10,7 @@ import { nextPeriod } from "./finanzas";
 import { mergeSettings, serviceDeliveryCost, type AgencySettings } from "./coordinacion";
 import { SERVICE_TYPE_LABEL } from "./constants";
 import { computeJornadaSplit } from "./jornada";
+import { isClientPausedFor } from "./client-pause";
 import {
   computeAutoPayroll,
   computeContentPayroll,
@@ -92,7 +93,7 @@ export async function buildPeriodPayroll(
     admin
       .from("clients")
       .select(
-        "id, nombre, cm_id, disenador_id, audiovisual_id, media_buyer_id, coordinador_id, cerrado_por_id, fecha_inicio"
+        "id, nombre, cm_id, disenador_id, audiovisual_id, media_buyer_id, coordinador_id, cerrado_por_id, fecha_inicio, pausas"
       )
       .eq("estado", "activo")
       .eq("es_interno", false),
@@ -139,7 +140,11 @@ export async function buildPeriodPayroll(
   ]);
 
   const settings: AgencySettings = mergeSettings(settingsRow);
-  const clients = (clientsRaw ?? []) as PayrollClient[];
+  // Una cuenta pausada este mes no genera nómina de equipo (CM, contenido,
+  // coordinación ni Leo): se saca del listado y todo lo demás la ignora.
+  const clients = ((clientsRaw ?? []) as PayrollClient[]).filter(
+    (c) => !isClientPausedFor(c.pausas, periodo)
+  );
   const services = (servicesRaw ?? []) as ServiceRow[];
   const users = (usersRaw ?? []) as {
     id: string;

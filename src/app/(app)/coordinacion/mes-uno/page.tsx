@@ -89,16 +89,19 @@ export default async function MesUnoPage() {
             <b>Abono del pack</b> — si entra un día distinto al 1°, se cobra el{" "}
             <b>proporcional</b> de los días restantes del mes.
           </li>
-          <li>
-            <b>Puesta en marcha</b> — pago único de{" "}
-            <b>{ars(r.puesta_en_marcha ?? 0)}</b> al firmar (manual + kit +
-            onboarding + accesos + setup de Meta).
-          </li>
+          {(r.puesta_en_marcha ?? 0) > 0 && (
+            <li>
+              <b>Puesta en marcha</b> — pago único de{" "}
+              <b>{ars(r.puesta_en_marcha ?? 0)}</b> al firmar (manual + kit +
+              onboarding + accesos + setup de Meta).
+            </li>
+          )}
           <li>
             <b>Semana 1 sin publicación</b> — la primera semana es de armado
             (manual, calendario, portadas, biografías). El contenido del pack se
             divide en 4 semanas y el mes 1 se publica el equivalente a{" "}
-            <b>3 semanas</b>. Está en la carta acuerdo.
+            <b>3 semanas</b>. Reemplaza al viejo cargo de puesta en marcha. Está
+            en la carta acuerdo.
           </li>
         </ul>
       </div>
@@ -131,7 +134,7 @@ export default async function MesUnoPage() {
                   <td className="pt-1 text-right tabular-nums">{ars(total1)}</td>
                 </tr>
                 <tr className={pack.precio - total1 < 0 ? "text-red-600" : "text-emerald-600"}>
-                  <td>Bruto mes 1 (sin puesta en marcha)</td>
+                  <td>Bruto mes 1</td>
                   <td className="text-right font-bold tabular-nums">
                     {ars(pack.precio - total1)}
                   </td>
@@ -140,8 +143,10 @@ export default async function MesUnoPage() {
             </table>
             <p className="mt-1 text-[10px] text-muted-foreground">
               Si el lead lo trajo alguien de la agencia, sumar {ars(cdvLead)} (
-              {pctTxt(r.comision_lead_propio ?? 0)}). La puesta en marcha (
-              {ars(r.puesta_en_marcha ?? 0)}) mejora el bruto del mes 1.
+              {pctTxt(r.comision_lead_propio ?? 0)}).
+              {(r.puesta_en_marcha ?? 0) > 0
+                ? ` La puesta en marcha (${ars(r.puesta_en_marcha ?? 0)}) mejora el bruto del mes 1.`
+                : " El mes 1 arranca con una semana de onboarding sin publicación (se descuenta del contenido, no se cobra aparte)."}
             </p>
 
             <h3 className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">

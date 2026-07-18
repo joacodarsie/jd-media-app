@@ -82,6 +82,8 @@ export interface PayrollClient {
   cerrado_por_id: string | null;
   /** Fecha de inicio del cliente: su primer mes es el período de esta fecha. */
   fecha_inicio: string | null;
+  /** Meses pausados ('YYYY-MM'): ese mes la cuenta no genera nómina de equipo. */
+  pausas?: string[] | null;
 }
 
 export interface PayrollService {

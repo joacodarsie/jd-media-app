@@ -7,6 +7,7 @@ import { buildPeriodPayroll } from "@/lib/payroll-period";
 import { getExchangeRates } from "@/lib/exchange";
 import { PanoramaAgencia, type PanoramaData } from "@/components/panorama-agencia";
 import { missingTeam } from "@/lib/team-coverage";
+import { isClientPausedFor } from "@/lib/client-pause";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +37,7 @@ export default async function PanoramaPage({
     buildPeriodPayroll(admin, periodo),
     admin
       .from("clients")
-      .select("id, nombre, coordinador_id, cm_id, disenador_id, audiovisual_id")
+      .select("id, nombre, coordinador_id, cm_id, disenador_id, audiovisual_id, pausas")
       .eq("estado", "activo")
       .eq("es_interno", false),
     admin
@@ -67,6 +68,8 @@ export default async function PanoramaPage({
   let ingresosRecurrentes = 0;
   let ingresosExtraordinarios = 0;
   for (const c of clientsRaw ?? []) {
+    // Cuenta pausada este mes: no cobra ni cuenta en el modelo del panorama.
+    if (isClientPausedFor((c as { pausas?: string[] | null }).pausas, periodo)) continue;
     const ss = svcByClient.get(c.id) ?? [];
     const gestion = ss.find((s) => s.tipo === "gestion_redes" && s.facturacion !== "unico");
     const abono = gestion ? Number(gestion.monto_mensual) || 0 : 0;

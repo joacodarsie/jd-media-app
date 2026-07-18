@@ -39,6 +39,7 @@ import { ClientFormDialog } from "@/components/client-form-dialog";
 import { DeleteClientButton } from "@/components/delete-client-button";
 import { ClientServicesEditor } from "@/components/client-services-editor";
 import { ClientStatusToggle } from "@/components/client-status-toggle";
+import { ClientPauseControl } from "@/components/client-pause-control";
 import { ClientActivateButton } from "@/components/client-activate-button";
 import { ProposalMessageCard } from "@/components/proposal-message-card";
 import { ClientListEditor } from "@/components/client-list-editor";
@@ -520,6 +521,14 @@ export default async function ClientDetail({
                   currentStatus={c.estado}
                   fechaActivado={c.fecha_activado ?? null}
                   fechaInactivado={c.fecha_inactivado ?? null}
+                />
+              )}
+
+              {/* Pausar un mes puntual (solo cuentas activas, solo admin) */}
+              {canEdit && c.estado === "activo" && (
+                <ClientPauseControl
+                  id={c.id}
+                  pausas={((c as { pausas?: string[] | null }).pausas ?? []) as string[]}
                 />
               )}
 

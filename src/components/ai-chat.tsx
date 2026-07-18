@@ -257,26 +257,52 @@ export function AIChat({
           messages: next.map((m) => ({ role: m.role, content: m.content })),
         }),
       });
-      // Si el server cortó/timeoutea, res.json() puede fallar.
-      let data: { reply?: string; error?: string } = {};
-      try {
-        data = await res.json();
-      } catch {
-        data = {
-          error:
-            "El asistente tardó demasiado. Probá un mensaje más corto o usá /jdmedia.",
-        };
-      }
-      if (!res.ok || data.error) {
+      const ct = res.headers.get("content-type") ?? "";
+      if (!ct.includes("text/event-stream")) {
+        // Errores de validación/auth siguen viniendo como JSON.
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
         toast.error(data.error ?? "Error en el chat");
+        return;
+      }
+      if (!res.body) {
+        toast.error("Sin respuesta del servidor");
+        return;
+      }
+      // SSE: status (tools corriendo) → done { reply } | error.
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let reply: string | null = null;
+      let errMsg: string | null = null;
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const chunks = buffer.split("\n\n");
+        buffer = chunks.pop() ?? "";
+        for (const chunk of chunks) {
+          const line = chunk.split("\n").find((l) => l.startsWith("data: "));
+          if (!line) continue;
+          const evt = JSON.parse(line.slice(6)) as {
+            type: string;
+            text?: string;
+            reply?: string;
+            error?: string;
+          };
+          if (evt.type === "done") reply = evt.reply ?? "";
+          else if (evt.type === "error") errMsg = evt.error ?? "Error en el chat";
+        }
+      }
+      if (errMsg !== null || reply === null) {
+        toast.error(
+          errMsg ?? "Se cortó la respuesta. Probá de nuevo o usá /jdmedia."
+        );
       } else {
         setMessages([
           ...next,
           {
             role: "assistant",
-            content: [
-              { type: "text", text: data.reply || "(sin respuesta)" },
-            ],
+            content: [{ type: "text", text: reply || "(sin respuesta)" }],
           },
         ]);
         router.refresh();

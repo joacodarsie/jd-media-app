@@ -11,9 +11,10 @@ export const AGENCY = {
   rol_representante: "Dirección",
   jurisdiccion: "tribunales de Córdoba, Argentina",
   bank: {
-    nombre: "Naranja X",
+    nombre: "Mercado Pago",
     alias: "jdmedia",
-    titular: "Franco Joaquín Darsie",
+    cvu: "0000003100060125198464",
+    titular: "Franco Joaquin Darsie",
     cuil: "20-44607986-8",
   },
   colors: {

@@ -28,7 +28,7 @@ Y en cada \`tema_destacado\` indicás \`red_principal: "instagram"\` y \`redes_r
 **No contés piezas por triplicado.** Si el pack incluye 8 reels, eso son 8 reels únicos que se replican en las 3 redes — no 24 reels.
 
 # Historias (stories)
-Las historias también son parte del plan. El pack define **días con contenido en stories** al mes (ej: 8, 12 o 20). Por cada uno de esos días generá un tema de historia concreto en \`temas_destacados\` con \`formato: "story"\` y \`red_principal: "instagram"\` (las historias NO se replican en TikTok; opcionalmente espejan en Facebook). Las historias sirven para: detrás de escena, encuestas/preguntas, reposteo de reels y posts, recordatorios, ventas directas, prueba social. Distribuilas a lo largo del mes (no todas juntas). Es la CM quien las arma (van incluidas en su tarifa).
+Las historias también son parte del plan. El pack define **días con contenido en stories** al mes (ej: 8, 12 o 20). Por cada uno de esos días generá un tema de historia concreto en \`temas_destacados\` con \`formato: "story"\` y \`red_principal: "instagram"\` (las historias NO se replican en TikTok; opcionalmente espejan en Facebook). Las historias sirven para: detrás de escena, encuestas/preguntas, recordatorios, ventas directas, prueba social. **PROHIBIDO proponer "resubir", "repostear" o "compartir" contenido ya publicado (reels, posts, historias viejas): eso no aporta valor y es contenido mediocre — cada historia es una pieza ORIGINAL que la CM arma con un propósito claro.** Distribuilas a lo largo del mes (no todas juntas). Es la CM quien las arma (van incluidas en su tarifa).
 
 # Objetivo: contenido para crecer y viralizar
 Todo el plan apunta a CRECER la cuenta. Cada formato tiene un para qué distinto, respetalo:
@@ -44,7 +44,8 @@ La \`descripcion\` de cada tema es el brief que ejecuta el equipo de diseño/edi
 - **Historia** → qué muestra y el mecanismo de interacción (encuesta, pregunta, link, recordatorio).
 
 # Reglas duras
-1. **Respetá el pack contratado**: las cantidades en \`cadencia\` por red principal tienen que coincidir EXACTAMENTE con las cuotas del pack (reels, posts, carruseles **y los días de stories**). No infles. Si el pack incluye 8 reels, el plan dice 8 reels en IG (principal), no 12.
+1. **Respetá el pack contratado**: las cantidades en \`cadencia\` por red principal tienen que coincidir EXACTAMENTE con las cuotas del pack (reels, carruseles **y los días de stories**). No infles. Si el pack incluye 8 reels, el plan dice 8 reels en IG (principal), no 12.
+1bis. **NADA de posteos simples**: toda pieza estática se planifica como **CARRUSEL** (aportan más valor al cliente y el algoritmo los premia). El formato \`post\` NO se usa en los planes — si el pack o el historial hablan de "posteos", planificalos como carruseles.
 2. **Respetá el diagnóstico aprobado**: los pilares en \`distribucion_pilares\` tienen que ser EXACTAMENTE los mismos del diagnóstico (mismos nombres, idealmente 4).
 3. **Mirá el historial reciente**: si en los últimos 60 días faltó volumen en un pilar, este plan tiene que corregirlo. Si hay un pilar saturado, bajar peso.
 4. **Mirá lo que ya está planificado**: no propongas temas que ya están agendados.

@@ -213,9 +213,10 @@ export default async function ClientDetail({
     if (totalUnico > 0) partes.push(`Pago único: ARS ${nf(totalUnico)}`);
     partes.push(
       "",
-      "Para dejar todo en marcha, te paso los datos para la transferencia:",
+      `Para dejar todo en marcha, te paso los datos para la transferencia (${AGENCY.bank.nombre}):`,
       `Alias: ${AGENCY.bank.alias}`,
-      `Titular: ${AGENCY.bank.titular}`,
+      `CVU: ${AGENCY.bank.cvu}`,
+      `Nombre: ${AGENCY.bank.titular}`,
       `CUIT/CUIL: ${AGENCY.bank.cuil}`,
       "",
       "Apenas me confirmes el pago, activamos todo y arrancamos 🚀 ¡Cualquier duda, quedo a disposición!"

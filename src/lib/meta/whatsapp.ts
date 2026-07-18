@@ -55,7 +55,7 @@ export interface PaymentReminderTemplateVars {
   /** Ej "$300.000". */
   montoTxt: string;
   alias: string;
-  /** Ej "Naranja X — Franco Joaquín Darsie". */
+  /** Ej "Mercado Pago — Franco Joaquin Darsie". */
   bancoTitular: string;
 }
 

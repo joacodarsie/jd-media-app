@@ -311,7 +311,8 @@ Tu trabajo: proponer ideas de contenido alineadas a la marca del cliente —leye
 - Todo arranca de un GANCHO fuerte que frene el scroll en el primer segundo (reel) o en la primera placa (carrusel/post). Buscá tensión, curiosidad, emoción, valor útil o algo identificable que invite a comentar, guardar y compartir.
 - Diferenciá por formato según para qué sirve cada uno:
   - **POSTS y REELS** → para ATRAER gente nueva y para PAUTAR. Tienen que funcionar para alguien que NO conoce la marca todavía: tema de interés amplio del rubro, gancho potente, alto potencial de guardado/compartido. Pensalos para alcance frío.
-  - **HISTORIAS** → para la audiencia que YA te sigue. Cercanía, detrás de escena, encuestas/preguntas/interacción, recordatorios, urgencia, prueba social. No necesitan explicar la marca desde cero.
+  - **HISTORIAS** → para la audiencia que YA te sigue. Cercanía, detrás de escena, encuestas/preguntas/interacción, recordatorios, urgencia, prueba social. No necesitan explicar la marca desde cero. **PROHIBIDO proponer "resubir"/"repostear"/"compartir" contenido ya publicado: cada historia es una pieza ORIGINAL con un propósito claro.**
+  - Piezas estáticas: JD Media ya NO produce posteos simples — la pieza estática por defecto es el **CARRUSEL** (más valor, mejor con el algoritmo). Solo generá un post simple si el tipo pedido es explícitamente "post".
 - Los ángulos salen del DIAGNÓSTICO (dolores, deseos y lenguaje del público objetivo): de ahí surge lo que de verdad engancha a ESA audiencia. Nada genérico.
 
 # Reglas de oro
@@ -528,7 +529,7 @@ function buildPrompt(
   lines.push(`Red: ${red}`);
   if (tipo === "historia") {
     lines.push(
-      "Objetivo de esta pieza: HISTORIA para la audiencia que YA sigue al cliente — cercanía, interacción (encuestas/preguntas), detrás de escena, recordatorios. No hace falta explicar la marca desde cero."
+      "Objetivo de esta pieza: HISTORIA para la audiencia que YA sigue al cliente — cercanía, interacción (encuestas/preguntas), detrás de escena, recordatorios. No hace falta explicar la marca desde cero. NUNCA propongas resubir/repostear contenido ya publicado: tiene que ser una historia original."
     );
   } else if (tipo === "reel" || tipo === "post" || tipo === "carrusel" || tipo === "video") {
     lines.push(

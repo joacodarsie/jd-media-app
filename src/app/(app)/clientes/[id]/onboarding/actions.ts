@@ -633,7 +633,8 @@ export async function buildPaymentMessage(clientId: string): Promise<
   lines.push("👉 Datos para transferencia:");
   lines.push(`Banco: ${AGENCY.bank.nombre}`);
   lines.push(`Alias: ${AGENCY.bank.alias}`);
-  lines.push(`Titular: ${AGENCY.bank.titular}`);
+  lines.push(`CVU: ${AGENCY.bank.cvu}`);
+  lines.push(`Nombre: ${AGENCY.bank.titular}`);
   lines.push(`CUIL: ${AGENCY.bank.cuil}`);
   lines.push("");
   lines.push("Una vez realizado el pago, el servicio queda vigente y arrancamos 🚀");

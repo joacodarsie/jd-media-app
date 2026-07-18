@@ -58,16 +58,17 @@ export function buildPaymentReminder(c: ReminderClient, periodo: string): string
   const { monto, moneda } = reminderAmount(c);
   const mes = periodLabel(periodo); // ej. "junio de 2026"
   const montoTxt = monto > 0 ? fmtCurrency(monto, moneda) : "(monto a confirmar)";
-  const { alias, nombre: banco, titular } = AGENCY.bank;
+  const { alias, cvu, nombre: banco, titular } = AGENCY.bank;
 
   return [
     `¡Hola ${saludo(c)}! Te escribo de ${AGENCY.brand}.`,
     ``,
     `Arrancamos con ${mes} y te paso el recordatorio de tu abono: *${montoTxt}*.`,
     ``,
-    `Podés transferir a:`,
+    `Podés transferir por ${banco} a:`,
     `• Alias: *${alias}*`,
-    `• ${banco} — ${titular}`,
+    `• CVU: ${cvu}`,
+    `• Nombre: ${titular}`,
     ``,
     `Cuando lo tengas, mandame el comprobante y seguimos a full con tu contenido. ¡Gracias!`,
   ].join("\n");
@@ -82,7 +83,7 @@ export function buildGroupedPaymentReminder(clients: ReminderClient[], periodo: 
   if (clients.length === 1) return buildPaymentReminder(clients[0], periodo);
 
   const mes = periodLabel(periodo);
-  const { alias, nombre: banco, titular } = AGENCY.bank;
+  const { alias, cvu, nombre: banco, titular } = AGENCY.bank;
 
   const items = clients.map((c) => ({ nombre: c.nombre, ...reminderAmount(c) }));
 
@@ -107,9 +108,10 @@ export function buildGroupedPaymentReminder(clients: ReminderClient[], periodo: 
   if (totalTxt) lines.push(`Total: *${totalTxt}*`);
   lines.push(
     ``,
-    `Podés transferir a:`,
+    `Podés transferir por ${banco} a:`,
     `• Alias: *${alias}*`,
-    `• ${banco} — ${titular}`,
+    `• CVU: ${cvu}`,
+    `• Nombre: ${titular}`,
     ``,
     `Cuando lo tengas, mandame el comprobante y seguimos a full con tu contenido. ¡Gracias!`
   );

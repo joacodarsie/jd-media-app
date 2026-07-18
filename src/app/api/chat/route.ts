@@ -8,8 +8,9 @@ import { AI_MODEL_FAST } from "@/lib/ai/models";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Hobby plan max es 60s. Con tools puede acercarse al limite.
-export const maxDuration = 60;
+// Consultas con varias tools superaban los 60s del gateway y el popup moría
+// con error genérico → mismo transporte SSE que jdmedia/chat y post-meet.
+export const maxDuration = 300;
 
 const client = new Anthropic();
 
@@ -137,55 +138,91 @@ export async function POST(req: Request) {
     },
   ];
 
-  // Tool-use loop. Max 6 iterations to avoid runaway.
-  let iter = 0;
-  let finalText = "";
-  while (iter < 6) {
-    iter++;
-    let response: Anthropic.Message;
-    try {
-      response = await client.messages.create({
-        model: MODEL,
-        max_tokens: 4096,
-        system,
-        tools: TOOLS,
-        messages,
-        // Haiku 4.5 (AI_MODEL_FAST) no soporta thinking adaptivo ni extendido:
-        // mandarlo devuelve 400. El popup no necesita razonamiento profundo.
-      });
-    } catch (e) {
-      console.error("[chat] anthropic error", e);
-      return NextResponse.json({ error: friendlyAiError(e) }, { status: 500 });
-    }
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (obj: unknown) =>
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+      const heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(`: ping\n\n`));
+        } catch {
+          /* cerrado */
+        }
+      }, 10_000);
 
-    // Append assistant turn verbatim
-    messages.push({ role: "assistant", content: response.content });
+      try {
+        // Tool-use loop. Max 6 iterations to avoid runaway.
+        let iter = 0;
+        let finalText = "";
+        while (iter < 6) {
+          iter++;
+          const response: Anthropic.Message = await client.messages.create({
+            model: MODEL,
+            max_tokens: 4096,
+            system,
+            tools: TOOLS,
+            messages,
+            // Haiku 4.5 (AI_MODEL_FAST) no soporta thinking adaptivo ni
+            // extendido: mandarlo devuelve 400.
+          });
 
-    // Collect any text blocks emitted this turn
-    const turnText = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("\n");
-    if (turnText) finalText = turnText;
+          // Append assistant turn verbatim
+          messages.push({ role: "assistant", content: response.content });
 
-    if (response.stop_reason !== "tool_use") break;
+          // Collect any text blocks emitted this turn
+          const turnText = response.content
+            .filter((b): b is Anthropic.TextBlock => b.type === "text")
+            .map((b) => b.text)
+            .join("\n");
+          if (turnText) finalText = turnText;
 
-    // Execute every tool_use block; aggregate results into one user message
-    const toolUses = response.content.filter(
-      (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
-    );
-    const toolResults: Anthropic.ToolResultBlockParam[] = [];
-    for (const tu of toolUses) {
-      const res = await runTool(tu.name, tu.input as Record<string, unknown>, me.id);
-      toolResults.push({
-        type: "tool_result",
-        tool_use_id: tu.id,
-        content: JSON.stringify(res).slice(0, 8000),
-        is_error: !res.ok,
-      });
-    }
-    messages.push({ role: "user", content: toolResults });
-  }
+          if (response.stop_reason !== "tool_use") break;
 
-  return NextResponse.json({ reply: finalText });
+          send({ type: "status", text: "Consultando datos…" });
+
+          // Execute every tool_use block; aggregate results into one user message
+          const toolUses = response.content.filter(
+            (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
+          );
+          const toolResults: Anthropic.ToolResultBlockParam[] = [];
+          for (const tu of toolUses) {
+            const res = await runTool(tu.name, tu.input as Record<string, unknown>, me.id);
+            toolResults.push({
+              type: "tool_result",
+              tool_use_id: tu.id,
+              content: JSON.stringify(res).slice(0, 8000),
+              is_error: !res.ok,
+            });
+          }
+          messages.push({ role: "user", content: toolResults });
+        }
+
+        send({ type: "done", reply: finalText });
+      } catch (e) {
+        console.error("[chat] anthropic error", e);
+        try {
+          send({ type: "error", error: friendlyAiError(e) });
+        } catch {
+          /* cerrado */
+        }
+      } finally {
+        clearInterval(heartbeat);
+        try {
+          controller.close();
+        } catch {
+          /* cerrado */
+        }
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    },
+  });
 }

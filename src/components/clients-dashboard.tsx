@@ -55,17 +55,22 @@ export function ClientsDashboard({
   clients,
   tasks,
   upcomingPubs = [],
+  teams = [],
 }: {
   clients: ClientRow[];
   tasks: TaskWithRels[];
   upcomingPubs?: UpcomingPub[];
   /** Reservado: la pagina de clientes pasa este flag pero todavia no hay UI sensible aca. */
   canSeeFinancials?: boolean;
+  /** Equipos de trabajo (para filtrar/agrupar la cartera por equipo). */
+  teams?: { id: string; nombre: string }[];
 }) {
   const [q, setQ] = useState("");
   const [quick, setQuick] = useState<Quick>("activos");
   const [pack, setPack] = useState<string>("__all__");
   const [resp, setResp] = useState<string>("__all__");
+  const [equipo, setEquipo] = useState<string>("__all__");
+  const [porEquipo, setPorEquipo] = useState(false);
 
   useEffect(() => {
     const v = localStorage.getItem("jd:clientes:quick") as Quick | null;
@@ -125,10 +130,13 @@ export function ClientsDashboard({
       if (pack !== "__all__" && c.pack !== pack) return false;
       if (resp !== "__all__" && (c as { cm_id?: string | null }).cm_id !== resp)
         return false;
+      const tid = (c as { team_id?: string | null }).team_id ?? null;
+      if (equipo === "__none__" && tid !== null) return false;
+      if (equipo !== "__all__" && equipo !== "__none__" && tid !== equipo) return false;
       if (q && !c.nombre.toLowerCase().includes(q.toLowerCase())) return false;
       return true;
     });
-  }, [realClients, quick, pack, resp, q]);
+  }, [realClients, quick, pack, resp, equipo, q]);
 
   const counts = useMemo(
     () => ({
@@ -195,6 +203,29 @@ export function ClientsDashboard({
             <option key={id} value={id}>{n}</option>
           ))}
         </select>
+        {teams.length > 0 && (
+          <>
+            <select
+              value={equipo}
+              onChange={(e) => setEquipo(e.target.value)}
+              className="h-9 rounded-md border bg-background px-2 text-sm"
+            >
+              <option value="__all__">Todos los equipos</option>
+              {teams.map((t) => (
+                <option key={t.id} value={t.id}>{t.nombre}</option>
+              ))}
+              <option value="__none__">Sin equipo</option>
+            </select>
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={porEquipo}
+                onChange={(e) => setPorEquipo(e.target.checked)}
+              />
+              Agrupar por equipo
+            </label>
+          </>
+        )}
         <span className="ml-auto text-xs text-muted-foreground">
           {filtered.length} cliente{filtered.length === 1 ? "" : "s"}
         </span>
@@ -205,6 +236,31 @@ export function ClientsDashboard({
           <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center text-sm text-muted-foreground">
             No hay clientes con esos filtros.
           </div>
+        ) : porEquipo && teams.length > 0 ? (
+          // Agrupado: una sección por equipo + "Sin equipo" al final.
+          [...teams, { id: "__none__", nombre: "Sin equipo" }].map((t) => {
+            const propios = filtered.filter((c) => {
+              const tid = (c as { team_id?: string | null }).team_id ?? null;
+              return t.id === "__none__" ? tid === null : tid === t.id;
+            });
+            if (propios.length === 0) return null;
+            return (
+              <div key={t.id} className="space-y-2 pt-1">
+                <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t.nombre} · {propios.length}
+                </h2>
+                {propios.map((c) => (
+                  <ClientCard
+                    key={c.id}
+                    client={c}
+                    tasks={byClient.get(c.id) ?? []}
+                    nextPub={pubByClient.get(c.id) ?? null}
+                    pubsTotal={pubCountByClient.get(c.id) ?? 0}
+                  />
+                ))}
+              </div>
+            );
+          })
         ) : (
           filtered.map((c) => (
             <ClientCard

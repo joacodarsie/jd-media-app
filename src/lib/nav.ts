@@ -98,7 +98,7 @@ export const NAV_GROUPS: NavGroup[] = [
       // Documentos agrupa: Documentos, Procesos, Templates y Agencia (pestañas).
       { href: "/documentos", label: "Documentos", icon: "FolderOpen" },
       { href: "/ayuda", label: "Ayuda", icon: "BookOpen" },
-      { href: "/novedades", label: "Novedades", icon: "Megaphone" },
+      { href: "/portal", label: "Portal", icon: "Megaphone" },
     ],
   },
   {

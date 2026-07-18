@@ -24,6 +24,7 @@ import { dueState } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { TaskList } from "@/components/task-list";
 import { HelpTrigger } from "@/components/help-trigger";
+import { DashboardAvisos } from "@/components/dashboard-avisos";
 
 export const dynamic = "force-dynamic";
 
@@ -102,6 +103,8 @@ export default async function DashboardPage() {
     { data: delegatedRaw },
     { data: recentNotifsRaw },
     { data: myMeetingsRaw },
+    { data: portalNoticesRaw },
+    { data: portalReadsRaw },
   ] = await Promise.all([
     // Genera notifs "vencida"/"proxima a vencer" en paralelo. Antes corria en
     // el layout en CADA nav (~10ms x nav). Ahora solo al entrar al dashboard.
@@ -153,7 +156,24 @@ export default async function DashboardPage() {
       .gte("starts_at", startOfDay.toISOString())
       .lte("starts_at", inAWeek.toISOString())
       .order("starts_at", { ascending: true }),
+    // Avisos del Portal (RLS filtra los que me tocan; sin migración 0126 → null).
+    supabase
+      .from("portal_notices")
+      .select("id, titulo, cuerpo, created_at")
+      .order("created_at", { ascending: false })
+      .limit(10),
+    supabase
+      .from("portal_notice_reads")
+      .select("notice_id")
+      .eq("user_id", user.id),
   ]);
+
+  const portalReadIds = new Set(
+    ((portalReadsRaw ?? []) as { notice_id: string }[]).map((r) => r.notice_id)
+  );
+  const avisosSinLeer = (
+    (portalNoticesRaw ?? []) as { id: string; titulo: string; cuerpo: string; created_at: string }[]
+  ).filter((n) => !portalReadIds.has(n.id));
 
   const hasCalendarConnections = (calConns ?? []).length > 0;
   const myClientIds = (myClients ?? []).map((c) => c.id);
@@ -459,6 +479,15 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Avisos importantes del Portal sin leer */}
+      <DashboardAvisos
+        avisos={avisosSinLeer.map((a) => ({
+          id: a.id,
+          titulo: a.titulo,
+          cuerpo: a.cuerpo,
+        }))}
+      />
 
       {/* Próxima reunión / evento destacado */}
       {nextEvent && (

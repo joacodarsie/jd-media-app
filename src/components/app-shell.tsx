@@ -199,7 +199,7 @@ function SidebarContent({
             : false;
           const groupBadge = group.items.reduce((sum, i) => {
             const raw = badges[i.href] ?? 0;
-            const b = i.href === "/novedades" && novedadesAlreadySeen ? 0 : raw;
+            const b = i.href === "/portal" && novedadesAlreadySeen ? 0 : raw;
             return sum + b;
           }, 0);
           return (
@@ -228,7 +228,7 @@ function SidebarContent({
               const isPending = pendingHref === item.href && !active;
               const rawBadge = badges[item.href] ?? 0;
               const badge =
-                item.href === "/novedades" && novedadesAlreadySeen ? 0 : rawBadge;
+                item.href === "/portal" && novedadesAlreadySeen ? 0 : rawBadge;
               return (
                 <Link
                   key={item.href}

@@ -12,11 +12,12 @@ export const dynamic = "force-dynamic";
 export default async function ContenidosPage({
   searchParams,
 }: {
-  searchParams?: { cliente?: string };
+  searchParams?: { cliente?: string; equipo?: string };
 }) {
   const me = await requireUser();
   const supabase = createClient();
   const clienteFiltro = searchParams?.cliente ?? undefined;
+  const equipoFiltro = searchParams?.equipo ?? undefined;
 
   // CM / diseño / audiovisual: solo ven las cuentas que llevan.
   // Staff (admin/coordinador) → null = ven todas.
@@ -56,9 +57,28 @@ export default async function ContenidosPage({
 
   // Restringir también la lista de clientes (filtros/combobox) a las cuentas
   // visibles para el usuario.
-  const clients = myClientIds
+  let clients = myClientIds
     ? allClients.filter((c) => myClientIds.includes(c.id))
     : allClients;
+
+  // Equipos de trabajo: pills para filtrar el calendario por equipo.
+  // (Si la migración 0126 no está aplicada, queda vacío y no se muestra.)
+  const [{ data: teamsRaw }, { data: teamClientsRaw }] = await Promise.all([
+    supabase.from("teams").select("id, nombre").order("orden"),
+    supabase.from("clients").select("id, team_id").not("team_id", "is", null),
+  ]);
+  const teams = (teamsRaw ?? []) as { id: string; nombre: string }[];
+  const teamByClient = new Map(
+    ((teamClientsRaw ?? []) as { id: string; team_id: string }[]).map((c) => [c.id, c.team_id])
+  );
+  let visiblePubs = pubs ?? [];
+  if (equipoFiltro && teams.some((t) => t.id === equipoFiltro)) {
+    clients = clients.filter((c) => teamByClient.get(c.id) === equipoFiltro);
+    const ids = new Set(clients.map((c) => c.id));
+    visiblePubs = visiblePubs.filter((p) =>
+      ids.has((p as { cliente_id: string }).cliente_id)
+    );
+  }
 
   // Map: publication_id → cantidad de comentarios sin ver del cliente
   const unseenByPub: Record<string, number> = {};
@@ -100,8 +120,27 @@ export default async function ContenidosPage({
           esa persona.
         </DismissibleHint>
       </div>
+      {teams.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          <Link
+            href="/contenidos"
+            className={`rounded-full border px-3 py-1 text-xs font-medium ${!equipoFiltro ? "border-foreground bg-foreground text-background" : "bg-background hover:bg-accent"}`}
+          >
+            Todos los equipos
+          </Link>
+          {teams.map((t) => (
+            <Link
+              key={t.id}
+              href={`/contenidos?equipo=${t.id}`}
+              className={`rounded-full border px-3 py-1 text-xs font-medium ${equipoFiltro === t.id ? "border-foreground bg-foreground text-background" : "bg-background hover:bg-accent"}`}
+            >
+              {t.nombre}
+            </Link>
+          ))}
+        </div>
+      )}
       <PublicationsMonth
-        publications={(pubs ?? []) as PublicationWithRels[]}
+        publications={visiblePubs as PublicationWithRels[]}
         clients={clients}
         users={users}
         unseenByPub={unseenByPub}

@@ -21,10 +21,12 @@ export function equipoTabs(rol: UserRole): SectionTab[] {
 /** Pestañas de Coordinación (solo admin). */
 export const coordinacionTabs: SectionTab[] = [
   { href: "/coordinacion", label: "Panel" },
+  { href: "/coordinacion/equipos", label: "Equipos" },
   { href: "/coordinacion/riesgo", label: "Riesgo" },
   { href: "/coordinacion/comercial", label: "Comercial" },
   { href: "/coordinacion/sueldos", label: "Sueldos" },
   { href: "/coordinacion/jornadas", label: "Jornadas" },
+  { href: "/coordinacion/mes-uno", label: "Mes 1" },
 ];
 
 /** Pestañas de Conocimiento. */

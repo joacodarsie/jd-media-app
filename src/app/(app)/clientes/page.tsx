@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Plus } from "lucide-react";
 import { requireUser, isStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -60,6 +61,13 @@ export default async function ClientesPage() {
         : Promise.resolve({ data: [] as never[] }),
     ]);
 
+  // Equipos de trabajo (si la migración 0126 no está, queda vacío).
+  const { data: teamsRaw } = await supabase
+    .from("teams")
+    .select("id, nombre")
+    .order("orden");
+  const teams = (teamsRaw ?? []) as { id: string; nombre: string }[];
+
   // Equipo faltante por cuenta (según servicios contratados): CM/diseño/edición
   // sin asignar inflan el margen. Solo se calcula para staff.
   const faltaEquipoByClient = new Map<string, string[]>();
@@ -121,15 +129,23 @@ export default async function ClientesPage() {
           </p>
         </div>
         {isAdmin && (
-          <ClientFormDialog
-            mode="create"
-            users={users}
-            trigger={
-              <Button>
-                <Plus className="mr-2 h-4 w-4" /> Nuevo cliente
-              </Button>
-            }
-          />
+          <div className="flex items-center gap-2">
+            <Link
+              href="/coordinacion/equipos"
+              className="rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
+            >
+              👥 Equipos
+            </Link>
+            <ClientFormDialog
+              mode="create"
+              users={users}
+              trigger={
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" /> Nuevo cliente
+                </Button>
+              }
+            />
+          </div>
         )}
       </div>
       <ClientsDashboard
@@ -137,6 +153,7 @@ export default async function ClientesPage() {
         tasks={visibleTasks as TaskWithRels[]}
         upcomingPubs={visiblePubs as never}
         canSeeFinancials={isAdmin}
+        teams={teams}
       />
     </div>
   );

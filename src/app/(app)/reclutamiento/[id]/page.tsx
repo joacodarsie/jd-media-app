@@ -12,6 +12,10 @@ import {
   RecruitmentCandidates,
   type Candidate,
 } from "@/components/recruitment-candidates";
+import {
+  RecruitmentPipeline,
+  type PipelineCandidate,
+} from "@/components/recruitment-pipeline";
 import { buildAreaProfiles } from "@/lib/recruitment/area-profile";
 import { areaLabel } from "@/lib/recruitment/areas";
 
@@ -45,6 +49,27 @@ export default async function BusquedaPage({ params }: { params: { id: string } 
     .order("fit_score", { ascending: false, nullsFirst: false });
 
   const candidates = (cand ?? []) as Candidate[];
+
+  // Pipeline de selección (fases + entrevistas). Si la migración 0126 no está
+  // aplicada, la query falla en silencio y la sección no se muestra.
+  const [{ data: pipelineRaw }, { data: searchExtra }] = await Promise.all([
+    admin
+      .from("recruitment_candidates")
+      .select(
+        "id, nombre, fase, fit_score, entrevista_transcript, entrevista_notas, entrevista_analisis"
+      )
+      .eq("search_id", s.id)
+      .order("fit_score", { ascending: false, nullsFirst: false }),
+    admin
+      .from("recruitment_searches")
+      .select("analisis_comparativo")
+      .eq("id", s.id)
+      .maybeSingle(),
+  ]);
+  const pipelineCandidates = (pipelineRaw ?? []) as PipelineCandidate[];
+  const analisisComparativo =
+    (searchExtra as { analisis_comparativo?: string | null } | null)
+      ?.analisis_comparativo ?? null;
 
   // ¿Hay casilla de Gmail conectada? (para mostrar "Traer de Gmail")
   const { data: gm } = await admin
@@ -126,6 +151,24 @@ export default async function BusquedaPage({ params }: { params: { id: string } 
         por asunto/fecha en la búsqueda). La IA lee cada uno, lo puntúa según el
         perfil y te deja filtrar por Córdoba, experiencia y aptitud.
       </div>
+
+      {pipelineCandidates.length > 0 && (
+        <div className="space-y-3">
+          <div>
+            <h2 className="text-lg font-bold">Proceso de selección</h2>
+            <p className="text-sm text-muted-foreground">
+              Fases del proceso: pool → entrevistado → 2ª instancia → prueba
+              paga → contratado. Cargá la transcripción de cada entrevista y
+              compará candidatos con IA.
+            </p>
+          </div>
+          <RecruitmentPipeline
+            searchId={s.id}
+            candidates={pipelineCandidates}
+            analisisComparativo={analisisComparativo}
+          />
+        </div>
+      )}
 
       <RecruitmentCandidates searchId={s.id} candidates={candidates} />
     </div>

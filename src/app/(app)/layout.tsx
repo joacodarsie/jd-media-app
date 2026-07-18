@@ -72,10 +72,23 @@ export default async function AppLayout({
   const showNovedadesBadge = hasRecentChanges(14);
   const novedadesLatestDate = latestEntryDate();
 
+  // Avisos del Portal sin leer (si la migración 0126 no está, queda 0).
+  const [{ data: noticeIdsRaw }, { data: myReadsRaw }] = await Promise.all([
+    supabase.from("portal_notices").select("id"),
+    supabase.from("portal_notice_reads").select("notice_id").eq("user_id", user.id),
+  ]);
+  const readIds = new Set(
+    ((myReadsRaw ?? []) as { notice_id: string }[]).map((r) => r.notice_id)
+  );
+  const unreadAvisos = ((noticeIdsRaw ?? []) as { id: string }[]).filter(
+    (n) => !readIds.has(n.id)
+  ).length;
+
   const badges: Record<string, number> = {
     "/chat": chatUnreadNum,
     "/tareas": taskUnreadCount ?? 0,
-    "/novedades": showNovedadesBadge ? 1 : 0,
+    // Portal: priorizan los avisos sin leer; si no hay, el puntito de novedades.
+    "/portal": unreadAvisos > 0 ? unreadAvisos : showNovedadesBadge ? 1 : 0,
   };
 
   const isLiveOwner =
@@ -132,7 +145,7 @@ export default async function AppLayout({
       bell={bell}
       quickLinks={(links ?? []) as QuickLinkRow[]}
       badges={badges}
-      novedadesLatestDate={novedadesLatestDate}
+      novedadesLatestDate={unreadAvisos > 0 ? null : novedadesLatestDate}
       isLiveOwner={isLiveOwner}
     >
       <RealtimeBadgesSync userId={user.id} />

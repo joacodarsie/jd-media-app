@@ -183,9 +183,12 @@ export function computeOnboardingExtras(
   periodo: string,
   fallbackMediaBuyerId: string | null
 ): Map<string, PayrollLine[]> {
-  const pct = rates.onboarding_extra_pct ?? 0;
+  // Modelo FNA 2026-07: plus FIJO por persona el primer mes (antes era un %
+  // de la tarifa). Si una config vieja no tiene el fijo, cae al % legacy.
+  const plus = rates.plus_primer_mes ?? 0;
+  const pct = plus > 0 ? 0 : rates.onboarding_extra_pct ?? 0;
   const out = new Map<string, PayrollLine[]>();
-  if (pct <= 0) return out;
+  if (plus <= 0 && pct <= 0) return out;
 
   const byClient = new Map<string, PayrollService[]>();
   for (const s of services) {
@@ -205,24 +208,30 @@ export function computeOnboardingExtras(
     if (!gestion || gestion.costo_override != null) continue; // sin gestión o acuerdo fijo
     const pack = (gestion.pack ?? "Personalizado") as RatePack;
 
-    const cmExtra = Math.round((rates.cm[pack] ?? 0) * pct);
+    const cmExtra = plus > 0 ? plus : Math.round((rates.cm[pack] ?? 0) * pct);
     if (cmExtra > 0) {
       add(c.cm_id, {
         clienteId: c.id,
         cliente: c.nombre,
-        concepto: `Onboarding CM · +${Math.round(pct * 100)}% arranque`,
+        concepto:
+          plus > 0
+            ? `Onboarding CM · plus 1er mes`
+            : `Onboarding CM · +${Math.round(pct * 100)}% arranque`,
         monto: cmExtra,
         kind: "onboarding",
       });
     }
 
     if (gestion.media_buyer_aplica !== false) {
-      const mbExtra = Math.round(mbCost(pack, rates) * pct);
+      const mbExtra = plus > 0 ? plus : Math.round(mbCost(pack, rates) * pct);
       if (mbExtra > 0) {
         add(c.media_buyer_id ?? fallbackMediaBuyerId, {
           clienteId: c.id,
           cliente: c.nombre,
-          concepto: `Onboarding Paid Media · +${Math.round(pct * 100)}% arranque`,
+          concepto:
+            plus > 0
+              ? `Onboarding Paid Media · plus 1er mes`
+              : `Onboarding Paid Media · +${Math.round(pct * 100)}% arranque`,
           monto: mbExtra,
           kind: "onboarding",
         });

@@ -284,6 +284,10 @@ function JornadaDialog({
                 onChange={(e) => setMonto(Number(e.target.value))}
                 placeholder="$"
               />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Tarifa: $50.000 la 1ª hora + $25.000 por hora extra + $25.000 de
+                viáticos (1 hora = $75.000).
+              </p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">

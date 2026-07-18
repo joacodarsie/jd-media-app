@@ -297,7 +297,7 @@ describe("computeDesignCoordinationLines", () => {
 describe("computeOnboardingExtras", () => {
   const periodo = "2026-08";
 
-  it("suma 25% a CM y Paid Media solo el primer mes de la cuenta", () => {
+  it("suma el plus fijo del 1er mes a CM y Paid Media (modelo FNA)", () => {
     const out = computeOnboardingExtras(
       [cliente({ cm_id: "cm1", media_buyer_id: "mb1", fecha_inicio: "2026-08-20" })],
       [servicio({ pack: "Presencia" })],
@@ -305,8 +305,8 @@ describe("computeOnboardingExtras", () => {
       periodo,
       null
     );
-    expect(out.get("cm1")?.[0].monto).toBe(Math.round(r.cm.Presencia * r.onboarding_extra_pct));
-    expect(out.get("mb1")?.[0].monto).toBe(Math.round(r.media_buyer.Presencia * r.onboarding_extra_pct));
+    expect(out.get("cm1")?.[0].monto).toBe(r.plus_primer_mes);
+    expect(out.get("mb1")?.[0].monto).toBe(r.plus_primer_mes);
   });
 
   it("no aplica si la cuenta no arrancó en el período", () => {

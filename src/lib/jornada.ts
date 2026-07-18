@@ -1,6 +1,12 @@
 /**
- * Reparto de una jornada de producción. Modelo (desde 2026-06):
- *  - El cliente abona el total (default 75.000).
+ * Reparto de una jornada de producción. Modelo (desde 2026-06; precios FNA
+ * 2026-07):
+ *  - PRECIO al cliente: $50.000 la hora de producción (van 2 personas con
+ *    micrófonos, celulares y guiones a grabar el contenido del mes) +
+ *    $25.000 por cada hora extra + viáticos.
+ *  - El default de $75.000 = 1 hora ($50.000) + viáticos ($25.000). Si la
+ *    jornada dura más, se edita el monto: total = 50.000 + 25.000×(horas−1)
+ *    + viáticos.
  *  - 25.000 son viáticos, repartidos en partes iguales entre quienes van.
  *  - El resto (total - viáticos) se reparte: 50% quien dirige, 30% el
  *    acompañante, 20% la agencia.
@@ -9,6 +15,8 @@
  * En `production_sessions.asistentes`, por convención: [0] = director/a,
  * [1] = acompañante (opcional). No necesita columnas nuevas.
  */
+export const JORNADA_PRECIO_HORA = 50000;
+export const JORNADA_PRECIO_HORA_EXTRA = 25000;
 export const JORNADA_VIATICOS = 25000;
 export const JORNADA_MONTO_DEFAULT = 75000;
 export const JORNADA_PCT_DIRECTOR = 0.5;

@@ -323,9 +323,18 @@ export async function buildPeriodPayroll(
   );
   if (coordGeneralPct > 0 && coordGeneral) {
     const clienteIds = new Set(clients.map((c) => c.id));
+    // Cuentas con precio PERSONALIZADO (Boxescar, Azotea, Doctor, Botineta)
+    // quedan afuera del 5% de coordinación general — modelo FNA: en esas
+    // cuentas no hay línea de Leo. Se detecta por el pack de gestión de redes.
+    const personalizados = new Set(
+      services
+        .filter((s) => s.tipo === "gestion_redes" && (s.pack ?? "") === "Personalizado")
+        .map((s) => s.cliente_id)
+    );
     let facturacionTotal = 0;
     for (const s of services) {
       if (!clienteIds.has(s.cliente_id)) continue; // solo cuentas reales (no internas)
+      if (personalizados.has(s.cliente_id)) continue;
       const esUnico = (s.facturacion ?? "mensual") === "unico";
       if (esUnico && (s.created_at ?? "").slice(0, 7) !== periodo) continue;
       facturacionTotal += Number(s.monto_mensual) || 0;

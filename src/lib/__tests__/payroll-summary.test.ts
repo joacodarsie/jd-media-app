@@ -85,11 +85,10 @@ describe("payModelRules", () => {
   it("escribe las reglas con las tarifas vigentes", () => {
     const rules = payModelRules(DEFAULT_AGENCY_SETTINGS);
     const diseno = rules.find((r) => r.key === "diseno")!;
-    expect(diseno.regla).toContain("$10.000");
+    expect(diseno.regla).toContain("$8.000");
     expect(diseno.regla).toContain("$2.000");
 
     const comercial = rules.find((r) => r.key === "comercial")!;
-    expect(comercial.regla).toContain("$50.000");
     expect(comercial.regla).toContain("10%");
   });
 
@@ -106,7 +105,11 @@ describe("payModelRules", () => {
   it("avisa cuando el extra de onboarding está apagado", () => {
     const settings = {
       ...DEFAULT_AGENCY_SETTINGS,
-      rates: { ...DEFAULT_AGENCY_SETTINGS.rates, onboarding_extra_pct: 0 },
+      rates: {
+        ...DEFAULT_AGENCY_SETTINGS.rates,
+        onboarding_extra_pct: 0,
+        plus_primer_mes: 0,
+      },
     };
     const onboarding = payModelRules(settings).find((r) => r.key === "onboarding")!;
     expect(onboarding.regla).toContain("Desactivado");
@@ -125,7 +128,7 @@ describe("packPayoutBreakdown", () => {
     expect(presencia.diseno).toBe(4 * r.diseno_pieza + 4 * r.portada_reel);
     expect(presencia.edicion).toBe(4 * r.edicion_reel);
     expect(presencia.pauta).toBe(50000);
-    expect(presencia.coordinacion).toBe(35000); // 10% de 350.000
+    expect(presencia.coordinacion).toBe(40000); // 10% de 400.000
     expect(presencia.total).toBe(
       presencia.cm +
         presencia.diseno +

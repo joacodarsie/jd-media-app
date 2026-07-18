@@ -171,7 +171,8 @@ export function payModelRules(settings: AgencySettings): PayRule[] {
   const packs = settings.packs.map((p) => p.id);
   const escalera = (tabla: Record<string, number>) =>
     packs.map((id) => `${id} ${ars(tabla[id] ?? 0)}`).join(" · ");
-  const onbPct = r.onboarding_extra_pct ?? 0;
+  const onbPlus = r.plus_primer_mes ?? 0;
+  const onbPct = onbPlus > 0 ? 0 : r.onboarding_extra_pct ?? 0;
   const manualBonus = Math.round((r.manual_marca ?? 0) * (r.comision_coord_diseno ?? 0));
   const comercialFijo = r.comercial_fijo ?? 0;
 
@@ -183,9 +184,11 @@ export function payModelRules(settings: AgencySettings): PayRule[] {
       detalles: [
         "Las historias van incluidas en esa tarifa: no se pagan aparte.",
         "Se cobra todos los meses mientras la cuenta esté activa, produzca lo que produzca.",
-        onbPct > 0
-          ? `El primer mes de una cuenta nueva cobra ${pct(onbPct)} más por el arranque.`
-          : "",
+        onbPlus > 0
+          ? `El primer mes de una cuenta nueva cobra un plus fijo de ${ars(onbPlus)} por el arranque.`
+          : onbPct > 0
+            ? `El primer mes de una cuenta nueva cobra ${pct(onbPct)} más por el arranque.`
+            : "",
       ].filter(Boolean),
     },
     {
@@ -232,10 +235,11 @@ export function payModelRules(settings: AgencySettings): PayRule[] {
     {
       key: "coord_general",
       label: PUESTO_LABEL.coord_general,
-      regla: `${pct(r.comision_coord_general ?? 0)} de TODO lo que facturan los clientes, de cualquier servicio.`,
+      regla: `${pct(r.comision_coord_general ?? 0)} de lo que facturan los clientes, de cualquier servicio — salvo las cuentas con precio personalizado.`,
       detalles: [
         "Es la comisión de la coordinación general (mano derecha de la dirección).",
         "Se atribuye a quien tenga el área 'Coordinación General'.",
+        "Las cuentas con pack Personalizado (hoy Boxescar, La Azotea, Dr Dionisi y La Botineta) no suman a esta comisión.",
       ],
     },
     {
@@ -278,9 +282,11 @@ export function payModelRules(settings: AgencySettings): PayRule[] {
       key: "onboarding",
       label: PUESTO_LABEL.onboarding,
       regla:
-        onbPct > 0
-          ? `${pct(onbPct)} extra sobre la tarifa de la CM y del Media Buyer, solo el primer mes de la cuenta.`
-          : "Desactivado: hoy no se paga extra por el arranque de una cuenta nueva.",
+        onbPlus > 0
+          ? `Plus fijo de ${ars(onbPlus)} para la CM y ${ars(onbPlus)} para el Media Buyer, solo el primer mes de la cuenta.`
+          : onbPct > 0
+            ? `${pct(onbPct)} extra sobre la tarifa de la CM y del Media Buyer, solo el primer mes de la cuenta.`
+            : "Desactivado: hoy no se paga extra por el arranque de una cuenta nueva.",
       detalles: [
         "Paga el laburo que solo existe al arrancar: accesos, rediseño de perfiles, setup de pauta.",
         "El diseño no entra acá: su arranque lo cobra con el manual de marca.",

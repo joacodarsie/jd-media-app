@@ -33,7 +33,7 @@ export const EDITABLE_CLAUSES: EditableClause[] = [
     key: "material",
     titulo: "Material y contenido",
     default:
-      "El Cliente compartirá material crudo (fotos, videos, logos, accesos) por los canales acordados. La Agencia es responsable de la edición, optimización y publicación según calendario. El material crudo entregado y las piezas finales producidas son propiedad del Cliente una vez abonados los honorarios del período correspondiente.\n\n**Jornadas de producción audiovisual:** la producción presencial (jornadas de filmación o fotografía en el domicilio del Cliente o en locación) **no** está incluida en el abono mensual y constituye un servicio adicional, que se cotiza y abona por separado según se acuerde en cada caso.",
+      "El Cliente compartirá material crudo (fotos, videos, logos, accesos) por los canales acordados. La Agencia es responsable de la edición, optimización y publicación según calendario. El material crudo entregado y las piezas finales producidas son propiedad del Cliente una vez abonados los honorarios del período correspondiente.\n\n**Jornadas de producción audiovisual:** la producción presencial (jornada de filmación o fotografía en el domicilio del Cliente o en locación) **no** está incluida en el abono mensual y constituye un servicio adicional. Su valor es de **$50.000 por hora de producción** — incluye dos (2) personas del equipo con micrófonos, equipamiento de grabación y guiones para registrar el contenido del mes — más **$25.000 por cada hora extra** que exceda la primera, más los **viáticos** de traslado correspondientes. Estos valores podrán actualizarse con la comunicación previa al Cliente.",
   },
   {
     key: "propiedad",

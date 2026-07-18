@@ -13,9 +13,9 @@ const r = DEFAULT_AGENCY_SETTINGS.rates;
 
 describe("productionBase", () => {
   it("suma CM del pack + diseño por post + edición y portada por reel", () => {
-    // Presencia: cm 50000, diseño 10000/post, edición 17900/reel, portada 2000/reel.
+    // Presencia (FNA): cm 50000, diseño 8000/pieza, edición 15000/reel, portada 2000/reel.
     expect(productionBase("Presencia", 4, 4, r)).toBe(
-      50_000 + 4 * 10_000 + 4 * (17_900 + 2_000)
+      50_000 + 4 * 8_000 + 4 * (15_000 + 2_000)
     );
   });
   it("sin piezas, queda solo el CM del pack", () => {
@@ -26,7 +26,7 @@ describe("productionBase", () => {
 describe("mbCost", () => {
   it("toma la tarifa de media buyer por pack", () => {
     expect(mbCost("Presencia", r)).toBe(50_000);
-    expect(mbCost("Escala", r)).toBe(100_000);
+    expect(mbCost("Escala", r)).toBe(90_000);
   });
 });
 

@@ -79,8 +79,16 @@ export interface AgencyRates {
    * Extra de onboarding para el EQUIPO, solo el primer mes de cada cuenta: % de
    * la tarifa mensual de CM y de Paid Media que se les suma por el laburo
    * exclusivo del arranque (accesos, rediseño de perfiles, setup de pauta).
+   * @deprecated Reemplazado por `plus_primer_mes` (monto fijo). Queda por
+   * compatibilidad con configs viejas guardadas.
    */
   onboarding_extra_pct: number;
+  /**
+   * Plus FIJO del primer mes para CM y Paid Media ($ por persona, una vez por
+   * cuenta nueva) por las tareas extra del arranque. Modelo FNA 2026-07:
+   * $10.000 cada uno ("Plus 1° Mes" $20.000 total en el Excel).
+   */
+  plus_primer_mes: number;
 }
 
 export interface AgencySettings {
@@ -90,19 +98,19 @@ export interface AgencySettings {
 
 export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
   packs: [
-    { id: "Presencia", precio: 350000, reels: 4, posts: 4, stories: 8, portadas: 4 },
-    { id: "Crecimiento", precio: 500000, reels: 8, posts: 8, stories: 12, portadas: 8 },
-    { id: "Escala", precio: 700000, reels: 12, posts: 12, stories: 20, portadas: 12 },
+    { id: "Presencia", precio: 400000, reels: 4, posts: 4, stories: 8, portadas: 4 },
+    { id: "Crecimiento", precio: 600000, reels: 8, posts: 8, stories: 12, portadas: 8 },
+    { id: "Escala", precio: 800000, reels: 12, posts: 12, stories: 20, portadas: 12 },
   ],
   rates: {
-    diseno_pieza: 10000,
+    diseno_pieza: 8000,
     portada_reel: 2000,
-    edicion_reel: 17900,
+    edicion_reel: 15000,
     manual_marca: 50000,
     closer: 0,
-    cm: { Presencia: 50000, Crecimiento: 70000, Escala: 100000, Personalizado: 70000 },
-    media_buyer: { Presencia: 50000, Crecimiento: 70000, Escala: 100000, Personalizado: 70000 },
-    comercial_fijo: 50000,
+    cm: { Presencia: 50000, Crecimiento: 70000, Escala: 90000, Personalizado: 50000 },
+    media_buyer: { Presencia: 50000, Crecimiento: 70000, Escala: 90000, Personalizado: 50000 },
+    comercial_fijo: 0,
     comision_cierre: 0.1,
     comision_lead_propio: 0.05,
     comision_coordinacion: 0.1,
@@ -111,7 +119,8 @@ export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
     diseno_standalone_disenador_pct: 0.4,
     diseno_standalone_coord_pct: 0.1,
     puesta_en_marcha: 50000,
-    onboarding_extra_pct: 0.25,
+    onboarding_extra_pct: 0,
+    plus_primer_mes: 10000,
   },
 };
 

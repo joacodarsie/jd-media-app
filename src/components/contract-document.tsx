@@ -779,6 +779,23 @@ export function ContractDocument({ model }: { model: ContractModel }) {
             </p>
           )}
 
+          {tieneGestionRedes && (
+            <p>
+              <strong>Primer mes y semana de puesta en marcha:</strong> si el
+              servicio comienza un día distinto al primero del mes, el primer
+              abono se calcula <strong>proporcional</strong> a los días restantes
+              del mes calendario. Asimismo, la <strong>primera semana</strong> de
+              trabajo se destina íntegramente al armado de la cuenta — manual de
+              marca, calendario de contenidos, portadas y optimización de
+              biografías — y <strong>no incluye publicación de contenido</strong>.
+              A tal efecto, el contenido del plan contratado se divide en cuatro
+              (4) semanas: durante el primer mes se produce y publica el
+              equivalente a <strong>tres (3) semanas</strong> de contenido,
+              descontándose la semana inicial de puesta en marcha. A partir del
+              segundo mes se publica el volumen completo del plan.
+            </p>
+          )}
+
           {tieneGestionRedes && puestaTotal > 0 && (
             <p>
               <strong>Puesta en marcha (pago único inicial):</strong> al inicio del

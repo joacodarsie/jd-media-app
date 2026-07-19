@@ -2,6 +2,15 @@
 title: Novedades
 ---
 
+## 2026-07-19 — Menú más simple: menos ítems, mismas secciones
+
+- 🧭 **Nada se borró, solo se agrupó.** Todas las URLs siguen funcionando igual; lo que cambió es cómo se llega desde el menú:
+  - **Prospección** ahora es una pestaña dentro de **Comercial** (Comercial · Prospección · Post-meet).
+  - **Reclutamiento** ahora es una pestaña dentro de **Equipo**.
+  - **Objetivos y Productividad** se unieron en **Métricas** (pestañas).
+  - **JDmedIA en vivo** se entra desde el botón **"Sesión en vivo"** arriba de JDmedIA.
+  - **Director IA** ahora es una pestaña de **Coordinación** (para coordinación sigue en el menú como siempre).
+
 ## 2026-07-18 — El Drive del cliente se crea solo (onboarding de redes)
 
 - 📁 **Un botón y listo**: en el paso "Drive del cliente creado" del onboarding de Gestión de Redes hay un botón nuevo **"Crear automáticamente en Drive"**: crea la carpeta del cliente dentro de **Clientes JD Media** en el Drive de la agencia, con sus 3 subcarpetas (**Identidad visual · Calendario de contenidos · Contenido crudo**), la comparte por link y deja el **link listo para mandar al grupo**. El paso queda tildado solo.

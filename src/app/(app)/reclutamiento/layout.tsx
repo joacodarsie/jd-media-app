@@ -2,7 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { SectionTabs } from "@/components/section-tabs";
 import { equipoTabs } from "@/lib/section-tabs";
 
-export default async function EquipoLayout({
+export default async function ReclutamientoLayout({
   children,
 }: {
   children: React.ReactNode;

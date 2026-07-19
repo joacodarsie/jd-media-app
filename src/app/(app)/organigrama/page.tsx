@@ -143,7 +143,7 @@ export default async function OrganigramaPage() {
 
   return (
     <div className="space-y-6">
-      <SectionTabs tabs={equipoTabs(me.rol)} />
+      <SectionTabs tabs={equipoTabs(me.rol, me.rol_secundario)} />
       <style>{`
         /* Se ajusta para verse completo sin barra horizontal en pantallas
            normales; en muy chicas, permite scroll como último recurso. */

@@ -34,20 +34,16 @@ export const NAV_GROUPS: NavGroup[] = [
         roles: ["admin", "coordinador", "paid_media"],
       },
       { href: "/agenda", label: "Agenda", icon: "CalendarClock" },
+      // JDmedIA en vivo ya no es ítem: se entra con el botón "Sesión en vivo"
+      // dentro de /jdmedia (misma feature jdmedia_live).
       { href: "/jdmedia", label: "JDmedIA", icon: "MessageCircle" },
-      {
-        href: "/jdmedia/live",
-        label: "JDmedIA en vivo",
-        icon: "Radio",
-        // Antes owner-only por email; ahora por feature otorgable en /accesos
-        // (admin la tiene siempre). Consume muchos tokens.
-        feature: "jdmedia_live",
-      },
       {
         href: "/director",
         label: "Director IA",
         icon: "Sparkles",
-        roles: ["admin", "coordinador"],
+        // El admin llega por la pestaña "Director IA" de Coordinación; el ítem
+        // queda solo para coordinación, que no ve esa sección.
+        roles: ["coordinador"],
       },
       { href: "/chat", label: "Chat equipo", icon: "Hash" },
     ],
@@ -62,6 +58,7 @@ export const NAV_GROUPS: NavGroup[] = [
         // Visible para todo el equipo. La pagina internamente oculta datos
         // sensibles (monto, pagos, contacto privado) a no-admin/coord.
       },
+      // Comercial agrupa: Comercial, Prospección y Post-meet (pestañas).
       {
         href: "/comercial",
         label: "Comercial",
@@ -69,25 +66,13 @@ export const NAV_GROUPS: NavGroup[] = [
         roles: ["admin", "coordinador", "comercial", "prospecting"],
         feature: "comercial",
       },
-      {
-        href: "/prospeccion",
-        label: "Prospección",
-        icon: "Radar",
-        roles: ["admin", "coordinador", "comercial", "prospecting"],
-        feature: "comercial",
-      },
-      // Equipo agrupa: Directorio, Organigrama, Personas y Capacidad (pestañas).
+      // Equipo agrupa: Directorio, Organigrama, Personas, Capacidad y
+      // Reclutamiento (pestañas).
       { href: "/equipo", label: "Equipo", icon: "Users2" },
       {
         href: "/contratos",
         label: "Contratos",
         icon: "FileText",
-        roles: ["admin", "coordinador"],
-      },
-      {
-        href: "/reclutamiento",
-        label: "Reclutamiento",
-        icon: "UserSearch",
         roles: ["admin", "coordinador"],
       },
     ],
@@ -104,8 +89,8 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Métricas",
     items: [
-      { href: "/objetivos", label: "Objetivos", icon: "Goal" },
-      { href: "/global", label: "Productividad", icon: "BarChart3", feature: "global" },
+      // Métricas agrupa: Objetivos y Productividad (pestañas).
+      { href: "/objetivos", label: "Métricas", icon: "Goal" },
       { href: "/finanzas", label: "Finanzas", icon: "Wallet", feature: "finanzas" },
       // Coordinación agrupa: Panel, Sueldos y Jornadas (pestañas).
       {

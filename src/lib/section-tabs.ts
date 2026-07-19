@@ -5,15 +5,28 @@ export interface SectionTab {
   label: string;
 }
 
-/** Pestañas de la sección Equipo (gente): directorio, organigrama y herramientas admin. */
-export function equipoTabs(rol: UserRole): SectionTab[] {
+function isCoordOrAdmin(rol: UserRole, rolSecundario?: UserRole | null) {
+  return (
+    rol === "admin" ||
+    rol === "coordinador" ||
+    rolSecundario === "admin" ||
+    rolSecundario === "coordinador"
+  );
+}
+
+/** Pestañas de la sección Equipo (gente): directorio, organigrama, reclutamiento y herramientas admin. */
+export function equipoTabs(
+  rol: UserRole,
+  rolSecundario?: UserRole | null
+): SectionTab[] {
   const tabs: SectionTab[] = [
     { href: "/equipo", label: "Directorio" },
     { href: "/organigrama", label: "Organigrama" },
   ];
-  if (rol === "admin" || rol === "coordinador") {
+  if (isCoordOrAdmin(rol, rolSecundario)) {
     tabs.push({ href: "/equipo/personas", label: "Personas" });
     tabs.push({ href: "/equipo/capacity", label: "Capacidad" });
+    tabs.push({ href: "/reclutamiento", label: "Reclutamiento" });
   }
   return tabs;
 }
@@ -27,6 +40,7 @@ export const coordinacionTabs: SectionTab[] = [
   { href: "/coordinacion/sueldos", label: "Sueldos" },
   { href: "/coordinacion/jornadas", label: "Jornadas" },
   { href: "/coordinacion/mes-uno", label: "Mes 1" },
+  { href: "/director", label: "Director IA" },
 ];
 
 /** Pestañas de Conocimiento. */
@@ -36,3 +50,17 @@ export const conocimientoTabs: SectionTab[] = [
   { href: "/templates", label: "Templates" },
   { href: "/agencia", label: "Agencia" },
 ];
+
+/** Pestañas de Comercial (venta): panel, prospección y post-meet. */
+export const comercialTabs: SectionTab[] = [
+  { href: "/comercial", label: "Comercial" },
+  { href: "/prospeccion", label: "Prospección" },
+  { href: "/comercial/post-meet", label: "Post-meet" },
+];
+
+/** Pestañas de Métricas: objetivos para todos; productividad si tiene la feature. */
+export function metricasTabs(showGlobal: boolean): SectionTab[] {
+  const tabs: SectionTab[] = [{ href: "/objetivos", label: "Objetivos" }];
+  if (showGlobal) tabs.push({ href: "/global", label: "Productividad" });
+  return tabs;
+}

@@ -100,15 +100,20 @@ export default async function JdmediaPage({
     }));
   }
 
+  // "En vivo" salió del menú lateral: se entra por este botón. Lo ve quien
+  // tiene la feature jdmedia_live (o admin, o el owner por env).
   const isLiveOwner =
     !!process.env.JDMEDIA_LIVE_OWNER_EMAIL &&
     me.email === process.env.JDMEDIA_LIVE_OWNER_EMAIL;
+  const permisos = (me as unknown as { permisos?: Record<string, boolean> }).permisos;
+  const canLive =
+    isLiveOwner || me.rol === "admin" || permisos?.jdmedia_live === true;
 
   return (
     <div className="-m-4 flex h-[calc(100vh-3.5rem)] md:-m-6">
       <ConversationsSidebar conversations={convList} activeId={activeId} />
       <div className="flex min-w-0 flex-1 flex-col">
-        {isLiveOwner && (
+        {canLive && (
           <div className="flex items-center justify-end border-b px-3 py-1.5">
             <Link
               href="/jdmedia/live"

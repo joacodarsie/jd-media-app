@@ -206,6 +206,52 @@ export async function setClientDriveUrl(clientId: string, url: string | null) {
   return { ok: true };
 }
 
+/**
+ * Crea automáticamente la carpeta del cliente en el Drive de JD Media
+ * (con sus 3 subcarpetas), la comparte por link y deja el paso marcado.
+ * Si no hay una cuenta de Google con Drive conectada devuelve
+ * `noConnection: true` para que la UI ofrezca conectarla.
+ */
+export async function autoCreateClientDrive(clientId: string) {
+  await requireUser();
+  const admin = createAdmin();
+
+  const { data: client } = await admin
+    .from("clients")
+    .select("id, nombre, drive_url")
+    .eq("id", clientId)
+    .maybeSingle();
+  if (!client) return { error: "Cliente no encontrado." };
+  if ((client as { drive_url: string | null }).drive_url) {
+    return {
+      error:
+        "Este cliente ya tiene un Drive cargado. Borrá el link y guardá antes de regenerarlo.",
+    };
+  }
+
+  const { createClientDriveStructure } = await import("@/lib/google-drive");
+  const res = await createClientDriveStructure(
+    (client as { nombre: string }).nombre
+  );
+  if ("error" in res) return res;
+
+  const { error: cErr } = await admin
+    .from("clients")
+    .update({ drive_url: res.url })
+    .eq("id", clientId);
+  if (cErr) return { error: cErr.message };
+
+  const { error: oErr } = await admin.from("client_onboarding").upsert(
+    { cliente_id: clientId, drive_creado_at: new Date().toISOString() },
+    { onConflict: "cliente_id" }
+  );
+  if (oErr) return { error: oErr.message };
+
+  revalidatePath(`/clientes/${clientId}/onboarding`);
+  revalidatePath(`/clientes/${clientId}`);
+  return { ok: true, url: res.url, email: res.email };
+}
+
 export async function assignContractNumber(clientId: string) {
   await requireUser();
   const admin = createAdmin();

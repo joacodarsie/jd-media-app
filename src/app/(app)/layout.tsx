@@ -26,12 +26,24 @@ export default async function AppLayout({
   // dashboard/page.tsx (la primera pantalla que mira el usuario al loguearse)
   // y en cron diario. Antes corria aca en cada nav y agregaba ~10ms a TODO.
 
+  // Carga rápida de plata: widget flotante solo para admin.
+  const isAdmin = user.rol === "admin";
+
+  // TODAS las queries del shell en un solo Promise.all: antes iban en 3 tandas
+  // secuenciales y cada navegación pagaba 2 roundtrips extra a la DB.
   const [
     { data: items },
     { count: unreadCount },
     { data: links },
     { data: chatUnread },
     { count: taskUnreadCount },
+    { data: noticeIdsRaw },
+    { data: myReadsRaw },
+    quickClients,
+    quickUsers,
+    quickSubsRes,
+    quickDebtsRes,
+    reviewFlagsRes,
   ] = await Promise.all([
     supabase
       .from("notifications")
@@ -56,48 +68,9 @@ export default async function AppLayout({
       .eq("user_id", user.id)
       .eq("leida", false)
       .not("task_id", "is", null),
-  ]);
-
-  const bell = (
-    <NotificationBell
-      items={(items ?? []) as Notification[]}
-      unreadCount={unreadCount ?? 0}
-    />
-  );
-
-  const chatUnreadNum =
-    typeof chatUnread === "number" ? chatUnread : Number(chatUnread ?? 0);
-
-  const { hasRecentChanges, latestEntryDate } = await import("@/lib/help/changelog");
-  const showNovedadesBadge = hasRecentChanges(14);
-  const novedadesLatestDate = latestEntryDate();
-
-  // Avisos del Portal sin leer (si la migración 0126 no está, queda 0).
-  const [{ data: noticeIdsRaw }, { data: myReadsRaw }] = await Promise.all([
+    // Avisos del Portal sin leer (si la migración 0126 no está, queda 0).
     supabase.from("portal_notices").select("id"),
     supabase.from("portal_notice_reads").select("notice_id").eq("user_id", user.id),
-  ]);
-  const readIds = new Set(
-    ((myReadsRaw ?? []) as { notice_id: string }[]).map((r) => r.notice_id)
-  );
-  const unreadAvisos = ((noticeIdsRaw ?? []) as { id: string }[]).filter(
-    (n) => !readIds.has(n.id)
-  ).length;
-
-  const badges: Record<string, number> = {
-    "/chat": chatUnreadNum,
-    "/tareas": taskUnreadCount ?? 0,
-    // Portal: priorizan los avisos sin leer; si no hay, el puntito de novedades.
-    "/portal": unreadAvisos > 0 ? unreadAvisos : showNovedadesBadge ? 1 : 0,
-  };
-
-  const isLiveOwner =
-    !!process.env.JDMEDIA_LIVE_OWNER_EMAIL &&
-    user.email === process.env.JDMEDIA_LIVE_OWNER_EMAIL;
-
-  // Carga rápida de plata: widget flotante solo para admin.
-  const isAdmin = user.rol === "admin";
-  const [quickClients, quickUsers, quickSubsRes, quickDebtsRes, reviewFlagsRes] = await Promise.all([
     isAdmin ? getActiveClients() : Promise.resolve([]),
     isAdmin ? getActiveUsers() : Promise.resolve([]),
     isAdmin
@@ -124,6 +97,39 @@ export default async function AppLayout({
           .order("created_at")
       : Promise.resolve({ data: [] }),
   ]);
+
+  const bell = (
+    <NotificationBell
+      items={(items ?? []) as Notification[]}
+      unreadCount={unreadCount ?? 0}
+    />
+  );
+
+  const chatUnreadNum =
+    typeof chatUnread === "number" ? chatUnread : Number(chatUnread ?? 0);
+
+  const { hasRecentChanges, latestEntryDate } = await import("@/lib/help/changelog");
+  const showNovedadesBadge = hasRecentChanges(14);
+  const novedadesLatestDate = latestEntryDate();
+
+  const readIds = new Set(
+    ((myReadsRaw ?? []) as { notice_id: string }[]).map((r) => r.notice_id)
+  );
+  const unreadAvisos = ((noticeIdsRaw ?? []) as { id: string }[]).filter(
+    (n) => !readIds.has(n.id)
+  ).length;
+
+  const badges: Record<string, number> = {
+    "/chat": chatUnreadNum,
+    "/tareas": taskUnreadCount ?? 0,
+    // Portal: priorizan los avisos sin leer; si no hay, el puntito de novedades.
+    "/portal": unreadAvisos > 0 ? unreadAvisos : showNovedadesBadge ? 1 : 0,
+  };
+
+  const isLiveOwner =
+    !!process.env.JDMEDIA_LIVE_OWNER_EMAIL &&
+    user.email === process.env.JDMEDIA_LIVE_OWNER_EMAIL;
+
   const quickSubs = ((quickSubsRes as { data: unknown[] | null }).data ?? []) as {
     id: string;
     nombre: string;

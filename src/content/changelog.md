@@ -2,6 +2,13 @@
 title: Novedades
 ---
 
+## 2026-07-18 — El Drive del cliente se crea solo (onboarding de redes)
+
+- 📁 **Un botón y listo**: en el paso "Drive del cliente creado" del onboarding de Gestión de Redes hay un botón nuevo **"Crear automáticamente en Drive"**: crea la carpeta del cliente dentro de **Clientes JD Media** en el Drive de la agencia, con sus 3 subcarpetas (**Identidad visual · Calendario de contenidos · Contenido crudo**), la comparte por link y deja el **link listo para mandar al grupo**. El paso queda tildado solo.
+- ✍️ **Pegar el link a mano sigue funcionando** igual que siempre, para carpetas que ya existían.
+- 🔌 La primera vez hay que **conectar el Drive de la cuenta de Google de JD Media** (botón "Conectar Google Drive" en el mismo paso — se hace una sola vez).
+- ⚡ **La app navega más rápido**: se recortaron idas y vueltas a la base en cada cambio de sección.
+
 ## 2026-06-27 — Pago de la Coordinación de Diseño (automático en Sueldos)
 
 - 💰 **La coordinación de diseño se paga sola**: Bri cobra **5% del diseño publicado del mes** (posts/carruseles + portadas de reel, sobre las mismas piezas que se les pagan a los diseñadores), + un **plus por cada manual de marca aprobado** de una cuenta nueva (5% del manual). La cuenta interna (JD Media) queda afuera. Aparece como línea automática en Sueldos desde julio, y el % es editable.

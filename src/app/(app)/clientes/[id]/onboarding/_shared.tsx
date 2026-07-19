@@ -128,6 +128,8 @@ export interface OnboardingData {
   tienePauta: boolean;
   steps: StepDef[];
   hasContractData: boolean;
+  /** Email de la cuenta de Google con Drive conectado (null = nadie conectó). */
+  driveEmail: string | null;
 }
 
 export function calendarUrl(client: ClientLite) {
@@ -149,6 +151,7 @@ export async function loadOnboarding(clientId: string): Promise<OnboardingData |
     { data: onbData },
     { count: tasksCount },
     { count: diagApprovedCount },
+    { data: driveConns },
   ] = await Promise.all([
     supabase
       .from("clients")
@@ -170,6 +173,12 @@ export async function loadOnboarding(clientId: string): Promise<OnboardingData |
       .select("id", { count: "exact", head: true })
       .eq("cliente_id", clientId)
       .eq("status", "approved"),
+    // ¿Alguien conectó una cuenta de Google con el scope de Drive?
+    admin
+      .from("google_calendar_connections")
+      .select("google_email")
+      .ilike("scope", "%auth/drive.file%")
+      .limit(1),
   ]);
 
   if (!clientData) return null;
@@ -451,6 +460,9 @@ export async function loadOnboarding(clientId: string): Promise<OnboardingData |
     tienePauta,
     steps,
     hasContractData,
+    driveEmail:
+      ((driveConns?.[0] as { google_email?: string } | undefined)?.google_email ??
+        null),
   };
 }
 
@@ -461,12 +473,14 @@ export function OnboardingStepRow({
   onb,
   pagoEsperado,
   credenciales,
+  driveEmail = null,
 }: {
   step: StepDef;
   client: ClientLite;
   onb: OnboardingState;
   pagoEsperado: number;
   credenciales: Record<string, string>[];
+  driveEmail?: string | null;
 }) {
   const Icon = step.icon;
   const isDone = !!step.done;
@@ -583,7 +597,11 @@ export function OnboardingStepRow({
             </div>
           )}
           {step.key === "drive_creado_at" && (
-            <OnboardingDriveField clientId={client.id} initialUrl={client.drive_url} />
+            <OnboardingDriveField
+              clientId={client.id}
+              initialUrl={client.drive_url}
+              driveEmail={driveEmail}
+            />
           )}
           {step.key === "tareas_iniciales_at" && (
             <GenerateInitialTasksButton clientId={client.id} alreadyDone={isDone} />

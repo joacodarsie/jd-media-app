@@ -9,17 +9,23 @@ export async function GET(req: Request) {
   const stateRaw = searchParams.get("state");
   const error = searchParams.get("error");
 
+  let returnPath = "/mi-perfil";
   const redirectBack = (msg: string) =>
-    NextResponse.redirect(new URL(`/mi-perfil?calendar=${encodeURIComponent(msg)}`, req.url));
+    NextResponse.redirect(
+      new URL(`${returnPath}?calendar=${encodeURIComponent(msg)}`, req.url)
+    );
 
   if (error) return redirectBack(`error:${error}`);
   if (!code || !stateRaw) return redirectBack("error:missing_code");
 
-  let state: { u: string; v: "private" | "shared"; l: string };
+  let state: { u: string; v: "private" | "shared"; l: string; r?: string };
   try {
     state = JSON.parse(Buffer.from(stateRaw, "base64url").toString());
   } catch {
     return redirectBack("error:bad_state");
+  }
+  if (state.r && state.r.startsWith("/") && !state.r.startsWith("//")) {
+    returnPath = state.r;
   }
 
   const supabase = createClient();

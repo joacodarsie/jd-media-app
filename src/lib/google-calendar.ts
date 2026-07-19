@@ -51,14 +51,20 @@ function env(name: string) {
   return v;
 }
 
-export function buildAuthUrl(state: string, redirectUri?: string) {
+export function buildAuthUrl(
+  state: string,
+  redirectUri?: string,
+  extraScopes: string[] = []
+) {
   const params = new URLSearchParams({
     client_id: env("GOOGLE_CLIENT_ID"),
     redirect_uri: redirectUri ?? env("GOOGLE_REDIRECT_URI"),
     response_type: "code",
-    scope: SCOPES,
+    scope: [SCOPES, ...extraScopes].join(" "),
     access_type: "offline",
     prompt: "consent",
+    // Mantiene los permisos ya otorgados (ej: al sumar Drive no se pierde Calendar).
+    include_granted_scopes: "true",
     state,
   });
   return `${GOOGLE_AUTH_URL}?${params.toString()}`;
@@ -121,7 +127,7 @@ export async function refreshAccessToken(refreshToken: string) {
 }
 
 /** Devuelve un access_token vigente, refrescando si está cerca de expirar. */
-async function getValidAccessToken(conn: GoogleCalendarConnection): Promise<string> {
+export async function getValidAccessToken(conn: GoogleCalendarConnection): Promise<string> {
   const expiry = new Date(conn.token_expiry).getTime();
   const now = Date.now();
   if (expiry - now > 60_000) return conn.access_token;

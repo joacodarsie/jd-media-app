@@ -34,6 +34,8 @@ export function PublicationAutoPublish({
   publishedAt,
   publishError,
   igPermalink,
+  fbPermalink = null,
+  fbError = null,
 }: {
   publicationId: string;
   initialAuto: boolean;
@@ -41,6 +43,8 @@ export function PublicationAutoPublish({
   publishedAt: string | null;
   publishError: string | null;
   igPermalink: string | null;
+  fbPermalink?: string | null;
+  fbError?: string | null;
 }) {
   const [auto, setAuto] = useState(initialAuto);
   const [media, setMedia] = useState<PublishMediaRef[]>(initialMedia);
@@ -66,16 +70,33 @@ export function PublicationAutoPublish({
           })}
           .
         </span>
-        {igPermalink && (
-          <a
-            href={igPermalink}
-            target="_blank"
-            rel="noreferrer"
-            className="ml-auto inline-flex items-center gap-1 text-primary hover:underline"
-          >
-            <ExternalLink className="h-3 w-3" /> Ver en Instagram
-          </a>
-        )}
+        <span className="ml-auto inline-flex items-center gap-3">
+          {igPermalink && (
+            <a
+              href={igPermalink}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-primary hover:underline"
+            >
+              <ExternalLink className="h-3 w-3" /> Instagram
+            </a>
+          )}
+          {fbPermalink && (
+            <a
+              href={fbPermalink}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-primary hover:underline"
+            >
+              <ExternalLink className="h-3 w-3" /> Facebook
+            </a>
+          )}
+          {!fbPermalink && fbError && (
+            <span title={fbError} className="text-amber-600">
+              FB no salió
+            </span>
+          )}
+        </span>
       </div>
     );
   }
@@ -137,12 +158,14 @@ export function PublicationAutoPublish({
           className="h-4 w-4 accent-primary"
         />
         <Zap className="h-3.5 w-3.5 text-amber-500" />
-        Publicar automáticamente en Instagram
+        Publicar automáticamente (Instagram + Facebook)
       </label>
       <p className="text-[11px] text-muted-foreground">
         Sale sola a la fecha/hora de la pieza cuando está <b>Aprobada</b> y
         tiene el archivo final subido (el copy y hashtags del form van de
-        caption). Carrusel: subí las imágenes en orden.
+        caption). Se publica en Instagram y se replica en la página de
+        Facebook del cliente. Carrusel: subí las imágenes en orden. TikTok se
+        suma cuando su app apruebe la revisión.
       </p>
 
       {publishError && (

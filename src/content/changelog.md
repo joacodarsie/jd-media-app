@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-07-20 — Publicación en Facebook + objetivos del mes en el portal
+
+- 📘 **Las piezas que salen solas ahora se publican también en Facebook**: además de Instagram, se replican en la página de Facebook del cliente (posts, carruseles y reels; historias de imagen). Si Facebook falla por algo, Instagram igual sale y queda avisado. **TikTok** se suma en cuanto su app pase la revisión (la base ya está).
+- 🎯 **El plan mensual del cliente ahora muestra los "Objetivos del mes"** en su link de aprobación: qué buscamos con el contenido y qué vamos a medir, redactado claro para el cliente. Es lo que varios venían pidiendo: ver la estrategia y el sentido del calendario, no solo las piezas.
+
 ## 2026-07-20 — Auto-publicación en Instagram (fase 1) 🚀
 
 - ⚡ **Las piezas se pueden publicar solas**: al editar una publicación de Instagram vas a ver la sección **"Publicar automáticamente"**: subís el **archivo final** (imagen, video o las imágenes del carrusel en orden), activás el check, y cuando la pieza esté **Aprobada** sale sola a su fecha/hora con el copy + hashtags del form como caption.

@@ -14,7 +14,12 @@
  */
 import { createAdmin } from "@/lib/supabase/admin";
 import { metaConfigured } from "@/lib/meta/instagram";
-import { publishToInstagram, type PublishMediaItem } from "@/lib/meta/publish";
+import {
+  getPageForIgUser,
+  publishToFacebook,
+  publishToInstagram,
+  type PublishMediaItem,
+} from "@/lib/meta/publish";
 
 const VIDEO_EXT = /\.(mp4|mov|m4v)$/i;
 
@@ -151,14 +156,47 @@ export async function runAutoPublish(): Promise<AutoPublishSummary> {
         })
         .eq("id", pub.id);
 
+      // Réplica a Facebook (best-effort: si falla, IG ya salió y solo se
+      // registra fb_error). TikTok se suma acá cuando pase la revisión de
+      // su app (integración lista pero inerte).
+      let fbNote = "";
+      try {
+        const page = await getPageForIgUser(pub.cliente.ig_user_id);
+        if (page) {
+          const fb = await publishToFacebook({
+            pageId: page.pageId,
+            pageToken: page.pageToken,
+            tipo: pub.tipo,
+            caption,
+            media,
+          });
+          await admin
+            .from("publications")
+            .update({ fb_post_id: fb.mediaId, fb_permalink: fb.permalink, fb_error: null })
+            .eq("id", pub.id);
+          fbNote = " + Facebook";
+        } else {
+          fbNote = " (sin página de FB accesible)";
+        }
+      } catch (fbErr) {
+        const msg = fbErr instanceof Error ? fbErr.message : "Error desconocido";
+        // Si la migración 0129 no está, este update falla y se ignora.
+        await admin
+          .from("publications")
+          .update({ fb_error: msg.slice(0, 500) })
+          .eq("id", pub.id)
+          .then(() => undefined, () => undefined);
+        fbNote = ` (Facebook falló: ${msg.slice(0, 80)})`;
+      }
+
       await notify(
         admin,
         [pub.cliente?.cm_id],
-        `✅ Se publicó solo en Instagram: "${pub.titulo}" (${pub.cliente?.nombre}).`,
+        `✅ Se publicó solo en Instagram${fbNote}: "${pub.titulo}" (${pub.cliente?.nombre}).`,
         res.permalink ?? link
       );
       summary.publicadas++;
-      summary.detalle.push(`✓ ${pub.cliente?.nombre}: ${pub.titulo}`);
+      summary.detalle.push(`✓ ${pub.cliente?.nombre}: ${pub.titulo}${fbNote}`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Error desconocido";
       await admin

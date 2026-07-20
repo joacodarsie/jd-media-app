@@ -370,6 +370,27 @@ export default async function PortalPage({ params }: { params: { token: string }
               </div>
             )}
 
+            {/* Objetivos del mes: qué vamos a buscar y medir. Es lo que más
+                piden los clientes al aprobar el plan — claridad de estrategia. */}
+            {planContent.kpis_objetivo && planContent.kpis_objetivo.length > 0 && (
+              <div className="card">
+                <div className="card-label">Estrategia</div>
+                <h2 className="card-title">🎯 Objetivos del mes</h2>
+                <p style={{ margin: "0 0 10px", fontSize: 13, color: "#666", lineHeight: 1.5 }}>
+                  Esto es lo que buscamos con el contenido de este mes y lo que
+                  vamos a medir en el reporte.
+                </p>
+                <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+                  {planContent.kpis_objetivo.map((k, i) => (
+                    <li key={i} style={{ padding: "8px 0 8px 18px", position: "relative", fontSize: 14, lineHeight: 1.5 }}>
+                      <span style={{ position: "absolute", left: 0, top: 14, width: 6, height: 6, background: "#FFD400", borderRadius: 2 }} />
+                      {k}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Cadencia */}
             {Object.keys(cadencia).length > 0 && (
               <div className="card">

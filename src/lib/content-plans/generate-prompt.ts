@@ -176,7 +176,8 @@ export const SAVE_CONTENT_PLAN_TOOL = {
       kpis_objetivo: {
         type: "array",
         items: { type: "string" },
-        description: "Lo que vamos a medir al cierre del período. Concreto y numérico cuando aplique.",
+        description:
+          "Objetivos del mes en lenguaje CLARO PARA EL CLIENTE (se muestran en su portal de aprobación): qué buscamos con el contenido y qué vamos a medir. Concreto y numérico cuando aplique, sin jerga interna. Ej: 'Aumentar el alcance a nuevas cuentas con 4 reels de tips' en vez de 'optimizar reach orgánico'.",
       },
       notas: { type: "string" },
     },

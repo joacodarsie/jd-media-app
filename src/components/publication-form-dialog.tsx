@@ -460,6 +460,8 @@ export function PublicationFormDialog({
               publishedAt={publication.published_at ?? null}
               publishError={publication.publish_error ?? null}
               igPermalink={publication.ig_permalink ?? null}
+              fbPermalink={publication.fb_permalink ?? null}
+              fbError={publication.fb_error ?? null}
             />
           )}
         </div>

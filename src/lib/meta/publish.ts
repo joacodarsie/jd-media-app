@@ -97,6 +97,22 @@ async function createContainer(
 }
 
 /**
+ * Test seco: crea un container de imagen SIN publicarlo. Los containers no
+ * publicados expiran solos a las 24h y no aparecen en el perfil. Valida
+ * permisos del token, la cuenta IG y que Meta pueda descargar la imagen.
+ */
+export async function createDryRunContainer(igUserId: string, imageUrl: string) {
+  const containerId = await createContainer(igUserId, {
+    image_url: imageUrl,
+    caption: "[test interno JD Media app — no se publica]",
+  });
+  const st = await graphGet<{ status_code?: string }>(containerId, {
+    fields: "status_code",
+  });
+  return { containerId, containerStatus: st.status_code ?? "unknown" };
+}
+
+/**
  * Publica en el Instagram del cliente. Devuelve el id del post y su permalink.
  * Lanza Error con mensaje legible si algo falla.
  */

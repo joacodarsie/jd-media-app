@@ -1,0 +1,24 @@
+# Scheduler de horario fino para la auto-publicación de contenidos.
+# GitHub Actions le pega al endpoint cada 15 minutos; el cron diario de
+# Vercel queda como red de seguridad si esto falla.
+name: Auto-publish tick
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Disparar auto-publicación
+        run: |
+          code=$(curl -s -o /tmp/resp.json -w "%{http_code}" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            --max-time 300 \
+            https://jd-media-app.vercel.app/api/cron/auto-publish)
+          echo "HTTP $code"
+          cat /tmp/resp.json
+          [ "$code" = "200" ]

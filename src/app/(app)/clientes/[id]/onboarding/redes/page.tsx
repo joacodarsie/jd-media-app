@@ -22,7 +22,7 @@ export default async function OnboardingRedesPage({
 
   const data = await loadOnboarding(params.id);
   if (!data) notFound();
-  const { client, onb, coordName, mediaBuyerName, pagoEsperado, credenciales, tienePauta, steps, driveEmail } =
+  const { client, onb, coordName, mediaBuyerName, pagoEsperado, credenciales, tienePauta, steps, driveEmail, driveNeedsUpdate } =
     data;
 
   const redesSteps = steps.filter((s) => s.stage === "redes");
@@ -108,6 +108,7 @@ export default async function OnboardingRedesPage({
               pagoEsperado={pagoEsperado}
               credenciales={credenciales}
               driveEmail={driveEmail}
+              driveNeedsUpdate={driveNeedsUpdate}
             />
           ))}
         </CardContent>

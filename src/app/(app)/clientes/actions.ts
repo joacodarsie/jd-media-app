@@ -282,9 +282,36 @@ export async function toggleClientStatus(id: string, currentStatus: string) {
   const next = currentStatus === "activo" ? "perdido" : "activo";
   const { error } = await supabase.from("clients").update({ estado: next }).eq("id", id);
   if (error) return { error: error.message };
+
+  // Best-effort: mover la carpeta de Drive del cliente entre "Clientes" y
+  // "Clientes pausados". Si falla no bloquea el cambio de estado: se informa.
+  let driveMsg: string | null = null;
+  let driveWarn: string | null = null;
+  try {
+    const admin = createAdmin();
+    const { data: c } = await admin
+      .from("clients")
+      .select("drive_url")
+      .eq("id", id)
+      .maybeSingle();
+    const driveUrl = (c as { drive_url: string | null } | null)?.drive_url;
+    if (driveUrl) {
+      const { moveClientDriveFolder } = await import("@/lib/google-drive");
+      const res = await moveClientDriveFolder(
+        driveUrl,
+        next === "activo" ? "activos" : "pausados"
+      );
+      if ("ok" in res) driveMsg = res.msg;
+      else driveWarn = res.error;
+    }
+  } catch (e) {
+    console.error("toggleClientStatus drive move:", e);
+    driveWarn = "No se pudo mover la carpeta de Drive.";
+  }
+
   revalidatePath("/clientes");
   revalidatePath(`/clientes/${id}`);
-  return { ok: true, nuevo: next };
+  return { ok: true, nuevo: next, driveMsg, driveWarn };
 }
 
 /**

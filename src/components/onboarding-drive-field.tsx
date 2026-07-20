@@ -24,11 +24,14 @@ export function OnboardingDriveField({
   clientId,
   initialUrl,
   driveEmail = null,
+  driveNeedsUpdate = false,
 }: {
   clientId: string;
   initialUrl: string | null;
   /** Email de la cuenta de Google con Drive conectado (null = nadie conectó). */
   driveEmail?: string | null;
+  /** La conexión tiene el permiso viejo (drive.file): pedir reconectar. */
+  driveNeedsUpdate?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -42,7 +45,10 @@ export function OnboardingDriveField({
   const connectHref = `/api/google/auth?drive=1&label=${encodeURIComponent(
     "Drive JD Media"
   )}&returnTo=${encodeURIComponent(pathname)}`;
-  const showConnect = (!driveEmail || needsConnect) && !initialUrl;
+  const showConnect =
+    (!driveEmail || needsConnect || driveNeedsUpdate) && !initialUrl;
+  const canAutoCreate =
+    !initialUrl && !!driveEmail && !needsConnect && !driveNeedsUpdate;
 
   function save() {
     start(async () => {
@@ -81,7 +87,7 @@ export function OnboardingDriveField({
         </span>
       </div>
 
-      {!initialUrl && driveEmail && !needsConnect && (
+      {canAutoCreate && (
         <Button
           size="sm"
           onClick={autoCreate}
@@ -96,25 +102,34 @@ export function OnboardingDriveField({
           {creating ? "Creando carpetas…" : "Crear automáticamente en Drive"}
         </Button>
       )}
-      {!initialUrl && driveEmail && !needsConnect && (
+      {canAutoCreate && (
         <p className="text-[11px] text-muted-foreground">
           Se crea en el Drive de <b>{driveEmail}</b>, dentro de{" "}
-          <b>Clientes JD Media</b>, compartida por link. Si preferís, pegá un
+          <b>JD MEDIA › Clientes</b>, compartida por link. Si preferís, pegá un
           link a mano abajo.
         </p>
       )}
 
       {showConnect && (
         <div className="rounded-md border border-dashed p-2 text-xs text-muted-foreground">
-          <p>
-            Para crear la carpeta automáticamente hay que conectar (una sola
-            vez) el Drive de la cuenta de Google de JD Media.
-          </p>
+          {driveNeedsUpdate ? (
+            <p>
+              La conexión de Drive de <b>{driveEmail}</b> tiene permisos viejos.
+              Reconectala (una vez) para que las carpetas se creen dentro de{" "}
+              <b>JD MEDIA › Clientes</b> y se muevan solas al pausar una cuenta.
+            </p>
+          ) : (
+            <p>
+              Para crear la carpeta automáticamente hay que conectar (una sola
+              vez) el Drive de la cuenta de Google de JD Media.
+            </p>
+          )}
           <a
             href={connectHref}
             className="mt-1.5 inline-flex h-7 items-center gap-1 rounded-md border px-2 text-xs font-medium text-primary hover:bg-muted"
           >
-            <PlugZap className="h-3.5 w-3.5" /> Conectar Google Drive
+            <PlugZap className="h-3.5 w-3.5" />{" "}
+            {driveNeedsUpdate ? "Actualizar permisos de Drive" : "Conectar Google Drive"}
           </a>
         </div>
       )}

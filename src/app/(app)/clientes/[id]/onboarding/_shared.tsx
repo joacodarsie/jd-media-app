@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
+import { hasFullDriveScope } from "@/lib/google-drive";
 import { fmtDate } from "@/lib/dates";
 import type { ClientService } from "@/lib/types";
 import { OnboardingStepToggle } from "@/components/onboarding-step-toggle";
@@ -130,6 +131,8 @@ export interface OnboardingData {
   hasContractData: boolean;
   /** Email de la cuenta de Google con Drive conectado (null = nadie conectó). */
   driveEmail: string | null;
+  /** true si la conexión tiene el scope viejo (drive.file): hay que reconectar. */
+  driveNeedsUpdate: boolean;
 }
 
 export function calendarUrl(client: ClientLite) {
@@ -176,9 +179,9 @@ export async function loadOnboarding(clientId: string): Promise<OnboardingData |
     // ¿Alguien conectó una cuenta de Google con el scope de Drive?
     admin
       .from("google_calendar_connections")
-      .select("google_email")
-      .ilike("scope", "%auth/drive.file%")
-      .limit(1),
+      .select("google_email, scope")
+      .ilike("scope", "%auth/drive%")
+      .limit(10),
   ]);
 
   if (!clientData) return null;
@@ -344,7 +347,7 @@ export async function loadOnboarding(clientId: string): Promise<OnboardingData |
       autoDerived: !onb.drive_creado_at && driveDerived,
       icon: FolderPlus,
       description:
-        "Creá la carpeta del cliente en el Drive de JD Media con sus 3 subcarpetas y pegá el link (se muestra en el calendario de contenidos).",
+        "Un botón la crea sola dentro de JD MEDIA › Clientes con sus 3 subcarpetas y deja el link listo (se muestra en el calendario de contenidos). También podés pegar un link a mano.",
     },
     {
       key: "perfiles_rediseno_at",
@@ -460,9 +463,15 @@ export async function loadOnboarding(clientId: string): Promise<OnboardingData |
     tienePauta,
     steps,
     hasContractData,
-    driveEmail:
-      ((driveConns?.[0] as { google_email?: string } | undefined)?.google_email ??
-        null),
+    ...(() => {
+      const conns = (driveConns ?? []) as { google_email: string; scope: string }[];
+      const full = conns.find((c) => hasFullDriveScope(c.scope));
+      const any = full ?? conns[0] ?? null;
+      return {
+        driveEmail: any?.google_email ?? null,
+        driveNeedsUpdate: !!any && !full,
+      };
+    })(),
   };
 }
 
@@ -474,6 +483,7 @@ export function OnboardingStepRow({
   pagoEsperado,
   credenciales,
   driveEmail = null,
+  driveNeedsUpdate = false,
 }: {
   step: StepDef;
   client: ClientLite;
@@ -481,6 +491,7 @@ export function OnboardingStepRow({
   pagoEsperado: number;
   credenciales: Record<string, string>[];
   driveEmail?: string | null;
+  driveNeedsUpdate?: boolean;
 }) {
   const Icon = step.icon;
   const isDone = !!step.done;
@@ -601,6 +612,7 @@ export function OnboardingStepRow({
               clientId={client.id}
               initialUrl={client.drive_url}
               driveEmail={driveEmail}
+              driveNeedsUpdate={driveNeedsUpdate}
             />
           )}
           {step.key === "tareas_iniciales_at" && (

@@ -34,6 +34,8 @@ export function ClientStatusToggle({
         return;
       }
       toast.success(isActive ? "Cliente marcado inactivo" : "Cliente reactivado");
+      if (res?.driveMsg) toast.success(res.driveMsg);
+      if (res?.driveWarn) toast.warning(res.driveWarn);
       router.refresh();
     });
   }

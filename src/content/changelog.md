@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-07-19 — El Drive automático ahora usa las carpetas reales de la agencia
+
+- 📁 Las carpetas de clientes nuevos se crean **dentro de `JD MEDIA › Clientes`** (la carpeta de siempre), ya no en una aparte.
+- ⏸️ **Al marcar un cliente inactivo, su carpeta se mueve sola a `JD MEDIA › Clientes pausados`** (la carpeta se crea sola si no existe). Al reactivarlo, vuelve a `Clientes`. Funciona también con las carpetas viejas creadas a mano, siempre que el link esté cargado en la ficha.
+
 ## 2026-07-19 — Menú más simple: menos ítems, mismas secciones
 
 - 🧭 **Nada se borró, solo se agrupó.** Todas las URLs siguen funcionando igual; lo que cambió es cómo se llega desde el menú:

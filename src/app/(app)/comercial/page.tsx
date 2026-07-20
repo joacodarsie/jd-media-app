@@ -107,6 +107,12 @@ export default async function ComercialPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button asChild variant="outline" className="gap-1.5">
+            <Link href="/comercial/leads" title="Pipeline de leads (consultas antes de la propuesta)">
+              <Radar className="h-4 w-4 text-primary" />
+              Leads
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="gap-1.5">
             <Link href="/comercial/feedback" title="Feedback de una reunión comercial con IA">
               <GraduationCap className="h-4 w-4 text-primary" />
               <span className="hidden sm:inline">Feedback de reunión</span>

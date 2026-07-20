@@ -15,13 +15,15 @@ export interface MetaTokenStatus {
   missing?: string[]; // permisos que faltan
 }
 
-// Permisos que la app necesita (ads + instagram orgánico).
+// Permisos que la app necesita (ads + instagram orgánico + publicación).
 export const REQUIRED_SCOPES = [
   "ads_read",
   "instagram_basic",
   "instagram_manage_insights",
   "pages_read_engagement",
   "pages_show_list",
+  // Auto-publicación (fase 1). Si falta, el semáforo diario lo marca.
+  "instagram_content_publish",
 ];
 
 export function missingScopes(scopes?: string[]): string[] {

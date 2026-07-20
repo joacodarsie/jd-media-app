@@ -230,10 +230,30 @@ export default async function PlanPrintPage({
           </div>
         )}
 
+        {/* Efemérides del mes */}
+        {(c.efemerides?.length ?? 0) > 0 && (
+          <div className="section">
+            <h2 className="section-title">05 · Fechas especiales del mes</h2>
+            <h3 className="section-h">Efemérides que tenemos en cuenta</h3>
+            <div className="grid2">
+              {c.efemerides!.map((e, i) => (
+                <div key={i} className="card">
+                  <div className="ct">{e.nombre}</div>
+                  <div className="meta">
+                    {e.fecha}
+                    {e.tipo === "comercial" ? " · oportunidad de promo" : e.tipo === "rubro" ? " · fecha del rubro" : " · fecha destacada"}
+                  </div>
+                  <div className="cs" style={{ marginTop: 8 }}>{e.idea}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Campañas */}
         {c.campanas?.length > 0 && (
           <div className="section">
-            <h2 className="section-title">05 · Campañas y lanzamientos</h2>
+            <h2 className="section-title">06 · Campañas y lanzamientos</h2>
             <h3 className="section-h">Momentos clave del mes</h3>
             <div className="grid2">
               {c.campanas.map((ca, i) => (

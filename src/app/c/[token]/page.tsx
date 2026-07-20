@@ -431,6 +431,42 @@ export default async function PortalPage({ params }: { params: { token: string }
               </div>
             )}
 
+            {/* Fechas especiales del mes: efemérides para saludar, contenido
+                o promos puntuales. Da contexto y sensación de estrategia. */}
+            {planContent.efemerides && planContent.efemerides.length > 0 && (
+              <div className="card">
+                <div className="card-label">Calendario</div>
+                <h2 className="card-title">📅 Fechas especiales del mes</h2>
+                <p style={{ margin: "0 0 10px", fontSize: 13, color: "#666", lineHeight: 1.5 }}>
+                  Fechas que tenemos en cuenta este mes para el contenido. Algunas
+                  son ideales para una promo puntual: si te interesa alguna, avisanos.
+                </p>
+                <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+                  {planContent.efemerides.map((e, i) => (
+                    <li
+                      key={i}
+                      style={{
+                        padding: "10px 0",
+                        borderBottom:
+                          i < planContent.efemerides!.length - 1 ? "1px solid #f0f0f0" : "none",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                        <span style={{ fontWeight: 600, fontSize: 14 }}>{e.nombre}</span>
+                        <span style={{ fontSize: 12, color: "#999" }}>{e.fecha}</span>
+                        {e.tipo === "comercial" && (
+                          <span style={{ fontSize: 11, color: "#B45309", background: "#FEF3C7", padding: "1px 6px", borderRadius: 8 }}>
+                            promo
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 13, color: "#666", marginTop: 2, lineHeight: 1.5 }}>{e.idea}</div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Temas destacados */}
             {planContent.temas_destacados && planContent.temas_destacados.length > 0 && (
               <div className="card">

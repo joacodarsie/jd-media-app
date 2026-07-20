@@ -593,6 +593,47 @@ function PlanViewer({
         </Card>
       )}
 
+      {/* Efemérides del mes */}
+      {(plan.efemerides?.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Efemérides y fechas especiales</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Fechas del mes para saludar, generar contenido o proponerle al cliente una promo puntual.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {plan.efemerides!.map((e, i) => {
+                const badge =
+                  e.tipo === "global"
+                    ? { label: "Global", cls: "bg-blue-500/15 text-blue-700 dark:text-blue-300" }
+                    : e.tipo === "rubro"
+                    ? { label: "Del rubro", cls: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" }
+                    : { label: "Comercial", cls: "bg-amber-500/15 text-amber-700 dark:text-amber-300" };
+                return (
+                  <div key={i} className="rounded border bg-card p-2.5">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <span className="font-semibold">{e.nombre}</span>
+                      <span className="text-xs text-muted-foreground">{e.fecha}</span>
+                      <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${badge.cls}`}>
+                        {badge.label}
+                      </span>
+                      {e.relevancia === "alta" && (
+                        <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                          Prioridad
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">{e.idea}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Campañas */}
       {plan.campanas?.length > 0 && (
         <Card>

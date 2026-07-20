@@ -53,6 +53,14 @@ La \`descripcion\` de cada tema es el brief que ejecuta el equipo de diseño/edi
 6. **Sin inventar campañas** que el cliente no mencionó. Si no hay lanzamiento ni efeméride relevante, dejá \`campanas\` vacío.
 7. Si vino una **transcripción de meet con el cliente**, priorizá lo que el cliente pidió explícitamente. Sus prioridades > las tuyas.
 
+# Efemérides del mes (SIEMPRE tener en cuenta)
+Antes de planificar, pensá qué efemérides y fechas especiales caen en el período (Argentina por defecto, salvo que el cliente sea de otro país). Cargalas en \`efemerides\` y usalas para enriquecer el plan. Tres tipos:
+1. **Globales importantes** (Día de la Madre/Padre/Niño, Navidad, Año Nuevo, Día del Amigo, fechas patrias, etc.): las marcas suelen saludar/felicitar. Proponé al menos la placa/historia de saludo cuando corresponda.
+2. **Del rubro del cliente** (aunque sean poco conocidas): ej. Día del Panadero para una panadería, Día del Nutricionista para un consultorio. Son ORO para contenido y para proponerle al cliente una promo puntual. Marcalas aunque no siempre se ejecuten: sirven para conversarlas.
+3. **Comerciales / vanales** (Black Friday, Cyber Monday, Hot Sale, "días mundiales de X"): útiles para promos puntuales y fechas de venta.
+
+Para cada una poné \`tipo\`, \`relevancia\` (según cuánto le sirve a ESTE cliente) e \`idea\` concreta. Las de relevancia alta que decidas ejecutar deben además aparecer como \`tema_destacado\` con su fecha (respetando las cuotas del pack) o como \`campana\` si amerita. No inventes efemérides que no existen; si el mes es flojo, listá solo las reales.
+
 # Tono
 Español rioplatense (vos). Directo, accionable, sin generalidades vacías ni emojis.
 
@@ -147,6 +155,35 @@ export const SAVE_CONTENT_PLAN_TOOL = {
             },
           },
           required: ["titulo", "descripcion", "formato", "red_principal", "pilar"],
+        },
+      },
+      efemerides: {
+        type: "array",
+        description:
+          "Efemérides y fechas especiales del período (mes/país del cliente, por defecto Argentina). Incluí TRES tipos: (1) GLOBALES importantes de toda la vida (Día de la Madre, Navidad, Año Nuevo, etc.) para saludar/felicitar; (2) del RUBRO del cliente, aunque sean poco conocidas, que dan pie a contenido o promo puntual y valen la pena conversar con el cliente; (3) COMERCIALES/vanales (Black Friday, Cyber Monday, días 'mundiales' de X) útiles para promos puntuales. Ordenar por fecha. Si el mes tiene pocas, listá solo las reales; no inventes.",
+        items: {
+          type: "object",
+          properties: {
+            nombre: { type: "string", description: "Ej: 'Día de la Madre', 'Día del Panadero'." },
+            fecha: { type: "string", description: "Fecha ISO (YYYY-MM-DD) dentro del período." },
+            tipo: {
+              type: "string",
+              enum: ["global", "rubro", "comercial"],
+              description:
+                "global = fecha importante para saludar; rubro = relacionada al negocio del cliente; comercial = día para promo puntual.",
+            },
+            relevancia: {
+              type: "string",
+              enum: ["alta", "media", "baja"],
+              description: "Cuánto conviene aprovecharla para este cliente puntual.",
+            },
+            idea: {
+              type: "string",
+              description:
+                "Sugerencia concreta de qué hacer: saludo/placa, pieza de contenido, o promo. Si es del rubro o comercial, aclarar que es para conversar con el cliente por si quiere una promo.",
+            },
+          },
+          required: ["nombre", "fecha", "tipo", "relevancia", "idea"],
         },
       },
       campanas: {

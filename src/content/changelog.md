@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-07-20 — El plan mensual ahora contempla las efemérides del mes
+
+- 📅 **Al generar el plan de un cliente, la IA tiene en cuenta las fechas especiales del mes** en tres tipos: **globales** (Día de la Madre, Navidad… para saludar), **del rubro** del cliente (Día del Panadero para una panadería… ideales para contenido o para proponerle una promo) y **comerciales** (Black Friday, Hot Sale… para promos puntuales). Cada una con una idea concreta de qué hacer.
+- 👀 Aparecen en el **plan interno**, en el **PDF** y en el **portal de aprobación del cliente** ("📅 Fechas especiales del mes"), así el cliente ve que el contenido está pensado alrededor de esas fechas y puede pedir una promo si le interesa alguna.
+
 ## 2026-07-20 — Publicación en Facebook + objetivos del mes en el portal
 
 - 📘 **Las piezas que salen solas ahora se publican también en Facebook**: además de Instagram, se replican en la página de Facebook del cliente (posts, carruseles y reels; historias de imagen). Si Facebook falla por algo, Instagram igual sale y queda avisado. **TikTok** se suma en cuanto su app pase la revisión (la base ya está).

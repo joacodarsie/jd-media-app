@@ -59,6 +59,22 @@ export type TemaDestacado = {
   redes_replica?: RedSocial[];
 };
 
+export type Efemeride = {
+  nombre: string;
+  /** Fecha ISO (YYYY-MM-DD) dentro del período. */
+  fecha: string;
+  /**
+   * global = fecha importante para saludar/felicitar;
+   * rubro = relacionada al negocio del cliente (oportunidad de contenido/promo);
+   * comercial = día para promo puntual (Black Friday, etc.).
+   */
+  tipo: "global" | "rubro" | "comercial";
+  /** Cuánto conviene aprovecharla para este cliente puntual. */
+  relevancia: "alta" | "media" | "baja";
+  /** Sugerencia concreta: saludo/placa, pieza de contenido o promo a conversar. */
+  idea: string;
+};
+
 export type Campana = {
   nombre: string;
   objetivo: string;
@@ -81,6 +97,9 @@ export type MonthlyContentPlan = {
   /** Temas destacados del mes — 5-10 ítems concretos para nutrir el calendario */
   temas_destacados: TemaDestacado[];
 
+  /** Efemérides y fechas especiales del período (globales, del rubro, comerciales) */
+  efemerides?: Efemeride[];
+
   /** Campañas / lanzamientos del período */
   campanas: Campana[];
 
@@ -99,6 +118,7 @@ export const EMPTY_PLAN: MonthlyContentPlan = {
   mix_por_red: [],
   distribucion_pilares: [],
   temas_destacados: [],
+  efemerides: [],
   campanas: [],
   reglas_operativas: [],
   kpis_objetivo: [],

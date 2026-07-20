@@ -51,9 +51,10 @@ export const conocimientoTabs: SectionTab[] = [
   { href: "/agencia", label: "Agencia" },
 ];
 
-/** Pestañas de Comercial (venta): panel, prospección y post-meet. */
+/** Pestañas de Comercial (venta): panel, leads, prospección y post-meet. */
 export const comercialTabs: SectionTab[] = [
   { href: "/comercial", label: "Comercial" },
+  { href: "/comercial/leads", label: "Leads" },
   { href: "/prospeccion", label: "Prospección" },
   { href: "/comercial/post-meet", label: "Post-meet" },
 ];

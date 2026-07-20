@@ -95,6 +95,18 @@ export async function POST(req: Request) {
   const instrucciones =
     typeof body.instrucciones === "string" ? body.instrucciones.slice(0, 4000) : null;
 
+  // Contexto complementario: la transcripción del meet COMERCIAL (la que se
+  // cargó para generar la guía de onboarding). Enriquece el diagnóstico con
+  // lo que el cliente ya dijo en la venta.
+  const { data: onbRow } = await admin
+    .from("client_onboarding")
+    .select("meet_guide_source_text")
+    .eq("cliente_id", body.cliente_id)
+    .maybeSingle();
+  const comercialTranscript =
+    (onbRow as { meet_guide_source_text?: string | null } | null)
+      ?.meet_guide_source_text ?? null;
+
   const userMessage = buildGenerateUserMessage({
     clienteNombre: client.nombre,
     rubro: (client as { rubro?: string | null }).rubro,
@@ -102,6 +114,7 @@ export async function POST(req: Request) {
     serviciosContratados,
     redes,
     transcript,
+    comercialTranscript,
     instrucciones,
   });
 

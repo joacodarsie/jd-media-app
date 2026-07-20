@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-07-20 — Planes anteriores, atajo desde el calendario y diagnóstico más completo
+
+- 🕑 **Ver los planes de meses anteriores**: en la sección Plan de contenidos, el historial ahora es clickeable — tocás un plan viejo y se abre una vista rápida (lo importante del mes, fechas especiales, piezas, campañas y objetivos).
+- 🎯 **Atajo del calendario al plan**: cuando mirás el calendario filtrado por un cliente, aparece un botón **"Ver plan de contenidos"** para analizarlo al toque antes de armar el mes.
+- 🧠 **El diagnóstico inicial ahora se nutre también del meet comercial**: además de la transcripción del meet de onboarding (fuente principal), la IA usa como contexto complementario la transcripción del meet comercial que cargaste para la guía de onboarding — más contexto de lo que el cliente ya dijo en la venta.
+
 ## 2026-07-20 — El plan mensual ahora contempla las efemérides del mes
 
 - 📅 **Al generar el plan de un cliente, la IA tiene en cuenta las fechas especiales del mes** en tres tipos: **globales** (Día de la Madre, Navidad… para saludar), **del rubro** del cliente (Día del Panadero para una panadería… ideales para contenido o para proponerle una promo) y **comerciales** (Black Friday, Hot Sale… para promos puntuales). Cada una con una idea concreta de qué hacer.

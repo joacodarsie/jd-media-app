@@ -23,6 +23,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   approvePlan,
   archivePlan,
   applyTemaToCalendar,
@@ -56,6 +62,8 @@ export function ContentPlanWorkspace({
   const [periodoLabel, setPeriodoLabel] = useState(defaultPeriodLabel);
   const [genProgress, setGenProgress] = useState(0);
   const [pending, setPending] = useState(false);
+  // Plan anterior que se está viendo (solo lectura) desde el historial.
+  const [viewingPlan, setViewingPlan] = useState<ContentPlanRow | null>(null);
 
   // Instrucciones puntuales para este plan (pedido del cliente, evento, etc.)
   const [instrucciones, setInstrucciones] = useState("");
@@ -410,21 +418,102 @@ export function ContentPlanWorkspace({
           <CardContent>
             <ul className="space-y-1 text-sm">
               {history.map((p) => (
-                <li key={p.id} className="flex items-center justify-between">
-                  <span>
-                    <Badge variant="outline" className="mr-2 text-xs">
-                      {p.status}
-                    </Badge>
-                    {p.periodo_label}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {p.generated_at ? new Date(p.generated_at).toLocaleDateString("es-AR") : ""}
-                  </span>
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    onClick={() => setViewingPlan(p)}
+                    className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left transition hover:bg-accent"
+                  >
+                    <span>
+                      <Badge variant="outline" className="mr-2 text-xs">
+                        {p.status}
+                      </Badge>
+                      {p.periodo_label}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {p.generated_at ? new Date(p.generated_at).toLocaleDateString("es-AR") : ""}
+                      <span className="ml-2 text-primary">Ver →</span>
+                    </span>
+                  </button>
                 </li>
               ))}
             </ul>
           </CardContent>
         </Card>
+      )}
+
+      <Dialog open={!!viewingPlan} onOpenChange={(o) => !o && setViewingPlan(null)}>
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Plan de {viewingPlan?.periodo_label}{" "}
+              <Badge variant="outline" className="ml-1 align-middle text-xs">
+                {viewingPlan?.status}
+              </Badge>
+            </DialogTitle>
+          </DialogHeader>
+          {viewingPlan && <ReadonlyPlanView content={viewingPlan.content} />}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+/** Vista compacta de solo lectura de un plan anterior. */
+function ReadonlyPlanView({ content }: { content: MonthlyContentPlan }) {
+  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <div className="space-y-1">
+      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>
+      {children}
+    </div>
+  );
+  return (
+    <div className="space-y-4 text-sm">
+      {content.resumen_mes?.length > 0 && (
+        <Section title="Lo importante del mes">
+          <ul className="list-inside list-disc space-y-0.5">
+            {content.resumen_mes.map((b, i) => <li key={i}>{b}</li>)}
+          </ul>
+        </Section>
+      )}
+      {(content.efemerides?.length ?? 0) > 0 && (
+        <Section title="Fechas especiales">
+          <ul className="space-y-0.5">
+            {content.efemerides!.map((e, i) => (
+              <li key={i}>
+                <b>{e.nombre}</b> <span className="text-muted-foreground">({e.fecha})</span> — {e.idea}
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+      {content.temas_destacados?.length > 0 && (
+        <Section title={`Piezas del mes (${content.temas_destacados.length})`}>
+          <ul className="space-y-0.5">
+            {content.temas_destacados.map((t, i) => (
+              <li key={i}>
+                <Badge variant="secondary" className="mr-1 text-[10px]">{t.formato}</Badge>
+                {t.titulo}
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+      {content.campanas?.length > 0 && (
+        <Section title="Campañas">
+          <ul className="space-y-0.5">
+            {content.campanas.map((c, i) => (
+              <li key={i}><b>{c.nombre}</b> — {c.objetivo} ({c.fechas})</li>
+            ))}
+          </ul>
+        </Section>
+      )}
+      {content.kpis_objetivo?.length > 0 && (
+        <Section title="Objetivos del mes">
+          <ul className="list-inside list-disc space-y-0.5">
+            {content.kpis_objetivo.map((k, i) => <li key={i}>{k}</li>)}
+          </ul>
+        </Section>
       )}
     </div>
   );

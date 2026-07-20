@@ -327,6 +327,13 @@ export function buildGenerateUserMessage(args: {
   serviciosContratados?: string[];
   redes?: { red: string; handle?: string | null }[];
   transcript: string;
+  /**
+   * Transcripción del meet COMERCIAL (el de la venta), como contexto
+   * complementario. Ayuda a entender expectativas, presupuesto, objetivos y
+   * lo que el cliente ya dijo antes de contratar. Fuente secundaria: la
+   * primaria sigue siendo el meet de onboarding.
+   */
+  comercialTranscript?: string | null;
   /** Instrucciones libres del admin para tener en cuenta al generar. */
   instrucciones?: string | null;
 }): string {
@@ -344,10 +351,20 @@ export function buildGenerateUserMessage(args: {
     );
   }
   lines.push("");
-  lines.push(`# Transcripción del meet de onboarding`);
+  lines.push(`# Transcripción del meet de onboarding (FUENTE PRINCIPAL)`);
   lines.push("");
   lines.push(args.transcript);
   lines.push("");
+  const comercial = (args.comercialTranscript ?? "").trim();
+  if (comercial.length > 200) {
+    lines.push(`# Transcripción del meet COMERCIAL (contexto complementario)`);
+    lines.push(
+      "Es la charla de venta previa. Usala SOLO para enriquecer el diagnóstico con lo que el cliente ya expresó (objetivos, expectativas, dolores, presupuesto, referencias). Si algo choca con el meet de onboarding, mandá el de onboarding. No inventes datos que no estén en ninguna de las dos."
+    );
+    lines.push("");
+    lines.push(comercial.length > 60_000 ? comercial.slice(0, 60_000) : comercial);
+    lines.push("");
+  }
   const instrucciones = (args.instrucciones ?? "").trim();
   if (instrucciones) {
     lines.push(`# Indicaciones adicionales del equipo (tenelas MUY en cuenta)`);

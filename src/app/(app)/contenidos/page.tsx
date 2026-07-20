@@ -98,12 +98,22 @@ export default async function ContenidosPage({
               size="md"
             />
           </h1>
-          <Link
-            href="/contenidos/guiones"
-            className="rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
-          >
-            📄 Guiones del mes
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            {clienteFiltro && (
+              <Link
+                href={`/clientes/${clienteFiltro}/plan-mensual`}
+                className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/20"
+              >
+                🎯 Ver plan de contenidos
+              </Link>
+            )}
+            <Link
+              href="/contenidos/guiones"
+              className="rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
+            >
+              📄 Guiones del mes
+            </Link>
+          </div>
         </div>
         <p className="text-muted-foreground">
           Todo el contenido planificado de la agencia, en un mes. Arrastrá una

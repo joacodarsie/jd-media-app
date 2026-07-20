@@ -2,6 +2,13 @@
 title: Novedades
 ---
 
+## 2026-07-20 — Auto-publicación en Instagram (fase 1) 🚀
+
+- ⚡ **Las piezas se pueden publicar solas**: al editar una publicación de Instagram vas a ver la sección **"Publicar automáticamente"**: subís el **archivo final** (imagen, video o las imágenes del carrusel en orden), activás el check, y cuando la pieza esté **Aprobada** sale sola a su fecha/hora con el copy + hashtags del form como caption.
+- ✅ Al publicarse queda marcada **"Publicado"** con el **link al post** en Instagram, y le llega una notificación al CM. Si algo falla, avisa al CM y al admin, y hay botón **Reintentar**.
+- 📌 Soporta **posts, carruseles, Reels e historias**. Por ahora Instagram (TikTok y Facebook más adelante).
+- 🎯 **Asignar puestos ahora es más rápido**: en la ficha del cliente y en el onboarding, cada selector de puesto (CM, diseño, edición, pauta, coordinación, comercial) muestra **solo la gente de ese rol**. Con "Ver todos" aparece el equipo completo para asignaciones atípicas.
+
 ## 2026-07-19 — El Drive automático ahora usa las carpetas reales de la agencia
 
 - 📁 Las carpetas de clientes nuevos se crean **dentro de `JD MEDIA › Clientes`** (la carpeta de siempre), ya no en una aparte.

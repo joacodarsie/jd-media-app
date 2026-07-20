@@ -32,6 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AIContentSuggester } from "@/components/ai-content-suggester";
+import { PublicationAutoPublish } from "@/components/publication-auto-publish";
 import {
   Select,
   SelectContent,
@@ -449,6 +450,17 @@ export function PublicationFormDialog({
                 </SelectContent>
               </Select>
             </div>
+          )}
+
+          {mode === "edit" && publication && red === "instagram" && (
+            <PublicationAutoPublish
+              publicationId={publication.id}
+              initialAuto={publication.auto_publicar ?? false}
+              initialMedia={publication.publish_media ?? []}
+              publishedAt={publication.published_at ?? null}
+              publishError={publication.publish_error ?? null}
+              igPermalink={publication.ig_permalink ?? null}
+            />
           )}
         </div>
         <DialogFooter>

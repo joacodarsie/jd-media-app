@@ -27,7 +27,7 @@ export const getActiveUsers = unstable_cache(
     const admin = createAdmin();
     const { data } = await admin
       .from("users")
-      .select("id, nombre, avatar_url, rol, position_id, activo")
+      .select("id, nombre, avatar_url, rol, rol_secundario, position_id, activo")
       .eq("activo", true)
       .order("nombre");
     return data ?? [];

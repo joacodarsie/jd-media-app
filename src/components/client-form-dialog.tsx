@@ -19,7 +19,8 @@ import {
   SERVICE_TYPE_LABEL,
   type Facturacion,
 } from "@/lib/constants";
-import type { AppUser, Client } from "@/lib/types";
+import type { Client } from "@/lib/types";
+import { usersForPuesto, type TeamUserOpt } from "@/lib/role-options";
 import {
   Dialog,
   DialogContent,
@@ -45,12 +46,12 @@ const NONE = "__none__";
 export function ClientFormDialog({
   mode,
   client,
-  users,
+  users: usersProp,
   trigger,
 }: {
   mode: "create" | "edit";
   client?: Client;
-  users: Pick<AppUser, "id" | "nombre">[];
+  users: TeamUserOpt[];
   trigger: React.ReactNode;
 }) {
   const router = useRouter();
@@ -80,6 +81,11 @@ export function ClientFormDialog({
   const [coordinadorId, setCoordinadorId] = useState<string>(
     client?.coordinador_id ?? NONE
   );
+  // Los selects de puesto muestran solo la gente del rol correspondiente;
+  // "Ver todos" desactiva el filtro para asignaciones atípicas.
+  const [verTodos, setVerTodos] = useState(false);
+  const opciones = (puesto: Parameters<typeof usersForPuesto>[1], cur: string) =>
+    verTodos ? usersProp : usersForPuesto(usersProp, puesto, cur === NONE ? null : cur);
   const [cerradoPorId, setCerradoPorId] = useState<string>(
     client?.cerrado_por_id ?? NONE
   );
@@ -297,7 +303,7 @@ export function ClientFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE}>Sin asignar</SelectItem>
-                  {users.map((u) => (
+                  {opciones("comercial", cerradoPorId).map((u) => (
                     <SelectItem key={u.id} value={u.id}>
                       {u.nombre}
                     </SelectItem>
@@ -323,7 +329,18 @@ export function ClientFormDialog({
           {(mode === "edit" ||
             draftServices.some((s) => s.tipo === "gestion_redes")) && (
           <div className="rounded-lg border bg-muted/30 p-3">
-            <h4 className="mb-2 text-sm font-semibold">Equipo asignado a esta cuenta</h4>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h4 className="text-sm font-semibold">Equipo asignado a esta cuenta</h4>
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={verTodos}
+                  onChange={(e) => setVerTodos(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-primary"
+                />
+                Ver todos
+              </label>
+            </div>
             <p className="mb-3 text-xs text-muted-foreground">
               Quién lleva cada parte de la cuenta. El Community Manager, diseñador/a
               y editor/a se sugieren automáticamente al crear publicaciones según el
@@ -339,7 +356,7 @@ export function ClientFormDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NONE}>Sin asignar</SelectItem>
-                    {users.map((u) => (
+                    {opciones("cm", cmId).map((u) => (
                       <SelectItem key={u.id} value={u.id}>{u.nombre}</SelectItem>
                     ))}
                   </SelectContent>
@@ -353,7 +370,7 @@ export function ClientFormDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NONE}>Sin asignar</SelectItem>
-                    {users.map((u) => (
+                    {opciones("diseno", disenadorId).map((u) => (
                       <SelectItem key={u.id} value={u.id}>{u.nombre}</SelectItem>
                     ))}
                   </SelectContent>
@@ -367,7 +384,7 @@ export function ClientFormDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NONE}>Sin asignar</SelectItem>
-                    {users.map((u) => (
+                    {opciones("audiovisual", audiovisualId).map((u) => (
                       <SelectItem key={u.id} value={u.id}>{u.nombre}</SelectItem>
                     ))}
                   </SelectContent>
@@ -381,7 +398,7 @@ export function ClientFormDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NONE}>Sin asignar</SelectItem>
-                    {users.map((u) => (
+                    {opciones("pauta", mediaBuyerId).map((u) => (
                       <SelectItem key={u.id} value={u.id}>{u.nombre}</SelectItem>
                     ))}
                   </SelectContent>
@@ -395,7 +412,7 @@ export function ClientFormDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NONE}>Sin asignar</SelectItem>
-                    {users.map((u) => (
+                    {opciones("coordinacion", coordinadorId).map((u) => (
                       <SelectItem key={u.id} value={u.id}>{u.nombre}</SelectItem>
                     ))}
                   </SelectContent>

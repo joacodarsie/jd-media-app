@@ -103,7 +103,7 @@ export default async function ClientDetail({
       )
       .eq("cliente_id", params.id)
       .order("fecha_limite", { ascending: true, nullsFirst: false }),
-    supabase.from("users").select("id, nombre").eq("activo", true).order("nombre"),
+    supabase.from("users").select("id, nombre, rol, rol_secundario").eq("activo", true).order("nombre"),
     supabase.from("client_services").select("*").eq("cliente_id", params.id).order("activo", { ascending: false }).order("tipo"),
     supabase
       .from("documents")

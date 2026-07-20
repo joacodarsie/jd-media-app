@@ -14,13 +14,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { assignClientTeam } from "@/app/(app)/clientes/[id]/onboarding/actions";
+import { usersForPuesto, type Puesto, type TeamUserOpt } from "@/lib/role-options";
 
 const NONE = "__none__";
 
-interface UserOpt {
-  id: string;
-  nombre: string;
-}
+type UserOpt = TeamUserOpt;
 
 /**
  * Card del onboarding de Gestión de Redes para que la coordinación asigne los
@@ -63,10 +61,15 @@ export function ClientTeamAssign({
     });
   }
 
-  const puestos: { label: string; value: string; set: (v: string) => void }[] = [
-    { label: "Community Manager", value: cm, set: setCm },
-    { label: "Diseño gráfico", value: dis, set: setDis },
-    { label: "Edición audiovisual", value: av, set: setAv },
+  const puestos: {
+    label: string;
+    value: string;
+    set: (v: string) => void;
+    puesto: Puesto;
+  }[] = [
+    { label: "Community Manager", value: cm, set: setCm, puesto: "cm" },
+    { label: "Diseño gráfico", value: dis, set: setDis, puesto: "diseno" },
+    { label: "Edición audiovisual", value: av, set: setAv, puesto: "audiovisual" },
   ];
 
   return (
@@ -89,7 +92,7 @@ export function ClientTeamAssign({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={NONE}>Sin asignar</SelectItem>
-                {users.map((u) => (
+                {usersForPuesto(users, p.puesto, p.value === NONE ? null : p.value).map((u) => (
                   <SelectItem key={u.id} value={u.id}>
                     {u.nombre}
                   </SelectItem>

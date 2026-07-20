@@ -248,6 +248,13 @@ export interface Publication {
   notas_revision: string | null;
   created_at: string;
   updated_at: string;
+  // Auto-publicación (migración 0128) — opcionales para tolerar la DB vieja.
+  auto_publicar?: boolean;
+  publish_media?: { path: string; name: string }[] | null;
+  published_at?: string | null;
+  publish_error?: string | null;
+  ig_media_id?: string | null;
+  ig_permalink?: string | null;
 }
 
 export interface PublicationWithRels extends Publication {

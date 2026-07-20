@@ -46,7 +46,7 @@ export default async function OnboardingRedesPage({
   // Usuarios activos para asignar los puestos de la cuenta.
   const { data: teamUsers } = await admin
     .from("users")
-    .select("id, nombre")
+    .select("id, nombre, rol, rol_secundario")
     .eq("activo", true)
     .order("nombre");
 
@@ -116,7 +116,7 @@ export default async function OnboardingRedesPage({
 
       <ClientTeamAssign
         clientId={client.id}
-        users={(teamUsers ?? []) as { id: string; nombre: string }[]}
+        users={(teamUsers ?? []) as import("@/lib/role-options").TeamUserOpt[]}
         initial={{
           cm_id: client.cm_id,
           disenador_id: client.disenador_id,

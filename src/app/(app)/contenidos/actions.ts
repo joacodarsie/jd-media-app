@@ -304,3 +304,61 @@ export async function bulkChangePublicationStatus(ids: string[], estado: string)
   revalidatePath("/clientes/[id]/calendario", "page");
   return { ok: true };
 }
+
+/**
+ * Guarda la config de auto-publicación de una pieza (toggle + archivos
+ * finales). Solo el equipo de la cuenta. Si la migración 0128 no está
+ * aplicada, devuelve un error claro y no rompe el resto del form.
+ */
+export async function saveAutoPublish(
+  id: string,
+  input: { auto_publicar: boolean; publish_media: { path: string; name: string }[] }
+) {
+  const admin = writeDb();
+  const { data: pub } = await admin
+    .from("publications")
+    .select("cliente_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (!pub) return { error: "No se encontró la publicación." };
+  if (!(await userOnClientTeam(pub.cliente_id))) {
+    return { error: "Solo el equipo de esta cuenta puede configurar la auto-publicación." };
+  }
+  const { error } = await admin
+    .from("publications")
+    .update({
+      auto_publicar: input.auto_publicar,
+      publish_media: input.publish_media,
+    })
+    .eq("id", id);
+  if (error) {
+    return {
+      error: error.message.includes("auto_publicar")
+        ? "Falta aplicar la migración 0128 (auto-publicación)."
+        : error.message,
+    };
+  }
+  invalidate(pub.cliente_id);
+  return { ok: true };
+}
+
+/** Limpia el error de auto-publicación para que el próximo run reintente. */
+export async function retryAutoPublish(id: string) {
+  const admin = writeDb();
+  const { data: pub } = await admin
+    .from("publications")
+    .select("cliente_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (!pub) return { error: "No se encontró la publicación." };
+  if (!(await userOnClientTeam(pub.cliente_id))) {
+    return { error: "Solo el equipo de esta cuenta puede reintentar." };
+  }
+  const { error } = await admin
+    .from("publications")
+    .update({ publish_error: null })
+    .eq("id", id);
+  if (error) return { error: error.message };
+  invalidate(pub.cliente_id);
+  return { ok: true };
+}

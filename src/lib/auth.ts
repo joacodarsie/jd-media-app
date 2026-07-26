@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "./supabase/server";
 import type { AppUser } from "./types";
 import type { Feature } from "./permissions";
+import { OWNER_EMAIL } from "./constants";
 
 /**
  * Resuelve el perfil del usuario logueado (o null) UNA sola vez por request.
@@ -39,6 +40,15 @@ export function isStaff(rol: string) {
   return rol === "admin" || rol === "coordinador";
 }
 
+/**
+ * true solo para el DIRECTOR/dueño (Joaquín), identificado por email. Sirve para
+ * reservarle acciones caras en tokens (búsqueda de leads con IA) aunque haya
+ * otros admin en el equipo. Ver OWNER_EMAIL en constants.
+ */
+export function isOwner(user: { email?: string | null }): boolean {
+  return !!user.email && user.email.toLowerCase() === OWNER_EMAIL;
+}
+
 type RoleBearer = { rol: string; rol_secundario?: string | null };
 
 /** true si alguno de los roles del usuario (primario o secundario) está en la lista. */
@@ -73,6 +83,34 @@ export function userHas(user: AppUser, feature: Feature): boolean {
   if (user.rol === "admin") return true;
   const p = (user as unknown as { permisos?: Record<string, boolean> }).permisos;
   return p?.[feature] === true;
+}
+
+/**
+ * Como `userHas` pero SIN el atajo de admin: exige que la feature esté otorgada
+ * explícitamente. Se usa para lo que cuesta plata (IA), donde "ser admin" no
+ * debería habilitar el gasto solo: se otorga a dedo en /accesos.
+ */
+export function hasFeatureStrict(user: AppUser, feature: Feature): boolean {
+  const p = (user as unknown as { permisos?: Record<string, boolean> }).permisos;
+  return p?.[feature] === true;
+}
+
+/**
+ * IA de PROSPECCIÓN del día a día: sacar contactos, generar los mensajes de la
+ * campaña y sugerir sectores. El director siempre; el resto, con `contactos_ia`
+ * otorgado a mano en /accesos (ser admin NO alcanza: es gasto de tokens).
+ */
+export function canUseProspectingAi(user: AppUser): boolean {
+  return isOwner(user) || hasFeatureStrict(user, "contactos_ia");
+}
+
+/**
+ * Buscador de leads con IA (`discover`): la función MÁS cara (Sonnet + búsqueda
+ * web + verificación de Instagram + un mensaje por lead). Se otorga aparte con
+ * `leads_ia` para poder darla sin regalar el resto.
+ */
+export function canUseLeadsAi(user: AppUser): boolean {
+  return isOwner(user) || hasFeatureStrict(user, "leads_ia");
 }
 
 /** Redirige si el usuario no tiene la feature. */

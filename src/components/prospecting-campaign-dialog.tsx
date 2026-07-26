@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil } from "lucide-react";
+import { Loader2, Plus, Pencil, Sparkles } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -43,16 +43,26 @@ export interface CampaignFormValue {
   idioma: string;
 }
 
+interface SectorSuggestion {
+  rubro: string;
+  ubicacion: string | null;
+  angulo: string | null;
+  por_que: string | null;
+}
+
 export function ProspectingCampaignDialog({
   mode,
   campaign,
   services,
   trigger,
+  canSuggest = false,
 }: {
   mode: "create" | "edit";
   campaign?: CampaignFormValue;
   services: { slug: string; name: string }[];
   trigger?: React.ReactNode;
+  /** Solo el director ve el botón "Sugerir sectores con IA" (consume tokens). */
+  canSuggest?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -64,6 +74,37 @@ export function ProspectingCampaignDialog({
   const [angulo, setAngulo] = useState(campaign?.angulo ?? "");
   const [canal, setCanal] = useState(campaign?.canal ?? "whatsapp");
   const [idioma, setIdioma] = useState(campaign?.idioma ?? "es_ar");
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestions, setSuggestions] = useState<SectorSuggestion[]>([]);
+
+  async function pedirSugerencias() {
+    setSuggesting(true);
+    try {
+      const res = await fetch("/api/prospeccion/suggest-sectors", { method: "POST" });
+      const data = (await res.json()) as { sugerencias?: SectorSuggestion[]; error?: string };
+      if (!res.ok || data.error) {
+        toast.error(data.error ?? "No se pudo sugerir.");
+        return;
+      }
+      setSuggestions(data.sugerencias ?? []);
+      if ((data.sugerencias ?? []).length === 0) toast.info("No hubo sugerencias.");
+    } catch {
+      toast.error("Error de red al sugerir.");
+    } finally {
+      setSuggesting(false);
+    }
+  }
+
+  function aplicarSugerencia(s: SectorSuggestion) {
+    setRubro(s.rubro);
+    if (s.ubicacion) setUbicacion(s.ubicacion);
+    if (s.angulo) setAngulo(s.angulo);
+    if (!nombre.trim()) {
+      const zona = s.ubicacion ? ` ${s.ubicacion.split(",")[0]}` : "";
+      setNombre(`${s.rubro}${zona}`.slice(0, 80));
+    }
+    setSuggestions([]);
+  }
 
   function submit() {
     if (!nombre.trim()) return void toast.error("Poné un nombre a la campaña.");
@@ -85,7 +126,7 @@ export function ProspectingCampaignDialog({
       if ("error" in res) return void toast.error(res.error);
       toast.success(mode === "create" ? "Campaña creada" : "Campaña actualizada");
       setOpen(false);
-      if (mode === "create" && "id" in res) router.push(`/prospeccion/${res.id}`);
+      if (mode === "create" && "id" in res) router.push(`/prospeccion/${res.id}?nuevo=1`);
       else router.refresh();
     });
   }
@@ -114,6 +155,57 @@ export function ProspectingCampaignDialog({
           Una campaña es un <b>cluster</b>: un rubro homogéneo en una zona. Cuanto
           más afilado, mejores leads y mensajes. Ej: <i>gimnasios premium de Córdoba</i>.
         </p>
+
+        {mode === "create" && canSuggest && (
+          <div className="rounded-lg border border-dashed p-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">
+                ¿No sabés qué sector atacar? La IA mira tus clientes actuales y te
+                sugiere nichos.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={pedirSugerencias}
+                disabled={suggesting}
+              >
+                {suggesting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="mr-2 h-4 w-4" />
+                )}
+                Sugerir con IA
+              </Button>
+            </div>
+            {suggestions.length > 0 && (
+              <div className="mt-3 grid gap-2">
+                {suggestions.map((s, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => aplicarSugerencia(s)}
+                    className="rounded-md border bg-card px-3 py-2 text-left text-sm hover:border-primary hover:bg-accent"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium">{s.rubro}</span>
+                      {s.ubicacion && (
+                        <span className="text-xs text-muted-foreground">{s.ubicacion}</span>
+                      )}
+                    </div>
+                    {s.por_que && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">{s.por_que}</p>
+                    )}
+                  </button>
+                ))}
+                <p className="text-[11px] text-muted-foreground">
+                  Tocá una para cargarla en el formulario. Podés editarla antes de crear.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="space-y-3">
           <div>
             <Label>Nombre de la campaña *</Label>

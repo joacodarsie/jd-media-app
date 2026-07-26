@@ -9,6 +9,7 @@ import {
   buildGenerateUserMessage,
 } from "@/lib/diagnostics/generate-prompt";
 import { isDiagnosticShape, normalizeDiagnostic, type DiagnosticContent } from "@/lib/diagnostics/schema";
+import { trackAiUsage } from "@/lib/ai/usage";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -180,6 +181,7 @@ export async function POST(req: Request) {
         }
 
         const finalMsg = await messageStream.finalMessage();
+        void trackAiUsage({ ruta: "diagnostico/generar", modelo: DIAGNOSTIC_GENERATOR_MODEL, usage: finalMsg.usage });
 
         // Si se cortó por límite de tokens, el JSON queda incompleto: avisamos
         // claro en vez del genérico "JSON inválido".

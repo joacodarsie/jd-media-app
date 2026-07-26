@@ -22,11 +22,21 @@ export const JD_MEDIA_OWNER = {
   agency_address: "Azor Grimaut 2963, Córdoba, Argentina",
 } as const;
 
+/**
+ * Email del DIRECTOR/dueño (Joaquín). Se usa para reservarle acciones que
+ * consumen muchos tokens (la búsqueda de leads con IA en Prospección) incluso
+ * frente a otros admin (ej: Leo también es admin). Overridable por env por si
+ * cambia la titularidad, sin tocar código.
+ */
+export const OWNER_EMAIL =
+  process.env.JD_OWNER_EMAIL?.toLowerCase() || "joaquin@jdmedia.com";
+
 export const AREAS = [
   "Estrategia/Dirección",
   "Coordinación General",
   "Coordinación",
   "Coordinación de Diseño",
+  "Coordinación de Paid Media",
   "Diseño",
   "Community Manager",
   "Edición Audiovisual",
@@ -216,22 +226,22 @@ export const PUBLICATION_STATUS_LABEL: Record<PublicationStatus, string> = {
 //   → rojo solo cuando se cancela
 export const PUBLICATION_STATUS_BADGE: Record<PublicationStatus, string> = {
   idea:
-    "bg-slate-200 text-slate-700 dark:bg-slate-500/40 dark:text-slate-100",
+    "bg-slate-200 text-slate-700 dark:bg-slate-950 dark:text-slate-300",
   en_diseno:
-    "bg-blue-200 text-blue-800 dark:bg-blue-500/40 dark:text-blue-100",
+    "bg-blue-200 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
   guion:
-    "bg-indigo-200 text-indigo-800 dark:bg-indigo-500/40 dark:text-indigo-100",
+    "bg-indigo-200 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300",
   edicion:
-    "bg-purple-200 text-purple-800 dark:bg-purple-500/40 dark:text-purple-100",
+    "bg-purple-200 text-purple-800 dark:bg-purple-950 dark:text-purple-300",
   revision_creativa:
-    "bg-amber-200 text-amber-900 dark:bg-amber-500/40 dark:text-amber-100",
+    "bg-amber-200 text-amber-900 dark:bg-amber-950 dark:text-amber-300",
   revision_cliente:
-    "bg-orange-200 text-orange-900 dark:bg-orange-500/45 dark:text-orange-100",
+    "bg-orange-200 text-orange-900 dark:bg-orange-950 dark:text-orange-300",
   aprobado:
-    "bg-lime-200 text-lime-900 dark:bg-lime-500/40 dark:text-lime-100",
+    "bg-lime-200 text-lime-900 dark:bg-lime-950 dark:text-lime-300",
   publicado: "bg-emerald-600 text-white dark:bg-emerald-500 dark:text-white",
   rechazado:
-    "bg-rose-200 text-rose-900 dark:bg-rose-500/40 dark:text-rose-100",
+    "bg-rose-200 text-rose-900 dark:bg-rose-950 dark:text-rose-300",
 };
 
 // Colores sólidos para los dots/indicadores (visibles en cualquier fondo).
@@ -319,12 +329,12 @@ export const PUBLICATION_TYPE_HEX: Record<PublicationType, string> = {
 // Chip por tipo (bg suave + texto + borde acento). Se usa para TODAS las piezas
 // no publicadas en el calendario del equipo (las publicadas van en verde sólido).
 export const PUBLICATION_TYPE_IDEA_BADGE: Record<PublicationType, string> = {
-  post: "bg-red-100 text-red-900 border-l-red-500 dark:bg-red-500/30 dark:text-red-50",
-  reel: "bg-blue-100 text-blue-900 border-l-blue-500 dark:bg-blue-500/30 dark:text-blue-50",
-  historia: "bg-amber-100 text-amber-900 border-l-amber-500 dark:bg-amber-500/30 dark:text-amber-50",
-  carrusel: "bg-red-100 text-red-900 border-l-red-500 dark:bg-red-500/30 dark:text-red-50",
-  video: "bg-violet-100 text-violet-900 border-l-violet-500 dark:bg-violet-500/30 dark:text-violet-50",
-  otro: "bg-slate-100 text-slate-800 border-l-slate-400 dark:bg-slate-500/30 dark:text-slate-50",
+  post: "bg-red-100 text-red-900 border-l-red-500 dark:bg-red-950 dark:text-red-300",
+  reel: "bg-blue-100 text-blue-900 border-l-blue-500 dark:bg-blue-950 dark:text-blue-300",
+  historia: "bg-amber-100 text-amber-900 border-l-amber-500 dark:bg-amber-950 dark:text-amber-300",
+  carrusel: "bg-red-100 text-red-900 border-l-red-500 dark:bg-red-950 dark:text-red-300",
+  video: "bg-violet-100 text-violet-900 border-l-violet-500 dark:bg-violet-950 dark:text-violet-300",
+  otro: "bg-slate-100 text-slate-800 border-l-slate-400 dark:bg-slate-950 dark:text-slate-300",
 };
 
 /** Flujo sugerido por tipo. */

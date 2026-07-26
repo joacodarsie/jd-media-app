@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { AI_MODEL_SMART } from "@/lib/ai/models";
+import { trackAiUsage } from "@/lib/ai/usage";
 
 const MODEL = AI_MODEL_SMART;
 const client = new Anthropic();
@@ -165,6 +166,7 @@ export async function generateMonthlyNarrative(
       ],
       messages: [{ role: "user", content: userText }],
     });
+    void trackAiUsage({ ruta: "director/insight", modelo: MODEL, usage: msg.usage });
     const text = msg.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
@@ -187,6 +189,7 @@ export async function generateInsight(
       system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: buildUserText(p) }],
     });
+    void trackAiUsage({ ruta: "director/insight", modelo: MODEL, usage: msg.usage });
     const text = msg.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)

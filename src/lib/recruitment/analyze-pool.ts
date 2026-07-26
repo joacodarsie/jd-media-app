@@ -7,6 +7,7 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { AI_MODEL_FAST } from "@/lib/ai/models";
+import { trackAiUsage } from "@/lib/ai/usage";
 import { AREA_OPTIONS } from "@/lib/recruitment/areas";
 
 const client = new Anthropic();
@@ -138,6 +139,7 @@ export async function analyzeCvForPool(
       ],
       messages: [{ role: "user", content: `TEXTO DEL CV:\n\n${text}` }],
     });
+    void trackAiUsage({ ruta: "reclutamiento/analizar-pool", modelo: AI_MODEL_FAST, usage: msg.usage });
     const out = msg.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)

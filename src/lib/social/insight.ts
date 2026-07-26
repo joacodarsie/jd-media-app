@@ -6,6 +6,7 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { AI_MODEL_SMART } from "@/lib/ai/models";
+import { trackAiUsage } from "@/lib/ai/usage";
 
 const MODEL = AI_MODEL_SMART;
 const client = new Anthropic();
@@ -179,6 +180,7 @@ export async function generateMeetGuide(p: MeetGuidePayload): Promise<string | n
       system: [{ type: "text", text: MEET_SYSTEM, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: buildMeetUserText(p) }],
     });
+    void trackAiUsage({ ruta: "social/insight", modelo: MODEL, usage: msg.usage });
     const text = msg.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
@@ -203,6 +205,7 @@ export async function generateResultsReading(
       system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: buildUserText(p) }],
     });
+    void trackAiUsage({ ruta: "social/insight", modelo: MODEL, usage: msg.usage });
     const text = msg.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)

@@ -34,6 +34,81 @@ const MESES = [
   "diciembre",
 ];
 
+/**
+ * Recordatorio INTERNO para mandar la encuesta de satisfacción del mes. No le
+ * escribe nada al cliente: solo avisa al equipo (admins) qué cuentas todavía no
+ * respondieron, para que les pasen el link desde la ficha. Si falla (o falta la
+ * migración 0137), se ignora: no puede tumbar el resto del cron.
+ */
+async function recordarEncuestas(
+  admin: ReturnType<typeof createAdmin>,
+  clientes: { id: string; nombre: string }[]
+): Promise<{ pendientes: number; notified: number }> {
+  const vacio = { pendientes: 0, notified: 0 };
+  try {
+    if (clientes.length === 0) return vacio;
+    const now = new Date();
+    const periodo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+    const { data: respuestas, error } = await admin
+      .from("client_satisfaction")
+      .select("cliente_id")
+      .eq("periodo", periodo);
+    if (error) return vacio; // sin la tabla todavía: no molestamos
+    const yaRespondio = new Set(
+      ((respuestas ?? []) as { cliente_id: string }[]).map((r) => r.cliente_id)
+    );
+
+    const pendientes = clientes.filter((c) => !yaRespondio.has(c.id));
+    if (pendientes.length === 0) return vacio;
+
+    const { data: admins } = await admin
+      .from("users")
+      .select("id")
+      .eq("rol", "admin")
+      .eq("activo", true);
+    const adminIds = ((admins ?? []) as { id: string }[]).map((a) => a.id);
+    if (adminIds.length === 0) return { pendientes: pendientes.length, notified: 0 };
+
+    const prefix = "📝 Encuesta del mes:";
+    const startOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    ).toISOString();
+    const { data: yaHoy } = await admin
+      .from("notifications")
+      .select("user_id")
+      .gte("created_at", startOfDay)
+      .like("mensaje", `${prefix}%`);
+    const notificados = new Set(((yaHoy ?? []) as { user_id: string }[]).map((n) => n.user_id));
+
+    const nombres = pendientes.map((p) => p.nombre);
+    const preview =
+      nombres.length <= 3
+        ? nombres.join(", ")
+        : `${nombres.slice(0, 3).join(", ")} y ${nombres.length - 3} más`;
+    const mensaje = `${prefix} pasale el link a ${preview}. Lo copiás desde la ficha del cliente (Estado del servicio → Link de encuesta).`;
+
+    const rows = adminIds
+      .filter((id) => !notificados.has(id))
+      .map((id) => ({
+        user_id: id,
+        tipo: "recordatorio" as const,
+        mensaje,
+        leida: false,
+        link: "/clientes",
+      }));
+    if (rows.length === 0) return { pendientes: pendientes.length, notified: 0 };
+
+    const { error: insErr } = await admin.from("notifications").insert(rows);
+    if (insErr) return { pendientes: pendientes.length, notified: 0 };
+    return { pendientes: pendientes.length, notified: rows.length };
+  } catch {
+    return vacio;
+  }
+}
+
 function isAuthorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
@@ -77,6 +152,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, checked: 0, missing: [] });
   }
 
+  // Recordatorio de la encuesta de satisfacción (interno, no le escribe al
+  // cliente). Corre siempre, aparte del chequeo de planes.
+  const encuestas = await recordarEncuestas(admin, clientList);
+
   // 2) Buscar planes ya creados que matcheen el mes siguiente.
   // El periodo_label es texto libre (ej "Junio 2026", "Q2 2026"). Hacemos
   // un match permisivo por nombre del mes y año.
@@ -108,6 +187,7 @@ export async function GET(req: NextRequest) {
       checked: clientList.length,
       missing: [],
       period: periodHint,
+      encuestas,
     });
   }
 
@@ -166,6 +246,7 @@ export async function GET(req: NextRequest) {
       missing: missing.map((m) => m.nombre),
       notified: 0,
       period: periodHint,
+      encuestas,
       note: "ya estaban notificados hoy",
     });
   }
@@ -181,5 +262,6 @@ export async function GET(req: NextRequest) {
     missing: missing.map((m) => m.nombre),
     notified: rows.length,
     period: periodHint,
+      encuestas,
   });
 }

@@ -99,6 +99,7 @@ export async function assignClientTeam(
     cm_id: string | null;
     disenador_id: string | null;
     audiovisual_id: string | null;
+    media_buyer_id?: string | null;
     coordinador_id?: string | null;
   }
 ) {
@@ -124,6 +125,9 @@ export async function assignClientTeam(
     disenador_id: team.disenador_id || null,
     audiovisual_id: team.audiovisual_id || null,
   };
+  // El gestor de pauta solo se toca si vino en el input (el onboarding de redes
+  // no lo manda, y no queremos borrarlo sin querer).
+  if (team.media_buyer_id !== undefined) patch.media_buyer_id = team.media_buyer_id || null;
   // Solo admin/coordinación general puede cambiar la coordinadora de la cuenta.
   if (
     team.coordinador_id !== undefined &&

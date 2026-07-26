@@ -39,7 +39,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { visibleNavGroups, NAV } from "@/lib/nav";
+import { visibleNavGroups, visibleNav, matchNavItem } from "@/lib/nav";
 import { ROLE_LABEL } from "@/lib/constants";
 import type { AppUser } from "@/lib/types";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -119,18 +119,16 @@ function SidebarContent({
   const pathname = usePathname();
   const groups = visibleNavGroups(user, isLiveOwner);
 
-  // Sólo UN item activo: el del match más largo. Evita que "Equipo" y
-  // "Personas" (o "JDmedIA" y "JDmedIA en vivo") se prendan a la vez cuando
-  // un href es prefijo de otro.
-  let activeHref = "";
-  for (const it of NAV) {
-    if (
-      (pathname === it.href || pathname.startsWith(it.href + "/")) &&
-      it.href.length > activeHref.length
-    ) {
-      activeHref = it.href;
-    }
-  }
+  // Sólo UN item activo: el del match más largo (incluye rutas `match`, o sea
+  // las sub-páginas/pestañas de la sección). Así "Equipo" queda marcado también
+  // cuando estás en /reclutamiento u /organigrama, y no te perdés. Se calcula
+  // sobre los items VISIBLES para que una pestaña de una sección oculta no robe
+  // el resaltado.
+  const activeItem = matchNavItem(
+    pathname,
+    groups.flatMap((g) => g.items)
+  );
+  const activeHref = activeItem?.href ?? "";
 
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const prevPathname = useRef(pathname);
@@ -208,7 +206,12 @@ function SidebarContent({
               <button
                 type="button"
                 onClick={() => toggleGroup(group.label!)}
-                className="flex w-full items-center gap-1 px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 transition-colors hover:text-sidebar-foreground/80"
+                className={cn(
+                  "flex w-full items-center gap-1 px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wider transition-colors",
+                  groupHasActive
+                    ? "text-sidebar-foreground/90"
+                    : "text-sidebar-foreground/50 hover:text-sidebar-foreground/80"
+                )}
               >
                 <ChevronDown
                   className={cn(
@@ -285,17 +288,12 @@ function SidebarContent({
 }
 
 /** Etiqueta de la sección actual según el pathname, para orientar al usuario. */
-function currentSectionLabel(pathname: string): string {
-  // Buscamos el item de nav cuyo href matchea mejor (el más largo que prefija).
-  let best: { href: string; label: string } | null = null;
-  for (const item of NAV) {
-    if (pathname === item.href || pathname.startsWith(item.href + "/")) {
-      if (!best || item.href.length > best.href.length) {
-        best = { href: item.href, label: item.label };
-      }
-    }
-  }
-  return best?.label ?? "";
+function currentSectionLabel(
+  pathname: string,
+  user: AppUser,
+  isLiveOwner: boolean
+): string {
+  return matchNavItem(pathname, visibleNav(user, isLiveOwner))?.label ?? "";
 }
 
 export function AppShell({
@@ -317,7 +315,7 @@ export function AppShell({
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const sectionLabel = currentSectionLabel(pathname);
+  const sectionLabel = currentSectionLabel(pathname, user, isLiveOwner);
 
   return (
     <div className="flex min-h-screen">

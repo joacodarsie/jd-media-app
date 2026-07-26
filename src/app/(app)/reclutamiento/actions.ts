@@ -118,6 +118,32 @@ export async function setCandidateFase(
 }
 
 /**
+ * Setea los grupos (etiquetas) de un candidato del pool. Los grupos son
+ * shortlists con nombre que se arman marcando gente, sin sacarla del pool.
+ * Normaliza: recorta, saca vacíos y duplicados.
+ */
+export async function setCandidateGrupos(
+  candidateId: string,
+  grupos: string[]
+): Promise<{ ok: true } | { error: string }> {
+  const { admin } = await ctx();
+  const clean = Array.from(
+    new Set(grupos.map((g) => g.trim()).filter((g) => g.length > 0 && g.length <= 40))
+  );
+  const { error } = await admin
+    .from("recruitment_candidates")
+    .update({ grupos: clean })
+    .eq("id", candidateId);
+  if (error) {
+    if ((error as { code?: string }).code === "42703")
+      return { error: "Falta aplicar la migración 0127 (grupos). Avisale al dueño." };
+    return { error: error.message };
+  }
+  revalidatePath("/reclutamiento");
+  return { ok: true };
+}
+
+/**
  * Guarda la transcripción/notas de la entrevista de un candidato y genera un
  * análisis corto con IA (fortalezas, dudas, recomendación) que queda guardado.
  */

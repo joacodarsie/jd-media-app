@@ -380,3 +380,36 @@ export async function activateClient(id: string) {
   invalidateClientsCache();
   return { ok: true };
 }
+
+/**
+ * Registra (o actualiza) la REUNIÓN MENSUAL de seguimiento con el cliente. Es la
+ * señal de calidad que no sale de ningún número: hablar con el cliente. La puede
+ * cargar cualquiera del equipo interno que tenga acceso a la cuenta.
+ */
+export async function registrarReunionMensual(input: {
+  clienteId: string;
+  periodo: string; // 'YYYY-MM'
+  fecha: string; // 'YYYY-MM-DD'
+  notas: string | null;
+}) {
+  const me = await requireUser();
+  const admin = createAdmin();
+  const { error } = await admin.from("client_meetings").upsert(
+    {
+      cliente_id: input.clienteId,
+      periodo: input.periodo,
+      fecha: input.fecha,
+      notas: input.notas?.trim().slice(0, 4000) || null,
+      registrado_por: me.id,
+    },
+    { onConflict: "cliente_id,periodo" }
+  );
+  if (error) {
+    if ((error as { code?: string }).code === "42P01")
+      return { error: "Falta aplicar la migración 0137 (calidad)." };
+    return { error: error.message };
+  }
+  revalidatePath(`/clientes/${input.clienteId}`);
+  revalidatePath("/director");
+  return { ok: true as const };
+}

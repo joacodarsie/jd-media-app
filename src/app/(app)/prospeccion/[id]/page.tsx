@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, MapPin, Send, Languages, Target } from "lucide-react";
-import { requireRole } from "@/lib/auth";
+import { ArrowLeft, MapPin, Send, Languages, Target, Table2 } from "lucide-react";
+import { requireRole, canUseProspectingAi, canUseLeadsAi } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,10 @@ import { ProspectingDiscoverButton } from "@/components/prospecting-discover-but
 import { ProspectingGenerateAllButton } from "@/components/prospecting-generate-all-button";
 import { ProspectingManualLeadDialog } from "@/components/prospecting-manual-lead-dialog";
 import { ProspectingLeadCard, type LeadRow } from "@/components/prospecting-lead-card";
+import {
+  ProspectingCampaignMessages,
+  type CampaignMessages,
+} from "@/components/prospecting-campaign-messages";
 import { channelLabel, langLabel, LEAD_ESTADOS, leadStats } from "@/lib/prospecting/shared";
 
 export const dynamic = "force-dynamic";
@@ -29,10 +33,16 @@ const ESTADO_ORDER: Record<string, number> = {
 
 export default async function CampaignDetailPage({
   params,
+  searchParams,
 }: {
   params: { id: string };
+  searchParams: { nuevo?: string };
 }) {
-  await requireRole(ALLOWED);
+  const me = await requireRole(ALLOWED);
+  // IA de prospección del día a día (mensajes de campaña, generar mensajes) vs.
+  // el buscador de leads con IA, que es la función más cara y va aparte.
+  const puedeIa = canUseProspectingAi(me);
+  const puedeBuscarLeads = canUseLeadsAi(me);
   const admin = createAdmin();
 
   const { data: camp } = await admin
@@ -60,6 +70,17 @@ export default async function CampaignDetailPage({
     .order("orden");
   const services = (svc ?? []) as { slug: string; name: string }[];
   const servicioNombre = services.find((s) => s.slug === c.servicio)?.name ?? null;
+
+  // Plantilla de mensajes de la campaña (resiliente si falta la 0132).
+  let mensajesPlantilla: CampaignMessages | null = null;
+  const mp = await admin
+    .from("prospecting_campaigns")
+    .select("mensajes_plantilla")
+    .eq("id", c.id)
+    .maybeSingle();
+  if (!mp.error)
+    mensajesPlantilla =
+      ((mp.data as { mensajes_plantilla?: CampaignMessages | null } | null)?.mensajes_plantilla) ?? null;
 
   const LEAD_COLS =
     "id, empresa, descripcion, ciudad, pais, sitio_web, instagram, instagram_verificado, telefono, email, por_que, fit_score, fuente_url, mensaje, seguimiento, estado, cliente_id";
@@ -163,6 +184,14 @@ export default async function CampaignDetailPage({
         </div>
       </div>
 
+      {/* Mensajes ideales de la campaña */}
+      <ProspectingCampaignMessages
+        campaignId={c.id}
+        initial={mensajesPlantilla}
+        canGenerate={puedeIa}
+        autoGenerate={searchParams?.nuevo === "1" && !mensajesPlantilla}
+      />
+
       {/* Métricas del embudo */}
       {stats.contactados > 0 && (
         <div className="grid grid-cols-3 gap-3">
@@ -183,11 +212,17 @@ export default async function CampaignDetailPage({
       {/* Acciones */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
-          <ProspectingDiscoverButton campaignId={c.id} />
-          {sinMensaje > 0 && (
+          {puedeBuscarLeads && <ProspectingDiscoverButton campaignId={c.id} />}
+          {puedeIa && sinMensaje > 0 && (
             <ProspectingGenerateAllButton campaignId={c.id} count={sinMensaje} />
           )}
           <ProspectingManualLeadDialog campaignId={c.id} />
+          <Link
+            href={`/prospeccion/${c.id}/contactos`}
+            className="inline-flex h-10 items-center gap-2 rounded-md border px-4 text-sm font-medium hover:bg-accent"
+          >
+            <Table2 className="h-4 w-4" /> Contactos (rápido)
+          </Link>
         </div>
         {leads.length > 0 && (
           <div className="flex flex-wrap gap-1.5">

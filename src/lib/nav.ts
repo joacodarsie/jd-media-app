@@ -12,6 +12,12 @@ export interface NavItem {
   feature?: Feature;
   /** Si es true, sólo lo ve la cuenta dueña de JDmedIA en vivo (gate por env). */
   liveOwnerOnly?: boolean;
+  /**
+   * Rutas extra que pertenecen a esta sección aunque vivan en su propio
+   * top-level (pestañas). Sirve para que el item quede marcado como activo
+   * cuando estás en una sub-página. Ej: "/equipo" incluye "/reclutamiento".
+   */
+  match?: string[];
 }
 
 export interface NavGroup {
@@ -65,10 +71,16 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "Target",
         roles: ["admin", "coordinador", "comercial", "prospecting"],
         feature: "comercial",
+        match: ["/prospeccion"],
       },
       // Equipo agrupa: Directorio, Organigrama, Personas, Capacidad y
       // Reclutamiento (pestañas).
-      { href: "/equipo", label: "Equipo", icon: "Users2" },
+      {
+        href: "/equipo",
+        label: "Equipo",
+        icon: "Users2",
+        match: ["/organigrama", "/reclutamiento"],
+      },
       {
         href: "/contratos",
         label: "Contratos",
@@ -81,7 +93,12 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Conocimiento",
     items: [
       // Documentos agrupa: Documentos, Procesos, Templates y Agencia (pestañas).
-      { href: "/documentos", label: "Documentos", icon: "FolderOpen" },
+      {
+        href: "/documentos",
+        label: "Documentos",
+        icon: "FolderOpen",
+        match: ["/procesos", "/templates", "/agencia"],
+      },
       { href: "/ayuda", label: "Ayuda", icon: "BookOpen" },
       { href: "/portal", label: "Portal", icon: "Megaphone" },
     ],
@@ -90,14 +107,16 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Métricas",
     items: [
       // Métricas agrupa: Objetivos y Productividad (pestañas).
-      { href: "/objetivos", label: "Métricas", icon: "Goal" },
+      { href: "/objetivos", label: "Métricas", icon: "Goal", match: ["/global"] },
       { href: "/finanzas", label: "Finanzas", icon: "Wallet", feature: "finanzas" },
-      // Coordinación agrupa: Panel, Sueldos y Jornadas (pestañas).
+      // Coordinación agrupa: Panel, Equipos, Riesgo, Comercial, Sueldos,
+      // Jornadas, Mes 1 y Director IA (pestañas).
       {
         href: "/coordinacion",
         label: "Coordinación",
         icon: "SlidersHorizontal",
         roles: ["admin"],
+        match: ["/director"],
       },
     ],
   },
@@ -143,4 +162,34 @@ export function visibleNavGroups(user: AppUser, isLiveOwner = false): NavGroup[]
     label: g.label,
     items: g.items.filter((i) => itemVisible(user, i, isLiveOwner)),
   })).filter((g) => g.items.length > 0);
+}
+
+/**
+ * Item de nav al que "pertenece" el pathname actual, considerando el href y sus
+ * rutas `match` (sub-páginas/pestañas). Gana el patrón más largo que prefija; a
+ * igualdad, el href exacto del item. Devuelve null si nada matchea.
+ *
+ * Se pasa la lista de items VISIBLES para el usuario, así una pestaña de una
+ * sección oculta no roba el resaltado (ej: /director es item propio para
+ * coordinación, pero pestaña de Coordinación para el admin).
+ */
+export function matchNavItem(pathname: string, items: NavItem[]): NavItem | null {
+  let best: NavItem | null = null;
+  let bestLen = -1;
+  let bestExact = false;
+  for (const it of items) {
+    const patterns = [it.href, ...(it.match ?? [])];
+    for (const p of patterns) {
+      if (pathname === p || pathname.startsWith(p + "/")) {
+        const exact = p === it.href;
+        // Más largo gana; a igual longitud, el href exacto le gana al alias.
+        if (p.length > bestLen || (p.length === bestLen && exact && !bestExact)) {
+          best = it;
+          bestLen = p.length;
+          bestExact = exact;
+        }
+      }
+    }
+  }
+  return best;
 }

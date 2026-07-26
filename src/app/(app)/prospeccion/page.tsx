@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Radar, ArrowRight, MapPin, Send, Clock } from "lucide-react";
-import { requireRole } from "@/lib/auth";
+import { Radar, ArrowRight, MapPin, Send, Clock, FolderOpen, ChevronDown } from "lucide-react";
+import { requireRole, canUseProspectingAi } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,8 @@ export const dynamic = "force-dynamic";
 const ALLOWED = ["admin", "coordinador", "comercial", "prospecting"];
 
 export default async function ProspeccionPage() {
-  await requireRole(ALLOWED);
+  const me = await requireRole(ALLOWED);
+  const owner = canUseProspectingAi(me);
   const admin = createAdmin();
 
   const { data: campaigns, error } = await admin
@@ -78,6 +79,63 @@ export default async function ProspeccionPage() {
     .order("orden");
   const services = (svc ?? []) as { slug: string; name: string }[];
 
+  // Carpetas por SECTOR (rubro); adentro ordenadas por UBICACIÓN. Así, cuando hay
+  // muchas campañas, quedan agrupadas por nicho en vez de una lista plana.
+  const carpetas = new Map<string, typeof rows>();
+  for (const c of rows) {
+    const key = c.rubro?.trim() || "Sin rubro";
+    if (!carpetas.has(key)) carpetas.set(key, []);
+    carpetas.get(key)!.push(c);
+  }
+  const carpetaList = [...carpetas.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  for (const [, arr] of carpetaList)
+    arr.sort(
+      (a, b) =>
+        (a.ubicacion ?? "").localeCompare(b.ubicacion ?? "") ||
+        a.nombre.localeCompare(b.nombre)
+    );
+  // Con una sola carpeta no tiene sentido el acordeón: mostramos plano.
+  const usarCarpetas = carpetaList.length > 1;
+
+  const renderCard = (c: (typeof rows)[number]) => {
+    const total = totalBy.get(c.id) ?? 0;
+    const won = wonBy.get(c.id) ?? 0;
+    const stats = leadStats(estadosBy.get(c.id) ?? []);
+    return (
+      <Link
+        key={c.id}
+        href={`/prospeccion/${c.id}`}
+        className="group rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="font-semibold">{c.nombre}</h3>
+          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+        </div>
+        <p className="mt-0.5 text-sm text-muted-foreground">{c.rubro}</p>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          {c.ubicacion && (
+            <span className="inline-flex items-center gap-1">
+              <MapPin className="h-3 w-3" /> {c.ubicacion}
+            </span>
+          )}
+          <span className="inline-flex items-center gap-1">
+            <Send className="h-3 w-3" /> {channelLabel(c.canal)}
+          </span>
+          {c.estado === "pausada" && <Badge className="bg-muted text-muted-foreground">pausada</Badge>}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm">
+          <span><b>{total}</b> leads</span>
+          {stats.tasaRespuesta != null && (
+            <span className="text-muted-foreground">
+              <b>{stats.tasaRespuesta}%</b> respuesta
+            </span>
+          )}
+          {won > 0 && <span className="text-emerald-600 dark:text-emerald-400"><b>{won}</b> ganados</span>}
+        </div>
+      </Link>
+    );
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -92,7 +150,7 @@ export default async function ProspeccionPage() {
             mandás por WhatsApp o Instagram.
           </p>
         </div>
-        <ProspectingCampaignDialog mode="create" services={services} />
+        <ProspectingCampaignDialog mode="create" services={services} canSuggest={owner} />
       </div>
 
       {paraSeguir.length > 0 && (
@@ -116,7 +174,7 @@ export default async function ProspeccionPage() {
                     <span className="hidden truncate sm:inline">
                       {nombreCampaña.get(l.campaign_id)}
                     </span>
-                    <Badge className="bg-amber-200 text-amber-900 dark:bg-amber-500/40 dark:text-amber-100">
+                    <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
                       hace {l.dias}d
                     </Badge>
                   </span>
@@ -138,49 +196,32 @@ export default async function ProspeccionPage() {
                 Córdoba”</i> o <i>“estudios de abogados en Madrid”</i>.
               </p>
             </div>
-            <ProspectingCampaignDialog mode="create" services={services} />
+            <ProspectingCampaignDialog mode="create" services={services} canSuggest={owner} />
           </CardContent>
         </Card>
+      ) : usarCarpetas ? (
+        <div className="space-y-3">
+          {carpetaList.map(([rubro, arr]) => (
+            <details key={rubro} open className="group rounded-xl border bg-card/40">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 hover:bg-accent/40">
+                <span className="flex items-center gap-2 font-semibold">
+                  <FolderOpen className="h-4 w-4 text-primary" />
+                  {rubro}
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
+                    {arr.length}
+                  </span>
+                </span>
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="grid gap-3 p-3 pt-0 sm:grid-cols-2 lg:grid-cols-3">
+                {arr.map(renderCard)}
+              </div>
+            </details>
+          ))}
+        </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {rows.map((c) => {
-            const total = totalBy.get(c.id) ?? 0;
-            const won = wonBy.get(c.id) ?? 0;
-            const stats = leadStats(estadosBy.get(c.id) ?? []);
-            return (
-              <Link
-                key={c.id}
-                href={`/prospeccion/${c.id}`}
-                className="group rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-semibold">{c.nombre}</h3>
-                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                </div>
-                <p className="mt-0.5 text-sm text-muted-foreground">{c.rubro}</p>
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  {c.ubicacion && (
-                    <span className="inline-flex items-center gap-1">
-                      <MapPin className="h-3 w-3" /> {c.ubicacion}
-                    </span>
-                  )}
-                  <span className="inline-flex items-center gap-1">
-                    <Send className="h-3 w-3" /> {channelLabel(c.canal)}
-                  </span>
-                  {c.estado === "pausada" && <Badge className="bg-muted text-muted-foreground">pausada</Badge>}
-                </div>
-                <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm">
-                  <span><b>{total}</b> leads</span>
-                  {stats.tasaRespuesta != null && (
-                    <span className="text-muted-foreground">
-                      <b>{stats.tasaRespuesta}%</b> respuesta
-                    </span>
-                  )}
-                  {won > 0 && <span className="text-emerald-600 dark:text-emerald-400"><b>{won}</b> ganados</span>}
-                </div>
-              </Link>
-            );
-          })}
+          {rows.map(renderCard)}
         </div>
       )}
     </div>

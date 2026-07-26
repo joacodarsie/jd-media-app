@@ -2,6 +2,18 @@ import { formatInTimeZone } from "date-fns-tz";
 import { es } from "date-fns/locale";
 import { TIMEZONE } from "./constants";
 
+/**
+ * Días enteros transcurridos desde una fecha ISO. Devuelve null si no hay fecha
+ * o es inválida. Fuente ÚNICA: antes estaba duplicada en prospección y comercial
+ * con comportamientos distintos (una devolvía 0 en vez de null).
+ */
+export function diasDesde(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const ms = Date.now() - new Date(iso).getTime();
+  if (Number.isNaN(ms)) return null;
+  return Math.floor(ms / 86_400_000);
+}
+
 export function fmtDate(value?: string | null, pattern = "dd/MM/yyyy") {
   if (!value) return "—";
   // Date-only ("YYYY-MM-DD") debe interpretarse como dia local — no como UTC

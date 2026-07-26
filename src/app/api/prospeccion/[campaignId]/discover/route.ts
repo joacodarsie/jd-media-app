@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser, userHas } from "@/lib/auth";
+import { requireUser, canUseLeadsAi } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { discoverLeads, type CampaignContext } from "@/lib/prospecting/discover";
 import { verifyInstagramBatch } from "@/lib/prospecting/verify";
@@ -19,11 +19,11 @@ export async function POST(
   { params }: { params: { campaignId: string } }
 ) {
   const me = await requireUser();
-  // Buscar leads con IA consume tokens (dólares): gateado por la feature
-  // `leads_ia`, que el dueño otorga en /accesos. Admin la tiene siempre.
-  if (!userHas(me, "leads_ia"))
+  // Es la función MÁS cara en tokens: el director siempre, más quien tenga
+  // `leads_ia` otorgado a mano en /accesos (ser admin no alcanza).
+  if (!canUseLeadsAi(me))
     return NextResponse.json(
-      { error: "No tenés acceso al buscador de leads con IA. Pedíselo al admin." },
+      { error: "No tenés habilitado el buscador de leads con IA (es el más caro). Pedíselo al director, o usá Contactos (rápido)." },
       { status: 403 }
     );
 

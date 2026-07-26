@@ -5,6 +5,7 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { AI_MODEL_SMART } from "@/lib/ai/models";
+import { trackAiUsage } from "@/lib/ai/usage";
 import type { AdAccountData } from "@/lib/meta/ads";
 
 const MODEL = AI_MODEL_SMART;
@@ -45,22 +46,40 @@ Devolvé SOLO un objeto JSON válido (sin texto alrededor, sin markdown) con est
 
 Reglas:
 - Entre 0 y 5 sugerencias, priorizadas. Si todo viene bien, "sugerencias" puede ser un array vacío y el resumen lo refleja.
-- Basate en los datos: si una campaña tiene CPC/CPA alto y poco resultado, sugerí pausar o revisar creativo; si una rinde bien y tiene techo, sugerí subir presupuesto; si el gasto sube sin conversiones, alertá.
-- Pensá en el OBJETIVO del cliente (leads, ventas o tráfico). El resultado importa más que el alcance.
+- Basate en los datos: si una campaña tiene costo por resultado alto y poco resultado, sugerí pausar o revisar creativo; si una rinde bien y tiene techo, sugerí subir presupuesto; si el gasto sube sin ningún resultado, alertá.
+
+MUY IMPORTANTE — JUZGÁ SEGÚN EL OBJETIVO DE CADA CAMPAÑA:
+- El "resultado" NO es siempre una compra o un lead. Cada campaña trae su campo "resultados" con lo que de verdad logró (interacciones, seguidores nuevos, clicks al link, reproducciones, mensajes, etc.). ESO es el resultado.
+- Mapeá el objetivo de Meta a lo que hay que mirar:
+  · Interacción / OUTCOME_ENGAGEMENT / POST_ENGAGEMENT → interacciones, reacciones, comentarios, seguidores.
+  · Seguidores / me gusta de la página / PAGE_LIKES → seguidores nuevos, "me gusta / seguidores de página".
+  · Reconocimiento / OUTCOME_AWARENESS / REACH → alcance e impresiones.
+  · Tráfico / OUTCOME_TRAFFIC / LINK_CLICKS → clicks al link y vistas de landing.
+  · Mensajes / OUTCOME_ENGAGEMENT (mensajería) → conversaciones/mensajes iniciados.
+  · Videos / VIDEO_VIEWS → reproducciones.
+  · Leads / OUTCOME_LEADS y Ventas / OUTCOME_SALES → recién ahí mirás conversiones y costo por conversión.
+- PROHIBIDO decir "no logró resultados" o "sin resultados" si la campaña tiene interacciones, seguidores, clicks o cualquier valor en "resultados", aunque conversiones sea 0. Una campaña de interacción con 0 conversiones que sumó seguidores ESTÁ funcionando: evaluá el COSTO POR RESULTADO de su objetivo, no las conversiones.
+- Si el objetivo no está claro, deducilo por dónde están los resultados y por el objetivo de pauta del cliente.
+
 - Nada de emojis. Español rioplatense. No inventes métricas que no te di.`;
 
 function buildUserText(p: AnalysisInput): string {
+  const fmtResultados = (rs: { tipo: string; valor: number; costo: number | null }[]) =>
+    rs.length
+      ? rs
+          .map((r) => `${r.valor} ${r.tipo}${r.costo != null ? ` (a ${r.costo} c/u)` : ""}`)
+          .join(", ")
+      : "sin acciones registradas";
+
   const a = p.hoy.account;
   const camp = p.hoy.campaigns
     .map(
       (c) =>
-        `- ${c.nombre} [${c.estado}${c.objetivo ? ` · ${c.objetivo}` : ""}${
+        `- ${c.nombre} [${c.estado}${c.objetivo ? ` · objetivo Meta: ${c.objetivo}` : ""}${
           c.daily_budget != null ? ` · ppto/día ${p.moneda} ${c.daily_budget}` : ""
-        }]: gasto ${c.spend}, impr ${c.impressions}, clicks ${c.clicks}, CTR ${
+        }]: gasto ${c.spend}, impr ${c.impressions}, alcance ${c.reach}, clicks ${c.clicks}, CTR ${
           c.ctr ?? "-"
-        }%, CPC ${c.cpc ?? "-"}, conversiones ${c.conversions}, costo/conv ${
-          c.cost_per_conversion ?? "-"
-        }`
+        }%, CPC ${c.cpc ?? "-"}. RESULTADOS: ${fmtResultados(c.resultados)}.`
     )
     .join("\n");
   const trend = p.historial
@@ -71,7 +90,7 @@ function buildUserText(p: AnalysisInput): string {
     `Objetivo de pauta: ${p.objetivo ?? "no definido"}`,
     `Moneda: ${p.moneda}`,
     ``,
-    `Métricas de AYER a nivel cuenta: gasto ${a.spend}, impresiones ${a.impressions}, alcance ${a.reach}, clicks ${a.clicks}, CTR ${a.ctr ?? "-"}%, CPC ${a.cpc ?? "-"}, CPM ${a.cpm ?? "-"}, conversiones ${a.conversions}, costo/conv ${a.cost_per_conversion ?? "-"}.`,
+    `Métricas de AYER a nivel cuenta: gasto ${a.spend}, impresiones ${a.impressions}, alcance ${a.reach}, clicks ${a.clicks}, CTR ${a.ctr ?? "-"}%, CPC ${a.cpc ?? "-"}, CPM ${a.cpm ?? "-"}. Resultados de la cuenta: ${fmtResultados(a.resultados)}.`,
     ``,
     `Campañas (ayer):`,
     camp || "(sin campañas con datos)",
@@ -121,6 +140,7 @@ export async function generatePaidMediaAnalysis(
       system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: buildUserText(p) }],
     });
+    void trackAiUsage({ ruta: "paid-media/analisis", modelo: MODEL, usage: msg.usage });
     const text = msg.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)

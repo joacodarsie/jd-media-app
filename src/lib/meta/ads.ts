@@ -28,6 +28,12 @@ function normalizeAccount(id: string): string {
   return s.startsWith("act_") ? s : `act_${s}`;
 }
 
+export interface ResultAction {
+  tipo: string; // etiqueta legible ("interacciones", "seguidores nuevos", "leads"…)
+  valor: number;
+  costo: number | null; // costo por resultado en la moneda de la cuenta
+}
+
 export interface AdMetrics {
   spend: number;
   impressions: number;
@@ -38,6 +44,12 @@ export interface AdMetrics {
   cpm: number | null;
   conversions: number;
   cost_per_conversion: number | null;
+  /**
+   * TODOS los resultados relevantes de la campaña (no solo compras/leads):
+   * interacciones, seguidores, clicks al link, reproducciones, mensajes, etc.
+   * Es lo que evita decir "sin resultados" cuando el objetivo es interacción.
+   */
+  resultados: ResultAction[];
   moneda: string;
 }
 
@@ -63,6 +75,61 @@ const CONVERSION_ACTION_TYPES = [
   "onsite_conversion.lead_grouped",
   "offsite_conversion.fb_pixel_complete_registration",
 ];
+
+/**
+ * Mapa action_type de Meta → etiqueta legible. Cubre los objetivos que NO son
+ * compra/lead (interacción, seguidores, tráfico, video, mensajes), que antes
+ * quedaban invisibles. Varios types caen en la misma etiqueta (se suman).
+ */
+const RESULT_ACTION_LABELS: Record<string, string> = {
+  purchase: "compras",
+  "offsite_conversion.fb_pixel_purchase": "compras",
+  lead: "leads",
+  "offsite_conversion.fb_pixel_lead": "leads",
+  "onsite_conversion.lead_grouped": "leads",
+  "offsite_conversion.fb_pixel_complete_registration": "registros",
+  link_click: "clicks al link",
+  landing_page_view: "vistas de landing",
+  post_engagement: "interacciones",
+  page_engagement: "interacciones",
+  post_reaction: "reacciones",
+  comment: "comentarios",
+  post: "compartidos",
+  like: "me gusta / seguidores de página",
+  follow: "seguidores nuevos",
+  "onsite_conversion.follow": "seguidores nuevos",
+  video_view: "reproducciones de video",
+  "onsite_conversion.messaging_conversation_started_7d": "conversaciones de WhatsApp/DM",
+  "onsite_conversion.total_messaging_connection": "mensajes",
+  landing_page_views: "vistas de landing",
+};
+
+/**
+ * Junta TODOS los resultados relevantes (no solo compra/lead), agrupados por
+ * etiqueta, con su costo por resultado. Ordenados por volumen. Así el análisis
+ * ve que una campaña de interacción/seguidores SÍ dio resultado.
+ */
+function pickResultados(ins: RawInsight): ResultAction[] {
+  const actions = ins.actions ?? [];
+  const costs = ins.cost_per_action_type ?? [];
+  const byLabel = new Map<string, { valor: number; costo: number | null }>();
+  for (const a of actions) {
+    const label = RESULT_ACTION_LABELS[a.action_type];
+    if (!label) continue;
+    const prev = byLabel.get(label) ?? { valor: 0, costo: null };
+    prev.valor += num(a.value);
+    if (prev.costo == null) {
+      const c = costs.find((x) => x.action_type === a.action_type);
+      if (c) prev.costo = num(c.value);
+    }
+    byLabel.set(label, prev);
+  }
+  return [...byLabel.entries()]
+    .map(([tipo, v]) => ({ tipo, valor: v.valor, costo: v.costo }))
+    .filter((r) => r.valor > 0)
+    .sort((a, b) => b.valor - a.valor)
+    .slice(0, 6);
+}
 
 interface RawInsight {
   spend?: string;
@@ -114,6 +181,7 @@ function toMetrics(ins: RawInsight): AdMetrics {
     conversions,
     cost_per_conversion:
       cpa != null ? cpa : conversions > 0 ? num(ins.spend) / conversions : null,
+    resultados: pickResultados(ins),
     moneda: ins.account_currency ?? "ARS",
   };
 }

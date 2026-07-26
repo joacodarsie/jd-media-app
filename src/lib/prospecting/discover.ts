@@ -9,6 +9,7 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { AI_MODEL_SMART } from "@/lib/ai/models";
+import { trackAiUsage } from "@/lib/ai/usage";
 
 const client = new Anthropic();
 
@@ -153,6 +154,7 @@ export async function discoverLeads(
     tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 10 }],
     messages: [{ role: "user", content: userMsg }],
   });
+  void trackAiUsage({ ruta: "prospeccion/buscar-leads", modelo: AI_MODEL_SMART, usage: msg.usage });
 
   const text = msg.content
     .filter((b): b is Anthropic.TextBlock => b.type === "text")

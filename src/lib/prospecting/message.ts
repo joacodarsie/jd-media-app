@@ -9,6 +9,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { AI_MODEL_SMART } from "@/lib/ai/models";
 import { AGENCY } from "@/lib/agency";
+import { trackAiUsage } from "@/lib/ai/usage";
 
 const client = new Anthropic();
 
@@ -95,6 +96,7 @@ export async function generateOutreachMessage(
     system: [{ type: "text", text: buildSystem(ctx), cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: buildUser(lead) }],
   });
+  void trackAiUsage({ ruta: "prospeccion/mensaje", modelo: AI_MODEL_SMART, usage: msg.usage });
   const out = msg.content
     .filter((b): b is Anthropic.TextBlock => b.type === "text")
     .map((b) => b.text)
@@ -131,6 +133,7 @@ AHORA NO es el primer mensaje: es un SEGUIMIENTO. Ya les escribiste antes y no c
     system: [{ type: "text", text: system }],
     messages: [{ role: "user", content: buildUser(lead) + prevBlock }],
   });
+  void trackAiUsage({ ruta: "prospeccion/seguimiento", modelo: AI_MODEL_SMART, usage: msg.usage });
   const out = msg.content
     .filter((b): b is Anthropic.TextBlock => b.type === "text")
     .map((b) => b.text)

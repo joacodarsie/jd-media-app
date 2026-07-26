@@ -118,8 +118,9 @@ export function TeamCredentialsManager({ users }: { users: TeamRow[] }) {
         <InviteDialog />
       </div>
 
-      <div className="rounded-md border bg-card">
-        <table className="w-full text-sm">
+      {/* overflow-x-auto: son 6 columnas, en celular se desbordaban. */}
+      <div className="overflow-x-auto rounded-md border bg-card">
+        <table className="w-full min-w-[720px] text-sm">
           <thead className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
             <tr>
               <th className="px-3 py-2">Nombre</th>

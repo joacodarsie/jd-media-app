@@ -5,6 +5,7 @@ import { TOOLS, runTool } from "@/lib/ai/tools";
 import { fetchAllUrls } from "@/lib/url-fetch";
 import { friendlyAiError } from "@/lib/ai/errors";
 import { AI_MODEL_FAST } from "@/lib/ai/models";
+import { trackAiUsage } from "@/lib/ai/usage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -168,6 +169,7 @@ export async function POST(req: Request) {
           });
 
           // Append assistant turn verbatim
+          void trackAiUsage({ ruta: "chat/popup", modelo: MODEL, usage: response.usage });
           messages.push({ role: "assistant", content: response.content });
 
           // Collect any text blocks emitted this turn

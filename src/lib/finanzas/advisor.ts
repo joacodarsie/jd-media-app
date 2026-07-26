@@ -8,6 +8,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AI_MODEL_SMART } from "@/lib/ai/models";
+import { trackAiUsage } from "@/lib/ai/usage";
 import { toARS, periodLabel, prevPeriod, nextPeriod } from "@/lib/finanzas";
 import type { ExchangeRates } from "@/lib/exchange";
 import { buildPeriodPayroll } from "@/lib/payroll-period";
@@ -267,6 +268,7 @@ export async function generateFinancialAdvice(
       },
     ],
   });
+  void trackAiUsage({ ruta: "finanzas/asesor", modelo: AI_MODEL_SMART, usage: msg.usage });
   const text = msg.content
     .filter((b): b is Anthropic.TextBlock => b.type === "text")
     .map((b) => b.text)

@@ -5,6 +5,7 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { AI_MODEL_SMART } from "@/lib/ai/models";
+import { trackAiUsage } from "@/lib/ai/usage";
 
 const client = new Anthropic();
 
@@ -51,6 +52,7 @@ export async function generateMeetingFeedback(
         { role: "user", content: `Transcripción de la reunión comercial:\n\n${t}` },
       ],
     });
+    void trackAiUsage({ ruta: "comercial/feedback-reunion", modelo: AI_MODEL_SMART, usage: msg.usage });
     const text = msg.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)

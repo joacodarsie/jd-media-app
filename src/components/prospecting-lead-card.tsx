@@ -67,9 +67,9 @@ export interface LeadRow {
 
 function fitColor(score: number | null): string {
   if (score == null) return "bg-muted text-muted-foreground";
-  if (score >= 75) return "bg-emerald-200 text-emerald-900 dark:bg-emerald-500/40 dark:text-emerald-100";
-  if (score >= 50) return "bg-amber-200 text-amber-900 dark:bg-amber-500/40 dark:text-amber-100";
-  return "bg-slate-200 text-slate-700 dark:bg-slate-500/40 dark:text-slate-100";
+  if (score >= 75) return "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300";
+  if (score >= 50) return "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300";
+  return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300";
 }
 
 export function ProspectingLeadCard({ lead }: { lead: LeadRow }) {

@@ -5,6 +5,7 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { AI_MODEL_SMART } from "@/lib/ai/models";
+import { trackAiUsage } from "@/lib/ai/usage";
 import type { AdAccountData, AdSetMetrics } from "@/lib/meta/ads";
 
 const client = new Anthropic();
@@ -52,21 +53,31 @@ Devolvé SOLO un objeto JSON válido (sin texto ni markdown alrededor) con esta 
 Reglas:
 - Entre 0 y 8 cambios, priorizados. Si no hay nada claro para cambiar, devolvé "cambios": [].
 - "presupuesto": SUBÍ presupuesto a lo que rinde bien y tiene techo; BAJÁ a lo caro/ineficiente. valor_nuevo es el NUEVO presupuesto diario total (no el delta).
-- "pausar": para campañas/conjuntos que gastan sin resultado. "activar": solo si están en PAUSED y conviene reactivarlos.
+- "pausar": para campañas/conjuntos que gastan sin NINGÚN resultado. "activar": solo si están en PAUSED y conviene reactivarlos.
 - Usá SIEMPRE el target_id exacto que te di. No inventes ids ni nombres.
-- Pensá en el OBJETIVO (leads/ventas). El resultado importa más que el alcance.
+
+JUZGÁ SEGÚN EL OBJETIVO — el "resultado" NO es siempre una conversión:
+- Cada campaña/conjunto trae "RESULTADOS" con lo que realmente logró (interacciones, seguidores, clicks, reproducciones, mensajes, leads, compras). Evaluá el costo por ESE resultado, no las conversiones.
+- Interacción/seguidores → mirá interacciones y seguidores; tráfico → clicks/landing; awareness → alcance; leads/ventas → recién ahí conversiones.
+- PROHIBIDO pausar o llamar "sin resultado" a una campaña que sumó interacciones, seguidores o clicks solo porque tiene 0 conversiones. Si algo con presupuesto NO trae ningún resultado de su objetivo, ahí sí sugerí pausar o revisar.
 - Español rioplatense, motivos concretos, sin emojis.`;
 
 function buildUser(p: SuggestInput): string {
+  const fmtRes = (rs: { tipo: string; valor: number; costo: number | null }[]) =>
+    rs.length
+      ? rs.map((r) => `${r.valor} ${r.tipo}${r.costo != null ? ` (a ${r.costo})` : ""}`).join(", ")
+      : "ninguno registrado";
   const m = p.data.account;
   const camps = p.data.campaigns
     .map(
       (c) =>
         `CAMPAÑA id=${c.id} "${c.nombre}" [${c.estado}${
+          c.objetivo ? ` · objetivo ${c.objetivo}` : ""
+        }${
           c.daily_budget != null ? ` · ppto/día ${c.daily_budget}` : " · sin ppto propio"
         }]: gasto ${c.spend}, clicks ${c.clicks}, CTR ${c.ctr ?? "-"}%, CPC ${
           c.cpc ?? "-"
-        }, conv ${c.conversions}, costo/conv ${c.cost_per_conversion ?? "-"}`
+        }. RESULTADOS: ${fmtRes(c.resultados)}`
     )
     .join("\n");
   const sets = p.adsets
@@ -76,7 +87,7 @@ function buildUser(p: SuggestInput): string {
           s.daily_budget != null ? ` · ppto/día ${s.daily_budget}` : " · sin ppto propio"
         }]: gasto ${s.spend}, clicks ${s.clicks}, CTR ${s.ctr ?? "-"}%, CPC ${
           s.cpc ?? "-"
-        }, conv ${s.conversions}, costo/conv ${s.cost_per_conversion ?? "-"}`
+        }. RESULTADOS: ${fmtRes(s.resultados)}`
     )
     .join("\n");
   return [
@@ -85,7 +96,7 @@ function buildUser(p: SuggestInput): string {
     `Moneda: ${m.moneda}`,
     `Contexto del negocio: ${p.negocio}`,
     ``,
-    `Cuenta (30 días): gasto ${m.spend}, conv ${m.conversions}, costo/conv ${m.cost_per_conversion ?? "-"}`,
+    `Cuenta (30 días): gasto ${m.spend}. Resultados: ${fmtRes(m.resultados)}`,
     ``,
     `Campañas:`,
     camps || "(sin campañas)",
@@ -144,6 +155,7 @@ export async function suggestPaidMediaChanges(p: SuggestInput): Promise<Proposed
     system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: buildUser(p) }],
   });
+  void trackAiUsage({ ruta: "paid-media/sugerencias", modelo: AI_MODEL_SMART, usage: msg.usage });
   const text = msg.content
     .filter((b): b is Anthropic.TextBlock => b.type === "text")
     .map((b) => b.text)

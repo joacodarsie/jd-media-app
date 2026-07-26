@@ -27,6 +27,18 @@ export interface AccountHealth {
   igDelta: number | null;
   // Tareas
   tareasVencidas: number;
+  // Calidad: piezas que el cliente/creativo mandó a rehacer este mes.
+  cambiosPedidos: number;
+  // Actividad del cliente en el portal: días desde la última vez que lo miró
+  // (null = nunca lo abrió o no tiene portal).
+  portalDiasSinVer: number | null;
+  // Encuesta de satisfacción: última calificación del cliente (1-5) y qué pidió
+  // mejorar. null = todavía no respondió ninguna.
+  satisfaccion: number | null;
+  satisfaccionPeriodo: string | null;
+  queMejorar: string | null;
+  // Reunión mensual de seguimiento: si ya se hizo la de este mes.
+  reunionHecha: boolean;
   // Frases legibles
   buenas: string[];
   alertas: string[];
@@ -74,32 +86,78 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
   if (clients.length === 0) return empty;
   const ids = clients.map((c) => c.id);
 
-  const [{ data: pubsRaw }, { data: snapsRaw }, { data: tasksRaw }] = await Promise.all([
+  const [{ data: pubsRaw }, { data: snapsRaw }, { data: tasksRaw }, { data: portalRaw }] =
+    await Promise.all([
+      admin
+        .from("publications")
+        .select("cliente_id, tipo, estado")
+        .in("cliente_id", ids)
+        .gte("fecha_publicacion", mStart)
+        .lt("fecha_publicacion", mEnd),
+      admin
+        .from("ig_snapshots")
+        .select("cliente_id, fecha, followers")
+        .in("cliente_id", ids)
+        .gte("fecha", ig35)
+        .order("fecha", { ascending: true }),
+      admin
+        .from("tasks")
+        .select("cliente_id, estado, fecha_limite")
+        .in("cliente_id", ids)
+        .neq("estado", "completada")
+        .neq("estado", "archivada")
+        .not("fecha_limite", "is", null)
+        .lt("fecha_limite", today),
+      admin
+        .from("client_portal_tokens")
+        .select("cliente_id, last_seen_at")
+        .in("cliente_id", ids),
+    ]);
+
+  // Calidad "humana": encuesta del cliente y reunión mensual. Van aparte porque
+  // sus tablas (0137) pueden no estar aplicadas todavía: si fallan, se ignoran.
+  const satByC = new Map<string, { puntaje: number; periodo: string; mejorar: string | null }>();
+  const reunionByC = new Set<string>();
+  const [satRes, meetRes] = await Promise.all([
     admin
-      .from("publications")
-      .select("cliente_id, tipo, estado")
+      .from("client_satisfaction")
+      .select("cliente_id, periodo, puntaje, que_mejorar")
       .in("cliente_id", ids)
-      .gte("fecha_publicacion", mStart)
-      .lt("fecha_publicacion", mEnd),
-    admin
-      .from("ig_snapshots")
-      .select("cliente_id, fecha, followers")
-      .in("cliente_id", ids)
-      .gte("fecha", ig35)
-      .order("fecha", { ascending: true }),
-    admin
-      .from("tasks")
-      .select("cliente_id, estado, fecha_limite")
-      .in("cliente_id", ids)
-      .neq("estado", "completada")
-      .neq("estado", "archivada")
-      .not("fecha_limite", "is", null)
-      .lt("fecha_limite", today),
+      .order("periodo", { ascending: false }),
+    admin.from("client_meetings").select("cliente_id").in("cliente_id", ids).eq("periodo", period),
   ]);
+  for (const s of (satRes.data ?? []) as {
+    cliente_id: string;
+    periodo: string;
+    puntaje: number;
+    que_mejorar: string | null;
+  }[]) {
+    // Vienen ordenadas por período desc: la primera de cada cliente es la última.
+    if (!satByC.has(s.cliente_id))
+      satByC.set(s.cliente_id, {
+        puntaje: s.puntaje,
+        periodo: s.periodo,
+        mejorar: s.que_mejorar,
+      });
+  }
+  for (const m of (meetRes.data ?? []) as { cliente_id: string }[])
+    reunionByC.add(m.cliente_id);
+
+  // Cambios pedidos del mes (piezas que rebotaron a "rechazado" = cambios).
+  const cambiosByC = new Map<string, number>();
+  // Última vez que el cliente miró el portal.
+  const portalSeenByC = new Map<string, string | null>();
+  for (const p of (portalRaw ?? []) as { cliente_id: string; last_seen_at: string | null }[]) {
+    const prev = portalSeenByC.get(p.cliente_id);
+    // Nos quedamos con la fecha más reciente si hay varios tokens.
+    if (!prev || (p.last_seen_at && p.last_seen_at > prev)) portalSeenByC.set(p.cliente_id, p.last_seen_at);
+  }
 
   // Producción del mes por cliente (publicadas).
   const prodByC = new Map<string, { reels: number; posts: number }>();
   for (const p of (pubsRaw ?? []) as { cliente_id: string; tipo: string; estado: string }[]) {
+    if (p.estado === "rechazado")
+      cambiosByC.set(p.cliente_id, (cambiosByC.get(p.cliente_id) ?? 0) + 1);
     if (p.estado !== "publicado") continue;
     const e = prodByC.get(p.cliente_id) ?? { reels: 0, posts: 0 };
     if (p.tipo === "reel" || p.tipo === "video") e.reels++;
@@ -177,6 +235,53 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
       alertas.push(`${tareasVencidas} tarea(s) vencida(s)`);
     }
 
+    // 4) Cambios pedidos (fricción de calidad): mucho rebote = algo no sale
+    // bien a la primera. Un par es normal, no penaliza.
+    const cambiosPedidos = cambiosByC.get(c.id) ?? 0;
+    if (cambiosPedidos >= 4) {
+      score += 1;
+      alertas.push(`${cambiosPedidos} piezas con cambios pedidos`);
+    }
+
+    // 5) Actividad del cliente en el portal.
+    const seen = portalSeenByC.get(c.id) ?? null;
+    let portalDiasSinVer: number | null = null;
+    if (seen) {
+      portalDiasSinVer = Math.floor((now.getTime() - new Date(seen).getTime()) / 86_400_000);
+      if (portalDiasSinVer >= 30) {
+        score += 1;
+        alertas.push(`El cliente no entra al portal hace ${portalDiasSinVer} días`);
+      } else if (portalDiasSinVer <= 7) {
+        buenas.push("El cliente está mirando el portal");
+      }
+    }
+
+    // 6) Encuesta de satisfacción: lo que dice el cliente pesa más que cualquier
+    // métrica interna. Una calificación baja es la alerta más fuerte que hay.
+    const sat = satByC.get(c.id) ?? null;
+    if (sat) {
+      if (sat.puntaje <= 2) {
+        score += 3;
+        alertas.push(`El cliente calificó ${sat.puntaje}/5 — hablar YA`);
+      } else if (sat.puntaje === 3) {
+        score += 1;
+        alertas.push(`El cliente calificó 3/5 (tibio)`);
+      } else {
+        buenas.push(`El cliente calificó ${sat.puntaje}/5`);
+      }
+      if (sat.mejorar) alertas.push(`Pidió mejorar: ${sat.mejorar.slice(0, 120)}`);
+    }
+
+    // 7) Reunión mensual de seguimiento (recién se reclama pasada la mitad del
+    // mes: antes es normal no haberla hecho).
+    const reunionHecha = reunionByC.has(c.id);
+    if (reunionHecha) {
+      buenas.push("Reunión del mes hecha");
+    } else if (elapsedFrac > 0.6) {
+      score += 1;
+      alertas.push("Falta la reunión mensual de seguimiento");
+    }
+
     return {
       id: c.id,
       nombre: c.nombre,
@@ -189,6 +294,12 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
       igConectado,
       igDelta,
       tareasVencidas,
+      cambiosPedidos,
+      portalDiasSinVer,
+      satisfaccion: sat?.puntaje ?? null,
+      satisfaccionPeriodo: sat?.periodo ?? null,
+      queMejorar: sat?.mejorar ?? null,
+      reunionHecha,
       buenas,
       alertas,
     };

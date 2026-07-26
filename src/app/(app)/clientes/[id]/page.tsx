@@ -38,6 +38,11 @@ import { TaskList } from "@/components/task-list";
 import { ClientFormDialog } from "@/components/client-form-dialog";
 import { DeleteClientButton } from "@/components/delete-client-button";
 import { ClientServicesEditor } from "@/components/client-services-editor";
+import { ClientTeamAssign } from "@/components/client-team-assign";
+import type { TeamUserOpt } from "@/lib/role-options";
+import { ClientHealthCard } from "@/components/client-health-card";
+import { computeAccountHealth, type AccountHealth } from "@/lib/director/health";
+import { currentPeriod } from "@/lib/finanzas";
 import { ClientStatusToggle } from "@/components/client-status-toggle";
 import { ClientPauseControl } from "@/components/client-pause-control";
 import { ClientActivateButton } from "@/components/client-activate-button";
@@ -161,8 +166,24 @@ export default async function ClientDetail({
   const allTasks = (tasks ?? []) as TaskWithRels[];
   const activas = allTasks.filter((t) => t.estado !== "completada");
   const completadas = allTasks.filter((t) => t.estado === "completada");
-  // Solo el admin edita/elimina la ficha del cliente y sus servicios.
+  // Solo el admin edita/elimina la ficha del cliente y sus servicios (incluye
+  // montos y datos de facturación).
   const canEdit = me.rol === "admin";
+  // El EQUIPO de la cuenta (quién la coordina y quién cubre cada puesto) lo
+  // maneja también la coordinación: es su trabajo repartir las cuentas.
+  const puedeAsignarEquipo = isStaffUser(me);
+
+  // Estado del servicio (mismo semáforo que el Director) para cuentas activas,
+  // visible para staff. Se computa acá y se busca esta cuenta.
+  let health: AccountHealth | null = null;
+  if (c.estado === "activo" && isStaffUser(me)) {
+    try {
+      const res = await computeAccountHealth(admin);
+      health = res.cuentas.find((x) => x.id === c.id) ?? null;
+    } catch {
+      health = null;
+    }
+  }
   // canSeeFinancials = staff o cualquier persona asignada a la cuenta.
   // Las chicas que no esten asignadas pueden ver la ficha pero no datos privados
   // (contacto, monto, CBU, finanzas).
@@ -498,6 +519,16 @@ export default async function ClientDetail({
 
             {/* Columna lateral */}
             <div className="space-y-4">
+              {/* Estado del servicio (semáforo de calidad) */}
+              {health && (
+                <ClientHealthCard
+                  health={health}
+                  clienteId={c.id}
+                  periodo={currentPeriod()}
+                  portalToken={(portalToken as { token?: string } | null)?.token ?? null}
+                />
+              )}
+
               {/* Portal del cliente (link público) */}
               <ClientPortalLink
                 clienteId={c.id}
@@ -563,8 +594,21 @@ export default async function ClientDetail({
                 </CardContent>
               </Card>
 
-              {/* Equipo asignado */}
-              {(c.cm || c.disenador || c.audiovisual) && (
+              {/* Equipo de la cuenta — editable por admin y coordinación */}
+              {puedeAsignarEquipo ? (
+                <ClientTeamAssign
+                  clientId={c.id}
+                  users={(users ?? []) as TeamUserOpt[]}
+                  full
+                  initial={{
+                    cm_id: (c as unknown as { cm_id?: string | null }).cm_id ?? null,
+                    disenador_id: (c as unknown as { disenador_id?: string | null }).disenador_id ?? null,
+                    audiovisual_id: (c as unknown as { audiovisual_id?: string | null }).audiovisual_id ?? null,
+                    media_buyer_id: (c as unknown as { media_buyer_id?: string | null }).media_buyer_id ?? null,
+                    coordinador_id: (c as unknown as { coordinador_id?: string | null }).coordinador_id ?? null,
+                  }}
+                />
+              ) : (c.cm || c.disenador || c.audiovisual) ? (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">Equipo asignado</CardTitle>
@@ -590,7 +634,7 @@ export default async function ClientDetail({
                     )}
                   </CardContent>
                 </Card>
-              )}
+              ) : null}
 
               {/* Contacto */}
               {canSeeFinancials &&

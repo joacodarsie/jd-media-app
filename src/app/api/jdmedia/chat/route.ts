@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { TOOLS, runTool } from "@/lib/ai/tools";
 import { friendlyAiError } from "@/lib/ai/errors";
 import { AI_MODEL_FAST } from "@/lib/ai/models";
+import { trackAiUsage } from "@/lib/ai/usage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -363,6 +364,7 @@ async function streamOneTurn({
   messageStream.on("text", (delta) => onDelta(delta));
 
   const final = await messageStream.finalMessage();
+  void trackAiUsage({ ruta: "jdmedia/chat", modelo: MODEL, usage: final.usage });
   messages.push({ role: "assistant", content: final.content });
 
   return {

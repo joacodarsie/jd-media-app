@@ -15,6 +15,9 @@ const PUBLIC_PATHS = [
   "/aprobacion",
   "/c/",
   "/api/c/",
+  // Encuesta de satisfacción del cliente: usa el mismo token del portal, que se
+  // valida contra la base en la página y en la action antes de escribir nada.
+  "/encuesta/",
   "/contrato/cliente/",
   "/contrato/unificado",
   "/diagnostico/cliente/",

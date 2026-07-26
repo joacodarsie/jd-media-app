@@ -11,6 +11,7 @@ export const FEATURES = [
   "documentos_globales", // crear/editar documentos generales en /documentos
   "comercial",           // acceso al pipeline comercial (vender) sin ser del rol comercial
   "leads_ia",            // usar el buscador de leads con IA (Prospección/Reclutamiento) — consume tokens
+  "contactos_ia",        // usar "Sacar contactos" con IA en Contactos (rápido) — consume tokens
   "jdmedia_live",        // usar JDmedIA en vivo (comparte pantalla) — consume tokens
 ] as const;
 
@@ -24,6 +25,7 @@ export const FEATURE_LABEL: Record<Feature, string> = {
   documentos_globales: "Editar documentos generales de la agencia",
   comercial: "Vender (pipeline comercial)",
   leads_ia: "Buscador de leads con IA (caro en tokens)",
+  contactos_ia: "IA de prospección (contactos, mensajes de campaña, sectores)",
   jdmedia_live: "JDmedIA en vivo · comparte pantalla (caro en tokens)",
 };
 
@@ -40,7 +42,9 @@ export const FEATURE_DESCRIPTION: Record<Feature, string> = {
   comercial:
     "Permite usar el pipeline comercial y cerrar ventas, aunque su rol principal sea otro.",
   leads_ia:
-    "Usar el buscador de leads con IA en Prospección y Reclutamiento. Consume muchos tokens (dólares): dáselo solo a quien lo use de verdad.",
+    "Usar el buscador de leads con IA (el botón 'Buscar leads con IA' de Prospección) y el análisis de CVs de Reclutamiento. Es la función MÁS cara en tokens: dáselo solo a quien lo use de verdad.",
+  contactos_ia:
+    "La IA de prospección del día a día: sacar contactos, generar los mensajes de la campaña y sugerir sectores. Consume tokens (poco por uso, pero suma). NO incluye el buscador de leads con IA, que se otorga aparte por ser el más caro.",
   jdmedia_live:
     "Usar JDmedIA en vivo (la guía que comparte pantalla y responde en tiempo real). Consume muchos tokens: dáselo solo a quien lo necesite.",
 };

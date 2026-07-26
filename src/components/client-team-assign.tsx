@@ -21,13 +21,17 @@ const NONE = "__none__";
 type UserOpt = TeamUserOpt;
 
 /**
- * Card del onboarding de Gestión de Redes para que la coordinación asigne los
- * puestos del cliente: Community Manager, Diseño y Edición Audiovisual.
+ * Asignación del equipo de una cuenta: quién la coordina y quién cubre cada
+ * puesto. Se usa en el onboarding de Gestión de Redes (solo los 3 puestos de
+ * producción) y en la ficha del cliente, donde la coordinación también puede
+ * cambiar la coordinadora y el gestor de pauta (`full`).
  */
 export function ClientTeamAssign({
   clientId,
   users,
   initial,
+  full = false,
+  titulo,
 }: {
   clientId: string;
   users: UserOpt[];
@@ -35,18 +39,28 @@ export function ClientTeamAssign({
     cm_id: string | null;
     disenador_id: string | null;
     audiovisual_id: string | null;
+    media_buyer_id?: string | null;
+    coordinador_id?: string | null;
   };
+  /** true = suma coordinadora de la cuenta y gestor de pauta. */
+  full?: boolean;
+  titulo?: string;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [cm, setCm] = useState(initial.cm_id ?? NONE);
   const [dis, setDis] = useState(initial.disenador_id ?? NONE);
   const [av, setAv] = useState(initial.audiovisual_id ?? NONE);
+  const [mb, setMb] = useState(initial.media_buyer_id ?? NONE);
+  const [coord, setCoord] = useState(initial.coordinador_id ?? NONE);
 
   const dirty =
     cm !== (initial.cm_id ?? NONE) ||
     dis !== (initial.disenador_id ?? NONE) ||
-    av !== (initial.audiovisual_id ?? NONE);
+    av !== (initial.audiovisual_id ?? NONE) ||
+    (full &&
+      (mb !== (initial.media_buyer_id ?? NONE) ||
+        coord !== (initial.coordinador_id ?? NONE)));
 
   function save() {
     start(async () => {
@@ -54,9 +68,15 @@ export function ClientTeamAssign({
         cm_id: cm === NONE ? null : cm,
         disenador_id: dis === NONE ? null : dis,
         audiovisual_id: av === NONE ? null : av,
+        ...(full
+          ? {
+              media_buyer_id: mb === NONE ? null : mb,
+              coordinador_id: coord === NONE ? null : coord,
+            }
+          : {}),
       });
       if (res?.error) return void toast.error(res.error);
-      toast.success("Equipo asignado");
+      toast.success("Equipo actualizado");
       router.refresh();
     });
   }
@@ -67,22 +87,35 @@ export function ClientTeamAssign({
     set: (v: string) => void;
     puesto: Puesto;
   }[] = [
+    ...(full
+      ? [
+          {
+            label: "Coordina la cuenta",
+            value: coord,
+            set: setCoord,
+            puesto: "coordinacion" as Puesto,
+          },
+        ]
+      : []),
     { label: "Community Manager", value: cm, set: setCm, puesto: "cm" },
     { label: "Diseño gráfico", value: dis, set: setDis, puesto: "diseno" },
     { label: "Edición audiovisual", value: av, set: setAv, puesto: "audiovisual" },
+    ...(full
+      ? [{ label: "Gestor de pauta", value: mb, set: setMb, puesto: "pauta" as Puesto }]
+      : []),
   ];
 
   return (
     <div className="rounded-xl border bg-card p-4">
       <div className="flex items-center gap-2">
         <Users className="h-4 w-4 text-primary" />
-        <h3 className="font-semibold">Equipo de la cuenta</h3>
+        <h3 className="font-semibold">{titulo ?? "Equipo de la cuenta"}</h3>
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
         Elegí quién lleva cada puesto. Las piezas en producción se reasignan solas
         a quien pongas acá.
       </p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+      <div className={`mt-3 grid gap-3 ${full ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
         {puestos.map((p) => (
           <div key={p.label}>
             <Label className="text-xs">{p.label}</Label>

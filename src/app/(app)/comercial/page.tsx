@@ -10,6 +10,7 @@ import { NewProposalDialog } from "@/components/new-proposal-dialog";
 import { CopyRequestDataButton } from "@/components/copy-request-data-button";
 import { HelpTrigger } from "@/components/help-trigger";
 import { whatsappLink } from "@/lib/payment-reminder";
+import { diasDesde } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -75,9 +76,9 @@ export default async function ComercialPage() {
     monto_mensual: number | null;
     contacto_telefono: string | null;
   }[];
-  const diasDesde = (iso: string | null): number =>
-    iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400_000) : 0;
-  const enRiesgo = propuestasRows.filter((p) => diasDesde(p.created_at) >= 3).length;
+  // Días desde que se creó la propuesta (0 si no hay fecha, para el bucket).
+  const diasDe = (iso: string | null): number => diasDesde(iso) ?? 0;
+  const enRiesgo = propuestasRows.filter((p) => diasDe(p.created_at) >= 3).length;
 
   // Coordinadoras candidatas (rol coordinación, primario o secundario) para
   // asignar la cuenta al crear la propuesta.
@@ -182,7 +183,7 @@ export default async function ComercialPage() {
         ) : (
           <ul className="space-y-2">
             {propuestasRows.map((p) => {
-              const dias = diasDesde(p.created_at);
+              const dias = diasDe(p.created_at);
               const b = seguimientoBucket(dias);
               const wa = whatsappLink(p.contacto_telefono, followupMessage(p.nombre));
               return (

@@ -13,6 +13,7 @@ import {
   HandCoins,
   ChevronDown,
   ClipboardCheck,
+  Bot,
 } from "lucide-react";
 import { HelpTrigger } from "@/components/help-trigger";
 import { requireFeature } from "@/lib/auth";
@@ -250,6 +251,15 @@ export default async function FinanzasPage({
               className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-muted"
             >
               <TrendingUp className="h-4 w-4" /> Panorama
+            </Link>
+          )}
+          {isAdmin && (
+            <Link
+              href="/finanzas/ia"
+              title="Cuánto cuesta la IA de la app"
+              className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-muted"
+            >
+              <Bot className="h-4 w-4" /> Gasto de IA
             </Link>
           )}
           <Link

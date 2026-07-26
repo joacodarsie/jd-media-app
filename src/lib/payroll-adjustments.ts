@@ -9,6 +9,7 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { AI_MODEL_FAST } from "@/lib/ai/models";
+import { trackAiUsage } from "@/lib/ai/usage";
 
 export interface AdjustmentTeamMember {
   userId: string;
@@ -125,6 +126,7 @@ export async function proposePayrollAdjustments(
       },
     ],
   });
+  void trackAiUsage({ ruta: "sueldos/ajustes", modelo: AI_MODEL_FAST, usage: msg.usage });
   const text = msg.content
     .filter((b): b is Anthropic.TextBlock => b.type === "text")
     .map((b) => b.text)

@@ -59,9 +59,22 @@ export const comercialTabs: SectionTab[] = [
   { href: "/comercial/post-meet", label: "Post-meet" },
 ];
 
-/** Pestañas de Métricas: objetivos para todos; productividad si tiene la feature. */
-export function metricasTabs(showGlobal: boolean): SectionTab[] {
+/**
+ * Roles que ven el tablero "Máquina de clientes" (mismo criterio que la sección
+ * Comercial: quien vende, más coordinación/dirección que miran el número).
+ */
+export function puedeVerMaquina(rol: UserRole, rolSecundario?: UserRole | null): boolean {
+  const ok: UserRole[] = ["admin", "coordinador", "comercial", "prospecting"];
+  return ok.includes(rol) || (!!rolSecundario && ok.includes(rolSecundario));
+}
+
+/**
+ * Pestañas de Métricas: objetivos para todos; la máquina de clientes para quien
+ * vende (y dirección); productividad si tiene la feature.
+ */
+export function metricasTabs(showGlobal: boolean, showMaquina = false): SectionTab[] {
   const tabs: SectionTab[] = [{ href: "/objetivos", label: "Objetivos" }];
+  if (showMaquina) tabs.push({ href: "/objetivos/maquina", label: "Máquina de clientes" });
   if (showGlobal) tabs.push({ href: "/global", label: "Productividad" });
   return tabs;
 }

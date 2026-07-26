@@ -1,7 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Pencil, Plus, Search } from "lucide-react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Check, Loader2, Pencil, Plus, Search } from "lucide-react";
+import { markInvoicesPaidBulk } from "@/app/(app)/finanzas/actions";
 import { SortTh } from "@/components/ui/sort-th";
 import { cn } from "@/lib/utils";
 import {
@@ -49,6 +52,12 @@ export function InvoicesTable({
   const [q, setQ] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("vence");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  // Selección múltiple: marcar los cobros del mes de a uno son 3 clics por
+  // factura y terminaba no haciéndose nunca.
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [cobrando, setCobrando] = useState(false);
 
   function toggleSort(k: SortKey) {
     if (k === sortBy) setSortDir(sortDir === "asc" ? "desc" : "asc");
@@ -92,6 +101,46 @@ export function InvoicesTable({
     0
   );
 
+  // Solo se pueden marcar las que todavía no están cobradas.
+  const pendientes = filtered.filter((i) => !i.fecha_cobro);
+  const seleccionadas = pendientes.filter((i) => sel.has(i.id));
+  const montoSel = seleccionadas.reduce(
+    (acc, i) => acc + toARS(Number(i.monto), i.moneda, rates),
+    0
+  );
+  const todasSel = pendientes.length > 0 && seleccionadas.length === pendientes.length;
+
+  function toggleFila(id: string) {
+    setSel((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleTodas() {
+    setSel(todasSel ? new Set() : new Set(pendientes.map((i) => i.id)));
+  }
+
+  async function cobrarSeleccionadas() {
+    if (seleccionadas.length === 0) return;
+    setCobrando(true);
+    const hoy = new Date().toISOString().slice(0, 10);
+    const res = await markInvoicesPaidBulk(
+      seleccionadas.map((i) => i.id),
+      hoy
+    );
+    setCobrando(false);
+    if (res?.error) {
+      toast.error(res.error);
+      return;
+    }
+    toast.success(`${seleccionadas.length} cobro(s) marcados con fecha de hoy.`);
+    setSel(new Set());
+    startTransition(() => router.refresh());
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -119,6 +168,31 @@ export function InvoicesTable({
         </div>
       </div>
 
+      {/* Barra de acción masiva: aparece al seleccionar. */}
+      {seleccionadas.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm dark:border-emerald-500/40 dark:bg-emerald-500/10">
+          <span className="text-emerald-900 dark:text-emerald-100">
+            <b>{seleccionadas.length}</b> seleccionada(s) ·{" "}
+            <b className="tabular-nums">{fmtARS(montoSel)}</b>
+          </span>
+          <Button size="sm" onClick={cobrarSeleccionadas} disabled={cobrando} className="gap-1">
+            {cobrando ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Check className="h-3.5 w-3.5" />
+            )}
+            Marcar cobradas hoy
+          </Button>
+          <button
+            type="button"
+            onClick={() => setSel(new Set())}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            Limpiar
+          </button>
+        </div>
+      )}
+
       {/* Mobile: cards */}
       <div className="space-y-2 md:hidden">
         {filtered.length === 0 ? (
@@ -138,7 +212,17 @@ export function InvoicesTable({
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium">{i.cliente?.nombre ?? "—"}</div>
+                    <div className="flex items-center gap-2">
+                      {!i.fecha_cobro && (
+                        <input
+                          type="checkbox"
+                          checked={sel.has(i.id)}
+                          onChange={() => toggleFila(i.id)}
+                          className="h-3.5 w-3.5 shrink-0 cursor-pointer accent-emerald-600"
+                        />
+                      )}
+                      <span className="font-medium">{i.cliente?.nombre ?? "—"}</span>
+                    </div>
                     <p className="truncate text-xs text-muted-foreground" title={i.concepto}>
                       {i.concepto}
                     </p>
@@ -207,6 +291,16 @@ export function InvoicesTable({
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
               <tr>
+                <th className="w-8 px-2 py-2">
+                  <input
+                    type="checkbox"
+                    checked={todasSel}
+                    onChange={toggleTodas}
+                    disabled={pendientes.length === 0}
+                    className="h-3.5 w-3.5 cursor-pointer align-middle accent-emerald-600"
+                    title="Seleccionar todas las pendientes"
+                  />
+                </th>
                 <SortTh onClick={() => toggleSort("cliente")} active={sortBy === "cliente"} dir={sortDir}>
                   Cliente
                 </SortTh>
@@ -227,7 +321,7 @@ export function InvoicesTable({
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-6 text-center text-sm text-muted-foreground">
+                  <td colSpan={8} className="px-3 py-6 text-center text-sm text-muted-foreground">
                     Sin resultados.
                   </td>
                 </tr>
@@ -242,6 +336,16 @@ export function InvoicesTable({
                         overdue && "bg-red-50/40 dark:bg-red-950/10"
                       )}
                     >
+                      <td className="px-2 py-2">
+                        {!i.fecha_cobro && (
+                          <input
+                            type="checkbox"
+                            checked={sel.has(i.id)}
+                            onChange={() => toggleFila(i.id)}
+                            className="h-3.5 w-3.5 cursor-pointer align-middle accent-emerald-600"
+                          />
+                        )}
+                      </td>
                       <td className="px-3 py-2 font-medium">{i.cliente?.nombre ?? "—"}</td>
                       <td className="max-w-xs truncate px-3 py-2 text-xs text-muted-foreground" title={i.concepto}>
                         {i.concepto}

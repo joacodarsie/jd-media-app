@@ -4,8 +4,35 @@ import {
   reminderAmount,
   buildGroupedPaymentReminder,
   buildPaymentReminder,
+  normalizePhone,
+  whatsappLink,
   type ReminderClient,
 } from "../payment-reminder";
+
+describe("normalizePhone — mismo criterio que prospección", () => {
+  it("arregla el celular argentino publicado sin el 9", () => {
+    expect(normalizePhone("+54 351 331 9555")).toBe("5493513319555");
+  });
+
+  it("saca el 15 local", () => {
+    expect(normalizePhone("+54 351 15 331 9555")).toBe("5493513319555");
+  });
+
+  it("un número ya correcto no se toca", () => {
+    expect(normalizePhone("5493513319555")).toBe("5493513319555");
+  });
+
+  it("sin teléfono o basura devuelve null", () => {
+    expect(normalizePhone(null)).toBeNull();
+    expect(normalizePhone("123")).toBeNull();
+  });
+
+  it("el link de WhatsApp sale con los dígitos ya normalizados", () => {
+    expect(whatsappLink("+54 351 15 331 9555", "hola")).toBe(
+      "https://wa.me/5493513319555?text=hola"
+    );
+  });
+});
 
 describe("applyContractDiscount", () => {
   it("sin descuento devuelve el monto base", () => {

@@ -93,6 +93,28 @@ export async function markInvoicePaid(
   return { ok: true };
 }
 
+/**
+ * Marca VARIAS facturas como cobradas de una. Marcar de a una son 3 clics por
+ * factura; con 15 cuentas por mes eso terminaba en que no se marcaba ninguna y
+ * la columna "real" de Finanzas quedaba vacía.
+ */
+export async function markInvoicesPaidBulk(
+  ids: string[],
+  fecha_cobro: string,
+  metodo_pago?: string | null
+) {
+  const { supabase } = await ctx();
+  if (!Array.isArray(ids) || ids.length === 0) return { ok: true, n: 0 };
+  const clean = ids.slice(0, 200);
+  const { error } = await supabase
+    .from("client_invoices")
+    .update({ fecha_cobro, metodo_pago: metodo_pago?.trim() || null })
+    .in("id", clean);
+  if (error) return { error: error.message };
+  invalidate();
+  return { ok: true, n: clean.length };
+}
+
 export async function markInvoiceUnpaid(id: string) {
   const { supabase } = await ctx();
   const { error } = await supabase

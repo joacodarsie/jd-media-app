@@ -1,5 +1,6 @@
 import { AGENCY } from "./agency";
 import { fmtCurrency, periodLabel } from "./finanzas";
+import { waDigits } from "./prospecting/shared";
 
 export interface ReminderClient {
   nombre: string;
@@ -119,16 +120,16 @@ export function buildGroupedPaymentReminder(clients: ReminderClient[], periodo: 
 }
 
 /**
- * Limpia un teléfono y antepone el código de Argentina (54) si hace falta.
- * Devuelve null si no queda un número usable. Best-effort (mismo criterio
- * para el link wa.me manual y el envío automático por la API de Meta).
+ * Limpia un teléfono para WhatsApp. Delega en `waDigits`, que es la fuente
+ * única: los celulares argentinos necesitan `54 9 <área> <número>` SIN el "15"
+ * local, y con los dígitos crudos wa.me abre un chat muerto.
+ *
+ * Antes acá solo se anteponía el "54": los recordatorios de cobro sufrían el
+ * mismo bug que ya habíamos arreglado en prospección (números que "no andan").
  */
 export function normalizePhone(telefono: string | null | undefined): string | null {
   if (!telefono) return null;
-  let digits = telefono.replace(/\D/g, "");
-  if (digits.length < 8) return null;
-  if (!digits.startsWith("54")) digits = "54" + digits;
-  return digits;
+  return waDigits(telefono);
 }
 
 /** Link wa.me con el mensaje pre-cargado. Devuelve null si no hay un teléfono usable. */

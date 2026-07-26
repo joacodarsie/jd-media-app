@@ -112,6 +112,14 @@ export default async function ClientesPage() {
     );
   }
 
+  // Cuentas activas sin Instagram conectado: sin esto el portal y el reporte
+  // les muestran los resultados vacíos, que es el argumento que retiene.
+  const sinInstagram = isAdmin
+    ? ((clients ?? []) as { estado: string; es_interno: boolean; ig_user_id: string | null }[]).filter(
+        (c) => c.estado === "activo" && !c.es_interno && !c.ig_user_id
+      ).length
+    : 0;
+
   // Adjuntar el equipo faltante a cada cliente visible (para el borde de aviso).
   visibleClients = visibleClients.map((c) => {
     const id = (c as { id: string }).id;
@@ -131,6 +139,13 @@ export default async function ClientesPage() {
         {isAdmin && (
           <div className="flex items-center gap-2">
             <Link
+              href="/clientes/calidad"
+              className="rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
+              title="Encuesta y reunión del mes de cada cuenta"
+            >
+              💛 Calidad del mes
+            </Link>
+            <Link
               href="/coordinacion/equipos"
               className="rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
             >
@@ -148,6 +163,21 @@ export default async function ClientesPage() {
           </div>
         )}
       </div>
+      {isAdmin && sinInstagram > 0 && (
+        <Link
+          href="/clientes/conectar-instagram"
+          className="flex items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm transition hover:bg-amber-100 dark:border-amber-500/40 dark:bg-amber-500/10 dark:hover:bg-amber-500/20"
+        >
+          <span className="text-amber-900 dark:text-amber-100">
+            <b>{sinInstagram}</b> cuenta{sinInstagram === 1 ? "" : "s"} activa
+            {sinInstagram === 1 ? "" : "s"} sin Instagram conectado: el portal y el
+            reporte les muestran los resultados vacíos.
+          </span>
+          <span className="shrink-0 font-medium text-amber-900 underline dark:text-amber-100">
+            Conectar
+          </span>
+        </Link>
+      )}
       <ClientsDashboard
         clients={visibleClients as never}
         tasks={visibleTasks as TaskWithRels[]}

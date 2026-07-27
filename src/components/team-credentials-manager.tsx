@@ -55,8 +55,10 @@ import {
   FEATURES,
   FEATURE_LABEL,
   FEATURE_DESCRIPTION,
+  isStrictFeature,
   type Feature,
 } from "@/lib/permissions";
+import { cn } from "@/lib/utils";
 import { ROLE_DEFAULT_FEATURES } from "@/lib/role-defaults";
 import { Shield } from "lucide-react";
 
@@ -104,7 +106,14 @@ const AREAS = [
   "Botly",
 ];
 
-export function TeamCredentialsManager({ users }: { users: TeamRow[] }) {
+export function TeamCredentialsManager({
+  users,
+  soyDirector = false,
+}: {
+  users: TeamRow[];
+  /** El director puede editar los permisos de cualquiera, admins incluidos. */
+  soyDirector?: boolean;
+}) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -133,7 +142,7 @@ export function TeamCredentialsManager({ users }: { users: TeamRow[] }) {
           </thead>
           <tbody>
             {users.map((u) => (
-              <UserRow key={u.id} user={u} />
+              <UserRow key={u.id} user={u} soyDirector={soyDirector} />
             ))}
           </tbody>
         </table>
@@ -142,7 +151,7 @@ export function TeamCredentialsManager({ users }: { users: TeamRow[] }) {
   );
 }
 
-function UserRow({ user }: { user: TeamRow }) {
+function UserRow({ user, soyDirector }: { user: TeamRow; soyDirector: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
 
@@ -222,7 +231,7 @@ function UserRow({ user }: { user: TeamRow }) {
       <td className="px-3 py-2">
         <div className="flex items-center justify-end gap-1">
           <EditRolesDialog user={user} />
-          <PermissionsDialog user={user} />
+          <PermissionsDialog user={user} soyDirector={soyDirector} />
           <SetPasswordPopover user={user} />
           <Button
             size="sm"
@@ -416,11 +425,21 @@ function SetPasswordPopover({ user }: { user: TeamRow }) {
   );
 }
 
-function PermissionsDialog({ user }: { user: TeamRow }) {
+function PermissionsDialog({
+  user,
+  soyDirector,
+}: {
+  user: TeamRow;
+  /** El director puede tocar los permisos de cualquiera, admins incluidos. */
+  soyDirector: boolean;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
-  const isAdmin = user.rol === "admin";
+  const isAdmin = user.rol === "admin" || user.rol_secundario === "admin";
+  // Un admin no puede editar los permisos de otro admin (ni los propios): si
+  // no, cualquiera se auto-otorga la IA cara. El director sí.
+  const bloqueado = isAdmin && !soyDirector;
 
   // Estado local con los flags
   const initial = (user.permisos ?? {}) as Record<string, boolean>;
@@ -468,8 +487,11 @@ function PermissionsDialog({ user }: { user: TeamRow }) {
         <div className="space-y-3 text-sm">
           {isAdmin && (
             <p className="rounded-md bg-amber-100 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-              Este usuario es <b>admin</b>. Tiene acceso total a todas las
-              secciones, sin importar los checkboxes de abajo.
+              Este usuario es <b>admin</b>: las secciones (Finanzas, Global,
+              etc.) las tiene igual por su rol, aunque destildes el checkbox. Lo
+              que <b>sí</b> depende de estos tildes es lo marcado como{" "}
+              <b>gasta tokens</b> — ser admin no lo habilita solo.
+              {bloqueado && " Solo el director puede cambiar los permisos de un admin."}
             </p>
           )}
           <p className="rounded-md bg-muted px-2 py-1.5 text-[11px] text-muted-foreground">
@@ -480,17 +502,28 @@ function PermissionsDialog({ user }: { user: TeamRow }) {
             {FEATURES.map((f) => (
               <label
                 key={f}
-                className="flex cursor-pointer items-start gap-2 rounded-md border bg-card p-2 hover:bg-muted/30"
+                className={cn(
+                  "flex items-start gap-2 rounded-md border bg-card p-2",
+                  bloqueado ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-muted/30",
+                  isStrictFeature(f) && "border-primary/40"
+                )}
               >
                 <input
                   type="checkbox"
                   checked={flags[f]}
                   onChange={() => toggleFlag(f)}
-                  disabled={isAdmin}
+                  disabled={bloqueado}
                   className="mt-0.5 h-4 w-4 cursor-pointer rounded"
                 />
                 <div>
-                  <div className="text-sm font-medium">{FEATURE_LABEL[f]}</div>
+                  <div className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
+                    {FEATURE_LABEL[f]}
+                    {isStrictFeature(f) && (
+                      <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide">
+                        gasta tokens
+                      </span>
+                    )}
+                  </div>
                   <div className="text-[11px] text-muted-foreground">
                     {FEATURE_DESCRIPTION[f]}
                   </div>
@@ -500,7 +533,7 @@ function PermissionsDialog({ user }: { user: TeamRow }) {
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={save} disabled={pending || isAdmin}>
+          <Button onClick={save} disabled={pending || bloqueado}>
             {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Guardar permisos
           </Button>

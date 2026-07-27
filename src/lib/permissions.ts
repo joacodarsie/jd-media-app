@@ -17,6 +17,20 @@ export const FEATURES = [
 
 export type Feature = (typeof FEATURES)[number];
 
+/**
+ * Features que NO se tienen por ser admin: hay que otorgarlas a dedo. Son las
+ * que gastan tokens, así que "ser admin" no puede habilitar el gasto solo (ver
+ * `hasFeatureStrict` en auth.ts). Para el resto, admin = acceso total y el
+ * checkbox es informativo.
+ */
+export const STRICT_FEATURES: readonly Feature[] = [
+  "leads_ia",
+  "contactos_ia",
+  "jdmedia_live",
+];
+
+export const isStrictFeature = (f: Feature): boolean => STRICT_FEATURES.includes(f);
+
 export const FEATURE_LABEL: Record<Feature, string> = {
   finanzas: "Finanzas (cobros, pagos, gastos, rentabilidad)",
   global: "Global (KPIs de toda la agencia)",

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, KeyRound, Plus, ShieldAlert } from "lucide-react";
-import { requireRole } from "@/lib/auth";
+import { requireRole, isOwner } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getNotificationQueueStats } from "@/lib/cache";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AccesosPage() {
   // Restringido a admin SOLAMENTE (no coordinación)
-  await requireRole(["admin"]);
+  const me = await requireRole(["admin"]);
   const supabase = createClient();
 
   // Tolerar que la migration 0050 (password_visible) aun no este aplicada.
@@ -137,7 +137,7 @@ export default async function AccesosPage() {
       </section>
 
       <section>
-        <TeamCredentialsManager users={users} />
+        <TeamCredentialsManager users={users} soyDirector={isOwner(me)} />
       </section>
 
       <section>

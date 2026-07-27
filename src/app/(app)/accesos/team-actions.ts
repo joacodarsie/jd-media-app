@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireRole } from "@/lib/auth";
+import { requireRole, isOwner } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { FEATURES, type Feature } from "@/lib/permissions";
@@ -96,14 +96,31 @@ export async function updateUserPermissions(
   userId: string,
   permisos: Partial<Record<Feature, boolean>>
 ) {
-  await requireRole(["admin"]);
+  const me = await requireRole(["admin"]);
+  const sb = createClient();
+
+  // Los permisos de OTRO admin (o los propios, siendo admin) los toca solo el
+  // director: si no, cualquier admin podría auto-otorgarse la IA cara, que es
+  // justo lo que `hasFeatureStrict` evita.
+  const { data: target } = await sb
+    .from("users")
+    .select("rol, rol_secundario, nombre")
+    .eq("id", userId)
+    .maybeSingle();
+  const t = target as { rol?: string; rol_secundario?: string | null; nombre?: string } | null;
+  const targetEsAdmin = t?.rol === "admin" || t?.rol_secundario === "admin";
+  if (targetEsAdmin && !isOwner(me)) {
+    return {
+      error: `Los permisos de ${t?.nombre ?? "un admin"} los cambia solo el director.`,
+    };
+  }
+
   // Filtrar a features válidas
   const sanitized: Record<string, boolean> = {};
   for (const f of FEATURES) {
     if (permisos[f] === true) sanitized[f] = true;
     // si es false o undefined, lo omitimos (default = no tiene)
   }
-  const sb = createClient();
   const { error } = await sb
     .from("users")
     .update({ permisos: sanitized })

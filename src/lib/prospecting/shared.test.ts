@@ -5,7 +5,12 @@
  * funciona en WhatsApp" cuando en realidad está mal formateado.
  */
 import { describe, it, expect } from "vitest";
-import { waDigits, intlWhatsappLink } from "./shared";
+import {
+  waDigits,
+  intlWhatsappLink,
+  mensajeElegido,
+  personalizarMensaje,
+} from "./shared";
 
 describe("waDigits — celulares argentinos", () => {
   it("ya correcto (54 9 área número) pasa tal cual", () => {
@@ -62,5 +67,59 @@ describe("intlWhatsappLink", () => {
   it("sin teléfono devuelve null", () => {
     expect(intlWhatsappLink(null, "hola")).toBeNull();
     expect(intlWhatsappLink("   ", "hola")).toBeNull();
+  });
+});
+
+describe("mensajeElegido — cuál se usa para escribirle a un contacto", () => {
+  const tpl = {
+    primer_mensaje: "Uno",
+    alternativa: "Dos",
+    seguimiento_1: "Tres",
+    seguimiento_2: "Cuatro",
+  };
+
+  it("sin elección usa el primer mensaje", () => {
+    expect(mensajeElegido(tpl)?.texto).toBe("Uno");
+  });
+
+  it("respeta el bloque elegido a mano", () => {
+    const r = mensajeElegido({ ...tpl, elegido: "alternativa" });
+    expect(r?.texto).toBe("Dos");
+    expect(r?.label).toBe("Alternativa (otro ángulo)");
+  });
+
+  it("si el elegido quedó vacío cae al siguiente con texto", () => {
+    const r = mensajeElegido({ ...tpl, alternativa: "", elegido: "alternativa" });
+    expect(r?.texto).toBe("Uno");
+  });
+
+  it("sin plantilla o toda vacía devuelve null", () => {
+    expect(mensajeElegido(null)).toBeNull();
+    expect(
+      mensajeElegido({ primer_mensaje: "", alternativa: "", seguimiento_1: "", seguimiento_2: "" })
+    ).toBeNull();
+  });
+});
+
+describe("personalizarMensaje", () => {
+  it("reemplaza empresa y nombre de pila", () => {
+    expect(
+      personalizarMensaje("Hola [NOMBRE], ¿cómo están en [EMPRESA]?", {
+        empresa: "Boxescar",
+        contacto: "Américo Pereira",
+      })
+    ).toBe("Hola Américo, ¿cómo están en Boxescar?");
+  });
+
+  it("sin persona saca el hueco sin dejar el saludo colgado", () => {
+    expect(
+      personalizarMensaje("Hola [NOMBRE], ¿cómo están en [EMPRESA]?", { empresa: "Magic" })
+    ).toBe("Hola, ¿cómo están en Magic?");
+  });
+
+  it("reemplaza TODAS las apariciones de la empresa", () => {
+    expect(
+      personalizarMensaje("[EMPRESA] y [EMPRESA]", { empresa: "Filí" })
+    ).toBe("Filí y Filí");
   });
 });

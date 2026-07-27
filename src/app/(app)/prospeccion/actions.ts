@@ -14,6 +14,11 @@ import {
   type MessageContext,
 } from "@/lib/prospecting/message";
 import { verifyInstagramOne, toHandle } from "@/lib/prospecting/verify";
+import {
+  MENSAJE_BLOQUES,
+  type CampaignMessages,
+  type MensajeBloqueKey,
+} from "@/lib/prospecting/shared";
 
 async function ctx() {
   const supabase = createClient();
@@ -827,10 +832,23 @@ export async function regenerateCampaignMessages(campaignId: string) {
   }
   if (!messages) return { error: "La IA no devolvió los mensajes. Probá de nuevo." };
 
+  // Regenerar pisa los textos, pero NO la elección: si el equipo venía usando
+  // "alternativa" para escribirle a los contactos, sigue usando esa.
+  const { data: prevTpl } = await supabase
+    .from("prospecting_campaigns")
+    .select("mensajes_plantilla")
+    .eq("id", campaignId)
+    .maybeSingle();
+  const elegidoPrevio = (
+    (prevTpl as { mensajes_plantilla?: CampaignMessages | null } | null)?.mensajes_plantilla ?? null
+  )?.elegido;
+
   // Guardar (resiliente si falta la 0132: igual devolvemos los mensajes).
   const { error: upErr } = await supabase
     .from("prospecting_campaigns")
-    .update({ mensajes_plantilla: messages })
+    .update({
+      mensajes_plantilla: elegidoPrevio ? { ...messages, elegido: elegidoPrevio } : messages,
+    })
     .eq("id", campaignId);
   const saved = !upErr;
   if (upErr && (upErr as { code?: string }).code !== "42703")
@@ -838,6 +856,60 @@ export async function regenerateCampaignMessages(campaignId: string) {
 
   revalidatePath(`/prospeccion/${campaignId}`);
   return { ok: true as const, messages, saved };
+}
+
+/**
+ * Guarda los mensajes de la campaña editados a mano y/o cuál es el que se usa
+ * para escribirle a los contactos. No consume IA: lo puede hacer cualquiera del
+ * equipo con acceso a Prospección (el que escribe sabe mejor que la IA qué
+ * funciona en su rubro).
+ */
+export async function saveCampaignMessages(
+  campaignId: string,
+  patch: { mensajes?: Partial<CampaignMessages>; elegido?: MensajeBloqueKey }
+): Promise<{ ok: true; messages: CampaignMessages } | { error: string }> {
+  const { supabase } = await ctx();
+
+  const { data, error } = await supabase
+    .from("prospecting_campaigns")
+    .select("mensajes_plantilla")
+    .eq("id", campaignId)
+    .maybeSingle();
+  if (error) return { error: error.message };
+
+  const actual = ((data as { mensajes_plantilla?: CampaignMessages | null } | null)
+    ?.mensajes_plantilla ?? null) as CampaignMessages | null;
+  if (!actual) return { error: "Esta campaña todavía no tiene mensajes generados." };
+
+  const limpio = (v: unknown): string | undefined =>
+    typeof v === "string" ? v.trim().slice(0, 4000) : undefined;
+
+  const merged: CampaignMessages = { ...actual };
+  for (const { key } of MENSAJE_BLOQUES) {
+    const nuevo = limpio(patch.mensajes?.[key]);
+    if (nuevo !== undefined) merged[key] = nuevo;
+  }
+  if (patch.elegido) {
+    if (!MENSAJE_BLOQUES.some((b) => b.key === patch.elegido))
+      return { error: "Ese bloque de mensaje no existe." };
+    if (!merged[patch.elegido]?.trim())
+      return { error: "No podés elegir un mensaje vacío para escribirle a los contactos." };
+    merged.elegido = patch.elegido;
+  }
+
+  const { error: upErr } = await supabase
+    .from("prospecting_campaigns")
+    .update({ mensajes_plantilla: merged })
+    .eq("id", campaignId);
+  if (upErr) {
+    if ((upErr as { code?: string }).code === "42703")
+      return { error: "Falta aplicar la migración 0132 para poder guardar los mensajes." };
+    return { error: upErr.message };
+  }
+
+  revalidatePath(`/prospeccion/${campaignId}`);
+  revalidatePath(`/prospeccion/${campaignId}/contactos`);
+  return { ok: true as const, messages: merged };
 }
 
 export interface BulkContact {

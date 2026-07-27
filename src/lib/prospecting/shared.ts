@@ -71,6 +71,73 @@ export const contactoEstadoMeta = (v: string) =>
 /** Días que esperamos antes de sugerir un seguimiento a un lead sin respuesta. */
 export const SEGUIMIENTO_DIAS = 3;
 
+// ── Mensajes de la campaña ──────────────────────────────────────────────────
+
+/**
+ * Los cuatro bloques que genera la IA para cada campaña. El orden es el de la
+ * tarjeta y también el de respaldo para elegir cuál se usa en Contactos.
+ */
+export const MENSAJE_BLOQUES = [
+  { key: "primer_mensaje", label: "Primer mensaje" },
+  { key: "alternativa", label: "Alternativa (otro ángulo)" },
+  { key: "seguimiento_1", label: "Seguimiento 1" },
+  { key: "seguimiento_2", label: "Seguimiento 2" },
+] as const;
+
+export type MensajeBloqueKey = (typeof MENSAJE_BLOQUES)[number]["key"];
+
+export interface CampaignMessages {
+  primer_mensaje: string;
+  alternativa: string;
+  seguimiento_1: string;
+  seguimiento_2: string;
+  /**
+   * Cuál de los cuatro se usa al escribirle a un contacto (copiar, WhatsApp y
+   * despacho). Si no está, se usa el primero. Vive en el mismo jsonb, así que
+   * no hace falta migración.
+   */
+  elegido?: MensajeBloqueKey;
+}
+
+export const bloqueLabel = (k: MensajeBloqueKey): string =>
+  MENSAJE_BLOQUES.find((b) => b.key === k)?.label ?? k;
+
+/**
+ * Mensaje que hay que usar para escribirle a un contacto: el elegido a mano, o
+ * el primero que tenga texto. Devuelve null si la campaña no tiene plantilla.
+ */
+export function mensajeElegido(
+  tpl: CampaignMessages | null | undefined
+): { key: MensajeBloqueKey; label: string; texto: string } | null {
+  if (!tpl) return null;
+  const preferido = tpl.elegido;
+  const orden: MensajeBloqueKey[] = preferido
+    ? [preferido, ...MENSAJE_BLOQUES.map((b) => b.key).filter((k) => k !== preferido)]
+    : MENSAJE_BLOQUES.map((b) => b.key);
+  for (const key of orden) {
+    const texto = tpl[key];
+    if (typeof texto === "string" && texto.trim())
+      return { key, label: bloqueLabel(key), texto };
+  }
+  return null;
+}
+
+/**
+ * Reemplaza los huecos del mensaje con los datos del contacto. Si no hay
+ * persona, saca el saludo con nombre para que no quede "Hola [NOMBRE]".
+ */
+export function personalizarMensaje(
+  plantilla: string,
+  datos: { empresa: string; contacto?: string | null }
+): string {
+  const m = plantilla.replaceAll("[EMPRESA]", datos.empresa);
+  const persona = datos.contacto?.trim().split(/\s+/)[0];
+  return persona
+    ? m.replaceAll("[NOMBRE]", persona)
+    : // Sin persona: "Hola [NOMBRE], ¿cómo estás?" → "Hola, ¿cómo estás?"
+      m.replaceAll(/\s*\[NOMBRE\]/g, "");
+}
+
 /**
  * Embudo de una campaña a partir de los estados de sus leads. "Contactados" son
  * los que ya recibieron al menos el primer mensaje (de ahí en adelante).

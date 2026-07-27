@@ -4,6 +4,7 @@ import { ArrowLeft, MapPin, Table2 } from "lucide-react";
 import { requireRole, canUseProspectingAi } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { ProspectingContactsTable, type ContactRow } from "@/components/prospecting-contacts-table";
+import { mensajeElegido, type CampaignMessages } from "@/lib/prospecting/shared";
 
 export const dynamic = "force-dynamic";
 
@@ -25,18 +26,22 @@ export default async function CampaignContactsPage({
   if (!camp) notFound();
   const c = camp as { id: string; nombre: string; rubro: string; ubicacion: string | null };
 
-  // Plantilla de mensajes de la campaña: se usa para precargar el WhatsApp de
-  // cada fila con el texto ya personalizado (resiliente si falta la 0132).
+  // Mensaje de la campaña: el que el equipo marcó con la ⭐ en la tarjeta de
+  // mensajes (o el primero, si nadie eligió). Se usa para precargar el WhatsApp
+  // y el botón de copiar de cada fila. Resiliente si falta la 0132.
   let primerMensaje: string | null = null;
+  let mensajeLabel: string | null = null;
   const mp = await admin
     .from("prospecting_campaigns")
     .select("mensajes_plantilla")
     .eq("id", c.id)
     .maybeSingle();
   if (!mp.error) {
-    const tpl = (mp.data as { mensajes_plantilla?: { primer_mensaje?: string } | null } | null)
+    const tpl = (mp.data as { mensajes_plantilla?: CampaignMessages | null } | null)
       ?.mensajes_plantilla;
-    primerMensaje = tpl?.primer_mensaje ?? null;
+    const elegido = mensajeElegido(tpl);
+    primerMensaje = elegido?.texto ?? null;
+    mensajeLabel = elegido?.label ?? null;
   }
 
   // Contactos de la campaña. Resiliente si todavía no se aplicó la 0130/0131.
@@ -135,6 +140,7 @@ export default async function CampaignContactsPage({
           canUseAi={canUseProspectingAi(me)}
           currentUserId={me.id}
           primerMensaje={primerMensaje}
+          mensajeLabel={mensajeLabel}
         />
       )}
     </div>

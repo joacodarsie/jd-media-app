@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -44,6 +45,7 @@ import {
   instagramUrl,
   ensureHttp,
   diasDesde,
+  personalizarMensaje,
 } from "@/lib/prospecting/shared";
 import { ProspectingContactsBulkDialog } from "@/components/prospecting-contacts-bulk-dialog";
 import {
@@ -92,6 +94,7 @@ export function ProspectingContactsTable({
   canUseAi,
   currentUserId,
   primerMensaje,
+  mensajeLabel,
 }: {
   campaignId: string;
   campaignNombre: string;
@@ -102,8 +105,10 @@ export function ProspectingContactsTable({
   canUseAi: boolean;
   /** Para el filtro "solo míos". */
   currentUserId: string;
-  /** Primer mensaje de la campaña: se precarga en el WhatsApp de cada fila. */
+  /** Mensaje ELEGIDO de la campaña: se precarga en el WhatsApp de cada fila. */
   primerMensaje?: string | null;
+  /** Nombre del bloque elegido ("Alternativa (otro ángulo)"), para mostrarlo. */
+  mensajeLabel?: string | null;
 }) {
   const router = useRouter();
   const [rows, setRows] = useState<ContactRow[]>(initialContacts);
@@ -147,13 +152,10 @@ export function ProspectingContactsTable({
    */
   function mensajeDe(r: ContactRow): string {
     if (!primerMensaje) return "";
-    let m = primerMensaje.replaceAll("[EMPRESA]", r.empresa);
-    const persona = r.contacto_nombre?.trim().split(/\s+/)[0];
-    m = persona
-      ? m.replaceAll("[NOMBRE]", persona)
-      : // Sin persona: "Hola [NOMBRE], ¿cómo estás?" → "Hola, ¿cómo estás?"
-        m.replaceAll(/\s*\[NOMBRE\]/g, "");
-    return m;
+    return personalizarMensaje(primerMensaje, {
+      empresa: r.empresa,
+      contacto: r.contacto_nombre,
+    });
   }
 
   function setField(id: string, field: keyof ContactRow, value: string | null) {
@@ -552,9 +554,13 @@ export function ProspectingContactsTable({
       )}
       {primerMensaje ? (
         <p className="text-xs text-muted-foreground">
-          💬 El botón de WhatsApp de cada fila abre el chat con el mensaje de la
-          campaña <b>ya escrito y personalizado</b> con el nombre de la empresa. Solo
-          revisás y mandás.
+          💬 Se está usando{" "}
+          <b>{mensajeLabel ? `“${mensajeLabel}”` : "el mensaje de la campaña"}</b>, ya
+          personalizado con el nombre de la empresa: es el que se copia y el que abre
+          el WhatsApp de cada fila.{" "}
+          <Link href={`/prospeccion/${campaignId}`} className="underline hover:text-foreground">
+            Cambiar o editar
+          </Link>
         </p>
       ) : (
         <p className="text-xs text-muted-foreground">

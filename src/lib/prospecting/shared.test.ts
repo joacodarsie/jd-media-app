@@ -10,6 +10,7 @@ import {
   intlWhatsappLink,
   mensajeElegido,
   personalizarMensaje,
+  esProbableFijoAr,
 } from "./shared";
 
 describe("waDigits — celulares argentinos", () => {
@@ -67,6 +68,38 @@ describe("intlWhatsappLink", () => {
   it("sin teléfono devuelve null", () => {
     expect(intlWhatsappLink(null, "hola")).toBeNull();
     expect(intlWhatsappLink("   ", "hola")).toBeNull();
+  });
+});
+
+describe("esProbableFijoAr — el que hacía que 'los números no anden'", () => {
+  it("Córdoba 351-4xx es fijo", () => {
+    expect(esProbableFijoAr("+54 351 422-3152")).toBe(true);
+    expect(esProbableFijoAr("+54 351 4429689")).toBe(true);
+  });
+
+  it("Córdoba 351 con abonado 2/3/5/7 es celular", () => {
+    expect(esProbableFijoAr("+54 351 5951025")).toBe(false);
+    expect(esProbableFijoAr("+54 351 7185084")).toBe(false);
+    expect(esProbableFijoAr("+54 351 3782565")).toBe(false);
+  });
+
+  it("CABA 11-4xxx es fijo", () => {
+    expect(esProbableFijoAr("+54 11 4321 8765")).toBe(true);
+  });
+
+  it("si viene marcado como celular (9 internacional o 15 local) NO es fijo", () => {
+    expect(esProbableFijoAr("+54 9 351 422 3152")).toBe(false);
+    expect(esProbableFijoAr("+54 351 15 422 3152")).toBe(false);
+  });
+
+  it("área de 4 dígitos: 3543-42xxxx es fijo, 3543-5xxxxx no", () => {
+    expect(esProbableFijoAr("+54 3543 421122")).toBe(true);
+    expect(esProbableFijoAr("+54 3543 521122")).toBe(false);
+  });
+
+  it("de otros países no opinamos", () => {
+    expect(esProbableFijoAr("+34 912 345 678")).toBe(false);
+    expect(esProbableFijoAr(null)).toBe(false);
   });
 });
 

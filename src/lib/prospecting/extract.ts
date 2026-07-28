@@ -12,6 +12,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { AI_MODEL_FAST } from "@/lib/ai/models";
 import { trackAiUsage } from "@/lib/ai/usage";
 import { toHandle } from "./verify";
+import { esProbableFijoAr } from "./shared";
 
 const client = new Anthropic();
 
@@ -97,9 +98,14 @@ QUÉ TRAER (solo esto, nada más)
 - empresa: nombre real del negocio.
 - contacto_nombre: nombre de la persona con quien conviene hablar (dueño/a, gerente, encargado/a de marketing). Es el nombre con el que lo vamos a saludar. Si no aparece público, null.
 - contacto_rol: su cargo/rol en la empresa (ej: "Dueña", "Gerente comercial"). Si no se sabe, null.
-- telefono: teléfono en formato internacional con + y código de país (ej: +54 351 1234567). PRIORIZÁ CELULARES / números que sirvan para WhatsApp (los que el negocio publica para que le escriban) por sobre un fijo de recepción: un fijo no sirve para nuestro canal. Si el único que hay es un fijo, traelo igual pero es peor. Si no hay ninguno público, null.
-- instagram: el handle de su Instagram (solo el usuario, sin @ y sin URL, ej: gimnasioolimpo). Es LA VÍA ALTERNATIVA cuando no hay WhatsApp, así que buscalo siempre. PROHIBIDO deducirlo del nombre de la empresa: ponelo solo si viste el perfil real en un resultado. Si no lo viste, null.
-- sitio_web: su sitio oficial, o el link de donde sacaste los datos (ficha de Maps, directorio, perfil). Tratá de traer SIEMPRE alguno: sirve para mirar el negocio antes de escribirle.
+- telefono: teléfono en formato internacional con + y código de país (ej: +54 351 1234567).
+  ⚠️ CRÍTICO: nuestro canal es WHATSAPP, y en Argentina los teléfonos FIJOS no tienen WhatsApp.
+  Un fijo publicado como número de recepción hace que el equipo escriba a un chat que no existe.
+  - Buscá el CELULAR / WhatsApp que el negocio publica para que le escriban (suele estar en el botón "WhatsApp" de la web, en la ficha de Maps o en la bio de Instagram).
+  - En Argentina los celulares se publican con "15" (ej: 351 15 331-9555) o con +54 9. Los que arrancan con 4 después del código de área (ej: 351 422-3152, 11 4321-8765) son FIJOS.
+  - Si el único número que conseguís es un fijo, traelo igual, PERO en ese caso es OBLIGATORIO traer además el instagram o el sitio_web para que se pueda llegar por otro lado.
+- instagram: el handle de su Instagram (solo el usuario, sin @ y sin URL, ej: gimnasioolimpo). Es LA VÍA ALTERNATIVA cuando no hay WhatsApp, así que buscalo SIEMPRE, incluso si ya consiguiste teléfono. PROHIBIDO deducirlo del nombre de la empresa: ponelo solo si viste el perfil real en un resultado. Si no lo viste, null.
+- sitio_web: su sitio oficial, o el link de donde sacaste los datos (ficha de Maps, directorio, perfil). TRAELO SIEMPRE que exista, incluso si ya tenés teléfono e Instagram: el equipo entra a la web a buscar el WhatsApp real y a mirar el negocio antes de escribir. Es el dato que más se usa y el que más falta.
 
 CÓMO
 1. Usá la búsqueda web siguiendo la estrategia de "DÓNDE BUSCAR" de arriba. Priorizá PyMEs y negocios locales/medianos con presencia digital floja (mejores clientes para nosotros).
@@ -109,7 +115,8 @@ REGLAS DURAS
 - PROHIBIDO inventar. Nada de teléfonos "de ejemplo" ni handles supuestos. Si no lo viste en un resultado real, va null.
 - Solo negocios reales que existan hoy. Nada de agencias de marketing (son competencia) ni multinacionales grandes.
 - Traé cada empresa una sola vez.
-- CADA empresa tiene que quedar CONTACTABLE: si no encontrás teléfono, es OBLIGATORIO traer el instagram (o al revés). Si no conseguís ninguna de las dos vías, NO la incluyas: un contacto al que no se le puede escribir no sirve.
+- CADA empresa tiene que quedar CONTACTABLE de verdad. Antes de incluirla, chequeá que tenga AL MENOS UNA de estas tres: (a) un celular/WhatsApp, (b) instagram, (c) sitio_web. Si solo conseguiste un teléfono FIJO y nada más, NO la incluyas: el equipo no puede escribirle.
+- Ideal por empresa: celular + instagram + sitio_web. Cuantas más vías, mejor: si una falla, el equipo llega por otra en vez de perder el contacto.
 
 SALIDA
 Tu ÚLTIMO mensaje debe ser EXCLUSIVAMENTE un array JSON válido (sin markdown, sin texto antes ni después), con esta forma exacta por empresa:
@@ -138,15 +145,21 @@ function safeParse(raw: string): ExtractedContact[] {
     if (!empresa) continue;
     const telefono = str(o.telefono);
     const instagram = toHandle(str(o.instagram));
-    // Sin NINGUNA vía de contacto no sirve: no se le puede escribir.
-    if (!telefono && !instagram) continue;
+    const sitioWeb = str(o.sitio_web);
+    // Tiene que quedar alguna vía usable. El sitio web CUENTA: es donde el
+    // equipo entra a buscar el WhatsApp real cuando el número publicado es un
+    // fijo. Y un fijo solo, sin web ni Instagram, no sirve: wa.me abre un chat
+    // muerto y el contacto se descarta igual, pero después de perder el tiempo.
+    const soloFijo = !!telefono && esProbableFijoAr(telefono);
+    const tieneVia = (!!telefono && !soloFijo) || !!instagram || !!sitioWeb;
+    if (!tieneVia) continue;
     out.push({
       empresa: empresa.slice(0, 160),
       contacto_nombre: str(o.contacto_nombre)?.slice(0, 120) ?? null,
       contacto_rol: str(o.contacto_rol)?.slice(0, 120) ?? null,
       telefono: telefono?.slice(0, 40) ?? null,
       instagram,
-      sitio_web: str(o.sitio_web)?.slice(0, 300) ?? null,
+      sitio_web: sitioWeb?.slice(0, 300) ?? null,
     });
   }
   return out;

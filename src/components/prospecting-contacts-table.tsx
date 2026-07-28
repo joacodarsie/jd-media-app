@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +47,7 @@ import {
   ensureHttp,
   diasDesde,
   personalizarMensaje,
+  esProbableFijoAr,
 } from "@/lib/prospecting/shared";
 import { ProspectingContactsBulkDialog } from "@/components/prospecting-contacts-bulk-dialog";
 import {
@@ -295,6 +297,8 @@ export function ProspectingContactsTable({
     contactados,
     interesados: rows.filter((r) => r.estado === "interesado").length,
     reuniones: rows.filter((r) => r.estado === "reunion").length,
+    // Fijos sin otra vía: son los que parecen contactables y no lo son.
+    fijos: rows.filter((r) => esProbableFijoAr(r.telefono)).length,
     descartados: rows.filter((r) => r.estado === "descartado").length,
     noSePudo: rows.filter((r) => r.contactable === false).length,
     mios: rows.filter((r) => r.asignado_a === currentUserId).length,
@@ -405,11 +409,15 @@ export function ProspectingContactsTable({
   }
 
   // ── Modo despacho ──────────────────────────────────────────────────────────
-  // Cola: pendientes con teléfono cuyo dato no está marcado como malo.
-  const cola = rows.filter(
-    (r) =>
-      r.estado === "nuevo" && r.contactable !== false && r.telefono && !saltados.has(r.id)
-  );
+  // Cola: pendientes con teléfono cuyo dato no está marcado como malo. Los que
+  // parecen FIJO van al final: casi nunca tienen WhatsApp, así que primero se
+  // despacha lo que sí va a llegar.
+  const cola = rows
+    .filter(
+      (r) =>
+        r.estado === "nuevo" && r.contactable !== false && r.telefono && !saltados.has(r.id)
+    )
+    .sort((a, b) => Number(esProbableFijoAr(a.telefono)) - Number(esProbableFijoAr(b.telefono)));
   const actual = cola[0] ?? null;
 
   /** Marca en pantalla + servidor y la cola avanza sola (la fila sale de `cola`). */
@@ -714,6 +722,8 @@ export function ProspectingContactsTable({
                 const wa = intlWhatsappLink(r.telefono, mensajeDe(r));
                 const ig = instagramUrl(r.instagram);
                 const web = ensureHttp(r.sitio_web);
+                // Un fijo pasado a wa.me abre un chat muerto: hay que avisarlo.
+                const esFijo = esProbableFijoAr(r.telefono);
                 const dias = r.estado !== "nuevo" ? diasDesde(r.contactado_at) : null;
                 return (
                   <tr
@@ -781,16 +791,31 @@ export function ProspectingContactsTable({
                             target="_blank"
                             rel="noopener noreferrer"
                             title={
-                              primerMensaje
-                                ? "Abrir WhatsApp con el mensaje de la campaña ya escrito"
-                                : "Abrir WhatsApp"
+                              esFijo
+                                ? "Parece un teléfono FIJO: lo más probable es que no tenga WhatsApp. Probá por Instagram o entrá a la web a buscar el celular."
+                                : primerMensaje
+                                  ? "Abrir WhatsApp con el mensaje de la campaña ya escrito"
+                                  : "Abrir WhatsApp"
                             }
-                            className="shrink-0 rounded p-0.5 text-emerald-600 hover:bg-accent hover:text-emerald-500"
+                            className={cn(
+                              "shrink-0 rounded p-0.5 hover:bg-accent",
+                              esFijo
+                                ? "text-muted-foreground/50 hover:text-muted-foreground"
+                                : "text-emerald-600 hover:text-emerald-500"
+                            )}
                           >
                             <MessageCircle className="h-4 w-4" />
                           </a>
                         )}
                       </div>
+                      {esFijo && (
+                        <span
+                          className="ml-1 inline-block rounded bg-amber-100 px-1 text-[9px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                          title="Los fijos casi nunca tienen WhatsApp. Buscá el celular en la web o escribile por Instagram."
+                        >
+                          fijo
+                        </span>
+                      )}
                     </Td>
                     <Td>
                       <div className="flex items-center gap-0.5">
@@ -911,12 +936,17 @@ export function ProspectingContactsTable({
       {/* Resumen de seguimiento */}
       {rows.length > 0 && (
         <div className="rounded-xl border bg-card p-3">
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-8">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-9">
             <Stat label="Contactos" valor={resumen.total} />
             <Stat label="Sin contactar" valor={resumen.sinContactar} />
             <Stat label="Contactados" valor={resumen.contactados} destacado />
             <Stat label="Interesados" valor={resumen.interesados} tono="text-emerald-600 dark:text-emerald-400" />
             <Stat label="Reuniones" valor={resumen.reuniones} tono="text-violet-600 dark:text-violet-400" />
+            <Stat
+              label="Fijos (sin WA)"
+              valor={resumen.fijos}
+              tono={resumen.fijos > 0 ? "text-amber-600 dark:text-amber-400" : undefined}
+            />
             <Stat label="No se pudo" valor={resumen.noSePudo} tono="text-rose-600 dark:text-rose-400" />
             <Stat
               label="Seguir (3+ días)"
@@ -959,6 +989,15 @@ export function ProspectingContactsTable({
                   quedan {cola.length}
                 </span>
               </div>
+
+              {esProbableFijoAr(actual.telefono) && (
+                <p className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
+                  ☎️ Este número <b>parece un fijo</b>: lo más probable es que no
+                  tenga WhatsApp. Antes de gastar el mensaje, mirá si tiene
+                  Instagram o entrá a la web a buscar el celular. Si no se puede,
+                  marcalo con <b>No se pudo</b>.
+                </p>
+              )}
 
               {primerMensaje ? (
                 <div className="max-h-44 overflow-y-auto whitespace-pre-wrap rounded-lg border bg-muted/30 p-3 text-sm leading-relaxed">

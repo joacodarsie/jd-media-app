@@ -207,6 +207,47 @@ export function waDigits(telefono: string): string | null {
 }
 
 /**
+ * Códigos de área argentinos de 3 dígitos (capitales y ciudades grandes). El
+ * resto se asume de 4, salvo el 11 que es de 2. Sirve para saber dónde termina
+ * el área y empieza el número de abonado.
+ */
+const AREAS_3 = new Set([
+  "220", "221", "223", "230", "236", "237", "249", "260", "261", "263", "264",
+  "266", "280", "291", "297", "298", "299", "336", "341", "342", "343", "345",
+  "348", "351", "353", "358", "362", "364", "370", "376", "379", "380", "381",
+  "383", "385", "387", "388",
+]);
+
+/**
+ * ¿El teléfono parece una línea FIJA argentina? Es una heurística, no una
+ * certeza: en Argentina los abonados fijos arrancan con 4 (Córdoba 351-4xx,
+ * CABA 11-4xxx) mientras que los celulares arrancan con 2, 3, 5, 6 o 7. Los
+ * números marcados como móvil (con "15" local o "9" internacional) se descartan
+ * de entrada.
+ *
+ * Por qué importa: un fijo pasado por `waDigits` genera un wa.me que abre un
+ * chat MUERTO. Escribirle a 20 fijos parece que "los números están mal" cuando
+ * en realidad nunca fueron de WhatsApp. Ojo: WhatsApp Business SÍ se puede
+ * verificar sobre un fijo, así que esto avisa, no bloquea.
+ */
+export function esProbableFijoAr(telefono: string | null | undefined): boolean {
+  if (!telefono) return false;
+  let d = telefono.replace(/\D/g, "");
+  if (d.startsWith("00")) d = d.slice(2);
+  if (d.startsWith("0")) d = "54" + d.slice(1);
+  if (!d.startsWith("54")) return false; // solo sabemos de Argentina
+  const rest = d.slice(2);
+  // Marcado como celular: el 9 internacional.
+  if (rest.startsWith("9")) return false;
+  const areaLen = rest.startsWith("11") ? 2 : AREAS_3.has(rest.slice(0, 3)) ? 3 : 4;
+  // Marcado como celular: el "15" local justo después del área.
+  if (rest.slice(areaLen, areaLen + 2) === "15") return false;
+  const abonado = rest.slice(areaLen);
+  if (abonado.length < 6) return false;
+  return abonado.startsWith("4");
+}
+
+/**
  * Link wa.me con el mensaje pre-cargado. Normaliza el número con `waDigits`
  * (fix del 9 y el "15" argentinos). Devuelve null si no hay un número usable.
  */

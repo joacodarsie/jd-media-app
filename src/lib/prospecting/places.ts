@@ -20,6 +20,10 @@ const FIELD_MASK = [
   "places.id",
   "places.displayName",
   "places.formattedAddress",
+  // Pedimos los dos formatos (están en el mismo tramo de precio) y preferimos el
+  // internacional: el nacional a veces viene sin código de área ("482-2080"),
+  // que no sirve para armar el link de WhatsApp.
+  "places.internationalPhoneNumber",
   "places.nationalPhoneNumber",
   "places.websiteUri",
   "nextPageToken",
@@ -43,6 +47,7 @@ interface PlaceRaw {
   id?: string;
   displayName?: { text?: string };
   formattedAddress?: string;
+  internationalPhoneNumber?: string;
   nationalPhoneNumber?: string;
   websiteUri?: string;
 }
@@ -104,7 +109,8 @@ export async function searchPlaces(input: {
       vistas.add(key2);
       out.push({
         empresa: empresa.slice(0, 160),
-        telefono: p.nationalPhoneNumber?.trim() || null,
+        telefono:
+          p.internationalPhoneNumber?.trim() || p.nationalPhoneNumber?.trim() || null,
         sitio_web: p.websiteUri?.trim().slice(0, 300) || null,
         direccion: p.formattedAddress?.trim().slice(0, 200) || null,
       });

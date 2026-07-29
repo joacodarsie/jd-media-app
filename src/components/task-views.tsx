@@ -70,13 +70,16 @@ const TaskCalendar = dynamic(
 );
 
 const ALL = "__all__";
-type QuickFilter = "todas" | "mias" | "vencidas" | "hoy" | "semana";
+type QuickFilter = "todas" | "mias" | "vencidas" | "vencidas_equipo" | "hoy" | "semana";
 type ViewMode = "lista" | "tabla" | "kanban" | "calendario";
 
 const QUICK_LABELS: Record<QuickFilter, string> = {
   todas: "Todas",
   mias: "Mis tareas",
   vencidas: "Vencidas",
+  // Solo para coordinación: las vencidas de TODO el equipo, para poder hacer la
+  // limpieza en lote (cerrar, reasignar o archivar) sin entrar una por una.
+  vencidas_equipo: "Vencidas del equipo",
   hoy: "Hoy",
   semana: "Esta semana",
 };
@@ -90,11 +93,14 @@ export function TaskViews({
   users,
   clients,
   currentUserId,
+  esCoordinacion = false,
 }: {
   tasks: TaskWithRels[];
   users: Pick<AppUser, "id" | "nombre">[];
   clients: Pick<Client, "id" | "nombre">[];
   currentUserId: string;
+  /** Coordinación/admin ve el chip "Vencidas del equipo" para hacer la limpieza. */
+  esCoordinacion?: boolean;
 }) {
   const router = useRouter();
   const [view, setView] = useState<ViewMode>("lista");
@@ -158,11 +164,11 @@ export function TaskViews({
         return false;
       // Quick filter
       if (quick === "mias" && t.asignado_a_id !== currentUserId) return false;
-      if (quick === "vencidas") {
+      if (quick === "vencidas" || quick === "vencidas_equipo") {
         if (t.estado === "completada") return false;
         if (!t.fecha_limite || t.fecha_limite.slice(0, 10) >= today) return false;
-        // Solo las vencidas asignadas al usuario actual — cada uno ve las suyas.
-        if (t.asignado_a_id !== currentUserId) return false;
+        // "Vencidas" son las tuyas; "del equipo" son las de todos (coordinación).
+        if (quick === "vencidas" && t.asignado_a_id !== currentUserId) return false;
       }
       if (quick === "hoy") {
         if (!t.fecha_limite || t.fecha_limite.slice(0, 10) !== today) return false;
@@ -227,6 +233,9 @@ export function TaskViews({
           t.fecha_limite &&
           t.fecha_limite.slice(0, 10) < today &&
           t.asignado_a_id === currentUserId
+      ).length,
+      vencidasEquipo: tasks.filter(
+        (t) => isOpen(t) && t.fecha_limite && t.fecha_limite.slice(0, 10) < today
       ).length,
       hoy: tasks.filter(
         (t) => isOpen(t) && t.fecha_limite && t.fecha_limite.slice(0, 10) === today
@@ -298,6 +307,16 @@ export function TaskViews({
           danger
           onClick={() => setQuick("vencidas")}
         />
+        {esCoordinacion && (
+          <QuickChip
+            icon={AlertCircle}
+            label={QUICK_LABELS.vencidas_equipo}
+            count={counts.vencidasEquipo}
+            active={quick === "vencidas_equipo"}
+            danger
+            onClick={() => setQuick("vencidas_equipo")}
+          />
+        )}
         <QuickChip
           icon={CalendarDays}
           label={QUICK_LABELS.hoy}
@@ -740,6 +759,11 @@ function EmptyState({ filter }: { filter: QuickFilter }) {
     vencidas: {
       title: "Sin tareas vencidas",
       description: "Perfecto, vas al día. Seguí así.",
+      emoji: "🎉",
+    },
+    vencidas_equipo: {
+      title: "El equipo está al día",
+      description: "Ninguna tarea vencida en toda la agencia.",
       emoji: "🎉",
     },
     hoy: {

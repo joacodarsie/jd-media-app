@@ -1,4 +1,4 @@
-import { requireUser, getAccessibleClientIds } from "@/lib/auth";
+import { requireUser, getAccessibleClientIds, isStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveUsers, getActiveClients } from "@/lib/cache";
 import type { TaskWithRels } from "@/lib/types";
@@ -75,6 +75,7 @@ export default async function TareasPage() {
       users={users ?? []}
       clients={clients ?? []}
       currentUserId={me.id}
+      esCoordinacion={isStaffUser(me)}
     />
   );
 }

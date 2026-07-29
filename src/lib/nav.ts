@@ -51,7 +51,6 @@ export const NAV_GROUPS: NavGroup[] = [
         // queda solo para coordinación, que no ve esa sección.
         roles: ["coordinador"],
       },
-      { href: "/chat", label: "Chat equipo", icon: "Hash" },
     ],
   },
   {
@@ -87,6 +86,9 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "FileText",
         roles: ["admin", "coordinador"],
       },
+      // El chat interno se usa poco (el equipo habla por WhatsApp): sale de la
+      // lista siempre visible y queda acá, a un clic, sin ocupar lugar arriba.
+      { href: "/chat", label: "Chat equipo", icon: "Hash" },
     ],
   },
   {

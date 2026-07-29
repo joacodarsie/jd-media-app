@@ -94,6 +94,7 @@ export function ProspectingContactsTable({
   initialContacts,
   equipo,
   canUseAi,
+  canUsePlaces = false,
   currentUserId,
   primerMensaje,
   mensajeLabel,
@@ -105,6 +106,8 @@ export function ProspectingContactsTable({
   equipo: { id: string; nombre: string; comercial: boolean }[];
   /** Solo el director puede usar "Sacar contactos" (IA, consume tokens). */
   canUseAi: boolean;
+  /** Google Places no gasta tokens: lo usa todo el equipo comercial. */
+  canUsePlaces?: boolean;
   /** Para el filtro "solo míos". */
   currentUserId: string;
   /** Mensaje ELEGIDO de la campaña: se precarga en el WhatsApp de cada fila. */
@@ -116,7 +119,8 @@ export function ProspectingContactsTable({
   const [rows, setRows] = useState<ContactRow[]>(initialContacts);
   const [loading, setLoading] = useState(false);
   const [cantidad, setCantidad] = useState("15");
-  const [fuente, setFuente] = useState("mix");
+  // Sin permiso de IA, la única fuente disponible es Places (0 tokens).
+  const [fuente, setFuente] = useState(canUseAi ? "mix" : "places");
   const [filtro, setFiltro] = useState<string>("todos");
   const [soloMios, setSoloMios] = useState(false);
   const [busqueda, setBusqueda] = useState("");
@@ -496,7 +500,7 @@ export function ProspectingContactsTable({
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          {canUseAi && (
+          {(canUseAi || canUsePlaces) && (
             <>
               <Select value={cantidad} onValueChange={setCantidad} disabled={loading}>
                 <SelectTrigger className="w-[72px]">
@@ -515,7 +519,11 @@ export function ProspectingContactsTable({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {PROSPECTING_FUENTES.map((f) => (
+                  {/* Sin el permiso de IA solo se ofrece Places: no gasta tokens. */}
+                  {(canUseAi
+                    ? PROSPECTING_FUENTES
+                    : PROSPECTING_FUENTES.filter((f) => f.value === "places")
+                  ).map((f) => (
                     <SelectItem key={f.value} value={f.value}>
                       {f.label}
                     </SelectItem>

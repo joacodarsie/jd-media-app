@@ -5,6 +5,7 @@ import { requireRole, canUseProspectingAi } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { ProspectingContactsTable, type ContactRow } from "@/components/prospecting-contacts-table";
 import { mensajeElegido, type CampaignMessages } from "@/lib/prospecting/shared";
+import { placesConfigured } from "@/lib/prospecting/places";
 
 export const dynamic = "force-dynamic";
 
@@ -138,6 +139,7 @@ export default async function CampaignContactsPage({
           initialContacts={contacts}
           equipo={equipo}
           canUseAi={canUseProspectingAi(me)}
+          canUsePlaces={placesConfigured()}
           currentUserId={me.id}
           primerMensaje={primerMensaje}
           mensajeLabel={mensajeLabel}

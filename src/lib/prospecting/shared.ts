@@ -22,6 +22,11 @@ export const PROSPECTING_LANGS = [
  * intención de compra (los que ya están buscando el servicio).
  */
 export const PROSPECTING_FUENTES = [
+  {
+    value: "places",
+    label: "Google Maps verificado ✅",
+    hint: "Trae los datos tal como los tiene Google: teléfono y sitio web estructurados, sin que un modelo los interprete. No gasta tokens y es lo más confiable. No trae el nombre de la persona.",
+  },
   { value: "mix", label: "En todos lados ⭐", hint: "Combina Maps, Google, LinkedIn e Instagram y se queda con los mejores prospectos de cada uno. La opción por defecto." },
   { value: "maps", label: "Google Maps / local", hint: "Negocios con dirección. La que más teléfonos trae." },
   { value: "google", label: "Google / directorios", hint: "Sitios oficiales, guías y rankings del rubro." },

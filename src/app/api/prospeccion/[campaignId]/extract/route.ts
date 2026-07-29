@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
-import { requireUser, canUseProspectingAi } from "@/lib/auth";
+import { requireUser, canUseProspectingAi, userInRoles } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { extractContacts, type ExtractContext } from "@/lib/prospecting/extract";
 import { FUENTES_OK } from "@/lib/prospecting/shared";
+import { searchPlaces, filtrarContactables, placesConfigured } from "@/lib/prospecting/places";
 import { friendlyAiError } from "@/lib/ai/errors";
+
+/** Quién puede sacar contactos de Google Places (no gasta tokens). */
+const PROSPECTING_ROLES = ["admin", "coordinador", "comercial", "prospecting"];
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -19,14 +23,32 @@ export async function POST(
   { params }: { params: { campaignId: string } }
 ) {
   const me = await requireUser();
-  // Sacar contactos con IA consume tokens: el director siempre, más quien tenga
-  // `contactos_ia` otorgado en /accesos. El resto carga volumen con "Pegar desde
-  // Excel/Maps" (0 tokens).
-  if (!canUseProspectingAi(me))
+  const bodyRaw = (await req.json().catch(() => ({}))) as {
+    cantidad?: number;
+    fuente?: string;
+  };
+  const usaPlaces = bodyRaw.fuente === "places";
+
+  // Google Places NO gasta tokens (datos estructurados de Google, dentro del
+  // tramo gratis para nuestro volumen): lo puede usar todo el equipo comercial.
+  // El extractor con IA sigue siendo del director + quien tenga `contactos_ia`.
+  if (usaPlaces) {
+    if (!userInRoles(me, PROSPECTING_ROLES))
+      return NextResponse.json({ error: "Sin acceso a prospección." }, { status: 403 });
+    if (!placesConfigured())
+      return NextResponse.json(
+        {
+          error:
+            "Falta configurar la clave de Google Places (GOOGLE_PLACES_API_KEY) en las variables de entorno.",
+        },
+        { status: 400 }
+      );
+  } else if (!canUseProspectingAi(me)) {
     return NextResponse.json(
       { error: "No tenés habilitado 'Sacar contactos' con IA. Pedíselo al director, o usá 'Pegar desde Excel/Maps' para cargar sin gastar tokens." },
       { status: 403 }
     );
+  }
 
   const admin = createAdmin();
   const { data: camp, error: cErr } = await admin
@@ -58,12 +80,8 @@ export async function POST(
     );
   const excludeEmpresas = ((existing ?? []) as { empresa: string }[]).map((e) => e.empresa);
 
-  const body = (await req.json().catch(() => ({}))) as {
-    cantidad?: number;
-    fuente?: string;
-  };
-  const cantidad = Math.min(Math.max(body.cantidad ?? 15, 1), 50);
-  const fuente = FUENTES_OK.includes(body.fuente ?? "") ? body.fuente : "mix";
+  const cantidad = Math.min(Math.max(bodyRaw.cantidad ?? 15, 1), 50);
+  const fuente = FUENTES_OK.includes(bodyRaw.fuente ?? "") ? bodyRaw.fuente : "mix";
 
   const ctx: ExtractContext = {
     nombre: c.nombre,
@@ -73,6 +91,45 @@ export async function POST(
     fuente,
     excludeEmpresas,
   };
+
+  // ── Camino Google Places: una llamada por cada 20 negocios, sin IA ──
+  if (usaPlaces) {
+    let encontrados;
+    try {
+      encontrados = filtrarContactables(
+        await searchPlaces({
+          rubro: c.rubro,
+          ubicacion: c.ubicacion,
+          cantidad,
+          excludeEmpresas,
+        })
+      );
+    } catch (e) {
+      console.error("searchPlaces:", e);
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : "No se pudo consultar Google." },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json(
+      await guardarContactos(
+        admin,
+        c.id,
+        me.id,
+        "places",
+        encontrados.map((p) => ({
+          empresa: p.empresa,
+          contacto_nombre: null,
+          contacto_rol: null,
+          telefono: p.telefono,
+          instagram: null,
+          sitio_web: p.sitio_web,
+          notas: p.direccion,
+        })),
+        excludeEmpresas
+      )
+    );
+  }
 
   // Buscamos en RONDAS de a 15 (Haiku rinde mejor por tanda) hasta juntar
   // `cantidad`. Entre ronda y ronda sumamos lo encontrado a la exclusión para no
@@ -119,7 +176,43 @@ export async function POST(
         "La búsqueda no trajo contactos nuevos. Probá afinar el rubro o la zona, o cambiá de campaña.",
     });
 
-  // Dedup local (por si la IA repitió) + contra lo ya cargado.
+  return NextResponse.json(
+    await guardarContactos(admin, c.id, me.id, "ia", contactos, excludeEmpresas)
+  );
+}
+
+interface ContactoAGuardar {
+  empresa: string;
+  contacto_nombre: string | null;
+  contacto_rol: string | null;
+  telefono: string | null;
+  instagram: string | null;
+  sitio_web: string | null;
+  notas?: string | null;
+}
+
+/**
+ * Guarda los contactos encontrados, deduplicando contra lo ya cargado. Lo usan
+ * los dos caminos (IA y Google Places) para que la resiliencia de columnas y el
+ * dedup vivan en un solo lugar.
+ */
+async function guardarContactos(
+  admin: ReturnType<typeof createAdmin>,
+  campaignId: string,
+  userId: string,
+  fuente: "ia" | "places",
+  contactos: ContactoAGuardar[],
+  excludeEmpresas: string[]
+): Promise<{ created: number; skipped: number; found: number; message?: string }> {
+  if (contactos.length === 0)
+    return {
+      created: 0,
+      skipped: 0,
+      found: 0,
+      message:
+        "La búsqueda no trajo contactos nuevos. Probá afinar el rubro o la zona, o cambiá de campaña.",
+    };
+
   const vistas = new Set(excludeEmpresas.map((e) => e.toLowerCase().trim()));
   let created = 0;
   let skipped = 0;
@@ -131,15 +224,16 @@ export async function POST(
     }
     vistas.add(key);
     const row: Record<string, unknown> = {
-      campaign_id: c.id,
+      campaign_id: campaignId,
       empresa: ct.empresa,
       contacto_nombre: ct.contacto_nombre,
       contacto_rol: ct.contacto_rol,
       telefono: ct.telefono,
       instagram: ct.instagram,
       sitio_web: ct.sitio_web,
-      created_by: me.id,
-      fuente: "ia",
+      notas: ct.notas ?? null,
+      created_by: userId,
+      fuente,
     };
     let insErr = (await admin.from("prospecting_contacts").insert(row)).error;
     // Resiliencia: si falta la 0136 (instagram/sitio_web), guardamos sin esas
@@ -157,5 +251,5 @@ export async function POST(
     created++;
   }
 
-  return NextResponse.json({ created, skipped, found: contactos.length });
+  return { created, skipped, found: contactos.length };
 }

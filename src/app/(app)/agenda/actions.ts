@@ -180,8 +180,20 @@ export async function updateInternalMeeting(id: string, input: MeetingInput) {
 export async function deleteInternalMeeting(id: string) {
   await requireUser();
   const supabase = createClient();
-  const { error } = await supabase.from("internal_meetings").delete().eq("id", id);
+  // `.select()` para saber si de verdad se borró: cuando la RLS no deja, el
+  // delete devuelve 0 filas SIN error y antes eso se mostraba como "eliminada"
+  // mientras la reunión seguía ahí.
+  const { data, error } = await supabase
+    .from("internal_meetings")
+    .delete()
+    .eq("id", id)
+    .select("id");
   if (error) return { error: error.message };
+  if (!data?.length)
+    return {
+      error:
+        "No se pudo eliminar: solo quien la agendó o la coordinación pueden borrar una reunión.",
+    };
   revalidatePath("/agenda");
   revalidatePath("/dashboard");
   return { ok: true };

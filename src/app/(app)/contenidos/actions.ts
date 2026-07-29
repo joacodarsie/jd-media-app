@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
-import { requireUser, isStaffUser } from "@/lib/auth";
+import { requireUser, isStaffUser, userInRoles } from "@/lib/auth";
 
 async function ctx() {
   const supabase = createClient();
@@ -27,10 +27,13 @@ function writeDb() {
 // Quién puede EDITAR el calendario (crear/editar/mover fecha/borrar publicaciones).
 // El resto del equipo (diseño, audiovisual) solo comenta y marca el contenido
 // como hecho / sube su pieza.
+// Se mira con userInRoles (rol Y rol_secundario) para que coincida EXACTO con el
+// gate de la UI (`canEdit` en /contenidos): si no, alguien con el CM como rol
+// secundario ve los botones y el server se los rechaza.
 const CALENDAR_EDITORS = ["admin", "coordinador", "community_manager"];
 async function ensureCalendarEditor(): Promise<string | null> {
   const me = await requireUser();
-  return CALENDAR_EDITORS.includes(me.rol)
+  return userInRoles(me, CALENDAR_EDITORS)
     ? null
     : "Solo el CM, la coordinación o la dirección pueden editar el calendario. Vos podés comentar y marcar el contenido como hecho.";
 }
@@ -302,17 +305,86 @@ export async function setPublicationAsset(id: string, url: string) {
   return { ok: true };
 }
 
+/**
+ * Borra publicaciones (y sus tareas autogeneradas) sin chocar con el trigger.
+ *
+ * ⚠️ POR QUÉ NO ES UN `delete` DIRECTO: el trigger `trg_publications_delete_task`
+ * (migración 0108) es BEFORE DELETE y borra la tarea vinculada; esa tarea tiene
+ * una FK `publications.task_id ... on delete set null`, así que el borrado de la
+ * tarea UPDATEA la misma fila que se está borrando y Postgres aborta con
+ * `27000: tuple to be deleted was already modified by an operation triggered by
+ * the current command`. Efecto: NO se podía borrar ninguna pieza con tarea
+ * vinculada (o sea, casi todas: eran 348 de 374).
+ *
+ * La 0141 pasa el trigger a AFTER DELETE y lo arregla en la base, pero acá
+ * desvinculamos la tarea primero igual: así el borrado funciona con o sin la
+ * migración aplicada (y el trigger, ya en AFTER, no encuentra nada que hacer).
+ */
+async function removePublications(
+  admin: ReturnType<typeof createAdmin>,
+  ids: string[]
+): Promise<{ error?: string; deleted: number }> {
+  const { data: pubs, error: readErr } = await admin
+    .from("publications")
+    .select("id, cliente_id, task_id")
+    .in("id", ids);
+  if (readErr) return { error: readErr.message, deleted: 0 };
+  if (!pubs?.length) return { error: "No se encontró la publicación.", deleted: 0 };
+
+  const linked = pubs.filter((p) => p.task_id) as { id: string; task_id: string }[];
+  if (linked.length) {
+    const { error: unlinkErr } = await admin
+      .from("publications")
+      .update({ task_id: null })
+      .in(
+        "id",
+        linked.map((p) => p.id)
+      );
+    if (unlinkErr) return { error: unlinkErr.message, deleted: 0 };
+  }
+
+  const { error: delErr } = await admin
+    .from("publications")
+    .delete()
+    .in(
+      "id",
+      pubs.map((p) => p.id)
+    );
+
+  if (delErr) {
+    // Dejamos las tareas como estaban para no huerfanarlas si el borrado falló.
+    for (const p of linked) {
+      await admin.from("publications").update({ task_id: p.task_id }).eq("id", p.id);
+    }
+    return { error: delErr.message, deleted: 0 };
+  }
+
+  // La pieza ya no existe: ahora sí borramos la tarea que había generado.
+  if (linked.length) {
+    await admin
+      .from("tasks")
+      .delete()
+      .in(
+        "id",
+        linked.map((p) => p.task_id)
+      );
+  }
+
+  return { deleted: pubs.length };
+}
+
 export async function deletePublication(id: string) {
   const gate = await ensureCalendarEditor();
   if (gate) return { error: gate };
-  const { data, error } = await writeDb()
+  const admin = writeDb();
+  const { data: pub } = await admin
     .from("publications")
-    .delete()
-    .eq("id", id)
     .select("cliente_id")
-    .single();
-  if (error) return { error: error.message };
-  invalidate(data?.cliente_id);
+    .eq("id", id)
+    .maybeSingle();
+  const res = await removePublications(admin, [id]);
+  if (res.error) return { error: res.error };
+  invalidate(pub?.cliente_id);
   return { ok: true };
 }
 
@@ -320,14 +392,11 @@ export async function bulkDeletePublications(ids: string[]) {
   if (!ids.length) return { ok: true, deleted: 0 };
   const gate = await ensureCalendarEditor();
   if (gate) return { error: gate };
-  const { error } = await writeDb()
-    .from("publications")
-    .delete()
-    .in("id", ids);
-  if (error) return { error: error.message };
+  const res = await removePublications(writeDb(), ids);
+  if (res.error) return { error: res.error };
   revalidatePath("/contenidos");
   revalidatePath("/clientes/[id]/calendario", "page");
-  return { ok: true, deleted: ids.length };
+  return { ok: true, deleted: res.deleted };
 }
 
 export async function bulkChangePublicationStatus(ids: string[], estado: string) {

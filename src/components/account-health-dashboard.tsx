@@ -13,6 +13,7 @@ import {
   TrendingUp,
   TrendingDown,
   ListChecks,
+  CalendarClock,
   CircleAlert,
   CircleCheck,
 } from "lucide-react";
@@ -52,7 +53,7 @@ function Chip({
 }: {
   icon?: React.ReactNode;
   children: React.ReactNode;
-  tone?: "muted" | "good" | "bad";
+  tone?: "muted" | "good" | "warn" | "bad";
 }) {
   return (
     <span
@@ -60,6 +61,7 @@ function Chip({
         "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium",
         tone === "muted" && "bg-muted/60 text-foreground",
         tone === "good" && "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+        tone === "warn" && "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
         tone === "bad" && "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
       )}
     >
@@ -116,6 +118,29 @@ function AccountCard({ c }: { c: AccountHealth }) {
               </Chip>
             ) : (
               <Chip>IG s/datos</Chip>
+            )}
+            {/* Puntualidad: de lo que YA tenía que salir, cuánto salió. */}
+            {c.puntualidad.planificadas === 0 ? (
+              <Chip tone="bad">Sin calendario del mes</Chip>
+            ) : c.puntualidad.ejecucionPct != null ? (
+              <Chip
+                tone={
+                  c.puntualidad.semaforo === "mal"
+                    ? "bad"
+                    : c.puntualidad.semaforo === "regular"
+                      ? "warn"
+                      : "good"
+                }
+                icon={<CalendarClock className="h-3 w-3" />}
+              >
+                A tiempo {c.puntualidad.ejecucionPct}%
+              </Chip>
+            ) : null}
+            {c.puntualidad.nuncaArrancaron > 0 && (
+              <Chip tone="warn">{c.puntualidad.nuncaArrancaron} sin producir</Chip>
+            )}
+            {c.puntualidad.trabadas > 0 && (
+              <Chip tone="warn">{c.puntualidad.trabadas} trabadas</Chip>
             )}
             {c.tareasVencidas > 0 && (
               <Chip tone="bad">{c.tareasVencidas} tareas vencidas</Chip>

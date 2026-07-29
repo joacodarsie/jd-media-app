@@ -6,6 +6,7 @@ import type { PublicationWithRels } from "@/lib/types";
 import { PublicationsMonth } from "@/components/publications-month";
 import { HelpTrigger } from "@/components/help-trigger";
 import { DismissibleHint } from "@/components/dismissible-hint";
+import { computePuntualidadCuenta } from "@/lib/contenidos/puntualidad";
 
 export const dynamic = "force-dynamic";
 
@@ -86,6 +87,22 @@ export default async function ContenidosPage({
     unseenByPub[c.publication_id] = (unseenByPub[c.publication_id] ?? 0) + 1;
   }
 
+  // Piezas cuya fecha ya pasó y no salieron. Se separan porque se resuelven
+  // distinto: la que quedó en "idea" hay que producirla; la que está en revisión
+  // solo hay que destrabarla (y es la más barata de recuperar).
+  const hoyISO = new Date().toISOString().slice(0, 10);
+  const atrasadas = computePuntualidadCuenta(
+    "todas",
+    (visiblePubs as { cliente_id: string; estado: string; fecha_publicacion: string | null }[]).map(
+      (p) => ({
+        cliente_id: p.cliente_id,
+        estado: p.estado,
+        fecha_publicacion: p.fecha_publicacion,
+      })
+    ),
+    hoyISO
+  );
+
   return (
     <div className="space-y-5">
       <div>
@@ -130,6 +147,32 @@ export default async function ContenidosPage({
           esa persona.
         </DismissibleHint>
       </div>
+      {atrasadas.nuncaArrancaron + atrasadas.trabadas > 0 && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-500/40 dark:bg-amber-500/10">
+          <p className="font-semibold text-amber-900 dark:text-amber-100">
+            {atrasadas.nuncaArrancaron + atrasadas.trabadas} publicaciones con la fecha
+            pasada que no salieron
+          </p>
+          <p className="mt-0.5 text-xs text-amber-900/80 dark:text-amber-100/80">
+            {atrasadas.trabadas > 0 && (
+              <>
+                <b>{atrasadas.trabadas}</b> están hechas y trabadas en revisión (esas se
+                destraban rápido)
+              </>
+            )}
+            {atrasadas.trabadas > 0 && atrasadas.nuncaArrancaron > 0 && " · "}
+            {atrasadas.nuncaArrancaron > 0 && (
+              <>
+                <b>{atrasadas.nuncaArrancaron}</b> quedaron en idea y hay que producirlas
+              </>
+            )}
+            {atrasadas.ejecucionPct != null && (
+              <> · salió el {atrasadas.ejecucionPct}% de lo que ya vencía</>
+            )}
+            . Reprogramalas arrastrándolas a una fecha nueva o marcalas como publicadas.
+          </p>
+        </div>
+      )}
       {teams.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           <Link

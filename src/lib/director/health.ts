@@ -7,6 +7,11 @@
 import { createAdmin } from "@/lib/supabase/admin";
 import { PACK_QUOTAS } from "@/lib/content-plans/packs";
 import { currentPeriod, nextPeriod } from "@/lib/finanzas";
+import {
+  computePuntualidad,
+  scorePuntualidad,
+  type PuntualidadCuenta,
+} from "@/lib/contenidos/puntualidad";
 
 type Admin = ReturnType<typeof createAdmin>;
 
@@ -22,6 +27,8 @@ export interface AccountHealth {
   planHechas: number;
   planMeta: number; // 0 = pack sin cuota (Personalizado)
   planPct: number | null;
+  // Puntualidad: qué pasó con las piezas cuya fecha YA venció.
+  puntualidad: PuntualidadCuenta;
   // Instagram (últimos ~35 días)
   igConectado: boolean;
   igDelta: number | null;
@@ -90,7 +97,7 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
     await Promise.all([
       admin
         .from("publications")
-        .select("cliente_id, tipo, estado")
+        .select("cliente_id, tipo, estado, fecha_publicacion")
         .in("cliente_id", ids)
         .gte("fecha_publicacion", mStart)
         .lt("fecha_publicacion", mEnd),
@@ -153,6 +160,15 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
     if (!prev || (p.last_seen_at && p.last_seen_at > prev)) portalSeenByC.set(p.cliente_id, p.last_seen_at);
   }
 
+  // Puntualidad: qué pasó con las piezas cuya fecha ya venció (nunca se
+  // produjeron vs quedaron trabadas en revisión). Es lo que la cuota del pack
+  // no ve: el calendario puede estar cargado y aun así no salir nada.
+  const puntualidadByC = computePuntualidad(
+    ids,
+    (pubsRaw ?? []) as { cliente_id: string; estado: string; fecha_publicacion: string | null }[],
+    today
+  );
+
   // Producción del mes por cliente (publicadas).
   const prodByC = new Map<string, { reels: number; posts: number }>();
   for (const p of (pubsRaw ?? []) as { cliente_id: string; tipo: string; estado: string }[]) {
@@ -209,6 +225,29 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
       } else {
         buenas.push(`Plan al día (${planHechas}/${planMeta})`);
       }
+    }
+
+    // 1.b) Puntualidad del calendario: de lo que YA tenía que salir, ¿qué salió?
+    // Es más honesto que la cuota del pack, porque mira lo que el equipo se
+    // comprometió a publicar y en qué quedó cada pieza.
+    const puntualidad =
+      puntualidadByC.get(c.id) ??
+      ({
+        clienteId: c.id,
+        planificadas: 0,
+        publicadas: 0,
+        nuncaArrancaron: 0,
+        trabadas: 0,
+        porVenir: 0,
+        vencidasTotal: 0,
+        ejecucionPct: null,
+        semaforo: "sin_datos",
+        alertas: [],
+      } as PuntualidadCuenta);
+    score += scorePuntualidad(puntualidad);
+    alertas.push(...puntualidad.alertas);
+    if (puntualidad.semaforo === "bien" && puntualidad.ejecucionPct != null) {
+      buenas.push(`Calendario al día (${puntualidad.ejecucionPct}% de lo que vencía)`);
     }
 
     // 2) Instagram (crecimiento).
@@ -291,6 +330,7 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
       planHechas,
       planMeta,
       planPct,
+      puntualidad,
       igConectado,
       igDelta,
       tareasVencidas,

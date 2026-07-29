@@ -160,6 +160,45 @@ export async function changePublicationStatus(id: string, estado: string, notas?
   return { ok: true };
 }
 
+/**
+ * Marca (o desmarca) que una pieza está frenada POR EL CLIENTE: no mandó el
+ * material, pidió esperar, no contesta. Esas piezas salen del conteo de atraso
+ * del equipo y pasan a la lista de "esperando al cliente", que es un reclamo
+ * comercial y no un problema de producción.
+ */
+export async function setPublicationFrenado(
+  id: string,
+  frenado: boolean,
+  nota?: string | null
+) {
+  const admin = writeDb();
+  const { data: pub } = await admin
+    .from("publications")
+    .select("cliente_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (!pub) return { error: "No se encontró la publicación." };
+  if (!(await userOnClientTeam(pub.cliente_id))) {
+    return { error: "Solo el equipo de esa cuenta puede marcarla." };
+  }
+
+  const { error } = await admin
+    .from("publications")
+    .update({
+      frenado_cliente: frenado,
+      frenado_nota: frenado ? nota?.trim().slice(0, 400) || null : null,
+      frenado_at: frenado ? new Date().toISOString() : null,
+    })
+    .eq("id", id);
+  if (error) {
+    if ((error as { code?: string }).code === "42703")
+      return { error: "Falta aplicar la migración 0140 para usar esta marca." };
+    return { error: error.message };
+  }
+  invalidate(pub.cliente_id);
+  return { ok: true as const };
+}
+
 /** True si el usuario es staff o parte del equipo asignado a la cuenta. */
 async function userOnClientTeam(clienteId: string | null): Promise<boolean> {
   if (!clienteId) return false;

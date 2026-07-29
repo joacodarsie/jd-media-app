@@ -93,13 +93,19 @@ export default async function ContenidosPage({
   const hoyISO = new Date().toISOString().slice(0, 10);
   const atrasadas = computePuntualidadCuenta(
     "todas",
-    (visiblePubs as { cliente_id: string; estado: string; fecha_publicacion: string | null }[]).map(
-      (p) => ({
-        cliente_id: p.cliente_id,
-        estado: p.estado,
-        fecha_publicacion: p.fecha_publicacion,
-      })
-    ),
+    (
+      visiblePubs as {
+        cliente_id: string;
+        estado: string;
+        fecha_publicacion: string | null;
+        frenado_cliente?: boolean | null;
+      }[]
+    ).map((p) => ({
+      cliente_id: p.cliente_id,
+      estado: p.estado,
+      fecha_publicacion: p.fecha_publicacion,
+      frenado_cliente: p.frenado_cliente ?? false,
+    })),
     hoyISO
   );
 
@@ -147,29 +153,37 @@ export default async function ContenidosPage({
           esa persona.
         </DismissibleHint>
       </div>
-      {atrasadas.nuncaArrancaron + atrasadas.trabadas > 0 && (
+      {atrasadas.nuncaArrancaron + atrasadas.trabadas + atrasadas.esperandoCliente > 0 && (
         <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-500/40 dark:bg-amber-500/10">
           <p className="font-semibold text-amber-900 dark:text-amber-100">
-            {atrasadas.nuncaArrancaron + atrasadas.trabadas} publicaciones con la fecha
-            pasada que no salieron
+            {atrasadas.nuncaArrancaron + atrasadas.trabadas + atrasadas.esperandoCliente}{" "}
+            publicaciones con la fecha pasada que no salieron
           </p>
-          <p className="mt-0.5 text-xs text-amber-900/80 dark:text-amber-100/80">
+          <ul className="mt-1 space-y-0.5 text-xs text-amber-900/80 dark:text-amber-100/80">
             {atrasadas.trabadas > 0 && (
-              <>
-                <b>{atrasadas.trabadas}</b> están hechas y trabadas en revisión (esas se
-                destraban rápido)
-              </>
+              <li>
+                <b>{atrasadas.trabadas}</b> trabadas de nuestro lado (hechas, esperando
+                revisión interna) — se destraban rápido
+              </li>
             )}
-            {atrasadas.trabadas > 0 && atrasadas.nuncaArrancaron > 0 && " · "}
             {atrasadas.nuncaArrancaron > 0 && (
-              <>
-                <b>{atrasadas.nuncaArrancaron}</b> quedaron en idea y hay que producirlas
-              </>
+              <li>
+                <b>{atrasadas.nuncaArrancaron}</b> quedaron en idea: hay que producirlas
+              </li>
             )}
+            {atrasadas.esperandoCliente > 0 && (
+              <li>
+                <b>{atrasadas.esperandoCliente}</b> esperando al cliente (frenadas o sin
+                aprobar) — no cuentan como atraso nuestro, pero hay que reclamarlas
+              </li>
+            )}
+          </ul>
+          <p className="mt-1.5 text-xs text-amber-900/70 dark:text-amber-100/70">
             {atrasadas.ejecucionPct != null && (
-              <> · salió el {atrasadas.ejecucionPct}% de lo que ya vencía</>
+              <>Salió el <b>{atrasadas.ejecucionPct}%</b> de lo que ya vencía. </>
             )}
-            . Reprogramalas arrastrándolas a una fecha nueva o marcalas como publicadas.
+            Si el atraso es del cliente, abrí la pieza y marcá{" "}
+            <b>&quot;Lo frenó el cliente&quot;</b>: así el número no le pega al equipo.
           </p>
         </div>
       )}

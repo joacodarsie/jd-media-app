@@ -26,9 +26,24 @@ describe("clasificarPieza", () => {
   it("idea con fecha pasada = nunca arrancó", () => {
     expect(clasificarPieza(pub("idea", "2026-07-10"), HOY)).toBe("nunca_arranco");
   });
-  it("en revisión con fecha pasada = trabada", () => {
+  it("en revisión NUESTRA con fecha pasada = trabada", () => {
     expect(clasificarPieza(pub("revision_creativa", "2026-07-10"), HOY)).toBe("trabada");
-    expect(clasificarPieza(pub("revision_cliente", "2026-07-10"), HOY)).toBe("trabada");
+    expect(clasificarPieza(pub("edicion", "2026-07-10"), HOY)).toBe("trabada");
+  });
+  it("esperando la aprobación del cliente NO es atraso nuestro", () => {
+    expect(clasificarPieza(pub("revision_cliente", "2026-07-10"), HOY)).toBe(
+      "esperando_cliente"
+    );
+  });
+  it("marcada a mano como frenada por el cliente gana sobre el estado", () => {
+    expect(
+      clasificarPieza({ ...pub("idea", "2026-07-10"), frenado_cliente: true }, HOY)
+    ).toBe("esperando_cliente");
+  });
+  it("una pieza frenada pero ya publicada sigue siendo publicada", () => {
+    expect(
+      clasificarPieza({ ...pub("publicado", "2026-07-10"), frenado_cliente: true }, HOY)
+    ).toBe("publicada");
   });
   it("con fecha de hoy o futura todavía no está atrasada", () => {
     expect(clasificarPieza(pub("idea", HOY), HOY)).toBe("pendiente_futura");
@@ -92,6 +107,33 @@ describe("computePuntualidadCuenta", () => {
     const r = computePuntualidadCuenta("c1", pubs, HOY);
     expect(r.ejecucionPct).toBeNull();
     expect(r.semaforo).toBe("regular"); // hay un atraso, pero no es rojo
+  });
+
+  it("lo que espera al cliente no baja el % ni pinta de rojo al equipo", () => {
+    const pubs = [
+      ...Array.from({ length: 4 }, () => pub("publicado", "2026-07-05")),
+      // 6 frenadas por el cliente: sin esto, el equipo quedaba en 40% (rojo).
+      ...Array.from({ length: 6 }, () => ({
+        ...pub("idea", "2026-07-08"),
+        frenado_cliente: true,
+      })),
+    ];
+    const r = computePuntualidadCuenta("c1", pubs, HOY);
+    expect(r.esperandoCliente).toBe(6);
+    expect(r.nuncaArrancaron).toBe(0);
+    expect(r.ejecucionPct).toBe(100);
+    expect(r.semaforo).toBe("bien");
+    expect(scorePuntualidad(r)).toBe(0);
+    // Igual hay que reclamarlo: aparece como alerta, no se esconde.
+    expect(r.alertas.some((a) => a.includes("esperando al cliente"))).toBe(true);
+  });
+
+  it("cuenta pausada por el cliente: no se le mide atraso", () => {
+    const pubs = Array.from({ length: 10 }, () => pub("idea", "2026-07-08"));
+    const r = computePuntualidadCuenta("c1", pubs, HOY, true);
+    expect(r.semaforo).toBe("pausada");
+    expect(scorePuntualidad(r)).toBe(0);
+    expect(r.alertas[0]).toContain("pausada");
   });
 
   it("cuenta activa sin calendario del mes: avisa y pesa como atraso grave", () => {

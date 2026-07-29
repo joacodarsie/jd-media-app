@@ -12,6 +12,7 @@ import {
   scorePuntualidad,
   type PuntualidadCuenta,
 } from "@/lib/contenidos/puntualidad";
+import { isClientPausedFor } from "@/lib/client-pause";
 
 type Admin = ReturnType<typeof createAdmin>;
 
@@ -75,7 +76,7 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
 
   const { data: clientsRaw } = await admin
     .from("clients")
-    .select("id, nombre, pack, ig_user_id")
+    .select("id, nombre, pack, ig_user_id, pausas")
     .eq("es_interno", false)
     .eq("estado", "activo")
     .order("nombre");
@@ -84,7 +85,12 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
     nombre: string;
     pack: string | null;
     ig_user_id: string | null;
+    pausas: string[] | null;
   }[];
+  // Cuentas que el cliente frenó este mes: no se les mide atraso de entrega.
+  const pausadas = new Set(
+    clients.filter((c) => isClientPausedFor(c.pausas, period)).map((c) => c.id)
+  );
   const empty: AccountHealthResult = {
     periodo: period,
     cuentas: [],
@@ -95,12 +101,24 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
 
   const [{ data: pubsRaw }, { data: snapsRaw }, { data: tasksRaw }, { data: portalRaw }] =
     await Promise.all([
+      // `frenado_cliente` es de la 0140: si no está aplicada, reintentamos sin
+      // ella (todo lo demás funciona igual, solo se pierde esa distinción).
       admin
         .from("publications")
-        .select("cliente_id, tipo, estado, fecha_publicacion")
+        .select("cliente_id, tipo, estado, fecha_publicacion, frenado_cliente")
         .in("cliente_id", ids)
         .gte("fecha_publicacion", mStart)
-        .lt("fecha_publicacion", mEnd),
+        .lt("fecha_publicacion", mEnd)
+        .then((r) =>
+          r.error && (r.error as { code?: string }).code === "42703"
+            ? admin
+                .from("publications")
+                .select("cliente_id, tipo, estado, fecha_publicacion")
+                .in("cliente_id", ids)
+                .gte("fecha_publicacion", mStart)
+                .lt("fecha_publicacion", mEnd)
+            : r
+        ),
       admin
         .from("ig_snapshots")
         .select("cliente_id, fecha, followers")
@@ -165,8 +183,14 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
   // no ve: el calendario puede estar cargado y aun así no salir nada.
   const puntualidadByC = computePuntualidad(
     ids,
-    (pubsRaw ?? []) as { cliente_id: string; estado: string; fecha_publicacion: string | null }[],
-    today
+    (pubsRaw ?? []) as {
+      cliente_id: string;
+      estado: string;
+      fecha_publicacion: string | null;
+      frenado_cliente?: boolean | null;
+    }[],
+    today,
+    pausadas
   );
 
   // Producción del mes por cliente (publicadas).
@@ -238,6 +262,7 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
         publicadas: 0,
         nuncaArrancaron: 0,
         trabadas: 0,
+        esperandoCliente: 0,
         porVenir: 0,
         vencidasTotal: 0,
         ejecucionPct: null,

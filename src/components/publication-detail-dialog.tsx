@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { Markdown } from "@/components/markdown";
 import { PublicationStatusSelect } from "@/components/publication-status-select";
+import { PublicationFrenadoToggle } from "@/components/publication-frenado-toggle";
 import { PublicationFinalFields } from "@/components/publication-final-fields";
 import { PublicationTiktokToggle } from "@/components/publication-tiktok-toggle";
 import { ClientPubComments } from "@/components/client-pub-comments";
@@ -197,6 +198,16 @@ export function PublicationDetailDialog({
             <h4 className="mb-2 text-sm font-semibold">Estado</h4>
             <PublicationStatusSelect publication={p} size="md" />
           </div>
+
+          {p.estado !== "publicado" && (
+            <div className="border-t pt-3">
+              <PublicationFrenadoToggle
+                publicationId={p.id}
+                frenado={!!(p as { frenado_cliente?: boolean | null }).frenado_cliente}
+                nota={(p as { frenado_nota?: string | null }).frenado_nota ?? null}
+              />
+            </div>
+          )}
 
           <div className="flex items-center gap-2 border-t pt-3">
             <PublicationFormDialog

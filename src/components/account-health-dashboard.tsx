@@ -120,7 +120,9 @@ function AccountCard({ c }: { c: AccountHealth }) {
               <Chip>IG s/datos</Chip>
             )}
             {/* Puntualidad: de lo que YA tenía que salir, cuánto salió. */}
-            {c.puntualidad.planificadas === 0 ? (
+            {c.puntualidad.semaforo === "pausada" ? (
+              <Chip>Pausada por el cliente</Chip>
+            ) : c.puntualidad.planificadas === 0 ? (
               <Chip tone="bad">Sin calendario del mes</Chip>
             ) : c.puntualidad.ejecucionPct != null ? (
               <Chip
@@ -141,6 +143,9 @@ function AccountCard({ c }: { c: AccountHealth }) {
             )}
             {c.puntualidad.trabadas > 0 && (
               <Chip tone="warn">{c.puntualidad.trabadas} trabadas</Chip>
+            )}
+            {c.puntualidad.esperandoCliente > 0 && (
+              <Chip>{c.puntualidad.esperandoCliente} esperando al cliente</Chip>
             )}
             {c.tareasVencidas > 0 && (
               <Chip tone="bad">{c.tareasVencidas} tareas vencidas</Chip>

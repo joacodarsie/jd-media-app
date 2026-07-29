@@ -7,6 +7,7 @@ import { requireFeature } from "@/lib/auth";
 import { getExchangeRates } from "@/lib/exchange";
 import { freezeExpense, parseFrozenNote, stripFrozenNote } from "@/lib/finanzas/fx";
 import { generateInvoicesForPeriod } from "@/lib/finanzas/invoices";
+import { generateFixedExpensesForPeriod } from "@/lib/finanzas/fixed-expenses";
 
 async function ctx() {
   await requireFeature("finanzas");
@@ -335,6 +336,25 @@ export interface ExpenseInput {
   recurrente?: boolean;
   notas?: string | null;
   cliente_id?: string | null;
+}
+
+/**
+ * Arma los gastos fijos del período desde las suscripciones activas. Lo corre
+ * solo el cron del día 1; este botón existe para el mes en curso o para cuando
+ * se suma una suscripción nueva a mitad de mes.
+ */
+export async function generarGastosFijos(periodo: string) {
+  const { userId } = await ctx();
+  if (!/^\d{4}-\d{2}$/.test(periodo)) return { error: "Período inválido." };
+  try {
+    const res = await generateFixedExpensesForPeriod(createAdmin(), periodo, userId);
+    invalidate();
+    revalidatePath("/finanzas/mes");
+    revalidatePath("/finanzas/gastos");
+    return { ok: true as const, ...res };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No se pudieron generar los gastos." };
+  }
 }
 
 export async function createExpense(input: ExpenseInput) {

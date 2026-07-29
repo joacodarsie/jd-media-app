@@ -12,7 +12,9 @@ import {
   Copy,
   Loader2,
   MessageCircle,
+  Receipt,
 } from "lucide-react";
+import { MarkPaidButton } from "@/components/mark-paid-button";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/ui/stat-card";
 import { cn } from "@/lib/utils";
@@ -24,8 +26,12 @@ import {
   resumirMes,
   type LineaPago,
 } from "@/lib/finanzas/mes";
-import { markInvoicesPaidBulk } from "@/app/(app)/finanzas/actions";
-import { pagarSueldoDelMes, desmarcarSueldoDelMes } from "@/app/(app)/finanzas/actions";
+import {
+  markInvoicesPaidBulk,
+  pagarSueldoDelMes,
+  desmarcarSueldoDelMes,
+  generarGastosFijos,
+} from "@/app/(app)/finanzas/actions";
 
 export interface FilaCobro {
   clienteId: string;
@@ -52,23 +58,41 @@ export interface FilaPago {
   pagado: boolean;
 }
 
+export interface FilaGasto {
+  id: string;
+  concepto: string;
+  proveedor: string | null;
+  categoria: string | null;
+  monto: number;
+  moneda: string;
+  /** Fecha real de pago (null = pendiente). */
+  fechaPago: string | null;
+  pagado: boolean;
+}
+
 export function MesPanel({
   periodo,
   cobros,
   pagos,
+  gastos,
   concepto,
   miNombre,
 }: {
   periodo: string;
   cobros: FilaCobro[];
   pagos: FilaPago[];
+  gastos: FilaGasto[];
   /** Concepto con el que se registra el sueldo ("Sueldo 2026-07"). */
   concepto: string;
   miNombre: string | null;
 }) {
+  // El "tenés que pagar" incluye equipo Y gastos fijos: si no, el número miente.
   const r = resumirMes({
     facturas: cobros.map((c) => ({ monto: c.monto, cobrada: c.cobrada })),
-    pagos: pagos.map((p) => ({ monto: p.total, pagado: p.pagado })),
+    pagos: [
+      ...pagos.map((p) => ({ monto: p.total, pagado: p.pagado })),
+      ...gastos.map((g) => ({ monto: g.monto, pagado: g.pagado })),
+    ],
   });
 
   return (
@@ -129,6 +153,18 @@ export function MesPanel({
         ))}
       </Seccion>
 
+      <Seccion
+        titulo="Gastos fijos"
+        icono={<Receipt className="h-4 w-4 text-orange-600" />}
+        vacio="Todavía no se generaron los gastos fijos de este mes."
+        filas={gastos.length}
+        accion={<GenerarGastosBtn periodo={periodo} />}
+      >
+        {gastos.map((g) => (
+          <FilaGastoRow key={g.id} fila={g} />
+        ))}
+      </Seccion>
+
       <p className="text-xs text-muted-foreground">
         💡 Los montos a pagar salen del modelo de tarifas (los mismos de{" "}
         <Link href="/coordinacion/sueldos" className="underline hover:text-foreground">
@@ -149,19 +185,22 @@ function Seccion({
   icono,
   vacio,
   filas,
+  accion,
   children,
 }: {
   titulo: string;
   icono: React.ReactNode;
   vacio: string;
   filas: number;
+  accion?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="space-y-2">
-      <h2 className="flex items-center gap-2 text-lg font-semibold">
+      <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold">
         {icono} {titulo}
         <span className="text-sm font-normal text-muted-foreground">({filas})</span>
+        {accion && <span className="ml-auto">{accion}</span>}
       </h2>
       {filas === 0 ? (
         <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
@@ -302,6 +341,55 @@ function FilaCobrar({ fila, periodo }: { fila: FilaCobro; periodo: string }) {
           <div className="rounded-md bg-muted/40 p-2 text-xs whitespace-pre-wrap">{mensaje}</div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Botón para armar los gastos fijos del mes desde las suscripciones. */
+function GenerarGastosBtn({ periodo }: { periodo: string }) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  const [cargando, setCargando] = useState(false);
+
+  async function generar() {
+    setCargando(true);
+    const res = await generarGastosFijos(periodo);
+    setCargando(false);
+    if ("error" in res && res.error) return void toast.error(res.error);
+    const creados = "creados" in res ? res.creados : 0;
+    toast.success(
+      creados > 0
+        ? `${creados} gasto(s) fijo(s) cargado(s) desde las suscripciones.`
+        : "Ya estaban todos cargados."
+    );
+    startTransition(() => router.refresh());
+  }
+
+  return (
+    <Button size="sm" variant="outline" onClick={generar} disabled={cargando} className="h-7 gap-1 text-xs">
+      {cargando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Receipt className="h-3 w-3" />}
+      Traer de suscripciones
+    </Button>
+  );
+}
+
+/** Una línea de gasto fijo: se marca pagado con el botón de siempre. */
+function FilaGastoRow({ fila }: { fila: FilaGasto }) {
+  return (
+    <div className={cn("flex flex-wrap items-center justify-between gap-2 p-3", fila.pagado && "bg-emerald-50/40 dark:bg-emerald-950/10")}>
+      <div className="min-w-0">
+        <span className="block truncate font-medium">{fila.proveedor ?? fila.concepto}</span>
+        <span className="block text-[11px] text-muted-foreground">
+          {fila.categoria ?? "otros"}
+          {fila.moneda !== "ARS" && ` · en ${fila.moneda}`}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="font-semibold tabular-nums">
+          {fmtCurrency(fila.monto, fila.moneda)}
+        </span>
+        <MarkPaidButton id={fila.id} kind="expense" paidAt={fila.fechaPago} />
+      </div>
     </div>
   );
 }

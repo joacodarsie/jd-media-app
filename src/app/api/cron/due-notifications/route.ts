@@ -15,6 +15,7 @@ import { runAccountAlerts } from "@/lib/social/alerts";
 import { checkMetaToken } from "@/lib/meta/health";
 import { checkGoogleHealth, notifyGoogleHealth } from "@/lib/integrations/health";
 import { generateInvoicesForPeriod } from "@/lib/finanzas/invoices";
+import { generateFixedExpensesForPeriod } from "@/lib/finanzas/fixed-expenses";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -125,6 +126,7 @@ export async function GET(req: NextRequest) {
   // cada cliente activo) sin tener que tocar "Generar mes". Idempotente (no
   // duplica). Luego el recordatorio de cobro avisa que toca enviarlos.
   let cobrosGenerados: unknown = null;
+  let gastosGenerados: unknown = null;
   let cobroReminders: unknown = null;
   if (esPrimerDiaDeMes) {
     const periodo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -136,6 +138,14 @@ export async function GET(req: NextRequest) {
       cobrosGenerados = await generateInvoicesForPeriod(admin, periodo, null);
     } catch (e) {
       cobrosGenerados = { error: e instanceof Error ? e.message : String(e) };
+    }
+    // Los gastos fijos del mes (suscripciones activas) también se arman solos:
+    // si no, nadie re-tipea las mismas 14 líneas todos los meses y el Panorama
+    // queda mostrando ingresos sin costos.
+    try {
+      gastosGenerados = await generateFixedExpensesForPeriod(admin, periodo, null);
+    } catch (e) {
+      gastosGenerados = { error: e instanceof Error ? e.message : String(e) };
     }
     try {
       await ensureCobroReminders(admin);
@@ -243,6 +253,7 @@ export async function GET(req: NextRequest) {
     month_end: monthEnd,
     month_start: monthStart,
     cobros_generados: cobrosGenerados,
+    gastos_fijos_generados: gastosGenerados,
     cobro_reminders: cobroReminders,
     paid_media: paidMedia,
     instagram,

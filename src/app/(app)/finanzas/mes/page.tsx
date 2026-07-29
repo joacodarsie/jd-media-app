@@ -5,7 +5,7 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { currentPeriod, periodLabel } from "@/lib/finanzas";
 import { buildPeriodPayroll } from "@/lib/payroll-period";
 import { MonthPicker } from "@/components/month-picker";
-import { MesPanel, type FilaCobro, type FilaPago } from "@/components/mes-panel";
+import { MesPanel, type FilaCobro, type FilaPago, type FilaGasto } from "@/components/mes-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -24,12 +24,17 @@ export default async function MesPage({
   const periodo =
     searchParams.m && /^\d{4}-\d{2}$/.test(searchParams.m) ? searchParams.m : currentPeriod();
 
-  const [payroll, { data: invRaw }] = await Promise.all([
+  const [payroll, { data: invRaw }, { data: gastosRaw }] = await Promise.all([
     buildPeriodPayroll(admin, periodo),
     admin
       .from("client_invoices")
       .select("id, cliente_id, concepto, monto, moneda, fecha_cobro, fecha_vencimiento")
       .eq("periodo", periodo),
+    admin
+      .from("expenses")
+      .select("id, categoria, proveedor, concepto, monto, moneda, fecha_pago")
+      .eq("periodo", periodo)
+      .order("monto", { ascending: false }),
   ]);
 
   const invoices = (invRaw ?? []) as {
@@ -127,6 +132,27 @@ export default async function MesPage({
     }))
     .sort((a, b) => Number(a.pagado) - Number(b.pagado) || b.total - a.total);
 
+  const gastos: FilaGasto[] = (
+    (gastosRaw ?? []) as {
+      id: string;
+      categoria: string | null;
+      proveedor: string | null;
+      concepto: string;
+      monto: number;
+      moneda: string;
+      fecha_pago: string | null;
+    }[]
+  ).map((g) => ({
+    id: g.id,
+    concepto: g.concepto,
+    proveedor: g.proveedor,
+    categoria: g.categoria,
+    monto: Number(g.monto),
+    moneda: g.moneda || "ARS",
+    fechaPago: g.fecha_pago,
+    pagado: !!g.fecha_pago,
+  }));
+
   return (
     <div className="space-y-5">
       <Link
@@ -154,6 +180,7 @@ export default async function MesPage({
         periodo={periodo}
         cobros={cobros}
         pagos={pagos}
+        gastos={gastos}
         concepto={payroll.salaryConcepto}
         miNombre={me.nombre ?? null}
       />

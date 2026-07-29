@@ -213,6 +213,82 @@ export async function markPaymentPaid(
   return { ok: true };
 }
 
+/**
+ * Marca el sueldo del mes de una persona como PAGADO en un solo clic desde "La
+ * plata del mes". Si todavía no existía la fila de pago (nadie corrió "generar
+ * pagos del mes"), la crea con el monto calculado y la marca. Es lo que evita
+ * el paso intermedio que hacía que no se registrara nunca nada.
+ */
+export async function pagarSueldoDelMes(input: {
+  userId: string;
+  periodo: string;
+  monto: number;
+  concepto: string;
+  fecha_pago?: string;
+  metodo_pago?: string | null;
+}) {
+  const { supabase, userId: quien } = await ctx();
+  const fecha = input.fecha_pago ?? new Date().toISOString().slice(0, 10);
+
+  const { data: existente } = await supabase
+    .from("team_payments")
+    .select("id")
+    .eq("user_id", input.userId)
+    .eq("periodo", input.periodo)
+    .eq("concepto", input.concepto)
+    .maybeSingle();
+
+  if (existente) {
+    const { error } = await supabase
+      .from("team_payments")
+      .update({
+        fecha_pago: fecha,
+        monto: input.monto,
+        metodo_pago: input.metodo_pago?.trim() || null,
+      })
+      .eq("id", (existente as { id: string }).id);
+    if (error) return { error: error.message };
+  } else {
+    const { error } = await supabase.from("team_payments").insert({
+      user_id: input.userId,
+      periodo: input.periodo,
+      concepto: input.concepto,
+      monto: input.monto,
+      moneda: "ARS",
+      fecha_programada: fecha,
+      fecha_pago: fecha,
+      metodo_pago: input.metodo_pago?.trim() || null,
+      creado_por_id: quien,
+    });
+    if (error) return { error: error.message };
+  }
+
+  invalidate();
+  revalidatePath("/finanzas/mes");
+  revalidatePath("/coordinacion/sueldos");
+  return { ok: true as const };
+}
+
+/** Deshace el pago del mes de una persona (vuelve a pendiente). */
+export async function desmarcarSueldoDelMes(input: {
+  userId: string;
+  periodo: string;
+  concepto: string;
+}) {
+  const { supabase } = await ctx();
+  const { error } = await supabase
+    .from("team_payments")
+    .update({ fecha_pago: null, metodo_pago: null })
+    .eq("user_id", input.userId)
+    .eq("periodo", input.periodo)
+    .eq("concepto", input.concepto);
+  if (error) return { error: error.message };
+  invalidate();
+  revalidatePath("/finanzas/mes");
+  revalidatePath("/coordinacion/sueldos");
+  return { ok: true as const };
+}
+
 export async function markPaymentUnpaid(id: string) {
   const { supabase } = await ctx();
   const { error } = await supabase

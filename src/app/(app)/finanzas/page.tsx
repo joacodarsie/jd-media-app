@@ -264,9 +264,16 @@ export default async function FinanzasPage({
           )}
           <Link
             href="/finanzas/cierre"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
+            className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-muted"
           >
             <ClipboardCheck className="h-4 w-4" /> Cerrar el mes
+          </Link>
+          <Link
+            href={`/finanzas/mes?m=${period}`}
+            title="A quién le cobro, a quién le pago, cuánto y por qué"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
+          >
+            <Wallet className="h-4 w-4" /> La plata del mes
           </Link>
           <MonthPicker value={period} />
           <div className="rounded-lg border bg-card px-3 py-2 text-right">

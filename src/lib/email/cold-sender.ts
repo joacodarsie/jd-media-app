@@ -81,12 +81,35 @@ export function urlDeBaja(email: string, cfg = coldEmailConfig()): string {
  */
 export async function leerCierre(): Promise<CierreEmail | null> {
   try {
-    const { data } = await createAdmin()
-      .from("cold_email_settings")
-      .select("oferta, codigo, web, instagram, whatsapp")
-      .eq("id", true)
-      .maybeSingle();
-    return (data as CierreEmail | null) ?? null;
+    const admin = createAdmin();
+    const [{ data }, { data: agencia }] = await Promise.all([
+      admin
+        .from("cold_email_settings")
+        .select("oferta, codigo, web, instagram, whatsapp")
+        .eq("id", true)
+        .maybeSingle(),
+      // Datos de la agencia (cuenta interna): así los links no dependen de que
+      // alguien se acuerde de cargarlos a mano en esta pantalla.
+      admin
+        .from("clients")
+        .select("instagram_url, web_url, contacto_telefono")
+        .eq("es_interno", true)
+        .limit(1)
+        .maybeSingle(),
+    ]);
+    const s = (data ?? {}) as CierreEmail;
+    const a = (agencia ?? {}) as {
+      instagram_url?: string | null;
+      web_url?: string | null;
+      contacto_telefono?: string | null;
+    };
+    return {
+      oferta: s.oferta ?? null,
+      codigo: s.codigo ?? null,
+      web: s.web || a.web_url || null,
+      instagram: s.instagram || a.instagram_url || null,
+      whatsapp: s.whatsapp || a.contacto_telefono || null,
+    };
   } catch {
     return null;
   }

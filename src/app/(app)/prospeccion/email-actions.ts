@@ -79,8 +79,30 @@ export async function guardarCierre(input: {
       return { error: "Falta aplicar la migración 0144." };
     return { error: error.message };
   }
+
+  // Se guardan también en la ficha de la agencia: son LOS datos de JD Media, no
+  // datos "del email". Así el resto de la app los tiene sin volver a pedirlos.
+  const patch: Record<string, string> = {};
+  if (input.whatsapp.trim()) patch.contacto_telefono = input.whatsapp.trim();
+  if (input.instagram.trim()) patch.instagram_url = igUrl(input.instagram);
+  if (input.web.trim()) patch.web_url = conProtocolo(input.web);
+  if (Object.keys(patch).length) {
+    await createAdmin().from("clients").update(patch).eq("es_interno", true);
+  }
+
   revalidatePath("/prospeccion/email");
   return { ok: true as const };
+}
+
+function conProtocolo(url: string): string {
+  const v = url.trim();
+  return /^https?:\/\//i.test(v) ? v : `https://${v}`;
+}
+
+function igUrl(valor: string): string {
+  const v = valor.trim();
+  if (/^https?:\/\//i.test(v)) return v;
+  return `https://instagram.com/${v.replace(/^@/, "")}`;
 }
 
 /** Agrega una dirección a la lista de supresión a mano. */

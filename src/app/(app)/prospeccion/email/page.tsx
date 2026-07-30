@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireUser, userInRoles } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
-import { coldEmailConfig } from "@/lib/email/cold-sender";
+import { coldEmailConfig, leerCierre } from "@/lib/email/cold-sender";
 import { diasParaCubrir, topeDelDia } from "@/lib/prospecting/cold-email";
 import { ColdEmailPanel, type CampanaEmail } from "@/components/cold-email-panel";
 import { ColdEmailCierre } from "@/components/cold-email-cierre";
@@ -31,14 +31,11 @@ export default async function ColdEmailPage() {
     admin.from("prospecting_contacts").select("campaign_id, email, sitio_web, estado"),
     admin.from("cold_email_sends").select("campaign_id, email, estado, enviado_at, asunto"),
     admin.from("cold_email_optouts").select("email"),
-    admin
-      .from("cold_email_settings")
-      .select("oferta, codigo, web, instagram, whatsapp")
-      .eq("id", true)
-      .maybeSingle(),
+    leerCierre(),
   ]);
 
-  const cierre = (cierreRes.data ?? {}) as Partial<{
+  // Ya viene completado con los datos de la agencia si la pantalla está vacía.
+  const cierre = (cierreRes ?? {}) as Partial<{
     oferta: string;
     codigo: string;
     web: string;

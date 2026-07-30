@@ -150,7 +150,15 @@ export default async function ProspeccionPage() {
             mandás por WhatsApp o Instagram.
           </p>
         </div>
-        <ProspectingCampaignDialog mode="create" services={services} canSuggest={owner} />
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/prospeccion/email"
+            className="rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
+          >
+            ✉️ Email en frío
+          </Link>
+          <ProspectingCampaignDialog mode="create" services={services} canSuggest={owner} />
+        </div>
       </div>
 
       {paraSeguir.length > 0 && (

@@ -11,9 +11,57 @@
  * cada búsqueda devuelve hasta 20 negocios, 1.000 búsquedas ≈ 20.000 negocios:
  * el volumen de la agencia entra holgado en el tramo gratis.
  */
+import { createAdmin } from "@/lib/supabase/admin";
 import { esProbableFijoAr } from "./shared";
 
 const ENDPOINT = "https://places.googleapis.com/v1/places:searchText";
+
+/** Precio del SKU Enterprise de Text Search: US$35 cada 1.000 llamadas. */
+const COSTO_POR_LLAMADA_USD = 0.035;
+
+/**
+ * Tope DURO de llamadas por mes. El tramo gratis de Google son 1.000, así que
+ * 500 deja margen de sobra y hace imposible una factura sorpresa.
+ *
+ * Existe porque una factura inesperada de US$50 le costó al dueño más que el
+ * valor que dio la fuente. El presupuesto de Google solo avisa DESPUÉS de
+ * gastar; esto frena antes.
+ */
+const TOPE_MES = Number(process.env.GOOGLE_PLACES_TOPE_MES ?? 500) || 500;
+
+/** Cuántas llamadas se hicieron este mes (se registran en `ai_usage`). */
+export async function llamadasPlacesDelMes(): Promise<number> {
+  try {
+    const desde = new Date();
+    desde.setUTCDate(1);
+    desde.setUTCHours(0, 0, 0, 0);
+    const { count } = await createAdmin()
+      .from("ai_usage")
+      .select("id", { count: "exact", head: true })
+      .eq("ruta", "prospeccion/places")
+      .gte("created_at", desde.toISOString());
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** Deja el rastro de la llamada para que aparezca en /finanzas/ia. */
+async function registrarLlamada(userId?: string | null): Promise<void> {
+  try {
+    await createAdmin().from("ai_usage").insert({
+      ruta: "prospeccion/places",
+      modelo: "google-places",
+      user_id: userId ?? null,
+      input_tokens: 0,
+      output_tokens: 0,
+      cache_read_tokens: 0,
+      costo_usd: COSTO_POR_LLAMADA_USD,
+    });
+  } catch {
+    // Si falta la tabla no pasa nada: es contabilidad, no el camino crítico.
+  }
+}
 
 /** Solo los campos que usamos: el field mask define el precio de la llamada. */
 const FIELD_MASK = [
@@ -62,9 +110,19 @@ export async function searchPlaces(input: {
   cantidad: number;
   /** Empresas que ya tenemos: se filtran acá para no gastar filas repetidas. */
   excludeEmpresas?: string[];
+  /** Para atribuir el gasto en /finanzas/ia. */
+  userId?: string | null;
 }): Promise<PlaceContacto[]> {
   const key = process.env.GOOGLE_PLACES_API_KEY;
   if (!key) throw new Error("Falta configurar GOOGLE_PLACES_API_KEY.");
+
+  const usadas = await llamadasPlacesDelMes();
+  if (usadas >= TOPE_MES)
+    throw new Error(
+      `Se llegó al tope de ${TOPE_MES} búsquedas de Google de este mes (van ${usadas}). ` +
+        `Es un freno puesto a propósito para que no llegue una factura sorpresa. ` +
+        `Si hace falta más, subí GOOGLE_PLACES_TOPE_MES en Vercel.`
+    );
 
   const zona = input.ubicacion?.trim() || "Argentina";
   const textQuery = `${input.rubro.trim()} en ${zona}`;
@@ -76,9 +134,15 @@ export async function searchPlaces(input: {
   const vistas = new Set<string>();
   let pageToken: string | undefined;
   // Tope de páginas por las dudas: 5 páginas = 100 negocios = 5 llamadas.
-  const maxPaginas = Math.min(Math.ceil(input.cantidad / PAGE_SIZE) + 1, 5);
+  const maxPaginas = Math.min(
+    Math.ceil(input.cantidad / PAGE_SIZE) + 1,
+    5,
+    // Nunca pasarse del tope del mes, ni siquiera dentro de una misma búsqueda.
+    Math.max(1, TOPE_MES - usadas)
+  );
 
   for (let i = 0; i < maxPaginas && out.length < input.cantidad; i++) {
+    await registrarLlamada(input.userId);
     const res = await fetch(ENDPOINT, {
       method: "POST",
       headers: {

@@ -18,6 +18,9 @@ const PUBLIC_PATHS = [
   // Encuesta de satisfacción del cliente: usa el mismo token del portal, que se
   // valida contra la base en la página y en la action antes de escribir nada.
   "/encuesta/",
+  // Baja de los emails en frío: la abre alguien que NO es usuario de la app.
+  // El token va firmado (HMAC), así que nadie puede dar de baja a un tercero.
+  "/baja/",
   "/contrato/cliente/",
   "/contrato/unificado",
   "/diagnostico/cliente/",

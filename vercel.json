@@ -25,6 +25,10 @@
     {
       "path": "/api/cron/auto-publish",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/cold-email",
+      "schedule": "0 12 * * 1-5"
     }
   ]
 }

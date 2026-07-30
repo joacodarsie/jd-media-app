@@ -102,6 +102,7 @@ export async function POST(
           ubicacion: c.ubicacion,
           cantidad,
           excludeEmpresas,
+          userId: me.id,
         })
       );
     } catch (e) {

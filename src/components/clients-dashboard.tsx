@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { marcarEsperandoPago } from "@/app/(app)/clientes/actions";
 import {
   ArrowRight,
   CalendarClock,
@@ -126,8 +129,18 @@ export function ClientsDashboard({
     return Array.from(m.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [realClients]);
 
+  // Los que firmaron pero NO pagaron van en su propio bloque arriba, nunca
+  // mezclados con los clientes de verdad: si aparecen en la misma lista, el
+  // conteo de "cuántos clientes tengo" miente.
+  const esperandoPago = useMemo(
+    () => realClients.filter((c) => c.estado === "esperando_pago"),
+    [realClients]
+  );
+
   const filtered = useMemo(() => {
     return realClients.filter((c) => {
+      // Fuera de la lista principal salvo que se pida ese filtro puntual.
+      if (c.estado === "esperando_pago" && quick !== "esperando_pago") return false;
       if (quick === "activos" && c.estado !== "activo") return false;
       if (quick === "esperando_pago" && c.estado !== "esperando_pago") return false;
       if (quick === "propuesta" && c.estado !== "propuesta") return false;
@@ -237,6 +250,33 @@ export function ClientsDashboard({
         </span>
       </div>
 
+      {esperandoPago.length > 0 && quick !== "esperando_pago" && (
+        <div className="rounded-xl border-2 border-dashed border-amber-400 bg-amber-50/50 p-3 dark:border-amber-500/50 dark:bg-amber-500/5">
+          <h2 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+            ⏳ Esperando pago ({esperandoPago.length}) — todavía no son clientes
+          </h2>
+          <p className="mb-2 text-xs text-amber-900/70 dark:text-amber-100/70">
+            Les mandaste la carta acuerdo pero no pagaron. No cuentan como
+            clientes ni suman a la facturación. Cuando marques el cobro en{" "}
+            <Link href="/cobros" className="underline">
+              ¿Quién me pagó?
+            </Link>{" "}
+            pasan solos a activos.
+          </p>
+          <div className="space-y-2">
+            {esperandoPago.map((c) => (
+              <ClientCard
+                key={c.id}
+                client={c}
+                tasks={byClient.get(c.id) ?? []}
+                nextPub={pubByClient.get(c.id) ?? null}
+                pubsTotal={pubCountByClient.get(c.id) ?? 0}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="space-y-2">
         {filtered.length === 0 ? (
           <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center text-sm text-muted-foreground">
@@ -310,6 +350,41 @@ export function ClientsDashboard({
   );
 }
 
+/**
+ * Botón para bajar una cuenta a "esperando pago" sin entrar a Editar.
+ *
+ * Va acá porque es donde el dueño se da cuenta ("este no me pagó"), y esconderlo
+ * dentro del formulario era la razón por la que no se usaba.
+ */
+function MarcarSinPagar({ clienteId, nombre }: { clienteId: string; nombre: string }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  return (
+    <button
+      title="Todavía no pagó: lo saca del conteo de clientes y de la facturación hasta que marques el cobro"
+      disabled={pending}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!confirm(`¿${nombre} todavía no pagó? Deja de contar como cliente hasta que marques el cobro.`))
+          return;
+        start(async () => {
+          const res = await marcarEsperandoPago(clienteId);
+          if (res?.error) {
+            toast.error(res.error);
+            return;
+          }
+          toast.success(`${nombre} pasó a "Esperando pago"`);
+          router.refresh();
+        });
+      }}
+      className="rounded-full border border-dashed border-amber-400 px-2 py-0.5 text-[11px] font-medium text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40"
+    >
+      ¿no pagó?
+    </button>
+  );
+}
+
 function ClientCard({
   client,
   tasks,
@@ -359,6 +434,9 @@ function ClientCard({
             >
               {CLIENT_STATUS_LABEL[client.estado]}
             </span>
+            {client.estado === "activo" && (
+              <MarcarSinPagar clienteId={client.id} nombre={client.nombre} />
+            )}
             {falta.length > 0 && (
               <span
                 className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300"

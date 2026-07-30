@@ -382,6 +382,37 @@ export async function activateClient(id: string) {
 }
 
 /**
+ * Marca que la cuenta TODAVÍA NO PAGÓ.
+ *
+ * Para armar la carta acuerdo hay que dar de alta la cuenta como cliente, así
+ * que cuentas que nunca pagaron quedaban en "activo" e inflaban la facturación
+ * y el conteo de clientes. Con esto sigue existiendo (carta, onboarding,
+ * portal) pero no cuenta como cliente. Al marcar el cobro en /cobros vuelve
+ * sola a "activo".
+ */
+export async function marcarEsperandoPago(id: string) {
+  const me = await requireUser();
+  if (me.rol !== "admin" && me.rol !== "coordinador") {
+    return { error: "No autorizado" };
+  }
+  const { error } = await createAdmin()
+    .from("clients")
+    .update({ estado: "esperando_pago" })
+    .eq("id", id);
+  if (error) {
+    if (error.message?.includes("invalid input value"))
+      return { error: "Falta aplicar la migración 0145." };
+    return { error: error.message };
+  }
+  revalidatePath("/clientes");
+  revalidatePath(`/clientes/${id}`);
+  revalidatePath("/cobros");
+  revalidatePath("/finanzas");
+  invalidateClientsCache();
+  return { ok: true as const };
+}
+
+/**
  * Registra (o actualiza) la REUNIÓN MENSUAL de seguimiento con el cliente. Es la
  * señal de calidad que no sale de ningún número: hablar con el cliente. La puede
  * cargar cualquiera del equipo interno que tenga acceso a la cuenta.

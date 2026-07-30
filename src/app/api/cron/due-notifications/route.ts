@@ -16,6 +16,7 @@ import { checkMetaToken } from "@/lib/meta/health";
 import { checkGoogleHealth, notifyGoogleHealth } from "@/lib/integrations/health";
 import { generateInvoicesForPeriod } from "@/lib/finanzas/invoices";
 import { generateFixedExpensesForPeriod } from "@/lib/finanzas/fixed-expenses";
+import { guardarSnapshotDirector } from "@/lib/director/snapshots";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -155,6 +156,17 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Semáforo del Director: se guarda el estado del mes en curso, pisando el de
+  // ayer. Cuando arranca el mes siguiente, la última escritura queda congelada
+  // como el cierre de ese mes — es la única forma de poder mirarlo después,
+  // porque varias señales (tareas vencidas, portal, IG) solo existen en presente.
+  let directorSnapshot: unknown = null;
+  try {
+    directorSnapshot = await guardarSnapshotDirector(admin);
+  } catch (e) {
+    directorSnapshot = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   // Paid media: snapshot diario + análisis IA de cada cuenta con Meta cargado.
   // Va acá (no en un cron propio) para no sumar crons en Hobby.
   let paidMedia: unknown = null;
@@ -256,6 +268,7 @@ export async function GET(req: NextRequest) {
     gastos_fijos_generados: gastosGenerados,
     cobro_reminders: cobroReminders,
     paid_media: paidMedia,
+    director_snapshot: directorSnapshot,
     instagram,
     meta_token: metaToken,
     google_health: googleHealth,

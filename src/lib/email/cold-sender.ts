@@ -13,10 +13,11 @@ import {
   armarEmail,
   filtrarDestinatarios,
   normalizarEmail,
-  tokenDeBaja,
   topeDelDia,
+  type CierreEmail,
   type DatosRemitente,
 } from "@/lib/prospecting/cold-email";
+import { tokenDeBaja } from "@/lib/prospecting/cold-email-token";
 import { mensajeElegido } from "@/lib/prospecting/shared";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
@@ -72,6 +73,23 @@ export function bajaSecret(): string {
 
 export function urlDeBaja(email: string, cfg = coldEmailConfig()): string {
   return `${cfg.siteUrl}/baja/${tokenDeBaja(email, bajaSecret())}`;
+}
+
+/**
+ * La oferta y los links que van al final del mail. Los edita el dueño desde la
+ * pantalla; si falta la migración 0144 se devuelve vacío y el mail sale igual.
+ */
+export async function leerCierre(): Promise<CierreEmail | null> {
+  try {
+    const { data } = await createAdmin()
+      .from("cold_email_settings")
+      .select("oferta, codigo, web, instagram, whatsapp")
+      .eq("id", true)
+      .maybeSingle();
+    return (data as CierreEmail | null) ?? null;
+  } catch {
+    return null;
+  }
 }
 
 interface ResendOk {
@@ -294,9 +312,10 @@ export async function programarEnvios(input: {
     };
   }
 
-  const [{ data: bajas }, { data: enviados }] = await Promise.all([
+  const [{ data: bajas }, { data: enviados }, cierre] = await Promise.all([
     admin.from("cold_email_optouts").select("email"),
     admin.from("cold_email_sends").select("email"),
+    leerCierre(),
   ]);
 
   const destinatarios = filtrarDestinatarios(contactos ?? [], {
@@ -318,6 +337,7 @@ export async function programarEnvios(input: {
       contacto: d.contacto_nombre,
       remitente: cfg.remitente,
       bajaUrl: urlDeBaja(d.email as string, cfg),
+      cierre,
     });
     return {
       contact_id: d.id,

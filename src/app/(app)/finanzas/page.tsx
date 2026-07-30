@@ -263,6 +263,13 @@ export default async function FinanzasPage({
             </Link>
           )}
           <Link
+            href={`/cobros?m=${period}`}
+            title="Una sola lista: marcar quién te pagó el mes"
+            className="inline-flex items-center gap-1.5 rounded-lg border-2 border-emerald-500 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+          >
+            <HandCoins className="h-4 w-4" /> ¿Quién me pagó?
+          </Link>
+          <Link
             href="/finanzas/cierre"
             className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-muted"
           >

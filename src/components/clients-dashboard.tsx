@@ -34,9 +34,10 @@ interface UpcomingPub {
   estado: string;
 }
 
-type Quick = "activos" | "propuesta" | "perdido" | "todos";
+type Quick = "activos" | "esperando_pago" | "propuesta" | "perdido" | "todos";
 const QUICK_LABEL: Record<Quick, string> = {
   activos: "Activos",
+  esperando_pago: "Esperando pago",
   propuesta: "Propuestas",
   perdido: "Perdidos",
   todos: "Todos",
@@ -49,6 +50,9 @@ const ESTADO_BADGE: Record<string, string> = {
   perdido: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
   propuesta:
     "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300",
+  // Firmó pero todavía no pagó: no es cliente aún, por eso no va en verde.
+  esperando_pago:
+    "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
 };
 
 export function ClientsDashboard({
@@ -125,6 +129,7 @@ export function ClientsDashboard({
   const filtered = useMemo(() => {
     return realClients.filter((c) => {
       if (quick === "activos" && c.estado !== "activo") return false;
+      if (quick === "esperando_pago" && c.estado !== "esperando_pago") return false;
       if (quick === "propuesta" && c.estado !== "propuesta") return false;
       if (quick === "perdido" && c.estado !== "perdido") return false;
       if (pack !== "__all__" && c.pack !== pack) return false;
@@ -141,6 +146,7 @@ export function ClientsDashboard({
   const counts = useMemo(
     () => ({
       activos: realClients.filter((c) => c.estado === "activo").length,
+      esperando_pago: realClients.filter((c) => c.estado === "esperando_pago").length,
       propuesta: realClients.filter((c) => c.estado === "propuesta").length,
       perdido: realClients.filter((c) => c.estado === "perdido").length,
       todos: realClients.length,

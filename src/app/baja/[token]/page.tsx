@@ -1,5 +1,5 @@
 import { createAdmin } from "@/lib/supabase/admin";
-import { emailDeToken } from "@/lib/prospecting/cold-email";
+import { emailDeToken } from "@/lib/prospecting/cold-email-token";
 import { bajaSecret } from "@/lib/email/cold-sender";
 
 export const dynamic = "force-dynamic";

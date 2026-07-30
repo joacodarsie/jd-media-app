@@ -1,15 +1,15 @@
 import { describe, it, expect } from "vitest";
 import {
   armarAsunto,
+  armarCierre,
   armarEmail,
   diasParaCubrir,
-  emailDeToken,
   esEmailValido,
   filtrarDestinatarios,
   normalizarEmail,
-  tokenDeBaja,
   topeDelDia,
 } from "./cold-email";
+import { emailDeToken, tokenDeBaja } from "./cold-email-token";
 import { dominioDe, extraerEmails } from "./email-finder";
 
 const REMITENTE = {
@@ -75,6 +75,47 @@ describe("armarEmail", () => {
     });
     expect(m.html).toContain("Bar &amp; Co &lt;script&gt;");
     expect(m.html).not.toContain("<script>");
+  });
+});
+
+describe("armarCierre (oferta + links)", () => {
+  it("pone la oferta con el código, que es lo que permite medir el canal", () => {
+    const c = armarCierre({ oferta: "$50.000 de descuento el primer mes", codigo: "MAIL50" });
+    expect(c).toContain("$50.000 de descuento el primer mes si me escribís mencionando MAIL50.");
+  });
+
+  it("sin código no inventa uno", () => {
+    expect(armarCierre({ oferta: "Descuento" })).toBe("Descuento.");
+  });
+
+  it("normaliza el Instagram venga como venga", () => {
+    for (const valor of ["jdmedia", "@jdmedia", "https://instagram.com/jdmedia/"]) {
+      expect(armarCierre({ instagram: valor })).toContain("@jdmedia");
+    }
+  });
+
+  it("arma la línea de contacto con lo que haya", () => {
+    const c = armarCierre({ whatsapp: "351 123 4567", web: "jdmedia.com" });
+    expect(c).toBe("WhatsApp: 351 123 4567 · Web: jdmedia.com");
+  });
+
+  it("vacío si no hay nada cargado", () => {
+    expect(armarCierre(null)).toBe("");
+    expect(armarCierre({})).toBe("");
+  });
+
+  it("el cierre entra en el mail completo", () => {
+    const m = armarEmail({
+      asuntoPlantilla: "Hola [EMPRESA]",
+      cuerpoPlantilla: "Texto del mensaje.",
+      empresa: "Magic",
+      remitente: REMITENTE,
+      bajaUrl: "https://app.test/baja/abc",
+      cierre: { oferta: "$50.000 off", codigo: "MAIL50", whatsapp: "351 123" },
+    });
+    expect(m.texto).toContain("MAIL50");
+    expect(m.texto).toContain("WhatsApp: 351 123");
+    expect(m.html).toContain("MAIL50");
   });
 });
 

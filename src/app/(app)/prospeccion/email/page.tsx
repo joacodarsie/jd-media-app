@@ -4,6 +4,7 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { coldEmailConfig } from "@/lib/email/cold-sender";
 import { diasParaCubrir, topeDelDia } from "@/lib/prospecting/cold-email";
 import { ColdEmailPanel, type CampanaEmail } from "@/components/cold-email-panel";
+import { ColdEmailCierre } from "@/components/cold-email-cierre";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export default async function ColdEmailPage() {
   const cfg = coldEmailConfig();
   const admin = createAdmin();
 
-  const [{ data: campaigns }, contactosRes, sendsRes, bajasRes] = await Promise.all([
+  const [{ data: campaigns }, contactosRes, sendsRes, bajasRes, cierreRes] = await Promise.all([
     admin
       .from("prospecting_campaigns")
       .select("id, nombre, rubro, mensajes_plantilla")
@@ -30,7 +31,20 @@ export default async function ColdEmailPage() {
     admin.from("prospecting_contacts").select("campaign_id, email, sitio_web, estado"),
     admin.from("cold_email_sends").select("campaign_id, email, estado, enviado_at, asunto"),
     admin.from("cold_email_optouts").select("email"),
+    admin
+      .from("cold_email_settings")
+      .select("oferta, codigo, web, instagram, whatsapp")
+      .eq("id", true)
+      .maybeSingle(),
   ]);
+
+  const cierre = (cierreRes.data ?? {}) as Partial<{
+    oferta: string;
+    codigo: string;
+    web: string;
+    instagram: string;
+    whatsapp: string;
+  }>;
 
   // Si falta la migración, la pantalla igual explica qué hacer en vez de romper.
   const faltaMigracion =
@@ -158,6 +172,21 @@ export default async function ColdEmailPage() {
           cientos el primer día se va derecho a spam.
         </p>
       )}
+
+      <ColdEmailCierre
+        inicial={{
+          oferta: cierre.oferta ?? "",
+          codigo: cierre.codigo ?? "",
+          web: cierre.web ?? "",
+          instagram: cierre.instagram ?? "",
+          whatsapp: cierre.whatsapp ?? "",
+        }}
+        ejemploCuerpo={
+          "Hola [NOMBRE], vi el Instagram de [EMPRESA] y me pareció que se puede aprovechar mucho mejor.\n\nTrabajo con negocios de tu zona haciéndoles el contenido y la pauta, y en general en el primer mes ya se nota en las consultas que entran.\n\n¿Te mando una idea concreta para [EMPRESA], sin compromiso?"
+        }
+        firma={cfg.remitente.nombre}
+        direccion={cfg.remitente.direccion}
+      />
 
       <ColdEmailPanel
         campanas={campanas}

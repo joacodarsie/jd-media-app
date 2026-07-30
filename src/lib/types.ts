@@ -21,7 +21,15 @@ export type TaskStatus =
 
 export type TaskPriority = "baja" | "media" | "alta" | "urgente";
 export type ClientPack = "Presencia" | "Crecimiento" | "Escala" | "Personalizado";
-export type ClientStatus = "activo" | "at_risk" | "perdido" | "propuesta";
+export type ClientStatus =
+  | "activo"
+  | "at_risk"
+  | "perdido"
+  | "propuesta"
+  // Firmó / se le mandó la carta acuerdo pero TODAVÍA NO PAGÓ. Existe como
+  // cuenta (carta, onboarding, portal) pero no cuenta como cliente ni suma a
+  // la facturación hasta que se marque el cobro.
+  | "esperando_pago";
 
 export type ServiceType =
   | "gestion_redes"

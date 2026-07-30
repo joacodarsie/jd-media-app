@@ -12,7 +12,6 @@
  *  3. El volumen sube de a poco. Un dominio nuevo que manda 500 mails el primer
  *     día va derecho a spam y no se recupera: ver `topeDelDia`.
  */
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { personalizarMensaje } from "./shared";
 
 export interface DatosRemitente {
@@ -22,6 +21,49 @@ export interface DatosRemitente {
   agencia: string;
   /** Dirección física o ciudad: requisito legal del email comercial. */
   direccion: string;
+}
+
+/**
+ * El cierre del mail: la oferta y por dónde contestar.
+ *
+ * El código de descuento no es marketing: es la ÚNICA forma de saber cuántos
+ * clientes salió el canal. Quien escribe mencionándolo vino del mail, y eso se
+ * puede contar contra lo que costó mandarlos.
+ */
+export interface CierreEmail {
+  oferta?: string | null;
+  codigo?: string | null;
+  web?: string | null;
+  instagram?: string | null;
+  whatsapp?: string | null;
+}
+
+/** Arma el bloque de oferta + links. Vacío si no hay nada cargado. */
+export function armarCierre(c: CierreEmail | null | undefined): string {
+  if (!c) return "";
+  const lineas: string[] = [];
+  if (c.oferta?.trim()) {
+    const codigo = c.codigo?.trim();
+    lineas.push(
+      codigo
+        ? `${c.oferta.trim()} si me escribís mencionando ${codigo}.`
+        : `${c.oferta.trim()}.`
+    );
+  }
+  const contacto: string[] = [];
+  if (c.whatsapp?.trim()) contacto.push(`WhatsApp: ${c.whatsapp.trim()}`);
+  if (c.instagram?.trim()) contacto.push(`Instagram: ${normalizarIg(c.instagram)}`);
+  if (c.web?.trim()) contacto.push(`Web: ${c.web.trim()}`);
+  if (contacto.length) lineas.push(contacto.join(" · "));
+  return lineas.join("\n");
+}
+
+/** "jdmedia" / "@jdmedia" / la URL completa → un @handle legible. */
+function normalizarIg(valor: string): string {
+  const v = valor.trim();
+  const m = v.match(/instagram\.com\/([^/?#]+)/i);
+  const handle = (m ? m[1] : v).replace(/^@/, "");
+  return `@${handle}`;
 }
 
 export interface EmailArmado {
@@ -69,12 +111,15 @@ export function armarEmail(input: {
   contacto?: string | null;
   remitente: DatosRemitente;
   bajaUrl: string;
+  cierre?: CierreEmail | null;
 }): EmailArmado {
   const asunto = armarAsunto(input.asuntoPlantilla, input.empresa);
-  const cuerpo = personalizarMensaje(input.cuerpoPlantilla, {
+  const base = personalizarMensaje(input.cuerpoPlantilla, {
     empresa: input.empresa,
     contacto: input.contacto,
   }).trim();
+  const bloqueCierre = armarCierre(input.cierre);
+  const cuerpo = bloqueCierre ? `${base}\n\n${bloqueCierre}` : base;
 
   const firma = `${input.remitente.nombre}\n${input.remitente.agencia}`;
   const pie =
@@ -103,36 +148,8 @@ export function armarEmail(input: {
   return { asunto, texto, html };
 }
 
-// ── Baja de un clic ──────────────────────────────────────────────────────────
-// El link lleva el mail firmado: así la página de baja puede confiar en la
-// dirección sin exponer un id de base ni permitir dar de baja a terceros.
-
-function firma(email: string, secreto: string): string {
-  return createHmac("sha256", secreto).update(normalizarEmail(email)).digest("base64url");
-}
-
-export function tokenDeBaja(email: string, secreto: string): string {
-  const e = Buffer.from(normalizarEmail(email)).toString("base64url");
-  return `${e}.${firma(email, secreto)}`;
-}
-
-/** Devuelve el email si el token es legítimo, o null. */
-export function emailDeToken(token: string, secreto: string): string | null {
-  const [parte, mac] = token.split(".");
-  if (!parte || !mac) return null;
-  let email: string;
-  try {
-    email = Buffer.from(parte, "base64url").toString("utf8");
-  } catch {
-    return null;
-  }
-  if (!esEmailValido(email)) return null;
-  const esperado = firma(email, secreto);
-  const a = Buffer.from(mac);
-  const b = Buffer.from(esperado);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
-  return normalizarEmail(email);
-}
+// El token firmado de la baja vive en `cold-email-token.ts` (usa node:crypto y
+// este módulo lo importa también el editor del mail, que corre en el navegador).
 
 // ── A quién se le manda ──────────────────────────────────────────────────────
 

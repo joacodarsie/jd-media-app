@@ -120,11 +120,13 @@ export const CLIENT_STATUS_LABEL: Record<ClientStatus, string> = {
   at_risk: "En riesgo (legacy)",
   perdido: "Inactivo",
   propuesta: "Propuesta",
+  esperando_pago: "Esperando pago",
 };
 
 /** Estados visibles en formularios y filtros (omite legacy `at_risk`). */
 export const VISIBLE_CLIENT_STATUSES: { value: ClientStatus; label: string }[] = [
   { value: "propuesta", label: "Propuesta" },
+  { value: "esperando_pago", label: "Esperando pago" },
   { value: "activo", label: "Activo" },
   { value: "perdido", label: "Inactivo" },
 ];

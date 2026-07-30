@@ -49,6 +49,40 @@ export async function cancelarPendientes(campaignId: string) {
   return { cancelados: count ?? 0 };
 }
 
+/** Guarda la oferta y los links que van al final de todos los mails. */
+export async function guardarCierre(input: {
+  oferta: string;
+  codigo: string;
+  web: string;
+  instagram: string;
+  whatsapp: string;
+}) {
+  const gate = await ensureComercial();
+  if (gate) return { error: gate };
+  const limpio = (v: string) => v.trim().slice(0, 200) || null;
+  const { error } = await createAdmin()
+    .from("cold_email_settings")
+    .upsert(
+      {
+        id: true,
+        oferta: limpio(input.oferta),
+        codigo: limpio(input.codigo),
+        web: limpio(input.web),
+        instagram: limpio(input.instagram),
+        whatsapp: limpio(input.whatsapp),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    );
+  if (error) {
+    if ((error as { code?: string }).code === "42P01")
+      return { error: "Falta aplicar la migración 0144." };
+    return { error: error.message };
+  }
+  revalidatePath("/prospeccion/email");
+  return { ok: true as const };
+}
+
 /** Agrega una dirección a la lista de supresión a mano. */
 export async function agregarBaja(email: string) {
   const gate = await ensureComercial();

@@ -9,20 +9,58 @@ export interface ReminderClient {
   contrato_moneda?: string | null;
   contrato_descuento_pct?: number | null;
   contrato_descuento_monto?: number | null;
+  contrato_descuento_meses?: number | null;
+  contrato_fecha_inicio?: string | null;
+  fecha_inicio?: string | null;
 }
 
 /** Campos de descuento del contrato (porcentaje o monto fijo). */
 export interface ContractDiscount {
   contrato_descuento_pct?: number | null;
   contrato_descuento_monto?: number | null;
+  /** Por cuántos meses corre el descuento. Vacío o 0 = para siempre. */
+  contrato_descuento_meses?: number | null;
+  /** Desde cuándo se cuentan esos meses. */
+  contrato_fecha_inicio?: string | null;
+  fecha_inicio?: string | null;
+}
+
+/**
+ * ¿El descuento sigue vigente en este período?
+ *
+ * BUG QUE ARREGLA: antes el descuento se aplicaba SIEMPRE, ignorando
+ * `contrato_descuento_meses`. Un "25.000 de descuento el primer mes" seguía
+ * descontándose todos los meses, para siempre, en el recordatorio de cobro y en
+ * la facturación. Con dos cuentas eran $50.000 por mes que no se cobraban.
+ *
+ * `periodo` en YYYY-MM. Si no se pasa (o no hay fecha de inicio) se mantiene el
+ * comportamiento viejo: se aplica.
+ */
+export function descuentoVigente(d: ContractDiscount, periodo?: string): boolean {
+  const meses = Number(d.contrato_descuento_meses ?? 0);
+  if (!meses || meses <= 0) return true; // sin límite cargado = permanente
+  const inicio = (d.contrato_fecha_inicio ?? d.fecha_inicio ?? "").slice(0, 7);
+  if (!periodo || !/^\d{4}-\d{2}$/.test(inicio)) return true;
+  const [ay, am] = inicio.split("-").map(Number);
+  const [by, bm] = periodo.split("-").map(Number);
+  const transcurridos = (by - ay) * 12 + (bm - am);
+  // El mes de inicio es el primero de los N con descuento.
+  return transcurridos >= 0 && transcurridos < meses;
 }
 
 /**
  * Aplica el descuento del contrato a un abono base. Si hay monto fijo cargado
  * (> 0) se resta ese monto; si no, se aplica el porcentaje. Nunca baja de 0.
  * El monto fijo tiene prioridad porque en el form se elige uno u otro.
+ *
+ * `periodo` decide si el descuento todavía corre (ver `descuentoVigente`).
  */
-export function applyContractDiscount(base: number, d: ContractDiscount): number {
+export function applyContractDiscount(
+  base: number,
+  d: ContractDiscount,
+  periodo?: string
+): number {
+  if (!descuentoVigente(d, periodo)) return base;
   const monto = Number(d.contrato_descuento_monto ?? 0);
   if (monto > 0) return Math.max(0, Math.round(base - monto));
   const pct = Number(d.contrato_descuento_pct ?? 0);
@@ -41,9 +79,12 @@ function saludo(c: ReminderClient): string {
  * Monto a cobrar este período. Aplica el descuento del contrato si está
  * cargado (el mensaje es editable, así que es un punto de partida).
  */
-export function reminderAmount(c: ReminderClient): { monto: number; moneda: string } {
+export function reminderAmount(
+  c: ReminderClient,
+  periodo?: string
+): { monto: number; moneda: string } {
   const moneda = c.contrato_moneda || "ARS";
-  const monto = applyContractDiscount(Number(c.monto_mensual ?? 0), c);
+  const monto = applyContractDiscount(Number(c.monto_mensual ?? 0), c, periodo);
   return { monto, moneda };
 }
 
@@ -56,7 +97,7 @@ export function reminderAmount(c: ReminderClient): { monto: number; moneda: stri
  * (aparecen como "�"). Usamos como mucho emoji simples (BMP) si hace falta.
  */
 export function buildPaymentReminder(c: ReminderClient, periodo: string): string {
-  const { monto, moneda } = reminderAmount(c);
+  const { monto, moneda } = reminderAmount(c, periodo);
   const mes = periodLabel(periodo); // ej. "junio de 2026"
   const montoTxt = monto > 0 ? fmtCurrency(monto, moneda) : "(monto a confirmar)";
   const { alias, cvu, nombre: banco, titular } = AGENCY.bank;
@@ -86,7 +127,7 @@ export function buildGroupedPaymentReminder(clients: ReminderClient[], periodo: 
   const mes = periodLabel(periodo);
   const { alias, cvu, nombre: banco, titular } = AGENCY.bank;
 
-  const items = clients.map((c) => ({ nombre: c.nombre, ...reminderAmount(c) }));
+  const items = clients.map((c) => ({ nombre: c.nombre, ...reminderAmount(c, periodo) }));
 
   // Total por moneda (por si alguna cuenta cobra en otra divisa).
   const totales = new Map<string, number>();

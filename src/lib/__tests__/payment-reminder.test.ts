@@ -69,6 +69,57 @@ describe("applyContractDiscount", () => {
   });
 });
 
+describe("descuento con vencimiento (contrato_descuento_meses)", () => {
+  const magic = {
+    contrato_descuento_monto: 25000,
+    contrato_descuento_meses: 3,
+    contrato_fecha_inicio: "2026-07-05",
+  };
+
+  it("aplica durante los meses pactados, contando el de inicio", () => {
+    expect(applyContractDiscount(325000, magic, "2026-07")).toBe(300000);
+    expect(applyContractDiscount(325000, magic, "2026-08")).toBe(300000);
+    expect(applyContractDiscount(325000, magic, "2026-09")).toBe(300000);
+  });
+
+  it("DEJA de aplicar cuando se cumplieron", () => {
+    expect(applyContractDiscount(325000, magic, "2026-10")).toBe(325000);
+    expect(applyContractDiscount(325000, magic, "2027-01")).toBe(325000);
+  });
+
+  it("un descuento de 1 mes no se arrastra al siguiente", () => {
+    const unMes = {
+      contrato_descuento_monto: 25000,
+      contrato_descuento_meses: 1,
+      contrato_fecha_inicio: "2026-07-05",
+    };
+    expect(applyContractDiscount(350000, unMes, "2026-07")).toBe(325000);
+    expect(applyContractDiscount(350000, unMes, "2026-08")).toBe(350000);
+  });
+
+  it("sin meses cargados sigue siendo permanente", () => {
+    const permanente = { contrato_descuento_monto: 25000, contrato_fecha_inicio: "2020-01-01" };
+    expect(applyContractDiscount(100000, permanente, "2026-12")).toBe(75000);
+  });
+
+  it("sin período o sin fecha de inicio no rompe: aplica", () => {
+    expect(applyContractDiscount(325000, magic)).toBe(300000);
+    expect(
+      applyContractDiscount(325000, { ...magic, contrato_fecha_inicio: null }, "2027-05")
+    ).toBe(300000);
+  });
+
+  it("un período anterior al inicio no descuenta", () => {
+    expect(applyContractDiscount(325000, magic, "2026-06")).toBe(325000);
+  });
+
+  it("el mensaje del recordatorio refleja el vencimiento", () => {
+    const c = { nombre: "Magic", monto_mensual: 325000, ...magic };
+    expect(buildPaymentReminder(c, "2026-07")).toContain("300.000");
+    expect(buildPaymentReminder(c, "2026-10")).toContain("325.000");
+  });
+});
+
 describe("reminderAmount", () => {
   it("usa el descuento por monto fijo", () => {
     const c: ReminderClient = {

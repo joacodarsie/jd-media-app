@@ -4,7 +4,7 @@ import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveClients } from "@/lib/cache";
 import { getExchangeRates } from "@/lib/exchange";
-import { isOverdue, currentPeriod, periodLabel, fmtCurrency } from "@/lib/finanzas";
+import { isOverdue, currentPeriod, nextPeriod, periodLabel, fmtCurrency } from "@/lib/finanzas";
 import {
   buildPaymentReminder,
   buildGroupedPaymentReminder,
@@ -81,13 +81,26 @@ export default async function CobrosPage({
     const { data } = await supabase
       .from("clients")
       .select(
-        "id, nombre, pack, monto_mensual, contacto_nombre, contacto_telefono, contrato_moneda, contrato_descuento_pct, contrato_descuento_monto"
+        // Los campos de vencimiento del descuento son imprescindibles: sin ellos
+        // `descuentoVigente` no puede saber si ya se cumplió y descuenta siempre.
+        "id, nombre, pack, monto_mensual, contacto_nombre, contacto_telefono, contrato_moneda, contrato_descuento_pct, contrato_descuento_monto, contrato_descuento_meses, contrato_fecha_inicio, fecha_inicio"
       )
       .eq("estado", "activo")
       .eq("es_interno", false)
       .order("nombre");
 
     const clients = (data ?? []) as ReminderClientRow[];
+
+    // Mensajes editados a mano y recordatorios sacados de la lista, de ESTE mes.
+    const { data: ovRaw } = await supabase
+      .from("payment_reminder_overrides")
+      .select("grupo_key, mensaje, oculto")
+      .eq("periodo", periodo);
+    const overrides = new Map(
+      ((ovRaw ?? []) as { grupo_key: string; mensaje: string | null; oculto: boolean }[]).map(
+        (o) => [o.grupo_key, o]
+      )
+    );
 
     // Un mismo titular puede tener varias cuentas (marcas). Las agrupamos por
     // teléfono normalizado para mandarle UN solo mensaje con el total sumado y el
@@ -109,7 +122,7 @@ export default async function CobrosPage({
       // Monto combinado (por moneda) del grupo.
       const totales = new Map<string, number>();
       for (const c of group) {
-        const { monto, moneda } = reminderAmount(c);
+        const { monto, moneda } = reminderAmount(c, periodo);
         if (monto > 0) totales.set(moneda, (totales.get(moneda) ?? 0) + monto);
       }
       const total = [...totales.values()].reduce((a, v) => a + v, 0);
@@ -121,13 +134,19 @@ export default async function CobrosPage({
       const link = whatsappLink(primary.contacto_telefono, mensaje);
       // El componente re-arma el link con el texto vivo: le paso solo los dígitos.
       const telefono = link ? link.split("/").pop()!.split("?")[0] : null;
+      const grupoKey = group.map((c) => c.id).join("-");
+      const ov = overrides.get(grupoKey);
       return {
-        id: group.map((c) => c.id).join("-"),
+        id: grupoKey,
+        clienteIds: group.map((c) => c.id),
         nombre: group.map((c) => c.nombre).join(" + "),
         pack: esGrupo ? `${group.length} cuentas · mismo titular` : primary.pack,
         montoLabel,
         sinMonto,
-        mensaje,
+        // El texto editado a mano gana sobre el generado.
+        mensaje: ov?.mensaje?.trim() || mensaje,
+        editado: !!ov?.mensaje?.trim(),
+        oculto: !!ov?.oculto,
         waLink: link,
         telefono,
       };
@@ -135,7 +154,9 @@ export default async function CobrosPage({
 
     cards.sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
 
-    const sinMontoCount = cards.filter((c) => c.sinMonto).length;
+    const visibles = cards.filter((c) => !c.oculto);
+    const ocultos = cards.filter((c) => c.oculto);
+    const sinMontoCount = visibles.filter((c) => c.sinMonto).length;
 
     return (
       <div className="space-y-5">
@@ -186,14 +207,33 @@ export default async function CobrosPage({
           </Card>
         )}
 
-        {cards.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No hay clientes activos.</p>
+        {visibles.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No queda ningún recordatorio por mandar este mes.
+          </p>
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
-            {cards.map((c) => (
-              <PaymentReminderCard key={c.id} data={c} />
+            {visibles.map((c) => (
+              <PaymentReminderCard key={c.id} data={c} periodo={periodo} />
             ))}
           </div>
+        )}
+
+        {ocultos.length > 0 && (
+          <details className="rounded-xl border bg-muted/20 p-3">
+            <summary className="cursor-pointer text-sm font-medium">
+              Sacados de la lista de {periodLabel(periodo)} ({ocultos.length})
+            </summary>
+            <p className="mb-2 mt-1 text-xs text-muted-foreground">
+              No se les manda recordatorio este mes. En {periodLabel(nextPeriod(periodo))}{" "}
+              vuelven solos.
+            </p>
+            <div className="grid gap-4 lg:grid-cols-2">
+              {ocultos.map((c) => (
+                <PaymentReminderCard key={c.id} data={c} periodo={periodo} />
+              ))}
+            </div>
+          </details>
         )}
       </div>
     );

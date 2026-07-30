@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await admin
     .from("clients")
     .select(
-      "id, nombre, contacto_nombre, contacto_telefono, monto_mensual, contrato_moneda, contrato_descuento_pct, contrato_descuento_monto"
+      "id, nombre, contacto_nombre, contacto_telefono, monto_mensual, contrato_moneda, contrato_descuento_pct, contrato_descuento_monto, contrato_descuento_meses, contrato_fecha_inicio, fecha_inicio"
     )
     .eq("estado", "activo")
     .eq("es_interno", false);
@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
       fallidos.push({ cliente: c.nombre, motivo: "sin teléfono" });
       continue;
     }
-    const { monto, moneda } = reminderAmount(c);
+    const { monto, moneda } = reminderAmount(c, periodo);
     if (monto <= 0) {
       fallidos.push({ cliente: c.nombre, motivo: "sin monto_mensual cargado" });
       continue;

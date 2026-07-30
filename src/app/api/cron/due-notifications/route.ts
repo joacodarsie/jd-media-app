@@ -17,6 +17,7 @@ import { checkGoogleHealth, notifyGoogleHealth } from "@/lib/integrations/health
 import { generateInvoicesForPeriod } from "@/lib/finanzas/invoices";
 import { generateFixedExpensesForPeriod } from "@/lib/finanzas/fixed-expenses";
 import { guardarSnapshotDirector } from "@/lib/director/snapshots";
+import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -41,8 +42,22 @@ function isAuthorized(req: NextRequest): boolean {
   return false;
 }
 
+/**
+ * Un admin logueado también puede dispararlo abriendo la URL (mismo criterio
+ * que auto-publish). Todo lo que hace es idempotente, y sirve para no tener que
+ * esperar al horario cuando hace falta que corra ya.
+ */
+async function isAdmin(): Promise<boolean> {
+  try {
+    const me = await requireUser();
+    return me.rol === "admin";
+  } catch {
+    return false;
+  }
+}
+
 export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) {
+  if (!isAuthorized(req) && !(await isAdmin())) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

@@ -90,7 +90,15 @@ export default async function ContenidosPage({
   // Piezas cuya fecha ya pasó y no salieron. Se separan porque se resuelven
   // distinto: la que quedó en "idea" hay que producirla; la que está en revisión
   // solo hay que destrabarla (y es la más barata de recuperar).
+  //
+  // ⚠️ SOLO CUENTAS ACTIVAS (lo pidió Luz): las piezas de una cuenta que se dio
+  // de baja no son trabajo pendiente, nadie las va a publicar. Antes el aviso
+  // decía 94 y 25 eran de Alonso (perdido) — un número que no se podía bajar y
+  // que además no aparecía en el calendario, porque la grilla ya muestra solo
+  // cuentas activas. `clients` viene de getActiveClients() (estado = activo) y
+  // ya está recortado a las cuentas que la persona puede ver y al equipo filtrado.
   const hoyISO = new Date().toISOString().slice(0, 10);
+  const activeClientIds = new Set(clients.map((c) => c.id));
   const atrasadas = computePuntualidadCuenta(
     "todas",
     (
@@ -100,12 +108,14 @@ export default async function ContenidosPage({
         fecha_publicacion: string | null;
         frenado_cliente?: boolean | null;
       }[]
-    ).map((p) => ({
-      cliente_id: p.cliente_id,
-      estado: p.estado,
-      fecha_publicacion: p.fecha_publicacion,
-      frenado_cliente: p.frenado_cliente ?? false,
-    })),
+    )
+      .filter((p) => activeClientIds.has(p.cliente_id))
+      .map((p) => ({
+        cliente_id: p.cliente_id,
+        estado: p.estado,
+        fecha_publicacion: p.fecha_publicacion,
+        frenado_cliente: p.frenado_cliente ?? false,
+      })),
     hoyISO
   );
 
@@ -158,6 +168,10 @@ export default async function ContenidosPage({
           <p className="font-semibold text-amber-900 dark:text-amber-100">
             {atrasadas.nuncaArrancaron + atrasadas.trabadas + atrasadas.esperandoCliente}{" "}
             publicaciones con la fecha pasada que no salieron
+            <span className="font-normal text-amber-900/70 dark:text-amber-100/70">
+              {" "}
+              — solo cuentas activas
+            </span>
           </p>
           <ul className="mt-1 space-y-0.5 text-xs text-amber-900/80 dark:text-amber-100/80">
             {atrasadas.trabadas > 0 && (

@@ -233,6 +233,11 @@ export function PublicationsMonth({
     [visibleClients]
   );
 
+  const hayInactivosConPubs = useMemo(
+    () => clients.some((c) => c.estado !== "activo" && clientesConPubs.has(c.id)),
+    [clients, clientesConPubs]
+  );
+
   const filteredClientesByText = useMemo(() => {
     const term = clienteSearch.trim().toLowerCase();
     if (!term) return visibleClients;
@@ -443,7 +448,11 @@ export function PublicationsMonth({
       <div className="flex flex-wrap items-center gap-2">
         {!defaultClientId && (
           <>
-            {/* Tabs por estado del cliente */}
+            {/* Tabs por estado del cliente. Solo si hay algo que filtrar: la
+                página carga únicamente cuentas activas, así que casi siempre
+                "Inactivos" daba (0) y "Todos" era idéntico a "Activos" — tres
+                botones que no hacían nada y confundían. */}
+            {hayInactivosConPubs && (
             <div className="flex items-center rounded-md border bg-card p-0.5">
               {(["activos", "inactivos", "todos"] as const).map((k) => (
                 <button
@@ -468,6 +477,7 @@ export function PublicationsMonth({
                 </button>
               ))}
             </div>
+            )}
 
             {/* Combobox con buscador para elegir cliente puntual */}
             <div className="relative">

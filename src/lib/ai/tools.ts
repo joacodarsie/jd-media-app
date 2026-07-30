@@ -186,11 +186,17 @@ export const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "list_publications",
-    description: "Lista publicaciones del calendario de contenidos con filtros.",
+    description:
+      "Lista publicaciones del calendario de contenidos con filtros. Por defecto trae SOLO cuentas activas: las piezas de cuentas dadas de baja no son trabajo pendiente. Si te preguntan por una cuenta puntual por nombre, se respeta aunque esté de baja.",
     input_schema: {
       type: "object",
       properties: {
         cliente_nombre: { type: "string" },
+        incluir_cuentas_inactivas: {
+          type: "boolean",
+          description:
+            "Solo si te piden explícitamente el histórico de cuentas dadas de baja o perdidas.",
+        },
         estado: {
           type: "string",
           enum: [
@@ -642,6 +648,15 @@ export async function runTool(
         if (input.cliente_nombre) {
           const cid = await findClientId(sb, String(input.cliente_nombre));
           if (cid) q = q.eq("cliente_id", cid);
+        } else if (!input.incluir_cuentas_inactivas) {
+          // Sin cuenta puntual: solo cuentas ACTIVAS. Si no, al preguntar "qué
+          // quedó atrasado" salían piezas de cuentas dadas de baja (Alonso) que
+          // nadie va a publicar nunca y ensuciaban la respuesta.
+          const { data: activos } = await sb
+            .from("clients")
+            .select("id")
+            .eq("estado", "activo");
+          q = q.in("cliente_id", (activos ?? []).map((c) => c.id as string));
         }
         if (input.estado) q = q.eq("estado", String(input.estado));
         if (input.desde) q = q.gte("fecha_publicacion", String(input.desde));

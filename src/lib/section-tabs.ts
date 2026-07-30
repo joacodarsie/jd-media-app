@@ -54,6 +54,9 @@ export const conocimientoTabs: SectionTab[] = [
 /** Pestañas de Comercial (venta): panel, leads, prospección y post-meet. */
 export const comercialTabs: SectionTab[] = [
   { href: "/comercial", label: "Comercial" },
+  // Primera después del panel a propósito: es la pantalla del día cuando la
+  // prioridad es traer cuentas sin gastar en pauta.
+  { href: "/captacion", label: "🎯 Conseguir clientes" },
   { href: "/comercial/leads", label: "Leads" },
   { href: "/prospeccion", label: "Prospección" },
   { href: "/comercial/post-meet", label: "Post-meet" },

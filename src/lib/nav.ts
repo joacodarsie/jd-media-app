@@ -70,7 +70,7 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "Target",
         roles: ["admin", "coordinador", "comercial", "prospecting"],
         feature: "comercial",
-        match: ["/prospeccion"],
+        match: ["/prospeccion", "/captacion"],
       },
       // Equipo agrupa: Directorio, Organigrama, Personas, Capacidad y
       // Reclutamiento (pestañas).

@@ -269,7 +269,9 @@ export interface Publication {
 }
 
 export interface PublicationWithRels extends Publication {
-  cliente?: Pick<Client, "id" | "nombre"> | null;
+  // ig_user_id viaja opcional: lo necesita el chip de auto-publicación para
+  // avisar "la cuenta no tiene el Instagram conectado" sin abrir la ficha.
+  cliente?: (Pick<Client, "id" | "nombre"> & { ig_user_id?: string | null }) | null;
   creador?: Pick<AppUser, "id" | "nombre" | "avatar_url"> | null;
   audiovisual?: Pick<AppUser, "id" | "nombre" | "avatar_url"> | null;
 }

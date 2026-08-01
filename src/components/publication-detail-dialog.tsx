@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { CalendarDays, ExternalLink, Trash2, Pencil, ListChecks } from "lucide-react";
+import { CalendarDays, ExternalLink, Trash2, Pencil, ListChecks, Send } from "lucide-react";
 import { toast } from "sonner";
 import {
   deletePublication,
@@ -18,6 +18,7 @@ import {
   PUBLICATION_TYPE_LABEL,
 } from "@/lib/constants";
 import type { AppUser, PublicationWithRels } from "@/lib/types";
+import { chequearAutoPublicacion, chipAutoClase } from "@/lib/social/publicable";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -104,6 +105,43 @@ export function PublicationDetailDialog({
             {p.creador && <span>· creó {p.creador.nombre}</span>}
             {p.audiovisual && <span>· asignado {p.audiovisual.nombre}</span>}
           </div>
+
+          {(() => {
+            // Estado de la publicación automática, VISIBLE sin entrar a editar.
+            // Antes una pieza con el auto-publicar activado pero en estado
+            // "idea" simplemente no salía y no había forma de darse cuenta.
+            const chk = chequearAutoPublicacion(
+              p as Parameters<typeof chequearAutoPublicacion>[0],
+              p.cliente
+            );
+            if (chk.estado === "manual") return null;
+            return (
+              <div className="rounded-md border p-2.5">
+                <p className="flex items-center gap-2 text-xs font-medium">
+                  <Send className="h-3.5 w-3.5" />
+                  Publicación automática
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[11px] ${chipAutoClase(chk.estado)}`}
+                  >
+                    {chk.label}
+                  </span>
+                </p>
+                {chk.faltan.length > 0 && (
+                  <ul className="mt-1.5 space-y-0.5 text-xs text-muted-foreground">
+                    {chk.faltan.map((f) => (
+                      <li key={f}>· {f}</li>
+                    ))}
+                  </ul>
+                )}
+                {chk.estado === "lista" && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Sale sola en la próxima corrida del publicador (11:00 de
+                    Córdoba), a partir de la fecha programada.
+                  </p>
+                )}
+              </div>
+            );
+          })()}
 
           {p.task_id && (
             <Link

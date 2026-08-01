@@ -6,7 +6,7 @@ import type { PublicationWithRels } from "@/lib/types";
 import { PublicationsMonth } from "@/components/publications-month";
 import { HelpTrigger } from "@/components/help-trigger";
 import { DismissibleHint } from "@/components/dismissible-hint";
-import { computePuntualidadCuenta } from "@/lib/contenidos/puntualidad";
+import { computePuntualidadCuenta, clasificarPieza } from "@/lib/contenidos/puntualidad";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +35,7 @@ export default async function ContenidosPage({
   let pubQuery = supabase
     .from("publications")
     .select(
-      "*, cliente:clients(id,nombre), creador:users!publications_creado_por_id_fkey(id,nombre,avatar_url), audiovisual:users!publications_audiovisual_id_fkey(id,nombre,avatar_url)"
+      "*, cliente:clients(id,nombre,ig_user_id), creador:users!publications_creado_por_id_fkey(id,nombre,avatar_url), audiovisual:users!publications_audiovisual_id_fkey(id,nombre,avatar_url)"
     )
     .or(`estado.neq.publicado,fecha_publicacion.gte.${publishedSince}`)
     .order("fecha_publicacion", { ascending: true, nullsFirst: false });
@@ -119,6 +119,35 @@ export default async function ContenidosPage({
     hoyISO
   );
 
+  // Detalle de CUÁLES son: el aviso decía "10 trabadas" y no había forma de
+  // saber de qué cuentas. Se agrupa por cliente para poder ir a destrabarlas.
+  const nombreCliente = new Map(clients.map((c) => [c.id, c.nombre]));
+  const detalleAtrasadas = { trabada: [], nunca_arranco: [], esperando_cliente: [] } as Record<
+    "trabada" | "nunca_arranco" | "esperando_cliente",
+    { id: string; titulo: string; cliente: string; clienteId: string; fecha: string }[]
+  >;
+  for (const p of visiblePubs as PublicationWithRels[]) {
+    if (!activeClientIds.has(p.cliente_id)) continue;
+    const clase = clasificarPieza(
+      {
+        cliente_id: p.cliente_id,
+        estado: p.estado,
+        fecha_publicacion: p.fecha_publicacion,
+        frenado_cliente: (p as { frenado_cliente?: boolean | null }).frenado_cliente ?? false,
+      },
+      hoyISO
+    );
+    if (clase === "trabada" || clase === "nunca_arranco" || clase === "esperando_cliente") {
+      detalleAtrasadas[clase].push({
+        id: p.id,
+        titulo: p.titulo,
+        cliente: nombreCliente.get(p.cliente_id) ?? "Sin cuenta",
+        clienteId: p.cliente_id,
+        fecha: p.fecha_publicacion?.slice(0, 10) ?? "",
+      });
+    }
+  }
+
   return (
     <div className="space-y-5">
       <div>
@@ -173,25 +202,29 @@ export default async function ContenidosPage({
               — solo cuentas activas
             </span>
           </p>
-          <ul className="mt-1 space-y-0.5 text-xs text-amber-900/80 dark:text-amber-100/80">
+          <div className="mt-1 space-y-1 text-xs text-amber-900/80 dark:text-amber-100/80">
             {atrasadas.trabadas > 0 && (
-              <li>
-                <b>{atrasadas.trabadas}</b> trabadas de nuestro lado (hechas, esperando
-                revisión interna) — se destraban rápido
-              </li>
+              <DetalleAtrasadas
+                cantidad={atrasadas.trabadas}
+                texto="trabadas de nuestro lado (hechas, esperando revisión interna) — se destraban rápido"
+                items={detalleAtrasadas.trabada}
+              />
             )}
             {atrasadas.nuncaArrancaron > 0 && (
-              <li>
-                <b>{atrasadas.nuncaArrancaron}</b> quedaron en idea: hay que producirlas
-              </li>
+              <DetalleAtrasadas
+                cantidad={atrasadas.nuncaArrancaron}
+                texto="quedaron en idea: hay que producirlas"
+                items={detalleAtrasadas.nunca_arranco}
+              />
             )}
             {atrasadas.esperandoCliente > 0 && (
-              <li>
-                <b>{atrasadas.esperandoCliente}</b> esperando al cliente (frenadas o sin
-                aprobar) — no cuentan como atraso nuestro, pero hay que reclamarlas
-              </li>
+              <DetalleAtrasadas
+                cantidad={atrasadas.esperandoCliente}
+                texto="esperando al cliente (frenadas o sin aprobar) — no cuentan como atraso nuestro, pero hay que reclamarlas"
+                items={detalleAtrasadas.esperando_cliente}
+              />
             )}
-          </ul>
+          </div>
           <p className="mt-1.5 text-xs text-amber-900/70 dark:text-amber-100/70">
             {atrasadas.ejecucionPct != null && (
               <>Salió el <b>{atrasadas.ejecucionPct}%</b> de lo que ya vencía. </>
@@ -229,5 +262,65 @@ export default async function ContenidosPage({
         canEdit={userInRoles(me, ["admin", "coordinador", "community_manager"])}
       />
     </div>
+  );
+}
+
+/**
+ * Una línea del aviso ámbar que se despliega y muestra CUÁLES son las piezas,
+ * agrupadas por cuenta. Antes decía "10 trabadas" y no había forma de saber de
+ * qué clientes: el número no se podía accionar.
+ */
+function DetalleAtrasadas({
+  cantidad,
+  texto,
+  items,
+}: {
+  cantidad: number;
+  texto: string;
+  items: { id: string; titulo: string; cliente: string; clienteId: string; fecha: string }[];
+}) {
+  const porCliente = new Map<string, { clienteId: string; piezas: typeof items }>();
+  for (const it of items) {
+    if (!porCliente.has(it.cliente))
+      porCliente.set(it.cliente, { clienteId: it.clienteId, piezas: [] });
+    porCliente.get(it.cliente)!.piezas.push(it);
+  }
+  const grupos = [...porCliente.entries()].sort((a, b) => b[1].piezas.length - a[1].piezas.length);
+
+  return (
+    <details className="group">
+      <summary className="cursor-pointer list-none hover:underline">
+        <b>{cantidad}</b> {texto}{" "}
+        <span className="text-amber-900/60 dark:text-amber-100/60">
+          (ver cuáles ▾)
+        </span>
+      </summary>
+      <div className="ml-3 mt-1.5 space-y-2 border-l border-amber-300/60 pl-3 dark:border-amber-500/30">
+        {grupos.map(([cliente, { clienteId, piezas }]) => (
+          <div key={cliente}>
+            <Link
+              href={`/contenidos?cliente=${clienteId}`}
+              className="font-semibold hover:underline"
+            >
+              {cliente}
+            </Link>{" "}
+            <span className="text-amber-900/60 dark:text-amber-100/60">
+              · {piezas.length}
+            </span>
+            <ul className="mt-0.5 space-y-0.5">
+              {piezas.slice(0, 8).map((p) => (
+                <li key={p.id} className="text-amber-900/70 dark:text-amber-100/70">
+                  · {p.titulo}
+                  {p.fecha && <span className="opacity-60"> — {p.fecha}</span>}
+                </li>
+              ))}
+              {piezas.length > 8 && (
+                <li className="opacity-60">· y {piezas.length - 8} más…</li>
+              )}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </details>
   );
 }

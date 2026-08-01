@@ -135,8 +135,8 @@ export function PublicationDetailDialog({
                 )}
                 {chk.estado === "lista" && (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Sale sola en la próxima corrida del publicador (11:00 de
-                    Córdoba), a partir de la fecha programada.
+                    Sale sola a la hora programada (el publicador revisa cada 10
+                    minutos).
                   </p>
                 )}
               </div>

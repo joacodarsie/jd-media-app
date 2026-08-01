@@ -1,0 +1,32 @@
+name: Publicador de contenidos
+
+# Dispara el auto-publicador cada 10 minutos para que las publicaciones salgan
+# a la HORA que se programó, y no una vez por día.
+#
+# Por qué acá y no en Vercel: el plan Hobby de Vercel solo permite un cron por
+# día. GitHub Actions es gratis en repos privados hasta 2.000 minutos por mes y
+# esta corrida usa segundos.
+#
+# Requisito: cargar el secret CRON_SECRET en el repo
+# (Settings → Secrets and variables → Actions → New repository secret),
+# con el MISMO valor que la variable CRON_SECRET de Vercel.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  # Botón para dispararlo a mano desde la pestaña Actions.
+  workflow_dispatch:
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Llamar al publicador
+        run: |
+          codigo=$(curl -s -o respuesta.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://jd-media-app.vercel.app/api/cron/auto-publish)
+          echo "HTTP $codigo"
+          cat respuesta.json
+          # Falla el job si la app no respondió OK, así queda registrado en
+          # Actions en vez de fallar en silencio.
+          test "$codigo" = "200"

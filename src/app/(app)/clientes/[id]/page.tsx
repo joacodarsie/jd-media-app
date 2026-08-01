@@ -37,6 +37,7 @@ import { HelpTrigger } from "@/components/help-trigger";
 import { TaskList } from "@/components/task-list";
 import { ClientFormDialog } from "@/components/client-form-dialog";
 import { DeleteClientButton } from "@/components/delete-client-button";
+import { MarcarSinPagarButton } from "@/components/marcar-sin-pagar";
 import { ClientServicesEditor } from "@/components/client-services-editor";
 import { ClientTeamAssign } from "@/components/client-team-assign";
 import type { TeamUserOpt } from "@/lib/role-options";
@@ -391,6 +392,9 @@ export default async function ClientDetail({
                   </Button>
                 }
               />
+              {c.estado === "activo" && (
+                <MarcarSinPagarButton clienteId={c.id} nombre={c.nombre} />
+              )}
               {me.rol === "admin" && <DeleteClientButton id={c.id} nombre={c.nombre} />}
             </div>
           )}

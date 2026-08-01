@@ -1,10 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { marcarEsperandoPago } from "@/app/(app)/clientes/actions";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   CalendarClock,
@@ -350,41 +347,6 @@ export function ClientsDashboard({
   );
 }
 
-/**
- * Botón para bajar una cuenta a "esperando pago" sin entrar a Editar.
- *
- * Va acá porque es donde el dueño se da cuenta ("este no me pagó"), y esconderlo
- * dentro del formulario era la razón por la que no se usaba.
- */
-function MarcarSinPagar({ clienteId, nombre }: { clienteId: string; nombre: string }) {
-  const router = useRouter();
-  const [pending, start] = useTransition();
-  return (
-    <button
-      title="Todavía no pagó: lo saca del conteo de clientes y de la facturación hasta que marques el cobro"
-      disabled={pending}
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!confirm(`¿${nombre} todavía no pagó? Deja de contar como cliente hasta que marques el cobro.`))
-          return;
-        start(async () => {
-          const res = await marcarEsperandoPago(clienteId);
-          if (res?.error) {
-            toast.error(res.error);
-            return;
-          }
-          toast.success(`${nombre} pasó a "Esperando pago"`);
-          router.refresh();
-        });
-      }}
-      className="rounded-full border border-dashed border-amber-400 px-2 py-0.5 text-[11px] font-medium text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40"
-    >
-      ¿no pagó?
-    </button>
-  );
-}
-
 function ClientCard({
   client,
   tasks,
@@ -434,9 +396,6 @@ function ClientCard({
             >
               {CLIENT_STATUS_LABEL[client.estado]}
             </span>
-            {client.estado === "activo" && (
-              <MarcarSinPagar clienteId={client.id} nombre={client.nombre} />
-            )}
             {falta.length > 0 && (
               <span
                 className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300"

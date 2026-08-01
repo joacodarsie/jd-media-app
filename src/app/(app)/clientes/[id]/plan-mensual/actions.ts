@@ -238,7 +238,14 @@ function buildPubRow(args: {
     creado_por_id: args.user_id,
     from_plan_id: args.plan_id,
     from_plan_tema_idx: args.tema_idx,
-    notas_revision: `Generado desde Plan "${args.plan_label}". ${args.tema.descripcion}${args.tema.pilar ? ` (Pilar: ${args.tema.pilar})` : ""}${args.tema.redes_replica && args.tema.redes_replica.length > 0 ? ` Replicar en: ${args.tema.redes_replica.join(", ")}.` : ""}`,
+    // El brief va en DESCRIPCIÓN, igual que en una idea cargada a mano.
+    //
+    // Antes iba en `notas_revision`, que es la caja ámbar de "cambios pedidos":
+    // las ideas que venían del plan se veían distintas a todas las demás y
+    // parecían tener correcciones pendientes cuando no las tenían. Lo reportó
+    // Luz. `notas_revision` queda libre para lo que es: el pedido de cambios.
+    descripcion: `${args.tema.descripcion}${args.tema.pilar ? ` (Pilar: ${args.tema.pilar})` : ""}${args.tema.redes_replica && args.tema.redes_replica.length > 0 ? ` Replicar en: ${args.tema.redes_replica.join(", ")}.` : ""}\n\n_Generado desde el plan "${args.plan_label}"._`,
+    notas_revision: null as string | null,
   };
 }
 

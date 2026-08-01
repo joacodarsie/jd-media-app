@@ -20,7 +20,7 @@ import { ensureDueNotifications } from "@/lib/notifications";
 import { listEventsForUser } from "@/lib/google-calendar";
 import { PRIORITY_ORDER } from "@/lib/constants";
 import type { PublicationWithRels, TaskWithRels } from "@/lib/types";
-import { dueState } from "@/lib/dates";
+import { dueState, esVencidaReciente, hoyYmd } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { TaskList } from "@/components/task-list";
 import { HelpTrigger } from "@/components/help-trigger";
@@ -261,8 +261,18 @@ export default async function DashboardPage() {
   const pubsHoy = (clientPubsToday ?? []) as unknown as PublicationWithRels[];
 
   const activas = tasks.filter((t) => t.estado !== "completada");
-  const vencidas = activas.filter(
+
+  // Vencidas del mes en curso vs. arrastre viejo. Lo pidió Luz: le aparecían
+  // tareas de MAYO como vencidas del día, muchas ya hechas y nunca marcadas.
+  // Mezclarlas hace que la lista pierda sentido y se ignore entera, así que lo
+  // viejo va aparte y se limpia en lote desde Tareas.
+  const todasVencidas = activas.filter(
     (t) => dueState(t.fecha_limite, t.estado) === "vencida"
+  );
+  const hoy = hoyYmd();
+  const vencidas = todasVencidas.filter((t) => esVencidaReciente(t.fecha_limite, hoy));
+  const vencidasViejas = todasVencidas.filter(
+    (t) => !esVencidaReciente(t.fecha_limite, hoy)
   );
   const venceHoy = activas.filter(
     (t) => dueState(t.fecha_limite, t.estado) === "hoy"
@@ -495,7 +505,9 @@ export default async function DashboardPage() {
       )}
 
       {/* Alertas críticas */}
-      {(vencidas.length > 0 || delegatedVencidas.length > 0) && (
+      {(vencidas.length > 0 ||
+        vencidasViejas.length > 0 ||
+        delegatedVencidas.length > 0) && (
         <div className="grid gap-3 md:grid-cols-2">
           {vencidas.length > 0 && (
             <AlertCard
@@ -505,6 +517,16 @@ export default async function DashboardPage() {
               text="Recuperalas o reprogramá la fecha."
               href="/tareas"
               cta="Ver tareas"
+            />
+          )}
+          {vencidasViejas.length > 0 && (
+            <AlertCard
+              tone="amber"
+              icon={Clock}
+              title={`${vencidasViejas.length} atrasada${vencidasViejas.length === 1 ? "" : "s"} de meses anteriores`}
+              text="Arrastre viejo: muchas ya están hechas y nunca se marcaron. Cerralas en lote para que la lista vuelva a servir."
+              href="/tareas"
+              cta="Limpiar"
             />
           )}
           {delegatedVencidas.length > 0 && (

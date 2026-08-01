@@ -35,6 +35,51 @@ export function fmtDateTime(value?: string | null) {
 }
 
 /** Estado de una fecha límite respecto de hoy (zona Córdoba). */
+/**
+ * Hoy en la zona horaria de la agencia (Córdoba), formato YYYY-MM-DD.
+ * `new Date().toISOString()` da UTC y después de las 21:00 ya devuelve el día
+ * siguiente: con eso, una tarea de hoy se marcaba como vencida a la noche.
+ */
+export function hoyYmd(): string {
+  return formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM-dd");
+}
+
+/**
+ * ¿La tarea está vencida DE ESTE MES? (o del mes pasado, dentro de los
+ * primeros días, para no perder de vista lo de la semana anterior).
+ *
+ * Por qué existe: "Mi día" listaba como vencida cualquier tarea con fecha
+ * pasada, así que aparecían tareas de mayo — muchas ya hechas y nunca marcadas
+ * — mezcladas con lo de hoy. Con 173 vencidas acumuladas, la lista dejó de
+ * significar algo y se ignora entera. Lo viejo no desaparece: se muestra
+ * aparte, agrupado, para limpiarlo en lote.
+ *
+ * La ventana es "desde el 1° del mes actual", con una gracia de 7 días al
+ * empezar el mes (si hoy es 3 de agosto, lo del 28 de julio sigue siendo
+ * reciente).
+ */
+export function esVencidaReciente(
+  fechaLimite: string | null | undefined,
+  hoyYmd: string
+): boolean {
+  if (!fechaLimite) return false;
+  const limite = fechaLimite.slice(0, 10);
+  if (limite >= hoyYmd) return false; // todavía no venció
+  return limite >= inicioVentanaVencidas(hoyYmd);
+}
+
+/** Primer día que se considera "reciente" para las vencidas. */
+export function inicioVentanaVencidas(hoyYmd: string): string {
+  const [y, m, d] = hoyYmd.split("-").map(Number);
+  // En los primeros 7 días del mes seguimos mirando el mes anterior completo.
+  if (d <= 7) {
+    const mesAnterior = m === 1 ? 12 : m - 1;
+    const anio = m === 1 ? y - 1 : y;
+    return `${anio}-${String(mesAnterior).padStart(2, "0")}-01`;
+  }
+  return `${y}-${String(m).padStart(2, "0")}-01`;
+}
+
 export function dueState(
   fechaLimite?: string | null,
   estado?: string

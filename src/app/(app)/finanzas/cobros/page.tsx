@@ -13,6 +13,7 @@ import {
   normalizePhone,
   type ReminderClient,
 } from "@/lib/payment-reminder";
+import { isClientPausedFor } from "@/lib/client-pause";
 import { GenerateMonthButton } from "@/components/generate-month-button";
 import { InvoicesTable, type InvoiceTableRow } from "@/components/invoices-table";
 import { MonthPicker } from "@/components/month-picker";
@@ -31,6 +32,7 @@ interface ReminderClientRow extends ReminderClient {
   id: string;
   pack: string | null;
   contacto_telefono: string | null;
+  pausas: string[] | null;
 }
 
 export default async function CobrosPage({
@@ -83,13 +85,17 @@ export default async function CobrosPage({
       .select(
         // Los campos de vencimiento del descuento son imprescindibles: sin ellos
         // `descuentoVigente` no puede saber si ya se cumplió y descuenta siempre.
-        "id, nombre, pack, monto_mensual, contacto_nombre, contacto_telefono, contrato_moneda, contrato_descuento_pct, contrato_descuento_monto, contrato_descuento_meses, contrato_fecha_inicio, fecha_inicio"
+        "id, nombre, pack, monto_mensual, contacto_nombre, contacto_telefono, contrato_moneda, contrato_descuento_pct, contrato_descuento_monto, contrato_descuento_meses, contrato_fecha_inicio, fecha_inicio, pausas"
       )
       .eq("estado", "activo")
       .eq("es_interno", false)
       .order("nombre");
 
-    const clients = (data ?? []) as ReminderClientRow[];
+    // Una cuenta pausada este mes NO se factura: tampoco hay que pedirle la
+    // plata. Antes aparecía en la lista y el recordatorio salía igual.
+    const clients = ((data ?? []) as ReminderClientRow[]).filter(
+      (c) => !isClientPausedFor(c.pausas, periodo)
+    );
 
     // Mensajes editados a mano y recordatorios sacados de la lista, de ESTE mes.
     const { data: ovRaw } = await supabase

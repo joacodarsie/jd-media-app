@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { currentPeriod, nextPeriod, periodLabel, fmtCurrency } from "@/lib/finanzas";
 import { reminderAmount, normalizePhone } from "@/lib/payment-reminder";
+import { isClientPausedFor } from "@/lib/client-pause";
 import { whatsappApiConfigured, sendPaymentReminderTemplate } from "@/lib/meta/whatsapp";
 import { AGENCY } from "@/lib/agency";
 
@@ -47,6 +48,7 @@ interface ClientRow {
   contrato_moneda: string | null;
   contrato_descuento_pct: number | null;
   contrato_descuento_monto: number | null;
+  pausas: string[] | null;
 }
 
 export async function GET(req: NextRequest) {
@@ -85,13 +87,16 @@ export async function GET(req: NextRequest) {
   const { data, error } = await admin
     .from("clients")
     .select(
-      "id, nombre, contacto_nombre, contacto_telefono, monto_mensual, contrato_moneda, contrato_descuento_pct, contrato_descuento_monto, contrato_descuento_meses, contrato_fecha_inicio, fecha_inicio"
+      "id, nombre, contacto_nombre, contacto_telefono, monto_mensual, contrato_moneda, contrato_descuento_pct, contrato_descuento_monto, contrato_descuento_meses, contrato_fecha_inicio, fecha_inicio, pausas"
     )
     .eq("estado", "activo")
     .eq("es_interno", false);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const clients = (data ?? []) as ClientRow[];
+  // Una cuenta pausada ese mes no se factura → tampoco se le pide la plata.
+  const clients = ((data ?? []) as ClientRow[]).filter(
+    (c) => !isClientPausedFor(c.pausas, periodo)
+  );
   const { alias, nombre: banco, titular } = AGENCY.bank;
   const bancoTitular = `${banco} — ${titular}`;
 

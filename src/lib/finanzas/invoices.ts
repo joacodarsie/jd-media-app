@@ -11,10 +11,79 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { mergeSettings } from "@/lib/coordinacion";
 import { isClientPausedFor } from "@/lib/client-pause";
+import { applyContractDiscount } from "@/lib/payment-reminder";
 
 export interface GeneratedInvoices {
   abonos: number;
   puestaEnMarcha: number;
+}
+
+/** Lo mínimo que hace falta de un servicio para saber cuánto facturarle. */
+export interface AbonoServicio {
+  id: string;
+  cliente_id: string;
+  monto_mensual: number;
+}
+
+/** Los datos de descuento de la cuenta, tal como vienen de `clients`. */
+export interface AbonoCliente {
+  id: string;
+  fecha_inicio?: string | null;
+  contrato_fecha_inicio?: string | null;
+  contrato_descuento_pct?: number | null;
+  contrato_descuento_monto?: number | null;
+  contrato_descuento_meses?: number | null;
+}
+
+/**
+ * Cuánto se factura por cada servicio del mes, con el descuento del contrato ya
+ * aplicado (y solo mientras siga vigente).
+ *
+ * BUG QUE ARREGLA: la factura salía al precio de lista y el recordatorio de
+ * cobro pedía el precio con descuento. Los dos números no coincidían nunca, así
+ * que lo cobrado jamás cerraba contra lo facturado (en agosto: Magic $25.000 y
+ * Impermax $50.000 de diferencia).
+ *
+ * Un descuento de MONTO FIJO es por cuenta, no por servicio: si el cliente
+ * tuviera dos abonos hay que restarlo una sola vez, así que se carga en el
+ * servicio más caro. El porcentual va en cada uno (el total da lo mismo).
+ */
+export function montosDeAbono(
+  servicios: AbonoServicio[],
+  clientes: AbonoCliente[],
+  periodo: string
+): Map<string, number> {
+  const clientById = new Map(clientes.map((c) => [c.id, c]));
+
+  const conFijo = new Map<string, { id: string; monto: number }>();
+  for (const s of servicios) {
+    const actual = conFijo.get(s.cliente_id);
+    const monto = Number(s.monto_mensual || 0);
+    if (!actual || monto > actual.monto) conFijo.set(s.cliente_id, { id: s.id, monto });
+  }
+
+  const out = new Map<string, number>();
+  for (const s of servicios) {
+    const base = Number(s.monto_mensual || 0);
+    const c = clientById.get(s.cliente_id);
+    if (!c) continue;
+    const llevaFijo = conFijo.get(s.cliente_id)?.id === s.id;
+    out.set(
+      s.id,
+      applyContractDiscount(
+        base,
+        {
+          contrato_descuento_pct: c.contrato_descuento_pct,
+          contrato_descuento_monto: llevaFijo ? c.contrato_descuento_monto : 0,
+          contrato_descuento_meses: c.contrato_descuento_meses,
+          contrato_fecha_inicio: c.contrato_fecha_inicio,
+          fecha_inicio: c.fecha_inicio,
+        },
+        periodo
+      )
+    );
+  }
+  return out;
 }
 
 export async function generateInvoicesForPeriod(
@@ -26,7 +95,11 @@ export async function generateInvoicesForPeriod(
     await Promise.all([
       admin
         .from("clients")
-        .select("id, nombre, fecha_inicio, contrato_moneda, pausas")
+        .select(
+          // Los campos de descuento son imprescindibles: la factura tiene que
+          // decir lo MISMO que el recordatorio de cobro (ver más abajo).
+          "id, nombre, fecha_inicio, contrato_moneda, pausas, contrato_fecha_inicio, contrato_descuento_pct, contrato_descuento_monto, contrato_descuento_meses"
+        )
         .eq("estado", "activo")
         .eq("es_interno", false),
       admin
@@ -44,6 +117,10 @@ export async function generateInvoicesForPeriod(
     fecha_inicio: string | null;
     contrato_moneda: string | null;
     pausas: string[] | null;
+    contrato_fecha_inicio: string | null;
+    contrato_descuento_pct: number | null;
+    contrato_descuento_monto: number | null;
+    contrato_descuento_meses: number | null;
   }[])
     // Una cuenta pausada este mes no se factura (retoma sola el mes siguiente).
     .filter((c) => !isClientPausedFor(c.pausas, periodo));
@@ -56,8 +133,7 @@ export async function generateInvoicesForPeriod(
   const invoicedServiceIds = new Set(existing.map((i) => i.service_id).filter(Boolean));
 
   // ── Abonos mensuales: una factura por servicio recurrente con monto ──
-  let abonos = 0;
-  for (const s of (svcRaw ?? []) as {
+  const mensuales = ((svcRaw ?? []) as {
     id: string;
     cliente_id: string;
     tipo: string;
@@ -65,18 +141,24 @@ export async function generateInvoicesForPeriod(
     monto_mensual: number;
     moneda: string | null;
     facturacion: string | null;
-  }[]) {
-    if ((s.facturacion ?? "mensual") !== "mensual") continue;
+  }[]).filter((s) => (s.facturacion ?? "mensual") === "mensual");
+
+  const montoPorServicio = montosDeAbono(mensuales, clients, periodo);
+
+  let abonos = 0;
+  for (const s of mensuales) {
     const cliente = clientById.get(s.cliente_id);
     if (!cliente) continue; // inactivo o interno
     if (invoicedServiceIds.has(s.id)) continue;
+
+    const monto = montoPorServicio.get(s.id) ?? Number(s.monto_mensual || 0);
 
     const { error } = await admin.from("client_invoices").insert({
       cliente_id: s.cliente_id,
       service_id: s.id,
       periodo,
       concepto: `${cliente.nombre} · ${s.tipo}${s.pack ? ` (${s.pack})` : ""} — ${periodo}`,
-      monto: s.monto_mensual,
+      monto,
       moneda: s.moneda ?? "ARS",
       fecha_emision: `${periodo}-01`,
       fecha_vencimiento: `${periodo}-10`,

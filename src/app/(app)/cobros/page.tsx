@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireFeature } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { currentPeriod, periodLabel } from "@/lib/finanzas";
+import { isClientPausedFor } from "@/lib/client-pause";
 import { MonthPicker } from "@/components/month-picker";
 import { CobrosSimple, type FilaCliente } from "@/components/cobros-simple";
 
@@ -33,7 +34,9 @@ export default async function CobrosSimplePage({
     // cobrar, y marcarlos acá es lo que los convierte en clientes.
     admin
       .from("clients")
-      .select("id, nombre, monto_mensual, estado, es_interno, contacto_nombre, contacto_telefono")
+      .select(
+        "id, nombre, monto_mensual, estado, es_interno, contacto_nombre, contacto_telefono, pausas"
+      )
       .in("estado", ["activo", "esperando_pago"])
       .order("nombre"),
     admin
@@ -58,8 +61,12 @@ export default async function CobrosSimplePage({
     es_interno: boolean;
     contacto_nombre: string | null;
     contacto_telefono: string | null;
+    pausas: string[] | null;
   }[])
     .filter((c) => !c.es_interno)
+    // Una cuenta pausada este mes no se factura: si apareciera acá sumaría a
+    // "falta cobrar" una plata que nadie debe.
+    .filter((c) => !isClientPausedFor(c.pausas, periodo))
     .map((c) => {
       const inv = porCliente.get(c.id);
       return {

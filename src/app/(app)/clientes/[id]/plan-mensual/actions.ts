@@ -226,11 +226,18 @@ function buildPubRow(args: {
     ? FORMATO_TO_TIPO[args.tema.formato] ?? "post"
     : "post";
 
+  // El brief va al campo que ESA pieza usa: el formulario muestra "Guion" para
+  // reel/video y "Descripción de la idea" para el resto. Si se guarda en el
+  // campo equivocado, el texto existe pero no se ve en ningún lado — que es lo
+  // que pasó con los reels del plan de agosto.
+  const brief = `${args.tema.descripcion}${args.tema.pilar ? ` (Pilar: ${args.tema.pilar})` : ""}${args.tema.redes_replica && args.tema.redes_replica.length > 0 ? ` Replicar en: ${args.tema.redes_replica.join(", ")}.` : ""}\n\n_Generado desde el plan "${args.plan_label}"._`;
+  const esGuion = tipo === "reel" || tipo === "video";
+
   return {
     cliente_id: args.cliente_id,
     titulo: args.tema.titulo,
     copy: null as string | null,
-    guion: null as string | null,
+    guion: (esGuion ? brief : null) as string | null,
     red,
     tipo,
     fecha_publicacion: fecha.toISOString(),
@@ -238,13 +245,10 @@ function buildPubRow(args: {
     creado_por_id: args.user_id,
     from_plan_id: args.plan_id,
     from_plan_tema_idx: args.tema_idx,
-    // El brief va en DESCRIPCIÓN, igual que en una idea cargada a mano.
-    //
-    // Antes iba en `notas_revision`, que es la caja ámbar de "cambios pedidos":
-    // las ideas que venían del plan se veían distintas a todas las demás y
-    // parecían tener correcciones pendientes cuando no las tenían. Lo reportó
-    // Luz. `notas_revision` queda libre para lo que es: el pedido de cambios.
-    descripcion: `${args.tema.descripcion}${args.tema.pilar ? ` (Pilar: ${args.tema.pilar})` : ""}${args.tema.redes_replica && args.tema.redes_replica.length > 0 ? ` Replicar en: ${args.tema.redes_replica.join(", ")}.` : ""}\n\n_Generado desde el plan "${args.plan_label}"._`,
+    // Antes todo esto iba en `notas_revision`, que es la caja ÁMBAR de "cambios
+    // pedidos": las ideas del plan se veían distintas al resto y parecían tener
+    // correcciones pendientes cuando no las tenían (lo reportó Luz).
+    descripcion: (esGuion ? null : brief) as string | null,
     notas_revision: null as string | null,
   };
 }

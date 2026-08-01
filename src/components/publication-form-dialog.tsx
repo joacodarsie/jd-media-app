@@ -214,7 +214,14 @@ export function PublicationFormDialog({
   }
 
   const isReel = tipo === "reel" || tipo === "video";
-  const needsDescription = tipo === "post" || tipo === "carrusel" || tipo === "historia" || tipo === "otro";
+  // La descripción de la idea se muestra SIEMPRE, también en reel y video.
+  //
+  // Antes se ocultaba para reel/video (se asumía que ahí alcanzaba con el
+  // guion) y eso dejaba texto invisible: 23 reels tenían la idea cargada en
+  // ese campo y al abrir Editar no aparecía por ningún lado — parecía que se
+  // había borrado. Un reel puede tener las dos cosas: la idea (qué mostrar) y
+  // el guion (qué se dice).
+  const needsDescription = true;
   const responsableLabel = (() => {
     if (isReel) return "Editor/a audiovisual";
     if (tipo === "post" || tipo === "carrusel") return "Diseñador/a";

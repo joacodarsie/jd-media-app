@@ -1,3 +1,4 @@
+import { trackAiUsage } from "@/lib/ai/usage";
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { requireUser } from "@/lib/auth";
@@ -207,6 +208,7 @@ export async function POST(req: Request) {
           }
         }
         const finalMsg = await messageStream.finalMessage();
+        void trackAiUsage({ ruta: "post-meet-message", modelo: MODEL, usage: finalMsg.usage });
         if (finalMsg.stop_reason === "max_tokens") {
           send({
             type: "error",

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser, isStaffUser } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
+import { trackAiUsage } from "@/lib/ai/usage";
 
 async function ctx() {
   const me = await requireUser();
@@ -185,6 +186,7 @@ export async function saveInterview(input: {
           },
         ],
       });
+      void trackAiUsage({ ruta: "reclutamiento/analizar-entrevista", modelo: AI_MODEL_FAST, usage: res.usage });
       analisis = res.content
         .filter((b) => b.type === "text")
         .map((b) => ("text" in b ? b.text : ""))
@@ -244,6 +246,7 @@ export async function generateInterviewGuide(
       },
     ],
   });
+  void trackAiUsage({ ruta: "reclutamiento/guia-entrevista", modelo: AI_MODEL_FAST, usage: res.usage });
   const guide = res.content
     .filter((b) => b.type === "text")
     .map((b) => ("text" in b ? b.text : ""))

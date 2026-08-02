@@ -1,5 +1,6 @@
 "use server";
 
+import { trackAiUsage } from "@/lib/ai/usage";
 import Anthropic from "@anthropic-ai/sdk";
 import { createAdmin } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/auth";
@@ -61,6 +62,8 @@ Armá el parte de seguimiento para la reunión.`;
       system: HEALTH_SYSTEM,
       messages: [{ role: "user", content: userMsg }],
     });
+
+    void trackAiUsage({ ruta: "director/analisis", modelo: AI_MODEL_SMART, usage: res.usage });
     const texto = res.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)

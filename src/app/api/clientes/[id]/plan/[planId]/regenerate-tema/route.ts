@@ -1,3 +1,4 @@
+import { trackAiUsage } from "@/lib/ai/usage";
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
@@ -153,6 +154,8 @@ export async function POST(
       tool_choice: { type: "tool", name: "save_tema" },
       messages: [{ role: "user", content: userMsgLines.join("\n") }],
     });
+
+    void trackAiUsage({ ruta: "plan/regenerar-tema", modelo: MODEL, usage: response.usage });
 
     const toolUse = response.content.find((b) => b.type === "tool_use");
     if (!toolUse || toolUse.type !== "tool_use") {

@@ -1,5 +1,6 @@
 "use server";
 
+import { trackAiUsage } from "@/lib/ai/usage";
 import Anthropic from "@anthropic-ai/sdk";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -89,6 +90,8 @@ NO incluyas saludos ni meta-explicación. Empezá directo con el contenido.`,
       max_tokens: 2500,
       messages: [{ role: "user", content: blocks }],
     });
+
+    void trackAiUsage({ ruta: "documentos/resumen", modelo: MODEL, usage: response.usage, userId: me.id });
     const text = response.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)

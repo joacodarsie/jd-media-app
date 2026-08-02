@@ -1,3 +1,4 @@
+import { trackAiUsage } from "@/lib/ai/usage";
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { requireRole } from "@/lib/auth";
@@ -166,6 +167,8 @@ export async function POST(req: Request) {
         },
       ],
     });
+
+    void trackAiUsage({ ruta: "contratos/generar", modelo: MODEL, usage: response.usage });
     const reply = response.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)

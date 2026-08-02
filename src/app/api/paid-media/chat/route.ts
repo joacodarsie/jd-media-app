@@ -1,3 +1,4 @@
+import { trackAiUsage } from "@/lib/ai/usage";
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { requireUser } from "@/lib/auth";
@@ -241,6 +242,8 @@ ${trend || "(sin historial)"}
       system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
       messages,
     });
+
+    void trackAiUsage({ ruta: "paid-media/chat", modelo: MODEL, usage: msg.usage });
     const reply = msg.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)

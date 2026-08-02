@@ -1,5 +1,6 @@
 "use server";
 
+import { trackAiUsage } from "@/lib/ai/usage";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
@@ -354,6 +355,8 @@ Hablás en español rioplatense (vos). Sin saludos, sin emojis innecesarios.`;
       system,
       messages: [{ role: "user", content: userContent }],
     });
+
+    void trackAiUsage({ ruta: "contenidos/ideas", modelo: MODEL, usage: response.usage });
     const text = response.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)

@@ -1,3 +1,4 @@
+import { trackAiUsage } from "@/lib/ai/usage";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -167,7 +168,8 @@ export async function POST(req: Request) {
             send({ type: "chunk", text: chunk });
           }
         }
-        await messageStream.finalMessage();
+        const finalGuide = await messageStream.finalMessage();
+        void trackAiUsage({ ruta: "onboarding/guia-meet", modelo: MEET_GUIDE_MODEL, usage: finalGuide.usage });
 
         if (!fullMarkdown.trim()) {
           send({ type: "error", error: "El modelo no devolvió contenido." });

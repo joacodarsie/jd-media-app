@@ -1,3 +1,4 @@
+import { trackAiUsage } from "@/lib/ai/usage";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -236,7 +237,8 @@ export async function POST(
             if (bytesIn % 200 < 50) send({ type: "progress", chars: bytesIn });
           }
         }
-        await messageStream.finalMessage();
+        const finalPlan = await messageStream.finalMessage();
+        void trackAiUsage({ ruta: "plan/generar", modelo: CONTENT_PLAN_MODEL, usage: finalPlan.usage });
 
         let toolInput: unknown;
         try {

@@ -1,3 +1,4 @@
+import { trackAiUsage } from "@/lib/ai/usage";
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
@@ -126,6 +127,7 @@ export async function POST(req: Request) {
           }
         }
         const finalMsg = await messageStream.finalMessage();
+        void trackAiUsage({ ruta: "reclutamiento/comparar", modelo: AI_MODEL_SMART, usage: finalMsg.usage });
         if (finalMsg.stop_reason === "max_tokens") {
           send({ type: "error", error: "El análisis quedó muy largo y se cortó. Probá descartando candidatos que ya no correr." });
           return;

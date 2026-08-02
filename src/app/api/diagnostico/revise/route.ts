@@ -1,3 +1,4 @@
+import { trackAiUsage } from "@/lib/ai/usage";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -146,6 +147,7 @@ export async function POST(req: Request) {
         }
 
         const finalMsg = await messageStream.finalMessage();
+        void trackAiUsage({ ruta: "diagnostico/revisar", modelo: DIAGNOSTIC_GENERATOR_MODEL, usage: finalMsg.usage });
         if (finalMsg.stop_reason === "max_tokens") {
           send({
             type: "error",

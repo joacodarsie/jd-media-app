@@ -1,5 +1,7 @@
 "use server";
 
+import { hoyYmd } from "@/lib/dates";
+
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -162,7 +164,7 @@ export async function registerSalaryPayment(input: {
 }) {
   const me = await requireRole(["admin"]);
   const admin = createAdmin();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = hoyYmd();
 
   const { data: existing } = await admin
     .from("team_payments")

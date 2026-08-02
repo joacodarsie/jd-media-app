@@ -1,3 +1,5 @@
+import { hoyYmd } from "@/lib/dates";
+
 import Link from "next/link";
 import { ArrowLeft, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { requireRole } from "@/lib/auth";
@@ -55,7 +57,7 @@ export default async function CapacityPage() {
   await requireRole(["admin", "coordinador"]);
   const supabase = createClient();
 
-  const todayYmd = new Date().toISOString().slice(0, 10);
+  const todayYmd = hoyYmd();
   const in7 = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
 
   const [{ data: usersRaw }, { data: tasksRaw }, { data: pubsRaw }] =

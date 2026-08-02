@@ -1,3 +1,5 @@
+import { hoyYmd } from "@/lib/dates";
+
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { requireFeature } from "@/lib/auth";
@@ -64,7 +66,7 @@ export default async function PagosPage({
   const bankByUser = new Map(
     ((bankData ?? []) as BankRow[]).map((b) => [b.id, b])
   );
-  const today = new Date().toISOString().slice(0, 10);
+  const today = hoyYmd();
 
   // Cuántos no tienen compensación cargada (monto != null)
   const compByUser = new Map(comps.filter((c) => c.monto != null).map((c) => [c.user_id, c]));

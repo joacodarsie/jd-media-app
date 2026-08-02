@@ -1,5 +1,7 @@
 "use client";
 
+import { hoyYmd } from "@/lib/dates";
+
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -126,7 +128,7 @@ export function InvoicesTable({
   async function cobrarSeleccionadas() {
     if (seleccionadas.length === 0) return;
     setCobrando(true);
-    const hoy = new Date().toISOString().slice(0, 10);
+    const hoy = hoyYmd();
     const res = await markInvoicesPaidBulk(
       seleccionadas.map((i) => i.id),
       hoy

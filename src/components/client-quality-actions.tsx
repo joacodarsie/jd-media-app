@@ -1,5 +1,7 @@
 "use client";
 
+import { hoyYmd } from "@/lib/dates";
+
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -35,7 +37,7 @@ export function ClientQualityActions({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [fecha, setFecha] = useState(hoyYmd());
   const [notas, setNotas] = useState("");
   const [copied, setCopied] = useState(false);
   const [pending, start] = useTransition();

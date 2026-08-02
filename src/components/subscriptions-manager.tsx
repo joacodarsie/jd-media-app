@@ -1,5 +1,7 @@
 "use client";
 
+import { hoyYmd } from "@/lib/dates";
+
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -77,7 +79,7 @@ export function SubscriptionsManager({
     monto * (moneda === "USD" ? usdRate : moneda === "EUR" ? eurRate : 1);
   const uname = (id: string | null) => (id ? users.find((u) => u.id === id)?.nombre ?? "—" : "—");
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = hoyYmd();
   const in7 = new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10);
 
   return (

@@ -1,3 +1,5 @@
+import { hoyYmd } from "@/lib/dates";
+
 import Link from "next/link";
 import { requireUser, userInRoles } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -87,7 +89,7 @@ export default async function ColdEmailPage() {
   const enviadosTotal = sends.filter((s) => s.estado === "enviado").length;
   const enCola = sends.filter((s) => s.estado === "pendiente").length;
   const conError = sends.filter((s) => s.estado === "error").length;
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyYmd();
   const enviadosHoy = sends.filter(
     (s) => s.estado === "enviado" && s.enviado_at?.slice(0, 10) === hoy
   ).length;

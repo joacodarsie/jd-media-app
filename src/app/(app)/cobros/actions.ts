@@ -1,5 +1,7 @@
 "use server";
 
+import { hoyYmd } from "@/lib/dates";
+
 import { revalidatePath } from "next/cache";
 import { requireFeature } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -74,7 +76,7 @@ export async function marcarCobrado(input: {
   });
   if ("error" in res) return { error: res.error };
 
-  const hoy = input.fecha ?? new Date().toISOString().slice(0, 10);
+  const hoy = input.fecha ?? hoyYmd();
   const { error } = await admin
     .from("client_invoices")
     .update({ fecha_cobro: hoy, monto: input.monto })

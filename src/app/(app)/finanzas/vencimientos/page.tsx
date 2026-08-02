@@ -4,7 +4,7 @@ import { requireFeature } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { getExchangeRates } from "@/lib/exchange";
 import { toARS, fmtARS, fmtCurrency } from "@/lib/finanzas";
-import { fmtDate } from "@/lib/dates";
+import { fmtDate , hoyYmd } from "@/lib/dates";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -33,7 +33,7 @@ export default async function VencimientosPage() {
   await requireFeature("finanzas");
   const admin = createAdmin();
   const rates = await getExchangeRates();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = hoyYmd();
   const in7 = new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10);
 
   const [{ data: subs }, { data: pays }, { data: exps }, { data: invs }] = await Promise.all([

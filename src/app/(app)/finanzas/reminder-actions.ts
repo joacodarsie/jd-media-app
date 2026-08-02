@@ -1,5 +1,7 @@
 "use server";
 
+import { hoyYmd } from "@/lib/dates";
+
 import { revalidatePath } from "next/cache";
 import { requireFeature } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -97,7 +99,7 @@ export async function marcarGrupoCobrado(input: {
   clienteIds: string[];
 }) {
   const { admin, userId } = await ctx();
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyYmd();
 
   const { data: existentes } = await admin
     .from("client_invoices")

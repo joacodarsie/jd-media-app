@@ -1,5 +1,7 @@
 "use client";
 
+import { hoyYmd } from "@/lib/dates";
+
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -47,7 +49,7 @@ export function ContractNewDialog({
   const [compDetail, setCompDetail] = useState("");
   const [montoRef, setMontoRef] = useState<string>("");
   const [fechaInicio, setFechaInicio] = useState(
-    new Date().toISOString().slice(0, 10)
+    hoyYmd()
   );
 
   function submit() {

@@ -1,5 +1,7 @@
 "use server";
 
+import { hoyYmd } from "@/lib/dates";
+
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireFeature } from "@/lib/auth";
@@ -115,7 +117,7 @@ export async function registerSubscriptionPayment(id: string) {
   if (!sub) return { error: "No se encontró la suscripción." };
 
   const periodo = currentPeriod();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = hoyYmd();
   const concepto = `Suscripción ${sub.nombre} (${periodo})`;
 
   const { data: existing } = await supabase

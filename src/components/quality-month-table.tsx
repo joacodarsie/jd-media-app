@@ -1,5 +1,7 @@
 "use client";
 
+import { hoyYmd } from "@/lib/dates";
+
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -50,7 +52,7 @@ export function QualityMonthTable({
   const [, startTransition] = useTransition();
   const [copiado, setCopiado] = useState<string | null>(null);
   const [reunionDe, setReunionDe] = useState<QualityRow | null>(null);
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [fecha, setFecha] = useState(hoyYmd());
   const [notas, setNotas] = useState("");
   const [pending, start] = useTransition();
 

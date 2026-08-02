@@ -1,5 +1,7 @@
 "use server";
 
+import { hoyYmd } from "@/lib/dates";
+
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -164,7 +166,7 @@ export async function updateService(id: string, input: ServiceInput) {
   // Si se está dando de baja y no se cargó fecha de fin, la registramos hoy
   // para que el MRR histórico pueda descontar la cuenta a partir de acá.
   if (prevTyped?.activo === true && !input.activo && !payload.fecha_fin) {
-    payload.fecha_fin = new Date().toISOString().slice(0, 10);
+    payload.fecha_fin = hoyYmd();
   }
 
   const { error } = await supabase

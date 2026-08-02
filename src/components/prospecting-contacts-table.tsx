@@ -1,5 +1,7 @@
 "use client";
 
+import { hoyYmd } from "@/lib/dates";
+
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -287,7 +289,7 @@ export function ProspectingContactsTable({
     const a = document.createElement("a");
     const slug = campaignNombre.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     a.href = url;
-    a.download = `contactos-${slug || "campana"}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `contactos-${slug || "campana"}-${hoyYmd()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }

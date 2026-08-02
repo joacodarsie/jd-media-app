@@ -1,3 +1,5 @@
+import { hoyYmd } from "@/lib/dates";
+
 /**
  * Sync de resultados de Instagram: trae las métricas de IG de un cliente y guarda
  * el snapshot del día. Lo usan el botón "Actualizar" (acción) y el cron diario
@@ -10,10 +12,6 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { fetchIgResults, fetchIgStories, metaConfigured } from "@/lib/meta/instagram";
 
 type Admin = ReturnType<typeof createAdmin>;
-
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 /**
  * Sincroniza un cliente: resultados de IG → snapshot del día (upsert).
@@ -37,7 +35,7 @@ export async function syncClientInstagram(
     return { error: "El cliente no tiene conectada su cuenta de Instagram." };
 
   const r = await fetchIgResults(igUserId);
-  const fecha = todayISO();
+  const fecha = hoyYmd();
 
   await admin.from("ig_snapshots").upsert(
     {

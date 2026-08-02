@@ -1,5 +1,7 @@
 "use client";
 
+import { hoyYmd } from "@/lib/dates";
+
 import { useMemo, useState } from "react";
 import { Pencil, Plus, Search } from "lucide-react";
 import { SortTh } from "@/components/ui/sort-th";
@@ -53,7 +55,7 @@ export function PaymentsTable({
     }
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = hoyYmd();
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
     let list = term

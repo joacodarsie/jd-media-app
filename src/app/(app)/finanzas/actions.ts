@@ -1,5 +1,7 @@
 "use server";
 
+import { hoyYmd } from "@/lib/dates";
+
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -229,7 +231,7 @@ export async function pagarSueldoDelMes(input: {
   metodo_pago?: string | null;
 }) {
   const { supabase, userId: quien } = await ctx();
-  const fecha = input.fecha_pago ?? new Date().toISOString().slice(0, 10);
+  const fecha = input.fecha_pago ?? hoyYmd();
 
   const { data: existente } = await supabase
     .from("team_payments")

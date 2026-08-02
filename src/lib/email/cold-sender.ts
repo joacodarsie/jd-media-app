@@ -1,3 +1,5 @@
+import { hoyYmd } from "@/lib/dates";
+
 /**
  * Envío del email en frío: configuración, llamada a Resend y el lote diario.
  *
@@ -176,7 +178,7 @@ export async function runColdEmailBatch(
 ): Promise<LoteResultado> {
   const cfg = coldEmailConfig();
   const admin = createAdmin();
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyYmd();
 
   const { count: historicos } = await admin
     .from("cold_email_sends")

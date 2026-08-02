@@ -1,5 +1,7 @@
 "use client";
 
+import { hoyYmd } from "@/lib/dates";
+
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -53,7 +55,7 @@ type Direccion = "in" | "out";
 type Salida = "gasto" | "plataforma" | "equipo" | "deuda";
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return hoyYmd();
 }
 function fmt(n: number, moneda: string) {
   return `${moneda} ${Math.round(n).toLocaleString("es-AR")}`;

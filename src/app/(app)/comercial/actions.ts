@@ -1,5 +1,7 @@
 "use server";
 
+import { hoyYmd } from "@/lib/dates";
+
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -174,7 +176,7 @@ export async function convertLeadToClient(leadId: string) {
       contacto_telefono: lead.telefono,
       monto_mensual: lead.monto_estimado,
       notas: lead.notas,
-      fecha_inicio: new Date().toISOString().slice(0, 10),
+      fecha_inicio: hoyYmd(),
     })
     .select("id")
     .single();
@@ -190,7 +192,7 @@ export async function convertLeadToClient(leadId: string) {
       ...gestionPackFields(lead.servicio_interesado),
       monto_mensual: lead.monto_estimado,
       moneda: lead.moneda ?? "ARS",
-      fecha_inicio: new Date().toISOString().slice(0, 10),
+      fecha_inicio: hoyYmd(),
       activo: true,
     });
     if (csErr) {

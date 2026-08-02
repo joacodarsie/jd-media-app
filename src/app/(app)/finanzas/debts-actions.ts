@@ -1,5 +1,7 @@
 "use server";
 
+import { hoyYmd } from "@/lib/dates";
+
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -88,7 +90,7 @@ export async function quickPayDebt(id: string, monto: number) {
     .update({
       monto: restante,
       saldada: restante <= 0,
-      fecha_saldada: restante <= 0 ? new Date().toISOString().slice(0, 10) : null,
+      fecha_saldada: restante <= 0 ? hoyYmd() : null,
     })
     .eq("id", id);
   if (error) return { error: error.message };
@@ -103,7 +105,7 @@ export async function toggleDebtSaldada(id: string, saldada: boolean) {
     .from("debts")
     .update({
       saldada,
-      fecha_saldada: saldada ? new Date().toISOString().slice(0, 10) : null,
+      fecha_saldada: saldada ? hoyYmd() : null,
     })
     .eq("id", id);
   if (error) return { error: error.message };

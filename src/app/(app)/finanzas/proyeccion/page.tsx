@@ -1,3 +1,5 @@
+import { hoyYmd } from "@/lib/dates";
+
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -76,7 +78,7 @@ export default async function ProyeccionPage() {
   const rates = await getExchangeRates();
 
   const period = currentPeriod();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = hoyYmd();
 
   // Ventana hacia atrás (ramp) y hacia adelante (caja).
   const backMonths: string[] = [];

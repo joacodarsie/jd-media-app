@@ -1,3 +1,5 @@
+import { hoyYmd } from "@/lib/dates";
+
 /**
  * Asesor financiero de JD Media. Arma una "foto" de los números clave del mes
  * (la misma lógica de la página de Finanzas) y se la pasa a la IA para que
@@ -58,7 +60,7 @@ export async function buildFinancialSnapshot(
   rates: ExchangeRates
 ): Promise<FinancialSnapshot> {
   const ars = (m: number, mon: string) => toARS(Number(m), mon, rates);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = hoyYmd();
 
   const [
     { data: svcRaw },

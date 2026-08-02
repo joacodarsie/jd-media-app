@@ -26,7 +26,7 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { listEventsForUser } from "@/lib/google-calendar";
 import { CLIENT_STATUS_LABEL, SERVICE_TYPE_LABEL } from "@/lib/constants";
 import { AGENCY } from "@/lib/agency";
-import { fmtDate } from "@/lib/dates";
+import { fmtDate , hoyYmd } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { Client, TaskWithRels } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -250,7 +250,7 @@ export default async function ClientDetail({
   const canSeeFinancials = isStaffUser(me) || assignedToMe;
 
   // Historial de cobros normalizado para la card.
-  const hoyStr = new Date().toISOString().slice(0, 10);
+  const hoyStr = hoyYmd();
   const cobroRows: MovimientoRow[] = (
     (invoicesRaw ?? []) as {
       id: string;

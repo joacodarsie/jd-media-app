@@ -1,3 +1,5 @@
+import { hoyYmd } from "@/lib/dates";
+
 import Link from "next/link";
 import {
   TrendingUp,
@@ -93,7 +95,7 @@ export default async function FinanzasPage({
   const admin = createAdmin();
   const period =
     searchParams.m && /^\d{4}-\d{2}$/.test(searchParams.m) ? searchParams.m : currentPeriod();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = hoyYmd();
   const in7 = new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10);
   const mStart = `${period}-01`;
   const mEnd = `${nextPeriod(period)}-01`;

@@ -1,3 +1,5 @@
+import { hoyYmd } from "@/lib/dates";
+
 import Link from "next/link";
 import { requireUser, getAccessibleClientIds, userInRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -97,7 +99,7 @@ export default async function ContenidosPage({
   // que además no aparecía en el calendario, porque la grilla ya muestra solo
   // cuentas activas. `clients` viene de getActiveClients() (estado = activo) y
   // ya está recortado a las cuentas que la persona puede ver y al equipo filtrado.
-  const hoyISO = new Date().toISOString().slice(0, 10);
+  const hoyISO = hoyYmd();
   const activeClientIds = new Set(clients.map((c) => c.id));
   const atrasadas = computePuntualidadCuenta(
     "todas",

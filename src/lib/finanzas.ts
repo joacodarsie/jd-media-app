@@ -1,8 +1,15 @@
+import { hoyYmd } from "@/lib/dates";
+
 import type { ExchangeRates } from "./exchange";
 
+/**
+ * El mes en curso, "YYYY-MM", en la zona de la agencia (Córdoba).
+ *
+ * Iba con `new Date().getMonth()`, que en Vercel corre en UTC: el 31 a la noche
+ * el mes ya cambiaba y toda la pantalla de finanzas se iba al mes siguiente.
+ */
 export function currentPeriod(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  return hoyYmd().slice(0, 7);
 }
 
 export function nextPeriod(p: string): string {
@@ -58,7 +65,7 @@ export function fmtCurrency(monto: number, moneda: string): string {
 export function isOverdue(fechaVencimiento: string | null, fechaCobro: string | null): boolean {
   if (fechaCobro) return false;
   if (!fechaVencimiento) return false;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = hoyYmd();
   return fechaVencimiento < today;
 }
 

@@ -1,5 +1,7 @@
 "use server";
 
+import { hoyYmd } from "@/lib/dates";
+
 import { revalidatePath } from "next/cache";
 import { invalidateClientsCache } from "@/lib/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -355,7 +357,7 @@ export async function activateClient(id: string) {
     return { error: "No autorizado" };
   }
   const admin = createAdmin();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = hoyYmd();
 
   const { error } = await admin
     .from("clients")

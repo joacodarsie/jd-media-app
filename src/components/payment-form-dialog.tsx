@@ -1,5 +1,7 @@
 "use client";
 
+import { hoyYmd } from "@/lib/dates";
+
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -76,7 +78,7 @@ export function PaymentFormDialog(props: CreateProps | EditProps) {
           monto: 0,
           moneda: "ARS",
           periodo: currentPeriod(),
-          fecha_programada: new Date().toISOString().slice(0, 10),
+          fecha_programada: hoyYmd(),
           notas: null as string | null,
           cliente_id: null as string | null,
         };

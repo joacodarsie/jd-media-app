@@ -1,5 +1,7 @@
 "use client";
 
+import { hoyYmd } from "@/lib/dates";
+
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -265,7 +267,7 @@ function FilaCobrar({ fila, periodo }: { fila: FilaCobro; periodo: string }) {
     setGuardando(true);
     const res = await markInvoicesPaidBulk(
       fila.facturaIds,
-      new Date().toISOString().slice(0, 10)
+      hoyYmd()
     );
     setGuardando(false);
     if (res?.error) return void toast.error(res.error);

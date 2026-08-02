@@ -1,5 +1,7 @@
 "use client";
 
+import { hoyYmd } from "@/lib/dates";
+
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -216,7 +218,7 @@ function JornadaDialog({
   const editing = !!jornada;
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = hoyYmd();
   const nameById = new Map(team.map((t) => [t.id, t.nombre]));
 
   const [fecha, setFecha] = useState(jornada?.fecha ?? today);

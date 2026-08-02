@@ -1,3 +1,5 @@
+import { hoyYmd } from "@/lib/dates";
+
 import type Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -736,7 +738,7 @@ export async function runTool(
             .select("id, nombre, area")
             .eq("activo", true),
         ]);
-        const today = new Date().toISOString().slice(0, 10);
+        const today = hoyYmd();
         const porUser = new Map<string, { nombre: string; area: string; activas: number; vencidas: number }>();
         for (const u of users ?? []) {
           porUser.set(u.id, { nombre: u.nombre, area: u.area, activas: 0, vencidas: 0 });

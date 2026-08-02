@@ -15,7 +15,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { ROLE_LABEL } from "@/lib/constants";
-import { fmtDate } from "@/lib/dates";
+import { fmtDate , hoyYmd } from "@/lib/dates";
 import { currentPeriod } from "@/lib/finanzas";
 import { buildPeriodPayroll } from "@/lib/payroll-period";
 import type { AppUser, Position, UserRole } from "@/lib/types";
@@ -80,7 +80,7 @@ export default async function PersonaDetail({
   const miSueldo = payroll?.people.find((p) => p.userId === params.id) ?? null;
 
   // Historial de pagos normalizado para la card.
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyYmd();
   const paymentRows: MovimientoRow[] = (
     (paymentsRaw ?? []) as {
       id: string;

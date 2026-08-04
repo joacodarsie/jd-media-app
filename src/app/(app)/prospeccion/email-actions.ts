@@ -54,10 +54,15 @@ export async function enviarPrueba() {
   const gate = await ensureComercial();
   if (gate) return { error: gate };
   const me = await requireUser();
-  if (!me.email) return { error: "Tu usuario no tiene mail cargado." };
 
   const cfg = coldEmailConfig();
   if (!cfg.configurado) return { error: `Falta configurar: ${cfg.faltan.join(", ")}` };
+
+  // Va al Reply-To antes que al mail del usuario: el Reply-To es la casilla que
+  // de verdad se lee (los mails del equipo son solo el usuario de la app y no
+  // reciben nada). Así la prueba verifica el envío Y el reenvío, de una.
+  const to = cfg.replyTo || me.email;
+  if (!to) return { error: "No hay a dónde mandar la prueba: falta COLD_EMAIL_REPLY_TO." };
 
   const texto = [
     "Este es un mail de prueba del envío en frío de JD Media.",
@@ -71,13 +76,13 @@ export async function enviarPrueba() {
 
   try {
     const r = await enviarEmail({
-      to: me.email,
+      to,
       asunto: "Prueba de envío · JD Media",
       texto,
       html: `<p>${texto.replace(/\n/g, "<br>")}</p>`,
       cfg,
     });
-    return { ok: true, id: r.id, to: me.email, replyTo: cfg.replyTo };
+    return { ok: true, id: r.id, to, replyTo: cfg.replyTo };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "No se pudo mandar." };
   }

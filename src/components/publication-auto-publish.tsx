@@ -164,8 +164,11 @@ export function PublicationAutoPublish({
         Sale sola a la fecha/hora de la pieza cuando está <b>Aprobada</b> y
         tiene el archivo final subido (el copy y hashtags del form van de
         caption). Se publica en Instagram y se replica en la página de
-        Facebook del cliente. Carrusel: subí las imágenes en orden. TikTok se
-        suma cuando su app apruebe la revisión.
+        Facebook del cliente. TikTok se suma cuando su app apruebe la revisión.
+        <br />
+        <b>Varias fotos</b> = carrusel, en el orden en que las subas (hasta 10).{" "}
+        <b>Reel con portada</b>: subí el video y además una imagen — esa imagen
+        se usa como portada; si no, Instagram elige un cuadro al azar.
       </p>
 
       {publishError && (

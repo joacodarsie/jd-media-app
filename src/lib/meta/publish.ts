@@ -230,6 +230,32 @@ export async function createDryRunContainer(igUserId: string, imageUrl: string) 
   return { containerId, containerStatus: st.status_code ?? "unknown" };
 }
 
+export type FormatoIg = "historia" | "carrusel" | "reel" | "imagen";
+
+/**
+ * Qué formato de Instagram le corresponde a la pieza, mirando los archivos y no
+ * solo la etiqueta del calendario.
+ *
+ * BUG QUE ARREGLA: una publicación marcada "post" con 3 fotos subía **solo la
+ * primera** y las otras dos se perdían en silencio. En Instagram varias fotos
+ * son un carrusel, se haya elegido "post" o "carrusel" en el calendario.
+ *
+ * Un video manda sobre la etiqueta: si hay video (y no es historia), sale como
+ * Reel — que es como Instagram publica los videos hoy.
+ */
+export function decidirFormato(
+  tipo: PublishInput["tipo"],
+  media: PublishMediaItem[]
+): FormatoIg {
+  if (tipo === "historia") return "historia";
+  const imagenes = media.filter((m) => !m.isVideo);
+  const hayVideo = media.some((m) => m.isVideo);
+  // Carrusel con video adentro: solo si el calendario lo pidió explícitamente.
+  if (tipo === "carrusel" && media.length > 1) return "carrusel";
+  if (hayVideo) return "reel";
+  return imagenes.length > 1 ? "carrusel" : "imagen";
+}
+
 /**
  * Publica en el Instagram del cliente. Devuelve el id del post y su permalink.
  * Lanza Error con mensaje legible si algo falla.
@@ -240,14 +266,17 @@ export async function publishToInstagram(input: PublishInput): Promise<PublishRe
 
   let containerId: string;
 
-  if (tipo === "historia") {
+  const formato = decidirFormato(tipo, media);
+  const video = media.find((m) => m.isVideo);
+
+  if (formato === "historia") {
     const m = media[0];
     containerId = await createContainer(igUserId, {
       media_type: "STORIES",
       ...(m.isVideo ? { video_url: m.url } : { image_url: m.url }),
     });
     if (m.isVideo) await waitForContainer(containerId);
-  } else if (tipo === "carrusel" && media.length > 1) {
+  } else if (formato === "carrusel") {
     const children: string[] = [];
     for (const m of media.slice(0, 10)) {
       const childId = await createContainer(igUserId, {
@@ -266,11 +295,16 @@ export async function publishToInstagram(input: PublishInput): Promise<PublishRe
     });
   } else {
     // post / reel / video / carrusel de 1 pieza: imagen simple o Reel.
-    const m = media[0];
+    const m = video ?? media[0];
     if (m.isVideo) {
+      // Portada del reel: si además del video se subió una imagen, esa es la
+      // portada. Sin esto Instagram elige un cuadro al azar del video, que es
+      // justo lo que arruina la grilla del perfil.
+      const portada = media.find((x) => !x.isVideo);
       containerId = await createContainer(igUserId, {
         media_type: "REELS",
         video_url: m.url,
+        ...(portada ? { cover_url: portada.url } : {}),
         caption,
       });
       await waitForContainer(containerId);

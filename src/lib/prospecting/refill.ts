@@ -37,16 +37,29 @@ export const CIUDADES = [
   "Santa Fe, Argentina",
 ];
 
+/** Índice de día estable: el mismo día siempre da el mismo número. */
+function indiceDelDia(hoy: string): number {
+  const [y, m, d] = hoy.split("-").map(Number);
+  return Math.floor(Date.UTC(y, m - 1, d) / 86400000);
+}
+
 /**
- * Qué zona pedir hoy. Con zona propia se respeta la de la campaña; sin zona, se
- * rota por ciudad usando el día del año, así cada día toca una distinta.
+ * Qué zona pedir hoy.
+ *
+ * La zona propia de la campaña va primero, pero NO siempre: una ciudad se
+ * agota. Probado contra Google: la campaña de arquitectura en Córdoba ya solo
+ * devolvía 11 negocios nuevos, contra 38 de una recién empezada. Por eso se rota
+ * entre la zona propia y las demás ciudades, y así el pozo se renueva.
+ *
+ * Determinístico por día: si el cron corre dos veces el mismo día pide lo mismo
+ * (y lo repetido se descarta por nombre de empresa), en vez de duplicar gasto.
  */
 export function zonaDelDia(ubicacion: string | null, hoy: string): string {
   const propia = ubicacion?.trim();
-  if (propia) return propia;
-  const [y, m, d] = hoy.split("-").map(Number);
-  const dia = Math.floor(Date.UTC(y, m - 1, d) / 86400000);
-  return CIUDADES[dia % CIUDADES.length];
+  const zonas = propia
+    ? [propia, ...CIUDADES.filter((c) => c.toLowerCase() !== propia.toLowerCase())]
+    : CIUDADES;
+  return zonas[indiceDelDia(hoy) % zonas.length];
 }
 
 export interface CampanaRefill {

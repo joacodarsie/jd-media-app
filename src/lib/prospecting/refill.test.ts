@@ -16,8 +16,26 @@ const camp = (over: Partial<CampanaRefill> & { id: string }): CampanaRefill => (
 });
 
 describe("zonaDelDia", () => {
-  it("respeta la zona de la campaña si la tiene", () => {
-    expect(zonaDelDia("Rosario, Argentina", "2026-08-04")).toBe("Rosario, Argentina");
+  it("con zona propia, algún día del ciclo pide esa zona", () => {
+    const dias = Array.from({ length: CIUDADES.length + 1 }, (_, i) =>
+      zonaDelDia("Rosario, Argentina", `2026-08-${String(i + 1).padStart(2, "0")}`)
+    );
+    expect(dias).toContain("Rosario, Argentina");
+  });
+
+  it("no se queda clavada en la zona propia: expande a otras ciudades", () => {
+    // Una ciudad se agota; si pidiéramos siempre la misma, el pozo se seca.
+    const dias = Array.from({ length: CIUDADES.length + 1 }, (_, i) =>
+      zonaDelDia("Córdoba, Argentina", `2026-08-${String(i + 1).padStart(2, "0")}`)
+    );
+    expect(new Set(dias).size).toBeGreaterThan(1);
+  });
+
+  it("no repite la zona propia dentro del ciclo", () => {
+    const dias = Array.from({ length: CIUDADES.length }, (_, i) =>
+      zonaDelDia("Córdoba, Argentina", `2026-08-${String(i + 1).padStart(2, "0")}`)
+    );
+    expect(dias.filter((z) => z === "Córdoba, Argentina")).toHaveLength(1);
   });
 
   it("sin zona propia rota por ciudad según el día", () => {

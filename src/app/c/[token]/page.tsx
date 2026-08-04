@@ -2,6 +2,11 @@ import { notFound } from "next/navigation";
 import { createAdmin } from "@/lib/supabase/admin";
 import { igMonthlyForReport, paidMonthlyForReport } from "@/lib/social/report";
 import { AGENCY } from "@/lib/agency";
+import { periodLabel } from "@/lib/finanzas";
+import {
+  hasClientReport,
+  normalizeClientReport,
+} from "@/lib/monthly-diagnostics/schema";
 import type { MonthlyContentPlan } from "@/lib/content-plans/schema";
 import { isPlanOfPastMonth } from "@/lib/content-plans/staleness";
 import { PortalReviewCard } from "@/components/portal-review-card";
@@ -131,6 +136,26 @@ export default async function PortalPage({ params }: { params: { token: string }
         { lbl: "Clicks", val: fmtN(paidM.clicks) },
       ].filter(Boolean) as { lbl: string; val: string }[])
     : [];
+  // Último informe mensual con contenido listo para mostrar. Si la migración
+  // 0148 todavía no está aplicada, la query falla en silencio y no se muestra.
+  const { data: informeRows } = await admin
+    .from("client_monthly_diagnostics")
+    .select("periodo, client_report")
+    .eq("cliente_id", cliente_id)
+    .not("client_report", "is", null)
+    .order("periodo", { ascending: false })
+    .limit(1);
+  const informeRow = (informeRows ?? [])[0] as
+    | { periodo: string; client_report: unknown }
+    | undefined;
+  const ultimoInforme =
+    informeRow && hasClientReport(informeRow.client_report)
+      ? {
+          periodo: informeRow.periodo,
+          titular: normalizeClientReport(informeRow.client_report).titular,
+        }
+      : null;
+
   const igHist = (igHistRaw ?? []) as { fecha: string; followers: number }[];
   const igDelta =
     igHist.length >= 2 ? igHist[igHist.length - 1].followers - igHist[0].followers : 0;
@@ -274,6 +299,31 @@ export default async function PortalPage({ params }: { params: { token: string }
               ))}
             </div>
           </div>
+        )}
+
+        {/* Informe del último mes cerrado — el documento que sale de la reunión */}
+        {ultimoInforme && (
+          <a
+            href={`/c/${params.token}/mes/${ultimoInforme.periodo}`}
+            className="card"
+            style={{
+              display: "block",
+              textDecoration: "none",
+              color: "inherit",
+              background: "#1a1a1a",
+              borderColor: "#1a1a1a",
+            }}
+          >
+            <div className="card-label" style={{ color: "#FFD400" }}>
+              Informe del mes
+            </div>
+            <h2 className="card-title" style={{ color: "#fff", marginBottom: 8 }}>
+              {ultimoInforme.titular || `Cómo te fue en ${periodLabel(ultimoInforme.periodo)}`}
+            </h2>
+            <p style={{ fontSize: 13, color: "#b5b5b5", margin: 0, lineHeight: 1.5 }}>
+              Los resultados de {periodLabel(ultimoInforme.periodo)} y qué viene ahora →
+            </p>
+          </a>
         )}
 
         {/* Resultados del mes — Instagram + pauta, en vivo */}

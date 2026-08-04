@@ -2,6 +2,17 @@
 title: Novedades
 ---
 
+## 2026-08-04 — Reunión mensual con el cliente: guión antes, diagnóstico después
+
+- 🗓️ **Sección nueva "Reunión mensual"** en la ficha de cada cliente. Es para la reunión de cierre de mes, esa donde le mostramos los resultados y escuchamos cómo le está yendo.
+- 📋 **Botón "Armar guión"**: la IA te arma el ayudamemoria del meet con los números reales del mes de ESA cuenta, lo que quedó pendiente de la reunión anterior y **qué preguntarle específicamente a ese cliente**. Viene con tiempos: la reunión tiene que durar 20-25 minutos y la mitad la habla el cliente.
+- 🧠 **Después de la reunión, cargás la transcripción** (PDF de Tactiq, texto pegado, o directamente el audio, que se transcribe solo) y la IA genera el **diagnóstico de ese mes**: cómo le fue al negocio, qué funcionó y qué no (y por qué), las frustraciones que planteó, lo que necesita, **si cambió el público objetivo**, lo que aprendimos y las acciones para el mes que viene.
+- 🔁 **Compara con el mes anterior**: si una queja o una necesidad se repite, sale marcada como "ya venía del mes pasado" y con más gravedad. Es la señal que no hay que dejar pasar.
+- 🚦 **Cada mes queda con su semáforo** (va bien / prestar atención / en riesgo), así ves de un vistazo cómo viene la cuenta mes a mes.
+- ✅ Las acciones del diagnóstico se pasan a **tareas del equipo con un botón**, y la reunión del mes queda registrada sola (no hace falta cargarla aparte).
+- 💌 **Y se genera solo el informe para mandarle al cliente**: la misma reunión, contada para él. Titular del mes, los números en criollo ("18.200 personas vieron tu contenido"), qué logramos, qué aprendimos de su marca, **lo que nos planteó en la reunión con la respuesta de qué vamos a hacer**, y el plan del mes que viene. Se abre con el mismo link del portal que ya tiene (aparece también en su panel), se ve bien en el celular y tiene botón para guardarlo en PDF.
+- 🔒 Lo interno queda adentro: el riesgo de perder la cuenta, las oportunidades de venta y las frustraciones crudas **nunca llegan al informe del cliente** — son dos documentos distintos. Igual, revisalo con "Verlo" antes de mandarlo, y si el texto no te cierra, "Rehacer texto" lo reescribe sin tocar el análisis.
+
 ## 2026-07-20 — Planes anteriores, atajo desde el calendario y diagnóstico más completo
 
 - 🕑 **Ver los planes de meses anteriores**: en la sección Plan de contenidos, el historial ahora es clickeable — tocás un plan viejo y se abre una vista rápida (lo importante del mes, fechas especiales, piezas, campañas y objetivos).

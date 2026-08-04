@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   BarChart3,
+  CalendarCheck2,
   CalendarDays,
   ExternalLink,
   FileBarChart,
@@ -303,6 +304,14 @@ export default async function ClientDetail({
         svcList.some((s) => s.tipo === "gestion_redes" || s.tipo === "diseno_grafico"),
     },
     { href: `/clientes/${c.id}/diagnostico`, label: "Diagnóstico", icon: FileBarChart, show: true },
+    // Reunión de cierre de mes: guión antes del meet, diagnóstico del mes después.
+    // No aplica a propuestas (todavía no hay mes que cerrar).
+    {
+      href: `/clientes/${c.id}/reunion`,
+      label: "Reunión mensual",
+      icon: CalendarCheck2,
+      show: c.estado !== "propuesta",
+    },
     { href: `/clientes/${c.id}/plan-mensual`, label: "Plan mensual", icon: CalendarDays, show: true },
     // El servicio de gestión de redes ya incluye el paid media básico en Meta Ads,
     // así que la sección de publicidad se muestra con gestión de redes O paid media.

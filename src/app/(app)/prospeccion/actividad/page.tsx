@@ -7,7 +7,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
   DIAS_INACTIVO,
-  META_DIARIA,
   resumirActividad,
   type ContactoActividad,
 } from "@/lib/prospecting/actividad";
@@ -33,19 +32,20 @@ export default async function ActividadProspeccionPage() {
 
   const [{ data: contactosRaw }, { data: usersRaw }] = await Promise.all([
     admin.from("prospecting_contacts").select("asignado_a, contactado_at, estado, reunion_at"),
-    admin.from("users").select("id, nombre, rol, rol_secundario").eq("activo", true),
+    admin.from("users").select("id, nombre, email, rol, rol_secundario").eq("activo", true),
   ]);
 
   const personas = ((usersRaw ?? []) as {
     id: string;
     nombre: string;
+    email: string | null;
     rol: string;
     rol_secundario: string | null;
   }[])
     .filter(
       (u) => ROLES_PROSPECTAN.includes(u.rol) || ROLES_PROSPECTAN.includes(u.rol_secundario ?? "")
     )
-    .map((u) => ({ id: u.id, nombre: u.nombre }));
+    .map((u) => ({ id: u.id, nombre: u.nombre, email: u.email }));
 
   const r = resumirActividad(
     (contactosRaw ?? []) as ContactoActividad[],
@@ -68,8 +68,8 @@ export default async function ActividadProspeccionPage() {
         </Link>
         <h1 className="mt-1 text-2xl font-bold">¿Quién está escribiendo?</h1>
         <p className="text-muted-foreground">
-          Mensajes en frío enviados por cada uno. La meta es{" "}
-          <b>{META_DIARIA} por día</b> por persona.
+          Mensajes en frío enviados por cada uno. La meta del equipo es de{" "}
+          <b>{r.metaEquipoHoy} por día</b>, repartida según quién prospecta.
         </p>
       </div>
 
@@ -109,7 +109,12 @@ export default async function ActividadProspeccionPage() {
               <tbody>
                 {r.filas.map((f) => (
                   <tr key={f.id} className="border-b last:border-0">
-                    <td className="px-3 py-2 font-medium">{f.nombre}</td>
+                    <td className="px-3 py-2 font-medium">
+                      {f.nombre}
+                      <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                        meta {f.meta}
+                      </span>
+                    </td>
                     <td
                       className={cn(
                         "px-3 py-2 text-right tabular-nums font-semibold",

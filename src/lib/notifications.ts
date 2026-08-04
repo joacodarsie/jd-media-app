@@ -178,18 +178,24 @@ export async function ensureProspectingNudges(admin: SupabaseClient) {
   const inicioHoyCordoba = toZonedTime(new Date(hoy + "T00:00:00"), TIMEZONE);
 
   const [{ data: usersRaw }, { data: contactosRaw }] = await Promise.all([
-    admin.from("users").select("id, nombre, rol, rol_secundario").eq("activo", true),
+    admin.from("users").select("id, nombre, email, rol, rol_secundario").eq("activo", true),
     admin.from("prospecting_contacts").select("asignado_a, contactado_at, estado, reunion_at"),
   ]);
 
-  type URow = { id: string; nombre: string; rol: string; rol_secundario: string | null };
+  type URow = {
+    id: string;
+    nombre: string;
+    email: string | null;
+    rol: string;
+    rol_secundario: string | null;
+  };
   const users = (usersRaw ?? []) as URow[];
   const prospectan = users
     .filter(
       (u) =>
         ROLES_PROSPECTAN.includes(u.rol) || ROLES_PROSPECTAN.includes(u.rol_secundario ?? "")
     )
-    .map((u) => ({ id: u.id, nombre: u.nombre }));
+    .map((u) => ({ id: u.id, nombre: u.nombre, email: u.email }));
   if (prospectan.length === 0) return { avisados: 0 };
 
   const resumen = resumirActividad(

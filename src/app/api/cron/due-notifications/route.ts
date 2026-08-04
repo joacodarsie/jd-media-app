@@ -19,6 +19,8 @@ import { generateInvoicesForPeriod } from "@/lib/finanzas/invoices";
 import { generateFixedExpensesForPeriod } from "@/lib/finanzas/fixed-expenses";
 import { guardarSnapshotDirector } from "@/lib/director/snapshots";
 import { requireUser } from "@/lib/auth";
+import { runRefillContactos } from "@/lib/prospecting/refill";
+import { hoyYmd } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -102,6 +104,17 @@ export async function GET(req: NextRequest) {
     prospeccion = await ensureProspectingNudges(admin);
   } catch (e) {
     prospeccion = { error: e instanceof Error ? e.message : "falló" };
+  }
+
+  // Reabastecimiento de contactos: si a una campaña activa le quedan pocos sin
+  // escribir, trae más de Google Places. A 100 mensajes por día cualquier lista
+  // cargada a mano se agota en una semana. Solo actúa cuando falta, así que
+  // aunque el cron corra varias veces no se pasa de rosca.
+  let refill: unknown = null;
+  try {
+    refill = await runRefillContactos(admin, hoyYmd());
+  } catch (e) {
+    refill = { error: e instanceof Error ? e.message : "falló" };
   }
 
   // Auto-archive: tareas completadas hace más de 30 días.
@@ -286,6 +299,7 @@ export async function GET(req: NextRequest) {
     processed_failed: failed,
     finance_notified: financeNotified,
     prospeccion,
+    refill,
     tasks_archived: archivedRows?.length ?? 0,
     notifications_purged: purgedNotifs?.length ?? 0,
     month_end: monthEnd,

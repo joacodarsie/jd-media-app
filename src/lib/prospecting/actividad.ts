@@ -10,8 +10,30 @@
  * para que lo usen igual la pantalla y el aviso diario.
  */
 
-/** Cuántos mensajes por día se espera de cada persona que prospecta. */
-export const META_DIARIA = 15;
+/**
+ * Meta diaria de mensajes por persona. El peso está en Leo y Guille, que son
+ * los que prospectan; el resto acompaña. Total del equipo: 100 por día.
+ *
+ * Vive en código a propósito: es un número que se toca cada varios meses, no
+ * todos los días, y así no hay una pantalla más de configuración que mantener.
+ * Para cambiarlo, editar acá.
+ */
+export const METAS_POR_EMAIL: Record<string, number> = {
+  "leo@jdmedia.com": 40,
+  "guille@jdmedia.com": 40,
+  "gonzalo@jdmedia.com": 10,
+  "joaquin@jdmedia.com": 10,
+};
+
+/** Para alguien que prospecta y no está en la tabla de arriba. */
+export const META_DEFECTO = 10;
+
+export function metaDe(email: string | null | undefined): number {
+  return METAS_POR_EMAIL[(email ?? "").toLowerCase().trim()] ?? META_DEFECTO;
+}
+
+/** Meta de referencia cuando no hay email a mano (avisos genéricos). */
+export const META_DIARIA = META_DEFECTO;
 
 /** A partir de cuántos días sin escribir se considera que alguien se colgó. */
 export const DIAS_INACTIVO = 3;
@@ -26,11 +48,14 @@ export interface ContactoActividad {
 export interface PersonaProspecta {
   id: string;
   nombre: string;
+  email?: string | null;
 }
 
 export interface FilaActividad {
   id: string;
   nombre: string;
+  /** Cuántos mensajes se esperan de esta persona por día. */
+  meta: number;
   hoy: number;
   semana: number;
   mes: number;
@@ -81,9 +106,11 @@ export function resumirActividad(
     const mios = contactos.filter((c) => c.asignado_a === p.id && c.contactado_at);
     const dias = mios.map((c) => c.contactado_at!.slice(0, 10));
     const ultimoDia = dias.length ? dias.sort().at(-1)! : null;
+    const meta = metaDe(p.email);
     return {
       id: p.id,
       nombre: p.nombre,
+      meta,
       hoy: dias.filter((d) => d === hoy).length,
       semana: dias.filter((d) => d >= lunes && d <= hoy).length,
       mes: dias.filter((d) => d.startsWith(mes)).length,
@@ -91,7 +118,7 @@ export function resumirActividad(
       reuniones: mios.filter((c) => c.estado === "reunion" || c.reunion_at).length,
       ultimoDia,
       diasSinEscribir: ultimoDia ? diasEntre(ultimoDia, hoy) : null,
-      cumpleHoy: dias.filter((d) => d === hoy).length >= META_DIARIA,
+      cumpleHoy: dias.filter((d) => d === hoy).length >= meta,
     };
   });
 
@@ -102,7 +129,7 @@ export function resumirActividad(
     filas,
     totalHoy,
     totalSemana: filas.reduce((a, f) => a + f.semana, 0),
-    metaEquipoHoy: personas.length * META_DIARIA,
+    metaEquipoHoy: filas.reduce((a, f) => a + f.meta, 0),
     nadieEscribioHoy: totalHoy === 0,
     colgados: filas.filter(
       (f) => f.diasSinEscribir === null || f.diasSinEscribir >= DIAS_INACTIVO
@@ -115,13 +142,12 @@ export function resumirActividad(
  * es una notificación en la campana, no un informe.
  */
 export function avisoPersonal(f: FilaActividad): string {
-  if (f.hoy >= META_DIARIA)
-    return `✅ Prospección: ${f.hoy} mensajes hoy. Meta cumplida.`;
+  if (f.hoy >= f.meta) return `✅ Prospección: ${f.hoy} mensajes hoy. Meta cumplida.`;
   if (f.hoy > 0)
-    return `Prospección: ${f.hoy} de ${META_DIARIA} mensajes hoy. Te faltan ${META_DIARIA - f.hoy}.`;
+    return `Prospección: ${f.hoy} de ${f.meta} mensajes hoy. Te faltan ${f.meta - f.hoy}.`;
   if (f.diasSinEscribir === null)
-    return `Prospección: todavía no escribiste a ningún contacto. La meta es ${META_DIARIA} por día.`;
-  return `Prospección: 0 mensajes hoy (hace ${f.diasSinEscribir} ${f.diasSinEscribir === 1 ? "día" : "días"} que no escribís). Meta: ${META_DIARIA}.`;
+    return `Prospección: todavía no escribiste a ningún contacto. La meta es ${f.meta} por día.`;
+  return `Prospección: 0 mensajes hoy (hace ${f.diasSinEscribir} ${f.diasSinEscribir === 1 ? "día" : "días"} que no escribís). Meta: ${f.meta}.`;
 }
 
 /** El resumen que ve el dueño: quién cumplió y quién no. */

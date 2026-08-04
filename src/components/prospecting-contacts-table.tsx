@@ -681,7 +681,7 @@ export function ProspectingContactsTable({
         <div className="overflow-x-auto rounded-xl border bg-card">
           {/* table-fixed es lo que hace que el <colgroup> mande: sin esto el
               navegador reparte parejo e igual trunca teléfonos y nombres. */}
-          <table className="w-full min-w-[1080px] table-fixed text-sm">
+          <table className="w-full min-w-[1150px] table-fixed text-sm">
             {/* Anchos fijos (table-fixed): la suma entra en una pantalla de
                 ~1250px de contenido SIN scroll horizontal — el user tenía que
                 arrastrar la barrita para ver Notas. Contacto y Rol van fusionados
@@ -692,6 +692,7 @@ export function ProspectingContactsTable({
               <col className="w-[135px]" />
               <col className="w-[165px]" />
               <col className="w-[110px]" />
+              <col className="w-[70px]" />
               <col className="w-[80px]" />
               <col className="w-[140px]" />
               <col className="w-[150px]" />
@@ -713,6 +714,7 @@ export function ProspectingContactsTable({
                 <Th>Contacto / rol</Th>
                 <Th>Teléfono</Th>
                 <Th>Instagram / link</Th>
+                <Th>¿Escribí?</Th>
                 <Th>¿Se pudo?</Th>
                 <Th>Estado</Th>
                 <Th>Quién contacta</Th>
@@ -723,7 +725,7 @@ export function ProspectingContactsTable({
             <tbody>
               {visibleRows.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-3 py-6 text-center text-sm text-muted-foreground">
+                  <td colSpan={11} className="px-3 py-6 text-center text-sm text-muted-foreground">
                     Ningún contacto coincide con el filtro.
                   </td>
                 </tr>
@@ -858,6 +860,27 @@ export function ProspectingContactsTable({
                           </a>
                         )}
                       </div>
+                    </Td>
+                    <Td>
+                      {/* Marcar "ya le escribí" en un clic: el selector de estado
+                          tiene 6 opciones y para lo que se hace 50 veces por día
+                          hace falta una casilla, no un desplegable. */}
+                      <label className="flex cursor-pointer items-center gap-1.5">
+                        <input
+                          type="checkbox"
+                          checked={r.estado !== "nuevo"}
+                          onChange={(e) => {
+                            const nuevo = e.target.checked ? "contactado" : "nuevo";
+                            setField(r.id, "estado", nuevo);
+                            persist(r.id, "estado", nuevo);
+                          }}
+                          title="Marcar que ya le escribiste (queda a tu nombre)"
+                          className="h-4 w-4 cursor-pointer accent-primary"
+                        />
+                        <span className="text-[11px] text-muted-foreground">
+                          {r.estado !== "nuevo" ? "sí" : "no"}
+                        </span>
+                      </label>
                     </Td>
                     <Td>
                       <ContactableToggle

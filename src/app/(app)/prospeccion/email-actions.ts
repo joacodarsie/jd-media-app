@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { requireUser, userInRoles } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
-import { programarEnvios, runColdEmailBatch } from "@/lib/email/cold-sender";
+import {
+  coldEmailConfig,
+  enviarEmail,
+  programarEnvios,
+  runColdEmailBatch,
+} from "@/lib/email/cold-sender";
 
 const ROLES_OK = ["admin", "coordinador", "comercial", "prospecting"];
 
@@ -33,6 +38,49 @@ export async function enviarLoteAhora() {
   const res = await runColdEmailBatch();
   revalidatePath("/prospeccion/email");
   return res;
+}
+
+/**
+ * Se manda UN mail de prueba a la casilla del que aprieta el botón.
+ *
+ * Existe porque hasta ahora la única forma de saber si el envío estaba bien
+ * configurado era mandarle a un lead de verdad: si el dominio, la clave o el
+ * remitente estaban mal, el primero en enterarse era el prospecto. Usa
+ * exactamente el mismo camino que los mails reales (mismo remitente, mismo
+ * Reply-To, misma cabecera de baja), así lo que se ve en la prueba es lo que
+ * le va a llegar al lead.
+ */
+export async function enviarPrueba() {
+  const gate = await ensureComercial();
+  if (gate) return { error: gate };
+  const me = await requireUser();
+  if (!me.email) return { error: "Tu usuario no tiene mail cargado." };
+
+  const cfg = coldEmailConfig();
+  if (!cfg.configurado) return { error: `Falta configurar: ${cfg.faltan.join(", ")}` };
+
+  const texto = [
+    "Este es un mail de prueba del envío en frío de JD Media.",
+    "",
+    "Si lo estás leyendo, el dominio está verificado y la clave de Resend anda.",
+    "Respondelo: la respuesta tiene que llegarte a la misma casilla donde recibís",
+    `lo de ${cfg.replyTo ?? "tu dominio"}. Si no vuelve, el Reply-To está mal.`,
+    "",
+    "— JD Media",
+  ].join("\n");
+
+  try {
+    const r = await enviarEmail({
+      to: me.email,
+      asunto: "Prueba de envío · JD Media",
+      texto,
+      html: `<p>${texto.replace(/\n/g, "<br>")}</p>`,
+      cfg,
+    });
+    return { ok: true, id: r.id, to: me.email, replyTo: cfg.replyTo };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No se pudo mandar." };
+  }
 }
 
 /** Saca de la cola los envíos pendientes de una campaña (por si se arrepiente). */

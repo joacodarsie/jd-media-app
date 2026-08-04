@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   programarEnviosDeCampana,
+  enviarPrueba,
   enviarLoteAhora,
   cancelarPendientes,
   agregarBaja,
@@ -91,6 +92,18 @@ export function ColdEmailPanel({
     });
   }
 
+  function mandarPrueba() {
+    start(async () => {
+      const res = await enviarPrueba();
+      if ("error" in res && res.error) {
+        toast.error(res.error);
+        return;
+      }
+      if ("to" in res)
+        toast.success(`Prueba enviada a ${res.to}. Respondela para probar el Reply-To.`);
+    });
+  }
+
   function mandarAhora() {
     start(async () => {
       const res = await enviarLoteAhora();
@@ -153,6 +166,16 @@ export function ColdEmailPanel({
             placeholder="Una idea para [EMPRESA]"
           />
         </div>
+        {/* Antes de mandarle a un lead conviene ver el mail con los propios ojos. */}
+        <Button
+          variant="outline"
+          onClick={mandarPrueba}
+          disabled={pending || !configurado}
+          className="h-9"
+        >
+          <Mail className="mr-1.5 h-4 w-4" />
+          Mandarme una prueba
+        </Button>
         {puedeMandar && (
           <Button onClick={mandarAhora} disabled={pending || !configurado} className="h-9">
             {pending ? (

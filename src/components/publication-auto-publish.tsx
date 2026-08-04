@@ -3,6 +3,8 @@
 import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
+  ArrowDown,
+  ArrowUp,
   CheckCircle2,
   ExternalLink,
   Loader2,
@@ -17,6 +19,13 @@ import {
   saveAutoPublish,
   retryAutoPublish,
 } from "@/app/(app)/contenidos/actions";
+
+/** Mismo criterio que el publicador (VIDEO_EXT en lib/social/auto-publish). */
+const esVideo = (nombre: string) => /\.(mp4|mov|m4v)$/i.test(nombre);
+
+/** URL pública del bucket, igual que la que recibe Instagram. */
+const publicUrl = (path: string) =>
+  `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/publish-media/${path}`;
 
 export interface PublishMediaRef {
   path: string;
@@ -125,6 +134,21 @@ export function PublicationAutoPublish({
     }
   }
 
+  // La portada es la imagen que acompaña a un video: Instagram la recorta al
+  // cuadrado del medio para la grilla del perfil, así que conviene verlo antes.
+  const portada = media.some((m) => esVideo(m.name))
+    ? media.find((m) => !esVideo(m.name))
+    : undefined;
+
+  /** Mueve un archivo en la lista: el orden es el orden del carrusel. */
+  function mover(i: number, delta: number) {
+    const j = i + delta;
+    if (j < 0 || j >= media.length) return;
+    const next = [...media];
+    [next[i], next[j]] = [next[j], next[i]];
+    setMedia(next);
+  }
+
   function save() {
     start(async () => {
       const res = await saveAutoPublish(publicationId, {
@@ -223,12 +247,42 @@ export function PublicationAutoPublish({
               key={m.path}
               className="flex items-center gap-2 rounded border bg-card px-2 py-1 text-xs"
             >
-              <span className="text-muted-foreground">{i + 1}.</span>
+              <span className="w-4 shrink-0 text-muted-foreground">{i + 1}.</span>
               <span className="min-w-0 flex-1 truncate">{m.name}</span>
+              {esVideo(m.name) ? (
+                <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                  video
+                </span>
+              ) : media.some((x) => esVideo(x.name)) ? (
+                <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                  portada
+                </span>
+              ) : null}
+              {/* El navegador entrega los archivos en orden alfabético, no en el
+                  orden en que se clickean: sin estas flechas el carrusel sale
+                  en un orden que nadie eligió. */}
+              <button
+                type="button"
+                onClick={() => mover(i, -1)}
+                disabled={i === 0}
+                className="shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                title="Subir"
+              >
+                <ArrowUp className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => mover(i, 1)}
+                disabled={i === media.length - 1}
+                className="shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                title="Bajar"
+              >
+                <ArrowDown className="h-3.5 w-3.5" />
+              </button>
               <button
                 type="button"
                 onClick={() => setMedia(media.filter((x) => x.path !== m.path))}
-                className="text-muted-foreground hover:text-destructive"
+                className="shrink-0 text-muted-foreground hover:text-destructive"
                 title="Quitar"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -237,6 +291,56 @@ export function PublicationAutoPublish({
           ))}
         </ul>
       )}
+
+      {portada && <PreviewPortada url={publicUrl(portada.path)} />}
+    </div>
+  );
+}
+
+/**
+ * Cómo va a verse la portada del reel en los dos lugares donde aparece.
+ *
+ * Instagram muestra la portada completa (9:16) en la solapa de Reels, pero en
+ * la **grilla del perfil** recorta el cuadrado del medio, y eso no se puede
+ * cambiar por API — no hay parámetro para mover el recorte, siempre agarra el
+ * centro. Por eso lo mostramos: es la única forma de que quien diseña la
+ * portada vea qué se va a perder antes de publicar, en vez de descubrirlo con
+ * el reel ya arriba.
+ */
+function PreviewPortada({ url }: { url: string }) {
+  return (
+    <div className="rounded-md border bg-background p-2">
+      <p className="mb-1.5 text-[11px] font-medium">Cómo va a quedar la portada</p>
+      <div className="flex items-start gap-3">
+        <figure className="shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={url}
+            alt="Portada completa"
+            className="h-28 w-[63px] rounded border object-cover"
+          />
+          <figcaption className="mt-0.5 text-center text-[10px] text-muted-foreground">
+            en Reels
+          </figcaption>
+        </figure>
+        <figure className="shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={url}
+            alt="Recorte cuadrado de la grilla"
+            className="h-[63px] w-[63px] rounded border object-cover"
+          />
+          <figcaption className="mt-0.5 text-center text-[10px] text-muted-foreground">
+            en la grilla
+          </figcaption>
+        </figure>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          En la grilla del perfil, Instagram recorta <b>el cuadrado del medio</b> y
+          eso no se puede mover desde la app. Si lo importante (logo, cara, texto)
+          queda centrado en la portada, se ve bien en los dos lados. Medida ideal:
+          1080 × 1920.
+        </p>
+      </div>
     </div>
   );
 }

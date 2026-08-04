@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { runColdEmailBatch } from "@/lib/email/cold-sender";
+import { runColdEmailPipeline } from "@/lib/email/cold-pipeline";
 import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -7,8 +7,11 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 /**
- * Manda el lote de email en frío del día.
- * - Vercel Cron diario.
+ * La cadena completa del email en frío del día: busca mails nuevos en los
+ * sitios web, encola a los que no recibieron nada y manda el lote (con la
+ * rampa de calentamiento). Antes solo mandaba: los otros dos pasos había que
+ * apretarlos a mano y si se salteaban no salía nada.
+ * - Vercel Cron de lunes a viernes.
  * - Un admin logueado puede abrir la URL para dispararlo a mano.
  * Autorización: `Authorization: Bearer <CRON_SECRET>` o `x-cron-secret`.
  */
@@ -32,5 +35,5 @@ export async function GET(req: NextRequest) {
   if (!hasSecret(req) && !(await isAdmin())) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  return NextResponse.json(await runColdEmailBatch());
+  return NextResponse.json(await runColdEmailPipeline());
 }

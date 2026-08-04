@@ -4,6 +4,7 @@ import {
   ensureDueNotifications,
   ensureFinanceNotifications,
   ensureCobroReminders,
+  ensureProspectingNudges,
 } from "@/lib/notifications";
 import {
   runMonthEndCompliance,
@@ -92,6 +93,15 @@ export async function GET(req: NextRequest) {
     financeNotified = true;
   } catch {
     financeNotified = false;
+  }
+
+  // Aviso diario de prospección: cuántos mensajes lleva cada uno contra la meta.
+  // Best-effort: si falla no puede tumbar el resto del cron.
+  let prospeccion: unknown = null;
+  try {
+    prospeccion = await ensureProspectingNudges(admin);
+  } catch (e) {
+    prospeccion = { error: e instanceof Error ? e.message : "falló" };
   }
 
   // Auto-archive: tareas completadas hace más de 30 días.
@@ -275,6 +285,7 @@ export async function GET(req: NextRequest) {
     processed_ok: ok,
     processed_failed: failed,
     finance_notified: financeNotified,
+    prospeccion,
     tasks_archived: archivedRows?.length ?? 0,
     notifications_purged: purgedNotifs?.length ?? 0,
     month_end: monthEnd,

@@ -152,6 +152,12 @@ export default async function ProspeccionPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link
+            href="/prospeccion/actividad"
+            className="rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
+          >
+            📊 ¿Quién escribe?
+          </Link>
+          <Link
             href="/prospeccion/email"
             className="rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
           >

@@ -1,6 +1,15 @@
 import { formatInTimeZone, toZonedTime } from "date-fns-tz";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { TIMEZONE } from "./constants";
+import {
+  avisoParaElDueno,
+  avisoPersonal,
+  resumirActividad,
+  type ContactoActividad,
+} from "./prospecting/actividad";
+
+/** Roles de los que se espera que prospecten (los que reciben el aviso). */
+const ROLES_PROSPECTAN = ["comercial", "prospecting", "coordinador", "admin"];
 
 /**
  * Genera notificaciones in-app de "vencida" y "próxima a vencer" para las
@@ -153,6 +162,91 @@ export async function ensureFinanceNotifications(admin: SupabaseClient) {
       task_id: null,
     });
   }
+}
+
+/**
+ * Aviso diario de PROSPECCIÓN: a cada persona que prospecta le dice cuántos
+ * mensajes lleva hoy contra la meta, y al dueño el resumen del equipo.
+ *
+ * Existe porque el problema nunca fue tener contactos —había 132 cargados— sino
+ * que nadie les escribía: 1 solo contactado en 7 días. Un número que aparece
+ * todos los días en la campana es lo que convierte eso en hábito. Dedup: un
+ * aviso por persona por día, aunque el cron corra varias veces.
+ */
+export async function ensureProspectingNudges(admin: SupabaseClient) {
+  const hoy = formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM-dd");
+  const inicioHoyCordoba = toZonedTime(new Date(hoy + "T00:00:00"), TIMEZONE);
+
+  const [{ data: usersRaw }, { data: contactosRaw }] = await Promise.all([
+    admin.from("users").select("id, nombre, rol, rol_secundario").eq("activo", true),
+    admin.from("prospecting_contacts").select("asignado_a, contactado_at, estado, reunion_at"),
+  ]);
+
+  type URow = { id: string; nombre: string; rol: string; rol_secundario: string | null };
+  const users = (usersRaw ?? []) as URow[];
+  const prospectan = users
+    .filter(
+      (u) =>
+        ROLES_PROSPECTAN.includes(u.rol) || ROLES_PROSPECTAN.includes(u.rol_secundario ?? "")
+    )
+    .map((u) => ({ id: u.id, nombre: u.nombre }));
+  if (prospectan.length === 0) return { avisados: 0 };
+
+  const resumen = resumirActividad(
+    (contactosRaw ?? []) as ContactoActividad[],
+    prospectan,
+    hoy
+  );
+
+  const yaAvisado = async (uid: string) => {
+    const { data } = await admin
+      .from("notifications")
+      .select("id")
+      .eq("user_id", uid)
+      .eq("tipo", "recordatorio")
+      .eq("link", "/prospeccion/actividad")
+      .gte("created_at", inicioHoyCordoba.toISOString())
+      .limit(1);
+    return !!data?.length;
+  };
+
+  let avisados = 0;
+  for (const f of resumen.filas) {
+    if (await yaAvisado(f.id)) continue;
+    await admin.from("notifications").insert({
+      user_id: f.id,
+      tipo: "recordatorio",
+      mensaje: avisoPersonal(f),
+      link: "/prospeccion/actividad",
+      task_id: null,
+    });
+    avisados++;
+  }
+
+  // Y el resumen del equipo, solo para los admin.
+  const texto = avisoParaElDueno(resumen);
+  for (const u of users.filter((x) => x.rol === "admin")) {
+    if (resumen.filas.some((f) => f.id === u.id) && !resumen.nadieEscribioHoy) continue;
+    const { data } = await admin
+      .from("notifications")
+      .select("id")
+      .eq("user_id", u.id)
+      .eq("tipo", "recordatorio")
+      .eq("link", "/prospeccion")
+      .gte("created_at", inicioHoyCordoba.toISOString())
+      .limit(1);
+    if (data?.length) continue;
+    await admin.from("notifications").insert({
+      user_id: u.id,
+      tipo: "recordatorio",
+      mensaje: texto,
+      link: "/prospeccion",
+      task_id: null,
+    });
+    avisados++;
+  }
+
+  return { avisados, totalHoy: resumen.totalHoy, meta: resumen.metaEquipoHoy };
 }
 
 /**

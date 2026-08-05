@@ -61,7 +61,11 @@ export function ProspectingCampaignDialog({
   campaign?: CampaignFormValue;
   services: { slug: string; name: string }[];
   trigger?: React.ReactNode;
-  /** Solo el director ve el botón "Sugerir sectores con IA" (consume tokens). */
+  /**
+   * Muestra "Sugerir con IA". Abierto a todo el equipo de prospección desde
+   * agosto 2026: es la llamada más barata (Haiku, sin búsqueda web) y es la que
+   * necesita quien está armando la campaña. Las caras siguen con permiso.
+   */
   canSuggest?: boolean;
 }) {
   const router = useRouter();

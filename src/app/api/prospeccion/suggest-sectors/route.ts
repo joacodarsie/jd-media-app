@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser, canUseProspectingAi } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { suggestSectors } from "@/lib/prospecting/suggest";
 import { friendlyAiError } from "@/lib/ai/errors";
@@ -10,14 +10,23 @@ export const dynamic = "force-dynamic";
 
 /**
  * Sugiere sectores/nichos para una campaña nueva, mirando los clientes actuales.
- * Barato (Haiku, sin web search). Reservado al director (consistente con el
- * resto de la IA de prospección).
+ *
+ * Abierto a cualquiera que pueda entrar a Prospección, no solo al director: es
+ * la función más barata de todas (Haiku, sin búsqueda web, una llamada por
+ * campaña nueva) y es justo la que necesita quien está por armar una campaña.
+ * Tenerla detrás del permiso hacía que el resto tuviera que pedirle los rubros
+ * al dueño. Las caras (buscar leads, mensajes) siguen con su permiso.
  */
+const ROLES_PROSPECCION = ["admin", "coordinador", "comercial", "prospecting"];
+
 export async function POST() {
   const me = await requireUser();
-  if (!canUseProspectingAi(me))
+  const puede =
+    ROLES_PROSPECCION.includes(me.rol) ||
+    (!!me.rol_secundario && ROLES_PROSPECCION.includes(me.rol_secundario));
+  if (!puede)
     return NextResponse.json(
-      { error: "No tenés habilitada la IA de prospección. Pedísela al director." },
+      { error: "No tenés acceso a Prospección." },
       { status: 403 }
     );
 

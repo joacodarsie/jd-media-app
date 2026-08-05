@@ -4,18 +4,45 @@ import { trackAiUsage } from "@/lib/ai/usage";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
-import { AI_MODEL_FAST } from "@/lib/ai/models";
+import { AI_MODEL_SMART } from "@/lib/ai/models";
 
-const MODEL = AI_MODEL_FAST;
+/**
+ * SMART y no FAST a propósito: esto arma el contenido que se le muestra al
+ * cliente y que produce el equipo. Con Haiku los ganchos salían gastados y las
+ * ideas genéricas ("son aburridos, les falta hook" — feedback del equipo de
+ * diseño, agosto 2026). Es un puñado de llamadas por cliente y por mes: la
+ * diferencia de precio no se nota, la de calidad sí.
+ */
+const MODEL = AI_MODEL_SMART;
 
 // Límites para no explotar el contexto / billing
 const MAX_DOCS_TO_READ = 4;
 const MAX_BYTES_PER_DOC = 8 * 1024 * 1024; // 8MB
 const MAX_TOTAL_BYTES = 20 * 1024 * 1024; // 20MB combinados
 
+/** Una placa del carrusel, ya resuelta para que diseño no tenga que preguntar. */
+export interface SlideSugerida {
+  n: number;
+  /** El texto LITERAL que va escrito en la placa. */
+  texto: string;
+  /** Qué se ve y por qué retiene. */
+  diseno: string;
+}
+
 export interface AISuggestion {
   titulo: string;
+  /** El gancho escrito tal como aparece en la pieza. */
+  hook: string;
   copy: string;
+  /** La acción concreta con la que cierra. */
+  cta: string;
+  /** Placa por placa. Solo para carruseles; vacío en el resto. */
+  slides: SlideSugerida[];
+  /**
+   * Ya no se generan: los hashtags no mueven alcance y ensucian el copy
+   * (feedback del equipo de diseño, agosto 2026). Se mantiene el campo porque
+   * la columna existe en `publications` y hay piezas viejas que lo usan.
+   */
   hashtags: string;
   descripcion: string;
   guion: string | null;
@@ -329,14 +356,22 @@ Tu trabajo: proponer ideas de contenido alineadas a la marca del cliente —leye
 Devolvés un JSON ESTRICTO con esta forma:
 {
   "titulo": "string corto y descriptivo (interno, no se publica)",
-  "copy": "string con el texto que va junto al post; tono natural, sin clichés ni emojis exagerados",
-  "hashtags": "5-10 hashtags separados por espacios",
-  "descripcion": "BRIEF DE DISEÑO DETALLADO según la regla 5: en carruseles, placa por placa con su texto + idea de diseño",
+  "hook": "el gancho ESCRITO tal como aparece: la frase de la placa 1, la primera línea del copy o lo que se dice en los primeros 3 segundos. No lo describas, escribilo.",
+  "copy": "string con el texto que va junto al post; tono natural, sin clichés ni emojis exagerados. NO incluyas hashtags acá.",
+  "cta": "UNA acción concreta con la que cierra la pieza. Nada de 'seguinos para más contenido'.",
+  "slides": [
+    { "n": 1, "texto": "el texto EXACTO que va escrito en esa placa", "diseno": "qué se ve: jerarquía, foto/ícono/dato, por qué retiene" }
+  ],
+  "descripcion": "BRIEF DE DISEÑO según la regla 5. Si llenaste 'slides', acá va solo el concepto general (paleta, tipografías, clima visual): no repitas placa por placa.",
   "guion": "string con guion completo dialogado SI el tipo es reel/video, sino null",
   "notas": "razonamiento corto: por qué esta idea encaja con el cliente y por qué tiene potencial de viralizar. Si usaste info de los documentos, mencionalo."
 }
 
-NO incluyas markdown, comentarios, ni texto fuera del JSON (dentro de "descripcion" sí podés usar saltos de línea y rótulos tipo "Placa 1:").
+Sobre "slides": es OBLIGATORIO cuando el tipo es **carrusel** — una entrada por placa, en orden, entre 4 y 8 placas. La placa 1 es el gancho que frena el scroll y la última es el CTA. El campo "texto" es lo que el diseñador va a escribir LITERAL en la placa: no lo describas ("un titular sobre X" está MAL; "3 de cada 4 arrancan mal el año" está BIEN). Para cualquier otro tipo, "slides" va como array vacío [].
+
+PROHIBIDO devolver hashtags en ningún campo: ya no se usan, no mueven alcance y ensucian el copy.
+
+NO incluyas markdown, comentarios, ni texto fuera del JSON (dentro de "descripcion" sí podés usar saltos de línea).
 Hablás en español rioplatense (vos). Sin saludos, sin emojis innecesarios.`;
 
   const userTextPrompt = buildPrompt(ctx, args.tipo, args.red, args.hint, docsUsed, docsSkipped);
@@ -366,12 +401,31 @@ Hablás en español rioplatense (vos). Sin saludos, sin emojis innecesarios.`;
     if (!jsonMatch) return { error: "La IA no devolvió JSON válido." };
     const parsed = JSON.parse(jsonMatch[0]) as Partial<AISuggestion>;
 
+    const slidesRaw: unknown = parsed.slides;
+    const slides: SlideSugerida[] = Array.isArray(slidesRaw)
+      ? slidesRaw
+          .map((raw, i) => {
+            if (!raw || typeof raw !== "object") return null;
+            const s = raw as Record<string, unknown>;
+            return {
+              n: typeof s.n === "number" ? s.n : i + 1,
+              texto: String(s.texto ?? "").trim(),
+              diseno: String(s.diseno ?? "").trim(),
+            };
+          })
+          .filter((s): s is SlideSugerida => !!s && s.texto.length > 0)
+      : [];
+
     return {
       ok: true,
       suggestion: {
         titulo: String(parsed.titulo ?? ""),
+        hook: String(parsed.hook ?? ""),
         copy: String(parsed.copy ?? ""),
-        hashtags: String(parsed.hashtags ?? ""),
+        cta: String(parsed.cta ?? ""),
+        slides,
+        // Se dejó de generar: ver la nota en AISuggestion.
+        hashtags: "",
         descripcion: String(parsed.descripcion ?? ""),
         guion: parsed.guion ? String(parsed.guion) : null,
         notas: String(parsed.notas ?? ""),

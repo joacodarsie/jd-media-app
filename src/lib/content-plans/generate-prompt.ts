@@ -36,6 +36,21 @@ Todo el plan apunta a CRECER la cuenta. Cada formato tiene un para qué distinto
 - **Historias** → para la audiencia que YA te sigue: cercanía, interacción, recordatorios, prueba social.
 Los ángulos que enganchan salen de los dolores, deseos y el lenguaje del público objetivo del diagnóstico. Nada genérico.
 
+# Cada tema tiene que traer gancho, CTA y a quién le habla
+Un calendario donde cada pieza es solo un título es un calendario aburrido y sin valor, y así lo lee el equipo. Por eso CADA tema lleva, además del brief:
+
+- **\`hook\`** — el gancho ESCRITO, tal como va a aparecer: la frase de la placa 1, la primera línea del copy, lo que se dice en los primeros 3 segundos. No lo describas, escribilo. Tiene que dar tensión, curiosidad o identificación inmediata. PROHIBIDOS los ganchos gastados: "¿Sabías que...?", "Te cuento un secreto", "3 tips para...", "Descubrí cómo...".
+- **\`cta\`** — UNA acción concreta al cierre, coherente con lo que el negocio puede resolver ("Guardalo para cuando vengas", "Escribinos y te pasamos disponibilidad"). PROHIBIDO "seguinos para más contenido": no pide nada que sirva.
+- **\`publico_objetivo\`** — a cuál de los segmentos del diagnóstico le habla ESTA pieza y qué dolor o deseo puntual le toca. Nombrá el segmento tal como figura en el diagnóstico. Una pieza que le habla a todos no le habla a nadie.
+- **\`referencias\`** (cuando aportan) — hasta 3 cuentas REALES de las que copiar un recurso concreto: un tipo de plano, una estructura de carrusel, un modo de titular. Priorizá cuentas del mismo rubro. **Si no estás seguro de que la cuenta existe, no la pongas**: una referencia inventada le hace perder tiempo al equipo buscando algo que no está.
+
+# El nicho, no "el rubro"
+Antes de escribir los temas, pensá a fondo el público del diagnóstico: qué le duele, qué desea, con qué palabras habla, qué objeciones tiene para comprar, qué consume en redes. Los temas salen de AHÍ, no de lo genérico del rubro.
+Prueba para descartar un tema: si el mismo título le sirve igual a cualquier competidor de la misma ciudad, está mal — es genérico. Reescribilo hasta que solo tenga sentido para ESTE negocio y ESTE público.
+
+# Hashtags
+NO propongas hashtags ni bloques de hashtags en ningún campo. Hoy no mueven alcance y ensucian el copy. Si algún tema los pide, ignoralo.
+
 # Detalle de diseño en cada tema (campo descripcion)
 La \`descripcion\` de cada tema es el brief que ejecuta el equipo de diseño/edición: tiene que ser concreta y accionable, no quedarse en el título.
 - **Carrusel** → desglosá PLACA POR PLACA: qué TEXTO/dato va escrito en cada placa + una idea de diseño de esa placa (qué se ve, jerarquía visual, ícono/foto/dato, por qué retiene). Placa 1 = gancho que frena el scroll; última = CTA.
@@ -135,6 +150,42 @@ export const SAVE_CONTENT_PLAN_TOOL = {
               description:
                 "Brief de diseño/producción DETALLADO y accionable (no solo el título). CARRUSEL: desglose placa por placa con el texto/dato de cada placa + idea de diseño (placa 1 = gancho, última = CTA). POST: texto sobre la placa + idea visual. REEL/VIDEO: idea + concepto visual con el gancho de los primeros segundos. HISTORIA: qué muestra + mecanismo de interacción. Pensado para que la pieza tenga potencial de viralizar.",
             },
+            hook: {
+              type: "string",
+              description:
+                "EL GANCHO, escrito tal como va a aparecer: la frase exacta de la placa 1, la primera línea del copy o lo que se dice en los primeros 3 segundos del reel. Es lo que decide si la pieza se ve o se saltea. Tiene que generar tensión, curiosidad o identificación inmediata. PROHIBIDO describirlo ('un gancho sobre X'): escribí la frase. PROHIBIDOS los ganchos gastados tipo '¿Sabías que...?', 'Te cuento un secreto', '3 tips para...'.",
+            },
+            cta: {
+              type: "string",
+              description:
+                "Qué queremos que HAGA quien lo ve, escrito tal como cierra la pieza. Uno solo y concreto: 'Guardalo para tu próxima visita', 'Escribinos y te armamos el presupuesto', 'Comentá LISTA y te mando los horarios'. Tiene que ser coherente con el objetivo del mes y con lo que el negocio puede resolver. PROHIBIDO 'seguinos para más contenido'.",
+            },
+            publico_objetivo: {
+              type: "string",
+              description:
+                "A cuál de los segmentos del diagnóstico le habla ESTA pieza, y qué dolor o deseo puntual le toca. Una pieza que le habla a todos no le habla a nadie. Nombrá el segmento tal como está en el diagnóstico.",
+            },
+            referencias: {
+              type: "array",
+              maxItems: 3,
+              description:
+                "Cuentas REALES de las que copiar un recurso concreto para producir esta pieza. Priorizá cuentas del mismo rubro o de rubros con estética parecida, que existan de verdad. Si no estás seguro de que la cuenta existe, no la pongas: una referencia inventada hace perder tiempo al equipo.",
+              items: {
+                type: "object",
+                properties: {
+                  cuenta: {
+                    type: "string",
+                    description: "Handle tal como se busca en Instagram/TikTok. Ej: @panaderiarosetta",
+                  },
+                  que_tomar: {
+                    type: "string",
+                    description:
+                      "El recurso puntual a copiar: un tipo de plano, una estructura de carrusel, un modo de titular. NO 'me gusta su estética'.",
+                  },
+                },
+                required: ["cuenta", "que_tomar"],
+              },
+            },
             fecha: { type: "string", description: "Fecha sugerida ISO (YYYY-MM-DD) dentro del período. Distribuir homogéneamente." },
             pilar: { type: "string" },
             formato: {
@@ -154,7 +205,16 @@ export const SAVE_CONTENT_PLAN_TOOL = {
               },
             },
           },
-          required: ["titulo", "descripcion", "formato", "red_principal", "pilar"],
+          required: [
+            "titulo",
+            "descripcion",
+            "hook",
+            "cta",
+            "publico_objetivo",
+            "formato",
+            "red_principal",
+            "pilar",
+          ],
         },
       },
       efemerides: {

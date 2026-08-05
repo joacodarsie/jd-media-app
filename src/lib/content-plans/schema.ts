@@ -44,9 +44,32 @@ export type PilarDistribucion = {
   justificacion: string;
 };
 
+/** Una cuenta real de la que copiar un recurso concreto. */
+export type Referencia = {
+  /** Handle o nombre de la cuenta, tal como se busca. Ej: "@panaderiarosetta" */
+  cuenta: string;
+  /** Qué recurso puntual tomar de ahí. No "es linda": qué se copia. */
+  que_tomar: string;
+};
+
 export type TemaDestacado = {
   titulo: string;
   descripcion: string;
+  /**
+   * El GANCHO: la primera frase o los primeros 3 segundos. Es lo que decide si
+   * la pieza se ve o se saltea, así que va como campo propio y no perdido en la
+   * descripción.
+   */
+  hook?: string;
+  /** Qué queremos que haga quien lo ve. Sin esto la pieza no pide nada. */
+  cta?: string;
+  /**
+   * A quién de la audiencia le habla ESTA pieza. Sale de los segmentos del
+   * diagnóstico: una pieza que le habla "a todos" no le habla a nadie.
+   */
+  publico_objetivo?: string;
+  /** Cuentas reales de referencia para inspirarse al producir. */
+  referencias?: Referencia[];
   /** Fecha clave si aplica (lanzamiento, efeméride, hito) */
   fecha?: string;
   /** Pilar al que pertenece este tema */

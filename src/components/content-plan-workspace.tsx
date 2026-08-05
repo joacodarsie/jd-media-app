@@ -913,7 +913,48 @@ function TemaCard({
               </Badge>
             )}
           </div>
+          {/* El gancho arriba de todo: es lo que decide si la pieza se ve.
+              Antes quedaba enterrado en la descripción y el equipo no lo veía. */}
+          {tema.hook && (
+            <p className="mt-1.5 border-l-2 border-primary pl-2 text-sm font-medium">
+              “{tema.hook}”
+            </p>
+          )}
           <p className="mt-1 text-muted-foreground">{tema.descripcion}</p>
+          {(tema.cta || tema.publico_objetivo) && (
+            <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+              {tema.cta && (
+                <span>
+                  <span className="text-muted-foreground">CTA:</span>{" "}
+                  <span className="font-medium">{tema.cta}</span>
+                </span>
+              )}
+              {tema.publico_objetivo && (
+                <span className="text-muted-foreground">
+                  Le habla a: {tema.publico_objetivo}
+                </span>
+              )}
+            </div>
+          )}
+          {tema.referencias && tema.referencias.length > 0 && (
+            <div className="mt-1.5 text-[11px] text-muted-foreground">
+              <span className="font-medium">Inspiración:</span>{" "}
+              {tema.referencias.map((r, i) => (
+                <span key={i}>
+                  {i > 0 && " · "}
+                  <a
+                    href={`https://www.instagram.com/${r.cuenta.replace(/^@/, "")}/`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline"
+                  >
+                    {r.cuenta}
+                  </a>{" "}
+                  ({r.que_tomar})
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         {canAct && (
           <div className="flex shrink-0 flex-col gap-1">

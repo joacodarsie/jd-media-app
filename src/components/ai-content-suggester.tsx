@@ -76,10 +76,24 @@ export function AIContentSuggester({
 
   function applyIt() {
     if (!suggestion) return;
+    // Las placas van al brief de diseño, que es donde las busca quien produce.
+    const descripcion = [
+      suggestion.slides.length > 0
+        ? suggestion.slides
+            .map((s) => `Placa ${s.n}: ${s.texto}\n   Diseño: ${s.diseno}`)
+            .join("\n\n")
+        : "",
+      suggestion.descripcion,
+      suggestion.cta ? `CTA: ${suggestion.cta}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
     onApply({
       copy: suggestion.copy,
+      // Vacío a propósito: ya no se generan hashtags. El form no pisa si viene "".
       hashtags: suggestion.hashtags,
-      descripcion: suggestion.descripcion,
+      descripcion,
       guion: suggestion.guion,
       titulo: suggestion.titulo,
     });
@@ -157,17 +171,39 @@ export function AIContentSuggester({
                 </div>
                 <p className="whitespace-pre-wrap text-sm">{suggestion.copy}</p>
               </div>
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Hashtags
+              {suggestion.cta && (
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    CTA
+                  </div>
+                  <p className="text-sm font-medium">{suggestion.cta}</p>
                 </div>
-                <p className="text-xs text-blue-700 dark:text-blue-400">
-                  {suggestion.hashtags}
-                </p>
-              </div>
+              )}
+              {suggestion.slides.length > 0 && (
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Placas ({suggestion.slides.length})
+                  </div>
+                  <div className="mt-1 space-y-2">
+                    {suggestion.slides.map((s) => (
+                      <div key={s.n} className="rounded-md border p-2 text-sm">
+                        <div className="flex gap-2">
+                          <span className="shrink-0 rounded bg-primary/15 px-1.5 text-xs font-bold text-primary">
+                            {s.n}
+                          </span>
+                          <span className="font-medium">{s.texto}</span>
+                        </div>
+                        {s.diseno && (
+                          <p className="mt-1 text-xs text-muted-foreground">{s.diseno}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Diseño / placas
+                  {suggestion.slides.length > 0 ? "Concepto visual" : "Diseño / placas"}
                 </div>
                 <p className="whitespace-pre-wrap text-sm">{suggestion.descripcion}</p>
               </div>

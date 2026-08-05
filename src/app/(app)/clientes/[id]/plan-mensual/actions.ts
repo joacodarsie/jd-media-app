@@ -162,11 +162,23 @@ async function autoFillCopyForPub(args: {
   try {
     const tipo = FORMATO_TO_TIPO[args.tema.formato ?? "post"] ?? "post";
     const red = args.tema.red_principal ? RED_TO_DB[args.tema.red_principal] ?? "instagram" : "instagram";
+    // Todo lo que el plan ya decidió viaja al suggester: si el plan definió el
+    // gancho y a quién le habla, la pieza tiene que respetarlo en vez de
+    // inventar uno nuevo y menos pensado.
+    const t = args.tema;
     const hint = [
-      `Idea del plan: "${args.tema.titulo}".`,
-      args.tema.descripcion,
-      args.tema.pilar ? `Pilar: ${args.tema.pilar}.` : "",
-      args.tema.fecha ? `Fecha: ${args.tema.fecha}.` : "",
+      `Idea del plan: "${t.titulo}".`,
+      t.descripcion,
+      t.hook ? `GANCHO ya definido en el plan (respetalo o mejoralo, no lo cambies por uno genérico): "${t.hook}".` : "",
+      t.cta ? `CTA definido en el plan: "${t.cta}".` : "",
+      t.publico_objetivo ? `Le habla a: ${t.publico_objetivo}.` : "",
+      t.referencias?.length
+        ? `Referencias para el estilo: ${t.referencias
+            .map((r) => `${r.cuenta} (${r.que_tomar})`)
+            .join("; ")}.`
+        : "",
+      t.pilar ? `Pilar: ${t.pilar}.` : "",
+      t.fecha ? `Fecha: ${t.fecha}.` : "",
     ]
       .filter(Boolean)
       .join(" ");
@@ -182,13 +194,30 @@ async function autoFillCopyForPub(args: {
       return;
     }
 
+    // El brief de diseño: si es carrusel, las placas resueltas una por una —
+    // que era justo lo que faltaba para que diseño no tuviera que interpretar.
+    const s = res.suggestion;
+    const descripcion = [
+      s.slides.length > 0
+        ? s.slides
+            .map((sl) => `Placa ${sl.n}: ${sl.texto}\n   Diseño: ${sl.diseno}`)
+            .join("\n\n")
+        : "",
+      s.descripcion,
+      s.cta ? `CTA: ${s.cta}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
     const admin = createAdmin();
     await admin
       .from("publications")
       .update({
-        copy: res.suggestion.copy,
-        hashtags: res.suggestion.hashtags,
-        guion: res.suggestion.guion,
+        copy: s.copy,
+        // Los hashtags ya no se generan (ver AISuggestion): dejamos el campo
+        // como está en vez de pisarlo con vacío, por si alguien lo cargó a mano.
+        guion: s.guion,
+        descripcion: descripcion || null,
       })
       .eq("id", args.publicationId);
   } catch (err) {

@@ -985,18 +985,25 @@ export function ProspectingContactsTable({
 
       {/* ── Modo despacho: uno por uno, sin volver a la tabla ── */}
       <Dialog open={despacho} onOpenChange={setDespacho}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
+        {/* overflow-x-hidden + los min-w-0 de abajo: DialogContent es un `grid`,
+            y en un grid los hijos tienen min-width:auto — un nombre de empresa
+            largo o un mensaje sin cortes estiraba el modal entero, dejaba el
+            badge "quedan N" afuera y aparecía scroll horizontal. */}
+        <DialogContent className="overflow-x-hidden sm:max-w-lg">
+          <DialogHeader className="min-w-0">
             <DialogTitle className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-emerald-500" /> Despachar contactos
+              <Zap className="h-4 w-4 shrink-0 text-emerald-500" />
+              <span className="truncate">Despachar contactos</span>
             </DialogTitle>
           </DialogHeader>
           {actual ? (
-            <div className="space-y-4">
+            <div className="min-w-0 space-y-4">
               <div className="flex items-baseline justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="truncate text-lg font-semibold">{actual.empresa}</p>
-                  <p className="text-sm text-muted-foreground">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-lg font-semibold" title={actual.empresa}>
+                    {actual.empresa}
+                  </p>
+                  <p className="truncate text-sm text-muted-foreground">
                     {actual.contacto_nombre
                       ? `${actual.contacto_nombre}${actual.contacto_rol ? ` · ${actual.contacto_rol}` : ""}`
                       : "Sin persona de contacto"}
@@ -1004,7 +1011,7 @@ export function ProspectingContactsTable({
                     <span className="tabular-nums">{actual.telefono}</span>
                   </p>
                 </div>
-                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                <span className="shrink-0 whitespace-nowrap rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                   quedan {cola.length}
                 </span>
               </div>
@@ -1019,7 +1026,9 @@ export function ProspectingContactsTable({
               )}
 
               {primerMensaje ? (
-                <div className="max-h-44 overflow-y-auto whitespace-pre-wrap rounded-lg border bg-muted/30 p-3 text-sm leading-relaxed">
+                // break-words: un link o una palabra larga en el mensaje no
+                // puede ensanchar el modal.
+                <div className="max-h-44 overflow-y-auto whitespace-pre-wrap break-words rounded-lg border bg-muted/30 p-3 text-sm leading-relaxed">
                   {mensajeDe(actual)}
                 </div>
               ) : (
@@ -1034,7 +1043,10 @@ export function ProspectingContactsTable({
                 {/* Flujo recomendado: WhatsApp Web abierto en otra pestaña →
                     copiás número y mensaje acá, pegás allá, y marcás. Evita el
                     diálogo del navegador y la carga de wa.me por contacto. */}
-                <div className="grid grid-cols-2 gap-2">
+                {/* [&>*]:min-w-0 en cada grid: los Button traen whitespace-nowrap,
+                    así que sin esto el ancho del texto manda sobre el de la
+                    columna y el grid empuja el modal hacia afuera. */}
+                <div className="grid grid-cols-2 gap-2 [&>*]:min-w-0">
                   <CopyBig
                     label="1 · Copiar número"
                     text={waDigits(actual.telefono ?? "") ?? actual.telefono ?? ""}
@@ -1047,12 +1059,14 @@ export function ProspectingContactsTable({
                 </div>
                 <Button
                   onClick={() => despachar(actual, "contactado")}
-                  className="h-11 bg-emerald-600 text-white hover:bg-emerald-500"
+                  className="h-11 min-w-0 bg-emerald-600 text-white hover:bg-emerald-500"
                 >
-                  <Check className="mr-2 h-4 w-4" />
-                  3 · Marcar contactado y pasar al siguiente
+                  <Check className="mr-2 h-4 w-4 shrink-0" />
+                  <span className="truncate">
+                    3 · Marcar contactado y pasar al siguiente
+                  </span>
                 </Button>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-2 [&>*]:min-w-0">
                   <Button
                     variant="outline"
                     size="sm"
@@ -1061,7 +1075,8 @@ export function ProspectingContactsTable({
                       if (wa) window.open(wa, "_blank", "noopener,noreferrer");
                     }}
                   >
-                    <MessageCircle className="mr-1.5 h-3.5 w-3.5" /> Abrir WA
+                    <MessageCircle className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">Abrir WA</span>
                   </Button>
                   <Button
                     variant="outline"
@@ -1069,14 +1084,16 @@ export function ProspectingContactsTable({
                     onClick={() => despachar(actual, "no_se_pudo")}
                     className="text-rose-600 dark:text-rose-400"
                   >
-                    <PhoneOff className="mr-1.5 h-3.5 w-3.5" /> No se pudo
+                    <PhoneOff className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">No se pudo</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setSaltados((p) => new Set(p).add(actual.id))}
                   >
-                    <SkipForward className="mr-1.5 h-3.5 w-3.5" /> Saltar
+                    <SkipForward className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">Saltar</span>
                   </Button>
                 </div>
               </div>
@@ -1194,15 +1211,17 @@ function CopyBig({
           toast.error("No se pudo copiar.");
         }
       }}
-      className="h-11"
+      className="h-11 min-w-0"
     >
       {copied ? (
         <>
-          <Check className="mr-2 h-4 w-4 text-emerald-600" /> Copiado
+          <Check className="mr-2 h-4 w-4 shrink-0 text-emerald-600" />
+          <span className="truncate">Copiado</span>
         </>
       ) : (
         <>
-          <Copy className="mr-2 h-4 w-4" /> {label}
+          <Copy className="mr-2 h-4 w-4 shrink-0" />
+          <span className="truncate">{label}</span>
         </>
       )}
     </Button>

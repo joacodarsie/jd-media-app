@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireUser, canUseProspectingAi } from "@/lib/auth";
+import { requireUser, userInRoles } from "@/lib/auth";
 import { friendlyAiError } from "@/lib/ai/errors";
 import {
   generateCampaignMessages as buildCampaignMessages,
@@ -20,6 +20,13 @@ import {
   type CampaignMessages,
   type MensajeBloqueKey,
 } from "@/lib/prospecting/shared";
+
+/**
+ * Quiénes pueden entrar a Prospección. Espejo del ALLOWED de las páginas: lo
+ * barato (los mensajes plantilla de la campaña) se habilita con esto; lo que
+ * escala con el uso (sacar contactos con IA) sigue pidiendo `contactos_ia`.
+ */
+const ROLES_PROSPECCION = ["admin", "coordinador", "comercial", "prospecting"];
 
 async function ctx() {
   const supabase = createClient();
@@ -795,13 +802,19 @@ export async function addManualContact(
 }
 
 /**
- * Genera (y guarda) la plantilla de mensajes de la campaña con IA. Reservado al
- * director (consume tokens). Devuelve los mensajes para mostrarlos al toque.
+ * Genera (y guarda) la plantilla de mensajes de la campaña con IA.
+ *
+ * Abierto a todo el equipo de Prospección desde agosto 2026: es UNA llamada por
+ * campaña (la plantilla después se reusa para todos los contactos), así que el
+ * gasto no depende del volumen de trabajo. Tenerlo detrás de `contactos_ia`
+ * dejaba a las coordinadoras sin poder escribir y teniendo que pedirle los
+ * mensajes al dueño. "Sacar contactos con IA", que sí escala con el uso, sigue
+ * pidiendo el permiso.
  */
 export async function regenerateCampaignMessages(campaignId: string) {
   const me = await requireUser();
-  if (!canUseProspectingAi(me))
-    return { error: "No tenés habilitada la IA de prospección. Pedísela al director." };
+  if (!userInRoles(me, ROLES_PROSPECCION))
+    return { error: "No tenés acceso a Prospección." };
   const { supabase } = await ctx();
 
   const { data: camp } = await supabase

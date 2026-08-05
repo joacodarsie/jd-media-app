@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Send, Languages, Target, Table2 } from "lucide-react";
-import { requireRole, canUseProspectingAi } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { Badge } from "@/components/ui/badge";
 import { ProspectingCampaignDialog } from "@/components/prospecting-campaign-dialog";
@@ -23,9 +23,10 @@ export default async function CampaignDetailPage({
   params: { id: string };
   searchParams: { nuevo?: string };
 }) {
-  const me = await requireRole(ALLOWED);
-  // IA de prospección del día a día: los mensajes plantilla de la campaña.
-  const puedeIa = canUseProspectingAi(me);
+  // Los mensajes plantilla los puede generar todo el equipo de Prospección: es
+  // una llamada por campaña y sin ellos no se puede escribir. Lo que escala con
+  // el uso ("Sacar contactos con IA") sigue con el permiso `contactos_ia`.
+  await requireRole(ALLOWED);
   const admin = createAdmin();
 
   const { data: camp } = await admin
@@ -145,7 +146,7 @@ export default async function CampaignDetailPage({
       <ProspectingCampaignMessages
         campaignId={c.id}
         initial={mensajesPlantilla}
-        canGenerate={puedeIa}
+        canGenerate
         autoGenerate={searchParams?.nuevo === "1" && !mensajesPlantilla}
       />
 

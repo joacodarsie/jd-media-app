@@ -1,10 +1,14 @@
 import { describe, it, expect } from "vitest";
 import {
+  META_DEFECTO,
   META_DIARIA,
+  META_MAXIMA,
   avisoParaElDueno,
   avisoPersonal,
   diasEntre,
   lunesDe,
+  metaDe,
+  normalizarMeta,
   resumirActividad,
   type ContactoActividad,
 } from "./actividad";
@@ -104,6 +108,66 @@ describe("resumirActividad", () => {
   it("ordena por quién más escribió esta semana", () => {
     const c = [...escritos("gonza", HOY, 9), ...escritos("guille", HOY, 2)];
     expect(resumirActividad(c, personas, HOY).filas[0].id).toBe("gonza");
+  });
+});
+
+describe("metaDe", () => {
+  it("la meta guardada en la app manda sobre el mapa por email", () => {
+    expect(metaDe("leo@jdmedia.com", 25)).toBe(25);
+  });
+
+  it("sin meta guardada cae al mapa por email y después al default", () => {
+    expect(metaDe("leo@jdmedia.com", null)).toBe(40);
+    expect(metaDe("nadie@jdmedia.com", null)).toBe(META_DEFECTO);
+    expect(metaDe(null)).toBe(META_DEFECTO);
+  });
+
+  it("el 0 guardado es un valor válido, no un 'sin dato'", () => {
+    expect(metaDe("leo@jdmedia.com", 0)).toBe(0);
+  });
+
+  it("recorta valores fuera de rango", () => {
+    expect(metaDe(null, -5)).toBe(0);
+    expect(metaDe(null, 9999)).toBe(META_MAXIMA);
+    expect(metaDe(null, 12.6)).toBe(13);
+  });
+});
+
+describe("normalizarMeta", () => {
+  it("vacío o no numérico vuelve a null (= usar el default)", () => {
+    expect(normalizarMeta("")).toBeNull();
+    expect(normalizarMeta(null)).toBeNull();
+    expect(normalizarMeta("hola")).toBeNull();
+  });
+
+  it("acepta números y strings numéricos, y recorta el rango", () => {
+    expect(normalizarMeta("15")).toBe(15);
+    expect(normalizarMeta(0)).toBe(0);
+    expect(normalizarMeta(-3)).toBe(0);
+    expect(normalizarMeta(10000)).toBe(META_MAXIMA);
+  });
+});
+
+describe("meta 0 = no se le exige nada", () => {
+  const conCero = [
+    { id: "guille", nombre: "Guillermo García", metaProspeccion: 20 },
+    { id: "luz", nombre: "Luz Torres", metaProspeccion: 0 },
+  ];
+
+  it("no suma a la meta del equipo", () => {
+    const r = resumirActividad([], conCero, HOY);
+    expect(r.metaEquipoHoy).toBe(20);
+  });
+
+  it("no aparece como colgada aunque nunca haya escrito", () => {
+    const r = resumirActividad([], conCero, HOY);
+    expect(r.colgados.map((f) => f.id)).toContain("guille");
+    expect(r.colgados.map((f) => f.id)).not.toContain("luz");
+  });
+
+  it("tampoco cuenta como que cumplió sin escribir nada", () => {
+    const r = resumirActividad([], conCero, HOY);
+    expect(r.filas.find((f) => f.id === "luz")!.cumpleHoy).toBe(false);
   });
 });
 

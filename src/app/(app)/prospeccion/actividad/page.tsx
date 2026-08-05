@@ -10,6 +10,7 @@ import {
   resumirActividad,
   type ContactoActividad,
 } from "@/lib/prospecting/actividad";
+import { MetaProspeccionInput } from "@/components/meta-prospeccion-input";
 
 export const dynamic = "force-dynamic";
 
@@ -26,14 +27,23 @@ const ROLES_PROSPECTAN = ["comercial", "prospecting", "coordinador", "admin"];
  * el número esté a la vista todos los días.
  */
 export default async function ActividadProspeccionPage() {
-  await requireRole(ALLOWED);
+  const me = await requireRole(ALLOWED);
   const admin = createAdmin();
   const hoy = hoyYmd();
 
-  const [{ data: contactosRaw }, { data: usersRaw }] = await Promise.all([
+  const COLS_USERS = "id, nombre, email, rol, rol_secundario";
+
+  const [{ data: contactosRaw }, usersRes] = await Promise.all([
     admin.from("prospecting_contacts").select("asignado_a, contactado_at, estado, reunion_at"),
-    admin.from("users").select("id, nombre, email, rol, rol_secundario").eq("activo", true),
+    admin.from("users").select(`${COLS_USERS}, meta_prospeccion`).eq("activo", true),
   ]);
+
+  // Si la migración 0149 todavía no está aplicada, la columna no existe: se
+  // reintenta sin ella y las metas caen al mapa por email de siempre.
+  const metasEditables = !usersRes.error;
+  const usersRaw = metasEditables
+    ? usersRes.data
+    : (await admin.from("users").select(COLS_USERS).eq("activo", true)).data;
 
   const personas = ((usersRaw ?? []) as {
     id: string;
@@ -41,11 +51,20 @@ export default async function ActividadProspeccionPage() {
     email: string | null;
     rol: string;
     rol_secundario: string | null;
+    meta_prospeccion?: number | null;
   }[])
     .filter(
       (u) => ROLES_PROSPECTAN.includes(u.rol) || ROLES_PROSPECTAN.includes(u.rol_secundario ?? "")
     )
-    .map((u) => ({ id: u.id, nombre: u.nombre, email: u.email }));
+    .map((u) => ({
+      id: u.id,
+      nombre: u.nombre,
+      email: u.email,
+      metaProspeccion: u.meta_prospeccion ?? null,
+    }));
+
+  // Solo el admin toca las metas: es el número contra el que se mide al equipo.
+  const puedeEditarMetas = metasEditables && me.rol === "admin";
 
   const r = resumirActividad(
     (contactosRaw ?? []) as ContactoActividad[],
@@ -71,6 +90,12 @@ export default async function ActividadProspeccionPage() {
           Mensajes en frío enviados por cada uno. La meta del equipo es de{" "}
           <b>{r.metaEquipoHoy} por día</b>, repartida según quién prospecta.
         </p>
+        {puedeEditarMetas && (
+          <p className="mt-1 text-sm text-muted-foreground">
+            Tocá el número al lado de cada nombre para cambiarle la meta. Con{" "}
+            <b>0</b> no se le pide nada y deja de contar.
+          </p>
+        )}
       </div>
 
       {r.nadieEscribioHoy ? (
@@ -87,7 +112,12 @@ export default async function ActividadProspeccionPage() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Stat label="Hoy" valor={`${r.totalHoy} / ${r.metaEquipoHoy}`} destacado />
           <Stat label="Esta semana" valor={r.totalSemana} />
-          <Stat label="Cumplieron hoy" valor={`${r.filas.filter((f) => f.cumpleHoy).length} de ${r.filas.length}`} />
+          <Stat
+            label="Cumplieron hoy"
+            valor={`${r.filas.filter((f) => f.cumpleHoy).length} de ${
+              r.filas.filter((f) => f.meta > 0).length
+            }`}
+          />
         </div>
       )}
 
@@ -111,9 +141,17 @@ export default async function ActividadProspeccionPage() {
                   <tr key={f.id} className="border-b last:border-0">
                     <td className="px-3 py-2 font-medium">
                       {f.nombre}
-                      <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                        meta {f.meta}
-                      </span>
+                      {puedeEditarMetas ? (
+                        <MetaProspeccionInput
+                          userId={f.id}
+                          nombre={f.nombre}
+                          meta={f.meta}
+                        />
+                      ) : (
+                        <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                          {f.meta === 0 ? "sin meta" : `meta ${f.meta}`}
+                        </span>
+                      )}
                     </td>
                     <td
                       className={cn(

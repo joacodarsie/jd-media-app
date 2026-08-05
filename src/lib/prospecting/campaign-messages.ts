@@ -11,6 +11,11 @@ import Anthropic from "@anthropic-ai/sdk";
 import { AI_MODEL_SMART } from "@/lib/ai/models";
 import { AGENCY } from "@/lib/agency";
 import { trackAiUsage } from "@/lib/ai/usage";
+import {
+  bloqueServiciosParaPrompt,
+  cargarCatalogoServicios,
+  type ServicioAgencia,
+} from "./catalogo";
 
 const client = new Anthropic();
 
@@ -19,11 +24,15 @@ export interface CampaignMsgContext {
   ubicacion: string | null;
   servicioNombre: string | null;
   servicioDesc: string | null;
+  /** Slug del servicio de la campaña, para marcarlo como foco en el catálogo. */
+  servicioSlug?: string | null;
   angulo: string | null;
   canal: string;
   idioma: string;
   /** Nombre de quien genera (y va a mandar) el mensaje: lo firma él, no siempre el dueño. */
   autorNombre?: string | null;
+  /** Catálogo real de servicios. Sin esto la IA inventa (SEO, LinkedIn…). */
+  catalogo?: ServicioAgencia[];
 }
 
 export interface CampaignMessages {
@@ -79,6 +88,8 @@ export async function generateCampaignMessages(
     : "marketing digital (gestión de redes, pauta, contenido)";
 
   const autor = (ctx.autorNombre?.trim().split(/\s+/)[0]) || AGENCY.representante;
+  const catalogo = ctx.catalogo ?? (await cargarCatalogoServicios());
+
   const system = `Sos ${autor}, de ${AGENCY.brand}, agencia de marketing digital de Córdoba, Argentina. Armá una PLANTILLA de mensajes de contacto en frío para toda una campaña de un rubro. Se va a COPIAR y pegar cambiando solo el nombre de la empresa, así que tiene que funcionar tal cual para cualquier negocio de este rubro.
 
 CAMPAÑA
@@ -86,6 +97,11 @@ CAMPAÑA
 - Zona: ${ctx.ubicacion ?? "Argentina"}
 - Qué ofrecemos: ${servicio}
 - Ángulo / propuesta de valor: ${ctx.angulo ?? "más presencia y más clientes con su marketing digital"}
+
+${bloqueServiciosParaPrompt(catalogo, ctx.servicioSlug)}
+
+OBJETIVO REAL DEL MENSAJE
+Conseguir una REUNIÓN CORTA POR GOOGLE MEET (15-20 minutos). Las ventas de JD Media se cierran en esa reunión, no por chat. Todo el mensaje empuja ahí.
 
 ${channelInstruction(ctx.canal, autor)}
 ${langInstruction(ctx.idioma)}
@@ -95,17 +111,19 @@ REGLAS DURAS (se cumplen SÍ o SÍ)
 2. ESTRUCTURA CLÁSICA Y CLARA (nada ambiguo). En este orden:
    a) SALUDO + PRESENTACIÓN: "Hola [NOMBRE], ¿cómo estás? Soy ${autor}, de ${AGENCY.brand}." (si no hay persona, "Hola, ¿cómo están en [EMPRESA]? Soy ${autor}, de ${AGENCY.brand}"). Cordial y directo.
    b) MOTIVO CLARO: en una frase, por qué le escribís, mostrando interés genuino y mencionando a [EMPRESA] y su rubro (${ctx.rubro}). Ej: "te escribo porque trabajamos con [rubro] y me gustó lo que hacen en [EMPRESA]". Que se entienda al toque qué querés, sin vueltas.
-   c) VALOR: en una frase, qué les podemos aportar, conectado a un resultado real (más clientes/consultas/ventas). Podés apoyarte en una realidad del sector, pero después de presentarte, no como apertura suelta.
-   d) CIERRE: ofrecé algo concreto y gratis, sin compromiso ("si te interesa te preparo una propuesta / unas ideas para [EMPRESA] y te las paso"). PROHIBIDO pedir reunión/llamada/"charlemos" en el primer mensaje (eso va recién en el seguimiento_1).
+   c) VALOR: en una frase, qué les podemos aportar, conectado a un resultado real (más clientes/consultas/ventas) y SIEMPRE apoyado en un servicio del catálogo. Podés apoyarte en una realidad del sector, pero después de presentarte, no como apertura suelta.
+   d) CIERRE: proponé una REUNIÓN CORTA POR MEET, con un motivo concreto y una duración chica. Ej: "si te copa, coordinamos 15 minutos por Meet y te muestro un par de ideas puntuales para [EMPRESA]". Terminá con una pregunta fácil de responder ("¿te viene bien esta semana?").
+      PROHIBIDO prometer un entregable que hay que preparar antes de la reunión ("te preparo una propuesta y te la paso", "te mando unas ideas por acá"): eso deja trabajo colgado que nadie hace y el prospecto queda esperando. Lo que se muestra, se muestra EN la reunión.
 3. CÁLIDO Y HUMANO, PERO PROLIJO. Tono cordial y profesional, como un buen comercial que escribe bien; NO frío ni robótico, NO exageradamente informal. PROHIBIDO: "espero que estés muy bien", "me pongo en contacto", "no dudes en", "potenciar", "impulsar", "llevar tu negocio al siguiente nivel", "soluciones integrales", "en el mundo digital de hoy". Nada de guiones largos (—) ni estructura de folleto. Máximo 1 emoji (o ninguno).
 4. LARGO: primer mensaje y alternativa, 4 líneas cortas (5 si es email). Los seguimientos, más cortos. Si no entra, sacá palabras, no ideas.
 5. Una sola idea de valor, sin lista de servicios, sin promesas mágicas, sin métricas ni casos inventados.
+6. Si el ángulo de la campaña que te pasaron menciona algo que NO está en el catálogo, IGNORALO y reemplazalo por el equivalente que sí hacemos. El catálogo gana siempre.
 
 QUÉ ES CADA CAMPO
 - "primer_mensaje": el de primer contacto, con la estructura a→d de arriba.
-- "alternativa": otro primer mensaje con un ÁNGULO distinto (para A/B), mismas reglas y estructura.
-- "seguimiento_1": segundo toque. Retomás con [EMPRESA], aportás algo NUEVO (otra idea o realidad del rubro). Acá SÍ podés proponer 15 minutos de charla.
-- "seguimiento_2": cierre elegante. Muy corto, sin reproches, con salida fácil ("si no es el momento, sin drama").
+- "alternativa": otro primer mensaje con un ÁNGULO distinto (para A/B), mismas reglas y estructura, y también cerrando con la propuesta de Meet.
+- "seguimiento_1": segundo toque. Retomás con [EMPRESA], aportás algo NUEVO (otra idea o realidad del rubro) y volvés a proponer el Meet, esta vez tirando una franja concreta ("¿te sirve mañana a la mañana?").
+- "seguimiento_2": cierre elegante. Muy corto, sin reproches, con salida fácil ("si no es el momento, sin drama") y la puerta abierta a la reunión más adelante.
 
 SALIDA
 Devolvé SOLO un objeto JSON válido (sin markdown ni texto extra):

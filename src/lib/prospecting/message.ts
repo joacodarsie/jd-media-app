@@ -10,6 +10,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { AI_MODEL_SMART } from "@/lib/ai/models";
 import { AGENCY } from "@/lib/agency";
 import { trackAiUsage } from "@/lib/ai/usage";
+import { bloqueServiciosParaPrompt, type ServicioAgencia } from "./catalogo";
 
 const client = new Anthropic();
 
@@ -29,9 +30,13 @@ export interface MessageContext {
   rubro: string;
   servicioNombre: string | null;
   servicioDesc: string | null;
+  /** Slug del servicio de la campaña, para marcarlo como foco. */
+  servicioSlug?: string | null;
   angulo: string | null;
   canal: string; // whatsapp | instagram | email
   idioma: string; // es_ar | es | en
+  /** Catálogo real de servicios. Sin esto la IA ofrece SEO/LinkedIn. */
+  catalogo?: ServicioAgencia[];
 }
 
 function langInstruction(idioma: string): string {
@@ -57,16 +62,21 @@ function buildSystem(ctx: MessageContext): string {
 QUÉ OFRECEMOS EN ESTA CAMPAÑA: ${servicio}.
 ÁNGULO / PROPUESTA DE VALOR: ${ctx.angulo ?? "ayudarlos a tener más presencia y traerles más clientes con su marketing digital"}.
 
+${bloqueServiciosParaPrompt(ctx.catalogo ?? [], ctx.servicioSlug)}
+
+OBJETIVO REAL: que acepte una REUNIÓN CORTA POR GOOGLE MEET (15-20 min). Ahí se cierran las ventas.
+
 ${channelInstruction(ctx.canal)}
 ${langInstruction(ctx.idioma)}
 
 ESTRUCTURA (clave para que respondan)
 1. ABRÍ con el GANCHO: una observación concreta y real de SU cuenta/negocio (el campo "Gancho"). Que la primera línea demuestre que miramos su perfil, no un copy genérico. Si no hay gancho, usá la señal de "Por qué"/descripción.
-2. OFRECÉ VALOR CONCRETO: presentá la idea puntual que le daríamos (el campo "Idea") como algo gratis y accionable —"te armé/pensé esto para vos"—, conectado a un resultado de negocio (más clientes, reservas, ventas).
-3. CTA SUAVE atado a la oferta: invitá a que le mandemos esa idea / un mini-análisis gratis, o a una charla corta de 15 min sin compromiso. La meta es que sea fácil decir "sí, contame".
+2. OFRECÉ VALOR CONCRETO: presentá la idea puntual que le daríamos (el campo "Idea") como algo pensado para él, conectado a un resultado de negocio (más clientes, reservas, ventas). La idea tiene que poder ejecutarse con los servicios del catálogo.
+3. CTA: proponé una reunión corta por Meet (15-20 min) para mostrarle esa idea desarrollada, y cerrá con una pregunta fácil ("¿te viene bien esta semana?"). El anzuelo es la idea; la reunión es donde se despliega.
 
 REGLAS DEL MENSAJE
-- Pedir una llamada en seco convierte poco: el anzuelo es el VALOR (la idea / el mini-análisis), no la reunión.
+- El valor va primero y la reunión después: no arranques pidiendo la llamada, pero SIEMPRE terminá proponiéndola.
+- PROHIBIDO prometer un entregable para mandar por chat antes de la reunión ("te preparo una propuesta y te la paso"): queda trabajo colgado que nadie hace. Lo que se muestra, se muestra en el Meet.
 - Una sola idea de valor, no una lista de servicios. Honesto, sin promesas mágicas ni métricas inventadas.
 - Nada de "estimado/a", nada robótico, nada de mayúsculas gritadas ni exceso de emojis (1 como mucho).
 - Devolvé SOLO el texto del mensaje, listo para enviar. Sin comillas, sin notas, sin opciones alternativas.`;

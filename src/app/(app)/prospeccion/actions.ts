@@ -14,6 +14,7 @@ import {
   type MessageContext,
 } from "@/lib/prospecting/message";
 import { verifyInstagramOne, toHandle } from "@/lib/prospecting/verify";
+import { cargarCatalogoServicios } from "@/lib/prospecting/catalogo";
 import {
   MENSAJE_BLOQUES,
   type CampaignMessages,
@@ -315,9 +316,11 @@ export async function generateLeadMessage(id: string) {
     rubro: c.rubro,
     servicioNombre,
     servicioDesc,
+    servicioSlug: c.servicio,
     angulo: c.angulo,
     canal: c.canal,
     idioma: c.idioma,
+    catalogo: await cargarCatalogoServicios(),
   };
 
   let mensaje: string | null;
@@ -388,9 +391,11 @@ export async function generateLeadFollowup(id: string) {
         rubro: c.rubro,
         servicioNombre,
         servicioDesc,
+        servicioSlug: c.servicio,
         angulo: c.angulo,
         canal: c.canal,
         idioma: c.idioma,
+        catalogo: await cargarCatalogoServicios(),
       },
       l.mensaje
     );
@@ -447,9 +452,11 @@ export async function generateAllMessages(campaignId: string) {
     rubro: c.rubro,
     servicioNombre,
     servicioDesc,
+    servicioSlug: c.servicio,
     angulo: c.angulo,
     canal: c.canal,
     idioma: c.idioma,
+    catalogo: await cargarCatalogoServicios(),
   };
 
   const results = await Promise.all(
@@ -820,11 +827,14 @@ export async function regenerateCampaignMessages(campaignId: string) {
       ubicacion: c.ubicacion,
       servicioNombre,
       servicioDesc,
+      servicioSlug: c.servicio,
       angulo: c.angulo,
       canal: c.canal,
       idioma: c.idioma,
       // Los firma quien los genera: si los saca Guille, no puede decir "soy Joaquín".
       autorNombre: me.nombre,
+      // Sin el catálogo real, la IA ofrece servicios que no vendemos.
+      catalogo: await cargarCatalogoServicios(),
     });
   } catch (e) {
     console.error("regenerateCampaignMessages:", e);

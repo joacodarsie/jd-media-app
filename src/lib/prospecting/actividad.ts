@@ -11,12 +11,12 @@
  */
 
 /**
- * Meta diaria de mensajes por persona. El peso está en Leo y Guille, que son
- * los que prospectan; el resto acompaña. Total del equipo: 100 por día.
+ * Metas que vivían hardcodeadas antes de la migración 0149.
  *
- * Vive en código a propósito: es un número que se toca cada varios meses, no
- * todos los días, y así no hay una pantalla más de configuración que mantener.
- * Para cambiarlo, editar acá.
+ * Ahora la meta se edita desde la pantalla y se guarda en `users.meta_prospeccion`.
+ * Este mapa queda SOLO como respaldo para el caso en que la columna todavía no
+ * exista (la app tiene que andar con la migración sin aplicar). Cuando esté
+ * aplicada en todos lados, se puede borrar.
  */
 export const METAS_POR_EMAIL: Record<string, number> = {
   "leo@jdmedia.com": 40,
@@ -25,11 +25,35 @@ export const METAS_POR_EMAIL: Record<string, number> = {
   "joaquin@jdmedia.com": 10,
 };
 
-/** Para alguien que prospecta y no está en la tabla de arriba. */
+/** Para alguien que prospecta y no tiene meta propia cargada. */
 export const META_DEFECTO = 10;
 
-export function metaDe(email: string | null | undefined): number {
+/** Techo de lo que se puede cargar a mano (espejo del check de la migración). */
+export const META_MAXIMA = 500;
+
+/**
+ * Meta diaria de una persona.
+ *
+ * `metaGuardada` es lo que tiene en la DB: si es un número (incluido el 0, que
+ * significa "no se le exige nada"), manda. Si es null/undefined, caemos al mapa
+ * viejo por email y después al default.
+ */
+export function metaDe(
+  email: string | null | undefined,
+  metaGuardada?: number | null
+): number {
+  if (typeof metaGuardada === "number" && Number.isFinite(metaGuardada)) {
+    return Math.min(Math.max(Math.round(metaGuardada), 0), META_MAXIMA);
+  }
   return METAS_POR_EMAIL[(email ?? "").toLowerCase().trim()] ?? META_DEFECTO;
+}
+
+/** Normaliza lo que se escribe en el input antes de guardarlo. */
+export function normalizarMeta(valor: unknown): number | null {
+  if (valor === null || valor === undefined || valor === "") return null;
+  const n = Number(valor);
+  if (!Number.isFinite(n)) return null;
+  return Math.min(Math.max(Math.round(n), 0), META_MAXIMA);
 }
 
 /** Meta de referencia cuando no hay email a mano (avisos genéricos). */
@@ -49,6 +73,8 @@ export interface PersonaProspecta {
   id: string;
   nombre: string;
   email?: string | null;
+  /** Meta cargada a mano en la app. undefined = la columna todavía no existe. */
+  metaProspeccion?: number | null;
 }
 
 export interface FilaActividad {
@@ -106,7 +132,7 @@ export function resumirActividad(
     const mios = contactos.filter((c) => c.asignado_a === p.id && c.contactado_at);
     const dias = mios.map((c) => c.contactado_at!.slice(0, 10));
     const ultimoDia = dias.length ? dias.sort().at(-1)! : null;
-    const meta = metaDe(p.email);
+    const meta = metaDe(p.email, p.metaProspeccion);
     return {
       id: p.id,
       nombre: p.nombre,
@@ -118,7 +144,8 @@ export function resumirActividad(
       reuniones: mios.filter((c) => c.estado === "reunion" || c.reunion_at).length,
       ultimoDia,
       diasSinEscribir: ultimoDia ? diasEntre(ultimoDia, hoy) : null,
-      cumpleHoy: dias.filter((d) => d === hoy).length >= meta,
+      // Con meta 0 no se le exige nada: no "cumple" ni deja de cumplir.
+      cumpleHoy: meta > 0 && dias.filter((d) => d === hoy).length >= meta,
     };
   });
 
@@ -131,8 +158,10 @@ export function resumirActividad(
     totalSemana: filas.reduce((a, f) => a + f.semana, 0),
     metaEquipoHoy: filas.reduce((a, f) => a + f.meta, 0),
     nadieEscribioHoy: totalHoy === 0,
+    // A quien tiene meta 0 no se le reclama: no figura como colgado.
     colgados: filas.filter(
-      (f) => f.diasSinEscribir === null || f.diasSinEscribir >= DIAS_INACTIVO
+      (f) =>
+        f.meta > 0 && (f.diasSinEscribir === null || f.diasSinEscribir >= DIAS_INACTIVO)
     ),
   };
 }

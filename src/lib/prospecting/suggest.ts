@@ -7,6 +7,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { AI_MODEL_FAST } from "@/lib/ai/models";
 import { trackAiUsage } from "@/lib/ai/usage";
+import {
+  bloqueServiciosParaPrompt,
+  cargarCatalogoServicios,
+  type ServicioAgencia,
+} from "./catalogo";
 
 const client = new Anthropic();
 
@@ -22,6 +27,8 @@ export interface SuggestInput {
   clientes: { nombre: string; rubro: string | null; descripcion: string | null }[];
   /** Rubros de campañas ya existentes, para no repetir. */
   rubrosExistentes: string[];
+  /** Catálogo real de servicios. Sin esto el ángulo sale con SEO/LinkedIn. */
+  catalogo?: ServicioAgencia[];
 }
 
 function safeParse(raw: string): SectorSuggestion[] {
@@ -69,7 +76,11 @@ export async function suggestSectors(input: SuggestInput): Promise<SectorSuggest
           .join("\n")}`
       : "";
 
-  const system = `Sos el director comercial de JD Media, una agencia de marketing digital de Córdoba, Argentina (gestión de redes, pauta paga, contenido, diseño, web). Tu tarea: proponer SECTORES/NICHOS concretos donde salir a prospectar clientes nuevos, entendiendo qué perfil de cliente ya le funciona a la agencia.
+  const catalogo = input.catalogo ?? (await cargarCatalogoServicios());
+
+  const system = `Sos el director comercial de JD Media, una agencia de marketing digital de Córdoba, Argentina. Tu tarea: proponer SECTORES/NICHOS concretos donde salir a prospectar clientes nuevos, entendiendo qué perfil de cliente ya le funciona a la agencia.
+
+${bloqueServiciosParaPrompt(catalogo)}
 
 CLIENTES ACTUALES DE JD MEDIA (para entender el perfil que funciona):
 ${clientesTxt}${existentes}
@@ -85,7 +96,7 @@ Devolvé SOLO un array JSON válido (sin markdown ni texto extra), 6 a 8 sugeren
 {"rubro": string, "ubicacion": string|null, "angulo": string|null, "por_que": string|null}
 - rubro: el nicho afilado.
 - ubicacion: zona sugerida (ej: "Córdoba, Argentina" o "España (remoto)").
-- angulo: en 1 frase, qué problema típico de ese rubro resolvemos.
+- angulo: en 1 frase, qué problema típico de ese rubro resolvemos — **con un servicio del catálogo, nombrado tal cual**. Si el ángulo obvio del rubro fuera algo que no vendemos (SEO, LinkedIn, mailing), buscá otro desde lo que sí hacemos. Este texto termina en los mensajes que se le mandan al prospecto, así que no puede prometer lo que no tenemos.
 - por_que: en 1 frase, por qué es buen sector para nosotros (relación con los clientes actuales / potencial).
 Solo el array JSON.`;
 

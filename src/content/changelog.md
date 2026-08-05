@@ -2,6 +2,19 @@
 title: Novedades
 ---
 
+## 2026-08-05 — Los calendarios ahora traen gancho, CTA y cuentas de referencia
+
+Cambios que salen del feedback de Bri sobre los calendarios de contenido.
+
+- 🪝 **Cada pieza trae su GANCHO escrito**, no descrito: la frase exacta de la placa 1 o lo que se dice en los primeros 3 segundos. Aparece destacado arriba de cada tema del plan. Los ganchos gastados ("¿Sabías que...?", "3 tips para...") están prohibidos por prompt.
+- 📢 **CTA en cada pieza**: una acción concreta al cierre ("Guardalo para cuando vengas", "Escribinos y te pasamos disponibilidad"). Prohibido el "seguinos para más contenido", que no pide nada útil.
+- 🎯 **A quién le habla cada pieza**: cada tema dice a qué segmento del diagnóstico apunta y qué dolor o deseo le toca. Una pieza que le habla a todos no le habla a nadie.
+- ✨ **Cuentas de referencia**: hasta 3 cuentas reales por pieza con **qué recurso puntual copiar** de cada una (un tipo de plano, una estructura de carrusel), clickeables desde el plan. La IA tiene prohibido inventarlas.
+- 🚫 **Contra lo genérico**: si el mismo título le sirve igual a cualquier competidor de la misma ciudad, el tema está mal y hay que reescribirlo. Ahora es una regla explícita del generador.
+- 🎠 **Carruseles placa por placa**: la IA devuelve cada placa con **el texto literal que va escrito** y su idea de diseño, en vez de un párrafo suelto. Se ve así al sugerir y baja al brief de la pieza cuando aplicás el tema al calendario.
+- 🏷️ **Chau hashtags**: ya no se generan en ningún lado. Si tenés alguno cargado a mano, no se toca.
+- 🧠 El generador de ideas pasa a un **modelo más potente**: con el anterior los ganchos salían gastados y las ideas genéricas.
+
 ## 2026-08-04 — Reunión mensual con el cliente: guión antes, diagnóstico después
 
 - 🗓️ **Sección nueva "Reunión mensual"** en la ficha de cada cliente. Es para la reunión de cierre de mes, esa donde le mostramos los resultados y escuchamos cómo le está yendo.

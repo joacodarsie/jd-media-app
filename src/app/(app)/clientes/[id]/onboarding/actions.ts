@@ -7,6 +7,7 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { SERVICE_TYPE_LABEL } from "@/lib/constants";
 import { AGENCY } from "@/lib/agency";
 import { applyContractDiscount } from "@/lib/payment-reminder";
+import { calcularPrimerMes } from "@/lib/finanzas/primer-mes";
 import type { ServiceType, ClientService } from "@/lib/types";
 
 type StepKey =
@@ -627,17 +628,20 @@ export async function buildPaymentMessage(clientId: string): Promise<
     ? applyContractDiscount(totalMensual, c)
     : totalMensual;
 
-  // Política nueva (2026-06): el abono corresponde a la TOTALIDAD del servicio
-  // del mes, sin importar el día en que se efectúe el pago. No se prorratea por
-  // fecha de inicio; si el contenido del mes no se completa, se traslada y suma
-  // a la producción del mes siguiente.
+  // Política vigente (2026-08): el primer mes se cobra PROPORCIONAL a los días
+  // que quedan desde el arranque. Además, la primera semana no lleva contenido
+  // publicado: es la semana de organización (diagnóstico, manual de marca,
+  // perfiles y calendario), tal como figura en la carta acuerdo.
+  //
+  // Reemplaza a la política de 2026-06 (mes completo sin prorrateo).
   const inicio = c.contrato_fecha_inicio
     ? new Date(c.contrato_fecha_inicio + "T00:00:00")
     : null;
-  const esProporcional = false;
-  const diasRestantes = 0;
-  const diasMes = 30;
-  const montoEsteMes = montoEffective;
+
+  const { diasMes, diasRestantes, esProporcional, montoEsteMes } = calcularPrimerMes(
+    montoEffective,
+    c.contrato_fecha_inicio
+  );
 
   function fmtMoney(n: number) {
     try {
@@ -667,8 +671,18 @@ export async function buildPaymentMessage(clientId: string): Promise<
     lines.push(`Fecha de inicio: ${fmtShort(c.contrato_fecha_inicio!)}.`);
   }
   lines.push("");
+
+  // Primer mes proporcional: se cobra solo lo que queda del mes desde el
+  // arranque, con el cálculo a la vista para que no haya que explicarlo aparte.
+  if (esProporcional) {
+    lines.push(
+      `Como arrancamos el ${fmtShort(c.contrato_fecha_inicio!)}, este primer mes se cobra proporcional a los días que quedan: ${fmtMoney(montoEsteMes)} (${diasRestantes} de ${diasMes} días). A partir del mes que viene se factura el monto mensual completo.`
+    );
+    lines.push("");
+  }
+
   lines.push(
-    `El abono corresponde a la totalidad del servicio del mes, sin importar el día en que se realice el pago. Si por algún motivo no llegáramos a completar todo el contenido dentro del mes, las piezas pendientes se trasladan y suman a la producción del mes siguiente.`
+    `Te cuento cómo arrancamos: la primera semana no publicamos contenido, la usamos para dejar todo en orden — diagnóstico de la cuenta, manual de marca, rediseño de perfiles y el calendario del mes, tal como está en la carta acuerdo. Esa semana reemplaza a la primera semana de contenido y es la que hace que todo lo que salga después tenga sentido.`
   );
 
   if (hayDescuento) {
@@ -680,7 +694,9 @@ export async function buildPaymentMessage(clientId: string): Promise<
   }
 
   lines.push("");
-  lines.push("👉 Datos para transferencia:");
+  lines.push(`👉 Total a transferir ahora: ${fmtMoney(montoEsteMes)}`);
+  lines.push("");
+  lines.push("Datos para transferencia:");
   lines.push(`Banco: ${AGENCY.bank.nombre}`);
   lines.push(`Alias: ${AGENCY.bank.alias}`);
   lines.push(`CVU: ${AGENCY.bank.cvu}`);

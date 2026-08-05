@@ -12,6 +12,7 @@ import {
   type PlanDeCambios,
   type ServicioApp,
 } from "./sync-web-servicios";
+import { leerPacksDeLaWeb } from "./packs-web";
 
 export interface ResultadoSync {
   ok: boolean;
@@ -128,6 +129,57 @@ export async function sincronizarServiciosConLaWeb(
     for (const slug of plan.noEnWeb) {
       cambios.push(`"${slug}" ya no aparece en la web — revisalo a mano`);
     }
+  }
+
+  // 5) Los packs de gestión de redes con sus precios. Va en la misma corrida
+  //    porque es la misma fuente y el mismo motivo: que lo que cotizamos sea lo
+  //    que publicamos. Si falla, no invalida la sincronización de servicios.
+  try {
+    const packs = await leerPacksDeLaWeb();
+    for (const p of packs) {
+      const { data: antes } = await admin
+        .from("agency_packs")
+        .select("precio_mensual")
+        .eq("slug", p.slug)
+        .maybeSingle();
+
+      const { error } = await admin.from("agency_packs").upsert(
+        {
+          slug: p.slug,
+          nombre: p.nombre,
+          precio_mensual: p.precio_mensual,
+          descripcion: p.descripcion,
+          reels: p.reels,
+          posts: p.posts,
+          dias_historias: p.dias_historias,
+          orden: p.orden,
+          web_synced_at: ahora,
+          updated_at: ahora,
+        },
+        { onConflict: "slug" }
+      );
+      if (error) {
+        console.error("[sync-servicios] pack", p.slug, error.message);
+        continue;
+      }
+
+      const precioAntes = (antes as { precio_mensual: number | null } | null)
+        ?.precio_mensual;
+      if (
+        precioAntes !== undefined &&
+        Number(precioAntes) !== Number(p.precio_mensual) &&
+        p.precio_mensual !== null
+      ) {
+        cambios.push(
+          `Pack ${p.nombre}: $${Number(precioAntes ?? 0).toLocaleString("es-AR")} → $${p.precio_mensual.toLocaleString("es-AR")}`
+        );
+      }
+    }
+  } catch (e) {
+    console.error("[sync-servicios] packs", e);
+    cambios.push(
+      `No se pudieron leer los packs de la web (${e instanceof Error ? e.message : "error"}). Los precios quedaron como estaban.`
+    );
   }
 
   const resultado: ResultadoSync = {

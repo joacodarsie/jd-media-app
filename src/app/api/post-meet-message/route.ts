@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { requireUser } from "@/lib/auth";
 import { AI_MODEL_SMART } from "@/lib/ai/models";
+import { createAdmin } from "@/lib/supabase/admin";
+import { packsParaPrompt } from "@/lib/agency/packs-web";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +15,44 @@ export const maxDuration = 300;
 const client = new Anthropic();
 const MODEL = AI_MODEL_SMART;
 
-function systemPrompt() {
+/**
+ * Packs con sus precios REALES, leídos de la base (que se sincroniza sola con
+ * jdmedia.com.ar). Antes estaban escritos acá a mano y quedaron desactualizados:
+ * el prompt cotizaba $350.000 el Presencia cuando la web ya decía $400.000.
+ *
+ * Si la tabla todavía no existe o está vacía, se cae al texto de respaldo con
+ * los precios verificados el 2026-08-05 — nunca a un prompt sin precios.
+ */
+async function bloquePacks(): Promise<string> {
+  const FALLBACK = `- **Pack Presencia** — $400.000/mes. 4 reels + 4 posts + 8 dias de historias.
+- **Pack Crecimiento** — $600.000/mes. 8 reels + 8 posts + 12 dias de historias.
+- **Pack Escala** — $800.000/mes. 12 reels + 12 posts + 20 dias de historias.
+- **Pack Personalizado** — a cotizar segun el caso.`;
+
+  try {
+    const { data, error } = await createAdmin()
+      .from("agency_packs")
+      .select("slug, nombre, precio_mensual, descripcion, reels, posts, dias_historias, orden")
+      .order("orden");
+    if (error || !data || data.length === 0) return FALLBACK;
+    return packsParaPrompt(
+      (data as Record<string, unknown>[]).map((p) => ({
+        slug: String(p.slug),
+        nombre: String(p.nombre),
+        precio_mensual: p.precio_mensual === null ? null : Number(p.precio_mensual),
+        descripcion: p.descripcion === null ? null : String(p.descripcion),
+        reels: p.reels === null ? null : Number(p.reels),
+        posts: p.posts === null ? null : Number(p.posts),
+        dias_historias: p.dias_historias === null ? null : Number(p.dias_historias),
+        orden: Number(p.orden ?? 0),
+      }))
+    );
+  } catch {
+    return FALLBACK;
+  }
+}
+
+function systemPrompt(packs: string) {
   return `Sos un especialista en cierre comercial de **JD Media**, una agencia cordobesa de marketing digital. JD Media NO es solo gestion de redes: ofrece un abanico de servicios y muchas veces el cliente necesita una combinacion, no un solo pack.
 
 Tu tarea es redactar mensajes de follow-up para WhatsApp despues de una reunion comercial, y despues iterar sobre ese mensaje segun lo que el usuario pida.
@@ -61,11 +100,12 @@ Te dejo nuestra web y el IG asi ves casos y como trabajamos:
 ¿Arrancamos esta semana? Me confirmas y te paso los datos para dejarlo cerrado ✅
 \`\`\`
 
-# Packs de gestion de redes (precios de referencia 2026)
-- **Pack Presencia** — $350.000/mes. Para emprendedores que arrancan: estrategia y manual de marca, informe diagnostico, calendario mensual, 4 Reels + 4 Carruseles + 8 dias de historias, publicacion en IG/TikTok/Facebook, reporte mensual, equipo dedicado + grupo de WhatsApp, gestion de Meta Ads. Pauta recomendada: $10.000/dia.
-- **Pack Crecimiento** — $500.000/mes. PyMEs con presencia armada: mismo combo + mas volumen (8 reels + 8 carruseles + 12 dias de historias) + paid optimizado + reuniones quincenales.
-- **Pack Escala** — $700.000/mes. Marcas que escalan: 12 reels + 12 carruseles + 20 dias de historias, ad spend optimizado, branding completo, reportes semanales.
-- **Personalizado** — armado a medida (ideal cuando el cliente pide una combinacion de servicios).
+# Packs de gestion de redes (PRECIOS VIGENTES, sincronizados con jdmedia.com.ar)
+${packs}
+
+Todos los packs incluyen: estrategia y manual de marca, informe diagnostico, calendario mensual, publicacion en IG/Facebook/TikTok, rediseno de perfiles, reporte mensual, equipo dedicado con grupo de WhatsApp y gestion de campanas en Meta Ads. Pauta recomendada aparte: $10.000/dia.
+
+⚠️ Usa EXACTAMENTE estos precios. Son los que figuran en la web y los que el cliente va a ver si entra. NUNCA inventes ni redondees un precio distinto.
 
 # Reglas de estilo
 - Espanol rioplatense (vos, tenes, queres, decime).
@@ -186,6 +226,10 @@ export async function POST(req: Request) {
       }, 10_000);
 
       try {
+        // Los precios se leen en cada corrida: si se sincronizaron con la web
+        // hace un rato, la propuesta sale con el precio de hoy.
+        const packs = await bloquePacks();
+
         const messageStream = client.messages.stream({
           model: MODEL,
           // El thinking comparte presupuesto con el texto: con transcripciones
@@ -193,7 +237,7 @@ export async function POST(req: Request) {
           // las pocas palabras. 16k da aire de sobra (el mensaje son ~500 tok).
           max_tokens: 16384,
           thinking: { type: "adaptive" },
-          system: systemPrompt(),
+          system: systemPrompt(packs),
           messages,
         });
 

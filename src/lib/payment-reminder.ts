@@ -1,6 +1,7 @@
 import { AGENCY } from "./agency";
 import { fmtCurrency, periodLabel } from "./finanzas";
 import { waDigits } from "./prospecting/shared";
+import { COBRO_HASTA_DIA } from "./finanzas/ciclo-cobro";
 
 export interface ReminderClient {
   nombre: string;
@@ -112,6 +113,8 @@ export function buildPaymentReminder(c: ReminderClient, periodo: string): string
     `• CVU: ${cvu}`,
     `• Nombre: ${titular}`,
     ``,
+    `Te pido que sea antes del ${COBRO_HASTA_DIA}º así arrancamos el mes con todo en orden.`,
+    ``,
     `Cuando lo tengas, mandame el comprobante y seguimos a full con tu contenido. ¡Gracias!`,
   ].join("\n");
 }
@@ -154,6 +157,8 @@ export function buildGroupedPaymentReminder(clients: ReminderClient[], periodo: 
     `• Alias: *${alias}*`,
     `• CVU: ${cvu}`,
     `• Nombre: ${titular}`,
+    ``,
+    `Te pido que sea antes del ${COBRO_HASTA_DIA}º así arrancamos el mes con todo en orden.`,
     ``,
     `Cuando lo tengas, mandame el comprobante y seguimos a full con tu contenido. ¡Gracias!`
   );

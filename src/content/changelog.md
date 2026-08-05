@@ -2,6 +2,14 @@
 title: Novedades
 ---
 
+## 2026-08-05 — El cobro pasa a ser del 25 al 1º
+
+- 📅 **Nueva ventana de cobro**: el abono se cobra por adelantado **entre el 25 del mes anterior y el 1º del mes a abonar**. El motivo es concreto: los sueldos se pagan el 5, y cobrando el 10 la caja llegaba corta.
+- 📄 **La carta acuerdo lo dice así**: donde antes decía "el Nº día hábil de cada mes", ahora figura la ventana. En el formulario del contrato ya no se elige un día por cliente — es la misma para todos.
+- 🔔 **El recordatorio automático de WhatsApp sale el 25** (antes, el último día del mes), así el cliente tiene una semana para pagar.
+- 🧾 **Las facturas nuevas vencen el 1º** (antes el 10). Las ya emitidas quedan como estaban.
+- 💬 El mensaje de cobro del onboarding y el recordatorio manual ahora aclaran la fecha límite.
+
 ## 2026-08-05 — Los calendarios ahora traen gancho, CTA y cuentas de referencia
 
 Cambios que salen del feedback de Bri sobre los calendarios de contenido.

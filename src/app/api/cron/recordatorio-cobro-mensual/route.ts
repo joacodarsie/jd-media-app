@@ -5,14 +5,19 @@ import { reminderAmount, normalizePhone } from "@/lib/payment-reminder";
 import { isClientPausedFor } from "@/lib/client-pause";
 import { whatsappApiConfigured, sendPaymentReminderTemplate } from "@/lib/meta/whatsapp";
 import { AGENCY } from "@/lib/agency";
+import { hoyYmd } from "@/lib/dates";
+import { COBRO_DESDE_DIA, esDiaDeRecordatorio } from "@/lib/finanzas/ciclo-cobro";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 /**
  * Recordatorio de cobro AUTOMÁTICO por WhatsApp (plantilla aprobada por Meta) —
- * corre todos los días, pero solo actúa el ÚLTIMO día del mes (cubre meses de
- * 28 a 31 días sin hardcodear el 28). Cobra el abono del mes SIGUIENTE.
+ * corre todos los días, pero solo actúa el **25**, que es cuando abre la
+ * ventana de cobro (25 → 1º). Cobra el abono del mes SIGUIENTE.
+ *
+ * Antes salía el último día del mes: la plata entraba con lo justo para los
+ * sueldos del 5. La política y sus fechas viven en lib/finanzas/ciclo-cobro.
  *
  * Mientras no esté conectada la API de WhatsApp Business (`whatsappApiConfigured`
  * en false: falta el Phone Number ID y/o la plantilla aprobada), no manda nada
@@ -35,10 +40,6 @@ function isAuthorized(req: NextRequest): boolean {
   return false;
 }
 
-function isLastDayOfMonth(d: Date): boolean {
-  return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate() === d.getDate();
-}
-
 interface ClientRow {
   id: string;
   nombre: string;
@@ -56,9 +57,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const now = new Date();
-  if (!isLastDayOfMonth(now)) {
-    return NextResponse.json({ ok: true, skipped: "no es el último día del mes" });
+  // Se manda el 25, que es cuando abre la ventana de cobro (25 → 1º). Antes
+  // salía el último día del mes, lo que dejaba muy poco margen para tener la
+  // plata antes de los sueldos del 5.
+  const hoy = hoyYmd();
+  if (!esDiaDeRecordatorio(hoy)) {
+    return NextResponse.json({
+      ok: true,
+      skipped: `el recordatorio se manda el ${COBRO_DESDE_DIA} de cada mes (hoy es ${hoy})`,
+    });
   }
   if (!whatsappApiConfigured()) {
     return NextResponse.json({
@@ -73,7 +80,7 @@ export async function GET(req: NextRequest) {
   const messagePrefix = `Recordatorio de cobro automático · ${mes}`;
 
   // Idempotencia: si ya corrió hoy, no reintenta.
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const startOfDay = new Date(`${hoy}T00:00:00`).toISOString();
   const { data: already } = await admin
     .from("notifications")
     .select("id")

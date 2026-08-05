@@ -8,6 +8,7 @@ import {
   type ContractClauseOverrides,
 } from "@/lib/contract-clauses";
 import type { ClientService } from "@/lib/types";
+import { VENTANA_COBRO_TEXTO } from "@/lib/finanzas/ciclo-cobro";
 import { PrintButton } from "@/components/print-button";
 import { DocEditToggle } from "@/components/doc-edit-toggle";
 
@@ -69,11 +70,6 @@ function fmtDate(iso?: string | null) {
     month: "long",
     year: "numeric",
   });
-}
-
-function ordinalDia(n: number): string {
-  if (n === 1) return "primer";
-  return `${n}º`;
 }
 
 const esUnico = (s: ClientService) =>
@@ -194,7 +190,6 @@ export function ContractDocument({ model }: { model: ContractModel }) {
   const montoConDescuentoSingle =
     !isUnified && marcaTieneDescuento(marcas[0]) ? marcaConDescuento(marcas[0]) : null;
 
-  const diaCobro = model.diaCobro;
   const plazoMeses = model.plazoMeses;
   const fechaInicio = fmtDate(model.fechaInicio);
   const año = model.fechaInicio
@@ -705,7 +700,7 @@ export function ContractDocument({ model }: { model: ContractModel }) {
               Por los servicios <strong>mensuales</strong> contratados
               {isUnified ? " (todas las marcas)" : ""}, el Cliente abonará la suma
               de <strong>{fmtMoney(totalMensual, moneda)}</strong> por mes, por
-              adelantado el {ordinalDia(diaCobro)} día hábil de cada mes, mediante
+              adelantado, <strong>{VENTANA_COBRO_TEXTO}</strong>, mediante
               transferencia bancaria a los datos provistos por La Agencia.
             </p>
           )}

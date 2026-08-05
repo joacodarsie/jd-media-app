@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { saveContractData } from "@/app/(app)/clientes/[id]/onboarding/contract-actions";
+import { COBRO_DESDE_DIA, COBRO_HASTA_DIA } from "@/lib/finanzas/ciclo-cobro";
 
 interface Initial {
   contacto_nombre: string | null;
@@ -132,18 +133,14 @@ export function OnboardingContractForm({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
+        {/* Ya no se elige por cliente: la ventana de cobro es la misma para
+            todos (25 → 1º) para llegar con la plata a los sueldos del 5. Se
+            muestra para que quien arma el contrato sepa qué va a decir la carta. */}
         <div className="space-y-1">
-          <Label className="text-xs">Día de cobro mensual</Label>
-          <Input
-            type="number"
-            min={1}
-            max={28}
-            value={form.contrato_dia_cobro ?? ""}
-            onChange={(e) =>
-              set("contrato_dia_cobro", e.target.value ? Number(e.target.value) : null)
-            }
-            placeholder="1"
-          />
+          <Label className="text-xs">Cobro mensual</Label>
+          <div className="flex h-9 items-center rounded-md border bg-muted/40 px-2 text-sm text-muted-foreground">
+            Del {COBRO_DESDE_DIA} al {COBRO_HASTA_DIA}º, por adelantado
+          </div>
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Moneda</Label>

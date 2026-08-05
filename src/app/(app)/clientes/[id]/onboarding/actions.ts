@@ -8,6 +8,7 @@ import { SERVICE_TYPE_LABEL } from "@/lib/constants";
 import { AGENCY } from "@/lib/agency";
 import { applyContractDiscount } from "@/lib/payment-reminder";
 import { calcularPrimerMes } from "@/lib/finanzas/primer-mes";
+import { COBRO_DESDE_DIA, VENTANA_COBRO_TEXTO } from "@/lib/finanzas/ciclo-cobro";
 import type { ServiceType, ClientService } from "@/lib/types";
 
 type StepKey =
@@ -693,6 +694,10 @@ export async function buildPaymentMessage(clientId: string): Promise<
     );
   }
 
+  lines.push("");
+  lines.push(
+    `De acá en adelante el abono se cobra por adelantado, ${VENTANA_COBRO_TEXTO}. Te voy a estar mandando el recordatorio el ${COBRO_DESDE_DIA} de cada mes.`
+  );
   lines.push("");
   lines.push(`👉 Total a transferir ahora: ${fmtMoney(montoEsteMes)}`);
   lines.push("");

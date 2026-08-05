@@ -12,6 +12,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { mergeSettings } from "@/lib/coordinacion";
 import { isClientPausedFor } from "@/lib/client-pause";
 import { applyContractDiscount } from "@/lib/payment-reminder";
+import { vencimientoDePeriodo } from "@/lib/finanzas/ciclo-cobro";
 
 export interface GeneratedInvoices {
   abonos: number;
@@ -161,7 +162,9 @@ export async function generateInvoicesForPeriod(
       monto,
       moneda: s.moneda ?? "ARS",
       fecha_emision: `${periodo}-01`,
-      fecha_vencimiento: `${periodo}-10`,
+      // Vence el 1º: la ventana de cobro va del 25 del mes anterior al 1º, para
+      // llegar con la plata a los sueldos del 5. Ver lib/finanzas/ciclo-cobro.
+      fecha_vencimiento: vencimientoDePeriodo(periodo),
       creado_por_id: creadoPorId,
     });
     if (!error) abonos++;

@@ -1,0 +1,28 @@
+name: Sincronizar servicios con la web
+
+# Mantiene el catálogo de servicios de la app igual a lo que publica
+# jdmedia.com.ar. Importa porque ese catálogo es lo que la IA de prospección le
+# ofrece a un prospecto: si la web cambia y la app no, vendemos lo que no
+# tenemos (o dejamos de vender lo que sí).
+#
+# Una vez por día alcanza: la web de servicios no cambia seguido.
+#
+# Mismo secret que el publicador (CRON_SECRET en Settings → Secrets → Actions).
+on:
+  schedule:
+    # 11:00 UTC = 8:00 en Argentina.
+    - cron: "0 11 * * *"
+  workflow_dispatch:
+
+jobs:
+  sincronizar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sincronizar catálogo de servicios
+        run: |
+          codigo=$(curl -s -o respuesta.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://jd-media-app.vercel.app/api/cron/sync-servicios-web)
+          echo "HTTP $codigo"
+          cat respuesta.json
+          test "$codigo" = "200"

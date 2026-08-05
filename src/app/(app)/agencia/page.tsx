@@ -30,15 +30,46 @@ export default async function AgenciaPage() {
       .from("quick_links")
       .select("id, label, url, icon, orden")
       .order("orden"),
+    // Las columnas de sincronización con la web son de la 0150: si todavía no
+    // está aplicada, la query falla y abajo se reintenta sin ellas.
     supabase
       .from("services")
-      .select("slug, name, description, color, icon, areas, orden, active")
+      .select(
+        "slug, name, description, color, icon, areas, orden, active, web_synced_at, web_sync_estado"
+      )
       .order("orden"),
   ]);
 
   const pages = pagesRes.data;
   const links: QuickLinkRow[] = (linksRes.data ?? []) as QuickLinkRow[];
-  const services: ServiceInit[] = (servicesRes.data ?? []) as ServiceInit[];
+
+  const serviciosRaw = servicesRes.error
+    ? (
+        await supabase
+          .from("services")
+          .select("slug, name, description, color, icon, areas, orden, active")
+          .order("orden")
+      ).data
+    : servicesRes.data;
+
+  const services: ServiceInit[] = (serviciosRaw ?? []) as ServiceInit[];
+
+  // Estado de la sincronización con jdmedia.com.ar.
+  const conSync = (serviciosRaw ?? []) as {
+    slug: string;
+    web_synced_at?: string | null;
+    web_sync_estado?: string | null;
+  }[];
+  const syncAt =
+    conSync
+      .map((s) => s.web_synced_at)
+      .filter((x): x is string => !!x)
+      .sort()
+      .at(-1) ?? null;
+  const sinEnWeb = conSync
+    .filter((s) => s.web_sync_estado === "no_en_web")
+    .map((s) => s.slug);
+
   const canEdit = isStaffUser(me);
 
   return (
@@ -64,7 +95,12 @@ export default async function AgenciaPage() {
         )}
       </div>
 
-      <ServicesManager services={services} canEdit={canEdit} />
+      <ServicesManager
+        services={services}
+        canEdit={canEdit}
+        syncAt={syncAt}
+        sinEnWeb={sinEnWeb}
+      />
 
       <QuickLinksManager links={links} canEdit={canEdit} />
 

@@ -23,6 +23,19 @@ describe("bloqueServiciosParaPrompt", () => {
     expect(b).toContain("PROHIBIDO");
   });
 
+  it("prohíbe cotizar en frío, porque las descripciones de la web traen precios", () => {
+    const conPrecio: ServicioAgencia[] = [
+      {
+        slug: "gestion_redes",
+        nombre: "Gestión de redes",
+        descripcion: "Equipo dedicado de CM, editor y diseñador. Planes desde $400.000/mes.",
+      },
+    ];
+    const b = bloqueServiciosParaPrompt(conPrecio);
+    expect(b).toContain("PRECIOS");
+    expect(b).toMatch(/NO menciones precios/i);
+  });
+
   it("marca el servicio de la campaña como foco", () => {
     const b = bloqueServiciosParaPrompt(CATALOGO, "gestion_redes");
     expect(b).toContain("SERVICIO QUE SE QUIERE VENDER EN ESTA CAMPAÑA");

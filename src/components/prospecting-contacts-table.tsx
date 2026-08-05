@@ -10,7 +10,6 @@ import {
   Loader2,
   Sparkles,
   Download,
-  Plus,
   Trash2,
   MessageCircle,
   Search,
@@ -51,11 +50,9 @@ import {
   personalizarMensaje,
   esProbableFijoAr,
 } from "@/lib/prospecting/shared";
-import { ProspectingContactsBulkDialog } from "@/components/prospecting-contacts-bulk-dialog";
 import {
   updateContact,
   deleteContact,
-  addManualContact,
   bulkSetContactoEstado,
   bulkSetContactable,
   bulkDeleteContacts,
@@ -120,7 +117,8 @@ export function ProspectingContactsTable({
   const router = useRouter();
   const [rows, setRows] = useState<ContactRow[]>(initialContacts);
   const [loading, setLoading] = useState(false);
-  const [cantidad, setCantidad] = useState("15");
+  // 50 por defecto: es la tanda con la que se trabaja un día entero.
+  const [cantidad, setCantidad] = useState("50");
   // Sin permiso de IA, la única fuente disponible es Places (0 tokens).
   const [fuente, setFuente] = useState(canUseAi ? "mix" : "places");
   const [filtro, setFiltro] = useState<string>("todos");
@@ -233,14 +231,6 @@ export function ProspectingContactsTable({
     } finally {
       setLoading(false);
     }
-  }
-
-  function agregarFila() {
-    startTransition(async () => {
-      const res = await addManualContact(campaignId, { empresa: "Nueva empresa" });
-      if ("error" in res) return void toast.error(res.error);
-      router.refresh();
-    });
   }
 
   function borrar(id: string) {
@@ -542,10 +532,6 @@ export function ProspectingContactsTable({
               </Button>
             </>
           )}
-          <ProspectingContactsBulkDialog campaignId={campaignId} />
-          <Button variant="outline" onClick={agregarFila} disabled={loading}>
-            <Plus className="mr-2 h-4 w-4" /> Agregar fila
-          </Button>
           {cola.length > 0 && (
             <Button
               onClick={() => setDespacho(true)}

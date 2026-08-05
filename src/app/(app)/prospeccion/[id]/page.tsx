@@ -1,35 +1,20 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Send, Languages, Target, Table2 } from "lucide-react";
-import { requireRole, canUseProspectingAi, canUseLeadsAi } from "@/lib/auth";
+import { requireRole, canUseProspectingAi } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ProspectingCampaignDialog } from "@/components/prospecting-campaign-dialog";
 import { ProspectingCampaignActions } from "@/components/prospecting-campaign-actions";
-import { ProspectingDiscoverButton } from "@/components/prospecting-discover-button";
-import { ProspectingGenerateAllButton } from "@/components/prospecting-generate-all-button";
-import { ProspectingManualLeadDialog } from "@/components/prospecting-manual-lead-dialog";
-import { ProspectingLeadCard, type LeadRow } from "@/components/prospecting-lead-card";
 import {
   ProspectingCampaignMessages,
   type CampaignMessages,
 } from "@/components/prospecting-campaign-messages";
-import { channelLabel, langLabel, LEAD_ESTADOS, leadStats } from "@/lib/prospecting/shared";
+import { channelLabel, langLabel, leadStats } from "@/lib/prospecting/shared";
 
 export const dynamic = "force-dynamic";
 
 const ALLOWED = ["admin", "coordinador", "comercial", "prospecting"];
-
-// Orden de los leads: primero los “vivos” por fit, los descartados al final.
-const ESTADO_ORDER: Record<string, number> = {
-  respondio: 0,
-  reunion: 1,
-  contactado: 2,
-  nuevo: 3,
-  ganado: 4,
-  descartado: 5,
-};
 
 export default async function CampaignDetailPage({
   params,
@@ -39,10 +24,8 @@ export default async function CampaignDetailPage({
   searchParams: { nuevo?: string };
 }) {
   const me = await requireRole(ALLOWED);
-  // IA de prospección del día a día (mensajes de campaña, generar mensajes) vs.
-  // el buscador de leads con IA, que es la función más cara y va aparte.
+  // IA de prospección del día a día: los mensajes plantilla de la campaña.
   const puedeIa = canUseProspectingAi(me);
-  const puedeBuscarLeads = canUseLeadsAi(me);
   const admin = createAdmin();
 
   const { data: camp } = await admin
@@ -82,43 +65,17 @@ export default async function CampaignDetailPage({
     mensajesPlantilla =
       ((mp.data as { mensajes_plantilla?: CampaignMessages | null } | null)?.mensajes_plantilla) ?? null;
 
-  const LEAD_COLS =
-    "id, empresa, descripcion, ciudad, pais, sitio_web, instagram, instagram_verificado, telefono, email, por_que, fit_score, fuente_url, mensaje, seguimiento, estado, cliente_id";
-  const leadsRes = await admin
-    .from("prospecting_leads")
-    .select(LEAD_COLS)
+  // El embudo se mide sobre los CONTACTOS, que es por donde se escribe ahora.
+  const { data: contactosData } = await admin
+    .from("prospecting_contacts")
+    .select("estado")
     .eq("campaign_id", c.id);
-  let leadsData = leadsRes.data;
-  const leadsErr = leadsRes.error;
-  // Resiliencia: si todavía no se aplicaron 0099 (seguimiento) o 0112
-  // (instagram_verificado), no rompemos la página — traemos sin esas columnas.
-  if (leadsErr && (leadsErr as { code?: string }).code === "42703") {
-    const fallback = await admin
-      .from("prospecting_leads")
-      .select(LEAD_COLS.replace(", seguimiento", "").replace(", instagram_verificado", ""))
-      .eq("campaign_id", c.id);
-    leadsData = ((fallback.data ?? []) as unknown as Record<string, unknown>[]).map(
-      (l) => ({ ...l, seguimiento: null, instagram_verificado: null })
-    ) as typeof leadsData;
-  }
+  const contactosEstados = ((contactosData ?? []) as { estado: string | null }[])
+    .map((x) => x.estado)
+    .filter((e): e is string => !!e);
+  const contactosCount = (contactosData ?? []).length;
 
-  const leads = ((leadsData ?? []) as Omit<LeadRow, "canal">[]).sort((a, b) => {
-    const eo = (ESTADO_ORDER[a.estado] ?? 9) - (ESTADO_ORDER[b.estado] ?? 9);
-    if (eo !== 0) return eo;
-    return (b.fit_score ?? -1) - (a.fit_score ?? -1);
-  });
-
-  const counts = leads.reduce<Record<string, number>>((acc, l) => {
-    acc[l.estado] = (acc[l.estado] ?? 0) + 1;
-    return acc;
-  }, {});
-
-  // Leads activos sin mensaje todavía (para el botón "Generar mensajes").
-  const sinMensaje = leads.filter(
-    (l) => !l.mensaje && l.estado !== "descartado"
-  ).length;
-
-  const stats = leadStats(leads.map((l) => l.estado));
+  const stats = leadStats(contactosEstados);
 
   return (
     <div className="space-y-5">
@@ -209,51 +166,26 @@ export default async function CampaignDetailPage({
         </div>
       )}
 
-      {/* Acciones */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          {puedeBuscarLeads && <ProspectingDiscoverButton campaignId={c.id} />}
-          {puedeIa && sinMensaje > 0 && (
-            <ProspectingGenerateAllButton campaignId={c.id} count={sinMensaje} />
-          )}
-          <ProspectingManualLeadDialog campaignId={c.id} />
-          <Link
-            href={`/prospeccion/${c.id}/contactos`}
-            className="inline-flex h-10 items-center gap-2 rounded-md border px-4 text-sm font-medium hover:bg-accent"
-          >
-            <Table2 className="h-4 w-4" /> Contactos (rápido)
-          </Link>
-        </div>
-        {leads.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {LEAD_ESTADOS.filter((e) => counts[e.value]).map((e) => (
-              <Badge key={e.value} className={e.badge}>
-                {counts[e.value]} {e.label.toLowerCase()}
-              </Badge>
-            ))}
+      {/* El único camino: la lista de contactos para escribir a mano en volumen.
+          El flujo viejo de "leads" (buscar con IA de a uno + mensaje por lead)
+          se sacó en agosto 2026: duplicaba el trabajo de Contactos y nadie lo
+          usaba. Los leads viejos siguen en la base (prospecting_leads). */}
+      <Link
+        href={`/prospeccion/${c.id}/contactos`}
+        className="flex items-center justify-between gap-4 rounded-xl border bg-card p-5 transition hover:bg-accent"
+      >
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 font-semibold">
+            <Table2 className="h-5 w-5 text-primary" /> Contactos de esta campaña
           </div>
-        )}
-      </div>
-
-      {/* Leads */}
-      {leads.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
-            <p className="font-medium">Sin leads todavía</p>
-            <p className="max-w-md text-sm text-muted-foreground">
-              Tocá <b>Buscar leads con IA</b> y la IA sale a buscar empresas reales
-              del cluster con sus datos de contacto. O cargá una a mano si ya la
-              tenés.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-3 lg:grid-cols-2">
-          {leads.map((l) => (
-            <ProspectingLeadCard key={l.id} lead={{ ...l, canal: c.canal }} />
-          ))}
+          <p className="mt-1 text-sm text-muted-foreground">
+            {contactosCount > 0
+              ? `${contactosCount} contactos cargados. Entrá para escribirles.`
+              : "Todavía no hay contactos. Entrá y tocá “Sacar contactos”."}
+          </p>
         </div>
-      )}
+        <span className="shrink-0 text-sm font-medium text-primary">Abrir →</span>
+      </Link>
     </div>
   );
 }

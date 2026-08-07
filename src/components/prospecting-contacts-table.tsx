@@ -168,21 +168,6 @@ export function ProspectingContactsTable({
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
   }
 
-  /** Igual que setField pero para el flag booleano `contactable`. */
-  function setField2(id: string, field: "contactable", value: boolean | null) {
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
-  }
-
-  function persistContactable(id: string, value: boolean | null) {
-    startTransition(async () => {
-      const res = await updateContact(id, { contactable: value });
-      if ("error" in res) {
-        toast.error(res.error);
-        router.refresh();
-      }
-    });
-  }
-
   /** Persiste un campo si cambió respecto de lo último guardado. */
   function persist(id: string, field: keyof ContactPatch, value: string | null) {
     const prev = persisted.current.get(id);
@@ -455,14 +440,19 @@ export function ProspectingContactsTable({
     }
   }
 
-  function bulkContactable(valor: boolean) {
+  /**
+   * Marca en lote "no se pudo contactar" (el dato estaba mal). Sigue existiendo
+   * aunque la columna se haya sacado de la tabla: es lo que evita que un dato
+   * malo cuente como fracaso comercial en la tasa de interés.
+   */
+  function bulkNoSePudo() {
     const ids = [...sel];
     if (ids.length === 0) return;
     setRows((prev) =>
-      prev.map((r) => (sel.has(r.id) ? { ...r, contactable: valor } : r))
+      prev.map((r) => (sel.has(r.id) ? { ...r, contactable: false } : r))
     );
     startTransition(async () => {
-      const res = await bulkSetContactable(ids, valor);
+      const res = await bulkSetContactable(ids, false);
       if ("error" in res && res.error) {
         toast.error(res.error);
         router.refresh();
@@ -626,18 +616,12 @@ export function ProspectingContactsTable({
               {e.label}
             </button>
           ))}
-          <span className="text-xs text-muted-foreground">· ¿Se pudo?</span>
           <button
-            onClick={() => bulkContactable(true)}
-            className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-          >
-            Sí
-          </button>
-          <button
-            onClick={() => bulkContactable(false)}
+            onClick={bulkNoSePudo}
+            title="El teléfono no existe o no contesta nunca: el dato estaba mal. No cuenta como fracaso comercial."
             className="rounded-full bg-rose-100 px-2.5 py-1 text-xs font-medium text-rose-800 dark:bg-rose-950 dark:text-rose-300"
           >
-            No (dato malo)
+            No se pudo (dato malo)
           </button>
           <button
             onClick={bulkBorrar}
@@ -667,7 +651,7 @@ export function ProspectingContactsTable({
         <div className="overflow-x-auto rounded-xl border bg-card">
           {/* table-fixed es lo que hace que el <colgroup> mande: sin esto el
               navegador reparte parejo e igual trunca teléfonos y nombres. */}
-          <table className="w-full min-w-[1150px] table-fixed text-sm">
+          <table className="w-full min-w-[1070px] table-fixed text-sm">
             {/* Anchos fijos (table-fixed): la suma entra en una pantalla de
                 ~1250px de contenido SIN scroll horizontal — el user tenía que
                 arrastrar la barrita para ver Notas. Contacto y Rol van fusionados
@@ -679,7 +663,6 @@ export function ProspectingContactsTable({
               <col className="w-[165px]" />
               <col className="w-[110px]" />
               <col className="w-[70px]" />
-              <col className="w-[80px]" />
               <col className="w-[140px]" />
               <col className="w-[150px]" />
               <col />
@@ -701,7 +684,6 @@ export function ProspectingContactsTable({
                 <Th>Teléfono</Th>
                 <Th>Instagram / link</Th>
                 <Th>¿Escribí?</Th>
-                <Th>¿Se pudo?</Th>
                 <Th>Estado</Th>
                 <Th>Quién contacta</Th>
                 <Th>Notas</Th>
@@ -711,7 +693,7 @@ export function ProspectingContactsTable({
             <tbody>
               {visibleRows.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-3 py-6 text-center text-sm text-muted-foreground">
+                  <td colSpan={10} className="px-3 py-6 text-center text-sm text-muted-foreground">
                     Ningún contacto coincide con el filtro.
                   </td>
                 </tr>
@@ -869,15 +851,6 @@ export function ProspectingContactsTable({
                       </label>
                     </Td>
                     <Td>
-                      <ContactableToggle
-                        value={r.contactable}
-                        onChange={(v) => {
-                          setField2(r.id, "contactable", v);
-                          persistContactable(r.id, v);
-                        }}
-                      />
-                    </Td>
-                    <Td>
                       <select
                         value={r.estado}
                         onChange={(e) => {
@@ -896,7 +869,11 @@ export function ProspectingContactsTable({
                       </select>
                       {dias != null && (
                         <span className="mt-0.5 block text-[10px] text-muted-foreground">
-                          {dias === 0 ? "hoy" : `hace ${dias}d`}
+                          {/* `<= 0` y no `=== 0`: la cuenta se hace en el
+                              navegador contra una fecha sellada por el servidor,
+                              así que un reloj local unos minutos atrasado daba
+                              "hace -1d" en lo recién contactado. */}
+                          {dias <= 0 ? "hoy" : `hace ${dias}d`}
                         </span>
                       )}
                     </Td>
@@ -1151,37 +1128,6 @@ function Th({ children }: { children: React.ReactNode }) {
 }
 function Td({ children }: { children: React.ReactNode }) {
   return <td className="px-2 py-1 align-middle">{children}</td>;
-}
-
-/**
- * Marca si el DATO de contacto sirve. Cicla: sin probar → sí se pudo → no se
- * pudo. Es distinto del estado: "no se pudo contactar" (dato mal cargado) no es
- * lo mismo que "no le interesó".
- */
-function ContactableToggle({
-  value,
-  onChange,
-}: {
-  value: boolean | null;
-  onChange: (v: boolean | null) => void;
-}) {
-  const next = value === null ? true : value === true ? false : null;
-  const meta =
-    value === true
-      ? { label: "Sí", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300", title: "Se pudo contactar" }
-      : value === false
-        ? { label: "No", cls: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300", title: "No se pudo (dato mal cargado)" }
-        : { label: "—", cls: "bg-muted text-muted-foreground", title: "Sin probar. Clic para marcar." };
-  return (
-    <button
-      type="button"
-      title={meta.title}
-      onClick={() => onChange(next)}
-      className={`w-full rounded-full px-2 py-1 text-xs font-medium transition-colors hover:opacity-80 ${meta.cls}`}
-    >
-      {meta.label}
-    </button>
-  );
 }
 
 /**

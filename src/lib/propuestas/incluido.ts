@@ -66,7 +66,7 @@ export const LETRA_CHICA: { titulo: string; texto: string }[] = [
   {
     titulo: "El presupuesto de pauta va aparte",
     texto:
-      "El abono cubre armar, configurar y optimizar las campañas. La plata que se invierte en Meta la ponés vos y la definimos juntos según el objetivo: no está incluida en el pack y no la manejamos nosotros.",
+      "El abono cubre armar, configurar y optimizar tus campañas de Meta. La plata que se invierte en los anuncios la ponés vos y la definimos juntos según el objetivo. Google Ads y las campañas de mayor escala son nuestro servicio de Publicidad Online, que se cotiza por separado.",
   },
   {
     titulo: "Acuerdo mínimo de 3 meses",

@@ -438,8 +438,11 @@ export default async function PropuestaPage({
  * prospecto asume que un sitio web o el branding entran en el abono.
  */
 function otrosServicios(p: PropuestaVista): string {
+  // `paid_media` queda afuera a propósito: la gestión de las campañas de Meta
+  // YA entra en el abono, así que listarlo acá como "aparte" se contradice con
+  // lo que dice el bloque de incluidos.
   const otros = p.servicios
-    .filter((s) => s.slug !== "gestion_redes")
+    .filter((s) => s.slug !== "gestion_redes" && s.slug !== "paid_media")
     .map((s) => s.name);
   if (otros.length === 0) return "";
   return `${otros.join(", ")} se cotizan aparte, según lo que necesites.`;

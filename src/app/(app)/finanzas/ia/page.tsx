@@ -215,13 +215,14 @@ function CreditosAnthropic() {
   const links: { href: string; titulo: string; detalle: string }[] = [
     {
       href: "https://console.anthropic.com/settings/billing",
-      titulo: "Ver saldo y recargar",
-      detalle: "Cuántos créditos quedan y el botón para comprar más.",
+      titulo: "Saldo, recarga y auto-reload",
+      detalle:
+        "Cuántos créditos quedan, comprar más y activar la recarga automática (cuando baja del mínimo, se debita solo).",
     },
     {
       href: "https://console.anthropic.com/settings/limits",
-      titulo: "Recarga automática",
-      detalle: "Activá el auto-reload: cuando baja del mínimo, se debita solo.",
+      titulo: "Límites de gasto",
+      detalle: "El tope mensual, para que un bucle no se coma la tarjeta.",
     },
     {
       href: "https://console.anthropic.com/usage",

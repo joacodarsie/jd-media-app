@@ -17,7 +17,9 @@ export function friendlyAiError(err: unknown): string {
     msg.includes("billing") ||
     msg.includes("plans & billing")
   ) {
-    return "El asistente de IA no está disponible por un tema de la cuenta de IA (crédito agotado). Avisale al administrador para que recargue saldo.";
+    // El destino está dicho con nombre y apellido a propósito: cuando esto
+    // pasa, la app deja de responder en TODO lo que use IA y nadie sabe por qué.
+    return "Se acabó el crédito de la cuenta de IA, por eso no responde. Entrá a Finanzas → Gasto de IA: ahí está el link directo para ver el saldo y recargar.";
   }
 
   // Límite de uso / sobrecarga temporal.

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Bot, TrendingUp } from "lucide-react";
+import { ArrowLeft, Bot, TrendingUp, ExternalLink } from "lucide-react";
 import { requireFeature } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 
@@ -196,7 +196,63 @@ function Wrapper({ children }: { children: React.ReactNode }) {
           y quién la usa. Sirve para decidir dónde conviene un modelo más barato.
         </p>
       </div>
+      <CreditosAnthropic />
       {children}
+    </div>
+  );
+}
+
+/**
+ * Acceso directo a la cuenta de Anthropic.
+ *
+ * Esta pantalla mide lo que gastó la app, pero el SALDO vive en la consola de
+ * Anthropic y no hay forma de leerlo desde acá (la API de facturación necesita
+ * una admin key aparte). Cuando los créditos se acaban, la app deja de
+ * responder en todo lo que use IA y no queda claro por qué: por eso los links
+ * van arriba de todo y con el nombre de lo que hay que mirar.
+ */
+function CreditosAnthropic() {
+  const links: { href: string; titulo: string; detalle: string }[] = [
+    {
+      href: "https://console.anthropic.com/settings/billing",
+      titulo: "Ver saldo y recargar",
+      detalle: "Cuántos créditos quedan y el botón para comprar más.",
+    },
+    {
+      href: "https://console.anthropic.com/settings/limits",
+      titulo: "Recarga automática",
+      detalle: "Activá el auto-reload: cuando baja del mínimo, se debita solo.",
+    },
+    {
+      href: "https://console.anthropic.com/usage",
+      titulo: "Uso según Anthropic",
+      detalle: "El consumo medido del lado de ellos, para cruzar con esta pantalla.",
+    },
+  ];
+  return (
+    <div className="rounded-xl border bg-card p-4">
+      <p className="text-sm font-semibold">Créditos de Anthropic</p>
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        El saldo no se puede leer desde la app. Si algo con IA deja de responder,
+        lo primero que hay que mirar es si quedaron créditos.
+      </p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        {links.map((l) => (
+          <a
+            key={l.href}
+            href={l.href}
+            target="_blank"
+            rel="noreferrer"
+            className="group rounded-lg border p-3 transition-colors hover:border-primary/50 hover:bg-accent"
+          >
+            <p className="flex items-center gap-1 text-sm font-medium">
+              {l.titulo}
+              <ExternalLink className="h-3 w-3 text-muted-foreground" />
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{l.detalle}</p>
+          </a>
+        ))}
+      </div>
     </div>
   );
 }

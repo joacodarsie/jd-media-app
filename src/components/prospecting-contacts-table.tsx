@@ -21,6 +21,7 @@ import {
   SkipForward,
   PhoneOff,
   MessageSquareText,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +59,7 @@ import {
   bulkDeleteContacts,
   type ContactPatch,
 } from "@/app/(app)/prospeccion/actions";
+import { propuestaParaContacto } from "@/app/(app)/prospeccion/propuestas/actions";
 
 export interface ContactRow {
   id: string;
@@ -666,7 +668,7 @@ export function ProspectingContactsTable({
               <col className="w-[140px]" />
               <col className="w-[150px]" />
               <col />
-              <col className="w-9" />
+              <col className="w-[58px]" />
             </colgroup>
             <thead>
               <tr className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
@@ -687,7 +689,7 @@ export function ProspectingContactsTable({
                 <Th>Estado</Th>
                 <Th>Quién contacta</Th>
                 <Th>Notas</Th>
-                <th className="w-9" />
+                <th className="w-[58px]" />
               </tr>
             </thead>
             <tbody>
@@ -913,13 +915,20 @@ export function ProspectingContactsTable({
                       />
                     </Td>
                     <td className="px-1">
-                      <button
-                        onClick={() => borrar(r.id)}
-                        title="Borrar"
-                        className="text-muted-foreground hover:text-rose-500"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center gap-0.5">
+                        {/* "Mandame una propuesta" es la respuesta más común al
+                            mensaje en frío: el link tiene que salir de la misma
+                            fila, sin ir a buscar el nombre de la empresa a otro
+                            lado. */}
+                        <BotonPropuesta contactoId={r.id} empresa={r.empresa} />
+                        <button
+                          onClick={() => borrar(r.id)}
+                          title="Borrar"
+                          className="text-muted-foreground hover:text-rose-500"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -1128,6 +1137,53 @@ function Th({ children }: { children: React.ReactNode }) {
 }
 function Td({ children }: { children: React.ReactNode }) {
   return <td className="px-2 py-1 align-middle">{children}</td>;
+}
+
+/**
+ * Arma (o recupera) la propuesta de ese contacto y deja el link en el
+ * portapapeles, listo para pegar en el chat. La empresa, la persona y el rubro
+ * salen del contacto y de su campaña: no hay nada que escribir.
+ */
+function BotonPropuesta({ contactoId, empresa }: { contactoId: string; empresa: string }) {
+  const [cargando, setCargando] = useState(false);
+  const [listo, setListo] = useState(false);
+
+  async function generar() {
+    setCargando(true);
+    const r = await propuestaParaContacto(contactoId);
+    setCargando(false);
+    if ("error" in r && r.error) {
+      toast.error(r.error);
+      return;
+    }
+    if ("url" in r && r.url) {
+      await navigator.clipboard.writeText(r.url).catch(() => {});
+      setListo(true);
+      setTimeout(() => setListo(false), 2000);
+      toast.success(
+        ("yaExistia" in r && r.yaExistia
+          ? `Link de la propuesta de ${empresa} copiado.`
+          : `Propuesta de ${empresa} lista. Link copiado.`) + " Pegalo en el chat.",
+      );
+    }
+  }
+
+  return (
+    <button
+      onClick={generar}
+      disabled={cargando}
+      title="Armar la propuesta y copiar el link"
+      className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-primary disabled:opacity-50"
+    >
+      {cargando ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : listo ? (
+        <Check className="h-4 w-4 text-emerald-500" />
+      ) : (
+        <FileText className="h-4 w-4" />
+      )}
+    </button>
+  );
 }
 
 /**

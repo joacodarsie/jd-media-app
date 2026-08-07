@@ -164,6 +164,12 @@ export default async function ProspeccionPage() {
           >
             ✉️ Email en frío
           </Link>
+          <Link
+            href="/prospeccion/propuestas"
+            className="rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
+          >
+            📄 Propuestas
+          </Link>
           <ProspectingCampaignDialog mode="create" services={services} canSuggest />
         </div>
       </div>

@@ -238,27 +238,48 @@ export default async function PropuestaPage({
           </ul>
         </Seccion>
 
-        {/* ── Cómo trabajamos ── */}
+        {/* ── Cómo trabajamos ──
+            Antes esto eran dos secciones (el proceso y el arranque) que decían
+            media cosa cada una y repetían lo de la aprobación del calendario.
+            Contado como una línea de tiempo se lee de un saque y se entiende
+            qué pasa desde que dice que sí. */}
         <Seccion numero="04" titulo="Cómo trabajamos">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <ol className="relative space-y-5 border-l border-white/10 pl-6 print:border-black/20">
             {[
-              ["Diagnóstico y estrategia", "Arrancamos entendiendo el negocio, no la red social: a quién le vendés, qué te diferencia y qué querés que pase."],
-              ["Calendario aprobado por vos", "Cada mes ves el plan completo antes de que se produzca nada. Nada sale sin tu OK."],
-              ["Producción y publicación", "Un equipo dedicado —community manager, diseñador y editor— produce, edita y publica en fecha."],
-              ["Reporte mensual", "Qué se publicó, qué funcionó y qué cambiamos el mes que viene. Con números, no con sensaciones."],
-            ].map(([t, d]) => (
-              <div key={t}>
-                <h3 className="flex items-center gap-2 text-base font-bold">
-                  <span className="text-[#FFD400]">✦</span> {t}
-                </h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-white/60 print:text-black/70">{d}</p>
-              </div>
+              [
+                "Reunión de 15 minutos",
+                "Nos contás el negocio y te decimos con qué arrancaríamos. De ahí sale el plan del primer mes.",
+              ],
+              [
+                "Semana 1: se ordena",
+                "Diagnóstico, manual de marca, perfiles y el calendario del mes. Esa semana no se publica: se ordena.",
+              ],
+              [
+                "Vos aprobás, nosotros producimos",
+                "Ves el calendario completo antes de que se produzca nada. Community manager, diseñador y editor asignados a tu cuenta.",
+              ],
+              [
+                "Se publica en fecha",
+                "Todo sale el día que estaba planificado, en Instagram, Facebook y TikTok. Y las campañas de Meta se ajustan cada semana.",
+              ],
+              [
+                "Reporte mensual",
+                "Qué se publicó, qué funcionó y qué cambiamos el mes que viene. Con números, no con sensaciones.",
+              ],
+            ].map(([t, d], i) => (
+              <li key={t} className="relative">
+                <span className="absolute -left-[31px] top-1 grid h-5 w-5 place-items-center rounded-full bg-[#FFD400] text-[10px] font-black text-black">
+                  {i + 1}
+                </span>
+                <h3 className="text-base font-bold">{t}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-white/60 print:text-black/70">{d}</p>
+              </li>
             ))}
-          </div>
-          <p className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm leading-relaxed text-white/70 print:border-black/15 print:bg-transparent print:text-black/75">
-            <b className="text-white print:text-black">Tenés acceso a la plataforma de JD MEDIA</b>, donde
-            ves el calendario del mes, aprobás cada pieza y mirás los resultados de tus redes
-            cuando quieras. No hace falta esperar a que te mandemos nada.
+          </ol>
+          <p className="mt-6 rounded-xl border border-[#FFD400]/25 bg-[#FFD400]/[0.06] p-4 text-sm leading-relaxed text-white/80 print:border-black/20 print:bg-transparent print:text-black/75">
+            <b className="text-white print:text-black">Y tenés tu propia plataforma:</b> entrás
+            cuando querés, ves el calendario del mes, aprobás cada pieza y mirás los resultados de
+            tus redes. No tenés que esperar a que te mandemos nada.
           </p>
         </Seccion>
 
@@ -319,21 +340,19 @@ export default async function PropuestaPage({
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#FFD400]">
               Incluido en todos los planes
             </p>
-            <div className="mt-4 grid gap-5 sm:grid-cols-2">
+            {/* Denso a propósito: son 16 ítems y en lista con viñetas ocupaban
+                media pantalla. Agrupados y separados por puntos se barren de
+                un vistazo, que es lo que hace alguien leyendo en el celular. */}
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
               {INCLUIDO_EN_TODOS.map((grupo) => (
                 <div key={grupo.titulo}>
-                  <h4 className="text-sm font-bold">{grupo.titulo}</h4>
-                  <ul className="mt-2 space-y-1.5">
-                    {grupo.items.map((item) => (
-                      <li
-                        key={item}
-                        className="flex gap-2 text-[13px] leading-relaxed text-white/65 print:text-black/70"
-                      >
-                        <span className="mt-[3px] shrink-0 text-[#FFD400]">✦</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <h4 className="flex items-center gap-1.5 text-sm font-bold">
+                    <span className="text-[#FFD400]">✦</span>
+                    {grupo.titulo}
+                  </h4>
+                  <p className="mt-1 text-[13px] leading-relaxed text-white/60 print:text-black/70">
+                    {grupo.items.join(" · ")}
+                  </p>
                 </div>
               ))}
             </div>
@@ -366,36 +385,17 @@ export default async function PropuestaPage({
             <a href={AGENCIA.web} className="text-white/70 underline print:text-black/70">
               {AGENCIA.webLabel}
             </a>
-            . {otrosServicios(p)}
+            . {otrosServicios(p)} <b className="text-white/60 print:text-black/70">
+              El primer mes se cobra proporcional
+            </b>{" "}
+            a los días desde que arrancás; después la factura sale el 25 y vence el 1°.
           </p>
         </Seccion>
 
-        {/* ── Cómo arranca ── */}
-        <Seccion numero="06" titulo="Cómo arranca">
-          <ol className="space-y-4">
-            {[
-              ["Reunión de 15 minutos", "Nos contás el negocio y te decimos con qué arrancaríamos. Sin compromiso: de esa charla sale el plan del primer mes."],
-              ["Primera semana: organización", "Diagnóstico, manual de marca, orden de los perfiles y el calendario del primer mes. Esa semana no se publica: se ordena."],
-              ["Se empieza a publicar", "Con el calendario aprobado por vos, arranca la rutina del pack elegido."],
-              ["El primer mes se cobra proporcional", "Si arrancás un 15, pagás solo los días que quedan del mes. Después, la factura sale el 25 y vence el 1°."],
-            ].map(([t, d], i) => (
-              <li key={t} className="flex gap-4">
-                <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#FFD400] text-xs font-black text-black">
-                  {i + 1}
-                </span>
-                <div>
-                  <h3 className="text-base font-bold">{t}</h3>
-                  <p className="mt-1 text-sm leading-relaxed text-white/60 print:text-black/70">{d}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </Seccion>
-
         {/* ── Quiénes somos ── */}
-        <Seccion numero="07" titulo="Quiénes somos">
+        <Seccion numero="06" titulo="Quiénes somos">
           <p className="text-lg leading-relaxed text-white/80 print:text-black/80">
-            {AGENCIA.frase} Somos una agencia de {AGENCIA.ciudad} con un equipo de estrategia,
+            {AGENCIA.frase} Agencia de {AGENCIA.ciudad}, con equipo propio de estrategia,
             community management, diseño, edición audiovisual y pauta. Hoy llevamos las redes de
             marcas de gastronomía, salud, automotor, indumentaria, construcción, turismo y eventos.
           </p>

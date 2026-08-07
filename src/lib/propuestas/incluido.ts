@@ -69,9 +69,9 @@ export const LETRA_CHICA: { titulo: string; texto: string }[] = [
       "El abono cubre armar, configurar y optimizar tus campañas de Meta. La plata que se invierte en los anuncios la ponés vos y la definimos juntos según el objetivo. Google Ads y las campañas de mayor escala son nuestro servicio de Publicidad Online, que se cotiza por separado.",
   },
   {
-    titulo: "Acuerdo mínimo de 3 meses",
+    titulo: "Sin permanencia mínima",
     texto:
-      "El primer trimestre es el tiempo mínimo real para ordenar la cuenta y que el trabajo se note. Cumplido ese plazo seguís mes a mes, sin ataduras.",
+      "La relación es mes a mes: si en algún momento no te sirve, avisás y damos de baja. Lo único que fijamos por tres meses es el precio, así sabés cuánto vas a pagar.",
   },
   {
     titulo: "Las cuentas y el material son tuyos",

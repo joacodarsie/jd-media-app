@@ -12,6 +12,7 @@ import {
 } from "@/lib/director/monthly";
 import { runPaidMediaDaily } from "@/lib/paid-media/sync";
 import { runInstagramDaily } from "@/lib/social/sync";
+import { runConciliacionDiaria } from "@/lib/social/conciliar-run";
 import { runAccountAlerts } from "@/lib/social/alerts";
 import { checkMetaToken } from "@/lib/meta/health";
 import { checkGoogleHealth, notifyGoogleHealth } from "@/lib/integrations/health";
@@ -222,6 +223,22 @@ export async function GET(req: NextRequest) {
     instagram = { error: e instanceof Error ? e.message : String(e) };
   }
 
+  // Conciliación Instagram ↔ calendario: con el feed recién sincronizado, marca
+  // como publicadas las piezas que ya salieron. Nadie marca a mano, así que sin
+  // esto la puntualidad y el reporte del cliente miden cualquier cosa.
+  let conciliacion: unknown = null;
+  try {
+    const r = await runConciliacionDiaria({ aplicar: true, admin });
+    conciliacion = {
+      cuentas: r.cuentas.length,
+      aplicados: r.aplicados,
+      dudosos: r.dudosos,
+      fantasmas: r.fantasmas,
+    };
+  } catch (e) {
+    conciliacion = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   // Salud del token de Meta (punto único de falla de Paid Media + Resultados).
   // Si está caído o vence pronto, avisamos a los admins (deduplicado 20h).
   let metaToken: unknown = null;
@@ -310,6 +327,7 @@ export async function GET(req: NextRequest) {
     paid_media: paidMedia,
     director_snapshot: directorSnapshot,
     instagram,
+    conciliacion,
     meta_token: metaToken,
     google_health: googleHealth,
     account_alerts: accountAlerts,

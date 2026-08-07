@@ -172,6 +172,12 @@ export default async function ContenidosPage({
               </Link>
             )}
             <Link
+              href="/contenidos/salio"
+              className="rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
+            >
+              ✅ ¿Salió de verdad?
+            </Link>
+            <Link
               href="/contenidos/guiones"
               className="rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
             >

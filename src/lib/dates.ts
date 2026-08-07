@@ -45,6 +45,18 @@ export function hoyYmd(): string {
 }
 
 /**
+ * Fecha calendario (YYYY-MM-DD) de un instante ISO, en la zona de la agencia.
+ * Los timestamps de las APIs (Instagram, Meta) vienen en UTC: cortarlos con
+ * `.slice(0,10)` corre un día todo lo que pasó después de las 21:00 de Córdoba.
+ */
+export function ymdEnZona(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return formatInTimeZone(d, TIMEZONE, "yyyy-MM-dd");
+}
+
+/**
  * ¿La tarea está vencida DE ESTE MES? (o del mes pasado, dentro de los
  * primeros días, para no perder de vista lo de la semana anterior).
  *

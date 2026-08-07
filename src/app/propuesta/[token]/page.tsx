@@ -2,7 +2,16 @@ import { cache } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createAdmin } from "@/lib/supabase/admin";
-import { armarPropuesta, precioAr, volumenPack, mensajeWhatsapp, type PackCatalogo, type ServicioCatalogo } from "@/lib/propuestas/build";
+import {
+  armarPropuesta,
+  precioAr,
+  volumenPack,
+  mensajeWhatsapp,
+  type PropuestaVista,
+  type PackCatalogo,
+  type ServicioCatalogo,
+} from "@/lib/propuestas/build";
+import { INCLUIDO_EN_TODOS, ADICIONALES, LETRA_CHICA } from "@/lib/propuestas/incluido";
 import { PropuestaAcciones, BotonPdf } from "@/components/propuesta-acciones";
 
 export const dynamic = "force-dynamic";
@@ -61,10 +70,16 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const data = await cargar(params.token);
   if (!data) return { title: "Propuesta — JD MEDIA" };
+  const title = `Propuesta para ${data.row.empresa} — JD MEDIA`;
   return {
-    title: `Propuesta para ${data.row.empresa} — JD MEDIA`,
+    title,
     description: AGENCIA.claim,
+    // Sin indexar: es un documento comercial de un prospecto puntual, no una
+    // página de la web.
     robots: { index: false, follow: false },
+    // La tarjeta que se ve al pegar el link en WhatsApp (opengraph-image.tsx).
+    openGraph: { title, description: AGENCIA.claim, type: "website" },
+    twitter: { card: "summary_large_image", title, description: AGENCIA.claim },
   };
 }
 
@@ -249,6 +264,17 @@ export default async function PropuestaPage({
 
         {/* ── Inversión ── */}
         <Seccion numero="05" titulo="Inversión" className="print-break">
+          {/* La aclaración de arriba es la que evita que el pack se lea como
+              "tantos reels por tanta plata" y se compare contra un freelance
+              que cobra por pieza. El precio cubre el servicio entero. */}
+          <p className="mb-5 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-[15px] leading-relaxed text-white/75 print:border-black/15 print:bg-transparent print:text-black/75">
+            Estos son los planes del servicio de{" "}
+            <b className="text-white print:text-black">Gestión de Redes</b>. No es un
+            precio por pieza: el abono cubre el servicio completo —estrategia, manual de
+            marca, producción, publicación, gestión de la pauta en Meta y reporte—, y lo
+            que cambia entre un plan y otro es el volumen de contenido.
+          </p>
+
           <div className="space-y-3">
             {p.packs.map((pack) => {
               const esRecomendado = pack.slug === p.packRecomendado?.slug;
@@ -288,13 +314,59 @@ export default async function PropuestaPage({
               );
             })}
           </div>
+          {/* Lo que incluye el servicio, sí o sí, en cualquiera de los planes. */}
+          <div className="mt-7 rounded-2xl border border-white/10 bg-white/[0.02] p-5 print:border-black/15 print:bg-transparent">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#FFD400]">
+              Incluido en todos los planes
+            </p>
+            <div className="mt-4 grid gap-5 sm:grid-cols-2">
+              {INCLUIDO_EN_TODOS.map((grupo) => (
+                <div key={grupo.titulo}>
+                  <h4 className="text-sm font-bold">{grupo.titulo}</h4>
+                  <ul className="mt-2 space-y-1.5">
+                    {grupo.items.map((item) => (
+                      <li
+                        key={item}
+                        className="flex gap-2 text-[13px] leading-relaxed text-white/65 print:text-black/70"
+                      >
+                        <span className="mt-[3px] shrink-0 text-[#FFD400]">✦</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+            {ADICIONALES.length > 0 && (
+              <p className="mt-5 border-t border-white/10 pt-4 text-[13px] leading-relaxed text-white/55 print:border-black/15 print:text-black/70">
+                <b className="text-white/80 print:text-black">Aparte del abono:</b>{" "}
+                {ADICIONALES.join(" ")}
+              </p>
+            )}
+          </div>
+
+          {/* La letra chica adelante y no escondida: es lo que evita la discusión
+              a mitad de camino (sobre todo el presupuesto de pauta). */}
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {LETRA_CHICA.map((l) => (
+              <div
+                key={l.titulo}
+                className="rounded-xl border border-white/10 p-4 print:border-black/15"
+              >
+                <h4 className="text-sm font-bold">{l.titulo}</h4>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-white/60 print:text-black/70">
+                  {l.texto}
+                </p>
+              </div>
+            ))}
+          </div>
+
           <p className="mt-4 text-xs leading-relaxed text-white/40 print:text-black/60">
-            Todos los planes incluyen estrategia, diseño, edición, publicación y reporte mensual.
-            Los precios son mensuales, sin permanencia mínima obligatoria, y están publicados en{" "}
+            Precios mensuales vigentes a {hoy}, publicados en{" "}
             <a href={AGENCIA.web} className="text-white/70 underline print:text-black/70">
               {AGENCIA.webLabel}
             </a>
-            .
+            . {otrosServicios(p)}
           </p>
         </Seccion>
 
@@ -302,7 +374,7 @@ export default async function PropuestaPage({
         <Seccion numero="06" titulo="Cómo arranca">
           <ol className="space-y-4">
             {[
-              ["Reunión de 15 minutos", "Nos contás el negocio y te decimos con qué arrancaríamos. Sin compromiso."],
+              ["Reunión de 15 minutos", "Nos contás el negocio y te decimos con qué arrancaríamos. Sin compromiso: de esa charla sale el plan del primer mes."],
               ["Primera semana: organización", "Diagnóstico, manual de marca, orden de los perfiles y el calendario del primer mes. Esa semana no se publica: se ordena."],
               ["Se empieza a publicar", "Con el calendario aprobado por vos, arranca la rutina del pack elegido."],
               ["El primer mes se cobra proporcional", "Si arrancás un 15, pagás solo los días que quedan del mes. Después, la factura sale el 25 y vence el 1°."],
@@ -359,6 +431,18 @@ export default async function PropuestaPage({
       </div>
     </div>
   );
+}
+
+/**
+ * Los otros servicios de la agencia se cotizan aparte: hay que decirlo o el
+ * prospecto asume que un sitio web o el branding entran en el abono.
+ */
+function otrosServicios(p: PropuestaVista): string {
+  const otros = p.servicios
+    .filter((s) => s.slug !== "gestion_redes")
+    .map((s) => s.name);
+  if (otros.length === 0) return "";
+  return `${otros.join(", ")} se cotizan aparte, según lo que necesites.`;
 }
 
 /** Las descripciones de la web traen la coletilla de SEO; en la propuesta sobra. */

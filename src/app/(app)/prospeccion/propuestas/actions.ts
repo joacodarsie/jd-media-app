@@ -154,6 +154,44 @@ export async function actualizarPropuesta(
   return { ok: true as const };
 }
 
+/**
+ * Guarda el texto editado a mano. Escribe en el MISMO `ia` jsonb que usa el
+ * botón de IA: el documento no puede tener dos fuentes de verdad, y así lo que
+ * la IA propuso se puede corregir arriba en vez de empezar de cero.
+ * Un campo vacío vuelve al texto del rubro.
+ */
+export async function guardarTextoPropuesta(
+  id: string,
+  texto: { titular?: string; diagnostico?: string; puntos?: string[]; ideas?: string[] },
+) {
+  const g = await gate();
+  if ("error" in g) return g;
+
+  const limpiarLista = (xs?: string[]) =>
+    (xs ?? []).map((x) => x.trim()).filter(Boolean).slice(0, 8).map((x) => x.slice(0, 400));
+
+  const ia = {
+    titular: texto.titular?.trim().slice(0, 160) || null,
+    diagnostico: texto.diagnostico?.trim().slice(0, 1500) || null,
+    puntos: limpiarLista(texto.puntos),
+    ideas: limpiarLista(texto.ideas),
+    generado_at: new Date().toISOString(),
+    editado_a_mano: true,
+  };
+
+  // Todo vacío = volver al texto del rubro, sin dejar un jsonb fantasma.
+  const vacio = !ia.titular && !ia.diagnostico && ia.puntos.length === 0 && ia.ideas.length === 0;
+
+  const { error } = await createAdmin()
+    .from("proposals")
+    .update({ ia: vacio ? null : ia, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/prospeccion/propuestas");
+  return { ok: true as const };
+}
+
 /** Saca el bloque de la IA y vuelve al texto del rubro. */
 export async function quitarPersonalizacion(id: string) {
   const g = await gate();

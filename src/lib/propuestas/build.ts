@@ -30,12 +30,20 @@ export interface PackCatalogo {
   orden?: number | null;
 }
 
-/** El bloque que escribe la IA cuando se le pasa lo que dijo el prospecto. */
+/**
+ * El bloque personalizado de la propuesta. Lo escribe la IA cuando se le pasa
+ * lo que dijo el prospecto, o una persona desde el editor: los dos guardan en
+ * el mismo lugar, así el documento no tiene dos fuentes de verdad.
+ */
 export interface BloqueIa {
   titular?: string | null;
   diagnostico?: string | null;
   puntos?: string[] | null;
+  /** Pisa las ideas de contenido del rubro. */
+  ideas?: string[] | null;
   generado_at?: string | null;
+  /** true si el último que lo tocó fue una persona, no la IA. */
+  editado_a_mano?: boolean | null;
 }
 
 export interface PropuestaVista {
@@ -95,7 +103,8 @@ export function armarPropuesta(input: ArmarPropuestaInput): PropuestaVista {
 
   const ia = input.ia ?? null;
   const puntosIa = (ia?.puntos ?? []).filter((p) => p && p.trim().length > 0);
-  const personalizada = !!(ia?.diagnostico?.trim() || puntosIa.length > 0);
+  const ideasPropias = (ia?.ideas ?? []).filter((p) => p && p.trim().length > 0);
+  const personalizada = !!(ia?.diagnostico?.trim() || puntosIa.length > 0 || ideasPropias.length > 0);
 
   return {
     empresa: input.empresa.trim(),
@@ -105,7 +114,7 @@ export function armarPropuesta(input: ArmarPropuestaInput): PropuestaVista {
     diagnostico: ia?.diagnostico?.trim() || rubro.diagnostico,
     puntosIa,
     personalizada,
-    ideas: rubro.ideas,
+    ideas: ideasPropias.length > 0 ? ideasPropias : rubro.ideas,
     servicios: [...sugeridos, ...resto],
     sugeridos,
     packs,

@@ -13,6 +13,8 @@ import {
 } from "@/lib/propuestas/build";
 import { INCLUIDO_EN_TODOS, ADICIONALES, LETRA_CHICA } from "@/lib/propuestas/incluido";
 import { PropuestaAcciones, BotonPdf } from "@/components/propuesta-acciones";
+import { BarraPropuesta } from "@/components/propuesta-editor";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -124,6 +126,9 @@ export default async function PropuestaPage({
 
   const hoy = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" }).format(new Date());
   const waHref = `https://wa.me/${AGENCIA.whatsapp}?text=${encodeURIComponent(mensajeWhatsapp(p.empresa))}`;
+  // La barra de editar/descargar la ve solo alguien del equipo con sesión: el
+  // prospecto abre el mismo link y no se entera de que existe.
+  const soyDelEquipo = await haySesion();
 
   return (
     <div className="min-h-screen bg-[#0A0A0B] text-white [color-scheme:dark] print:bg-white print:text-black">
@@ -134,11 +139,29 @@ export default async function PropuestaPage({
           @page { size: A4; margin: 14mm; }
           .no-print { display: none !important; }
           .print-break { break-before: page; }
+          /* Sin esto el PDF sale en blanco: el navegador no imprime fondos por
+             defecto, y toda la marca es amarillo sobre negro. */
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          /* Que no se parta una tarjeta de pack ni un bloque al medio de la hoja. */
+          section, li, .rounded-2xl, .rounded-xl { break-inside: avoid; }
+          h1, h2, h3 { break-after: avoid; }
         }
       `}</style>
 
       <div className="mx-auto max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
+        {soyDelEquipo && (
+          <BarraPropuesta
+            propuestaId={row.id}
+            personalizada={p.personalizada}
+            texto={{
+              titular: p.titular,
+              diagnostico: p.diagnostico,
+              puntos: p.puntosIa,
+              ideas: p.ideas,
+            }}
+          />
+        )}
+
         {/* ── Portada ── */}
         <header>
           <div className="flex items-center justify-between gap-4">
@@ -431,6 +454,22 @@ export default async function PropuestaPage({
       </div>
     </div>
   );
+}
+
+/**
+ * ¿La está mirando alguien del equipo? La página es pública (el prospecto no
+ * tiene usuario), así que esto NO puede redirigir al login: solo pregunta si
+ * hay sesión para decidir si mostrar la barra de editar.
+ */
+async function haySesion(): Promise<boolean> {
+  try {
+    const {
+      data: { user },
+    } = await createClient().auth.getUser();
+    return !!user;
+  } catch {
+    return false;
+  }
 }
 
 /**

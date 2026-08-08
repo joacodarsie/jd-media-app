@@ -1,0 +1,64 @@
+name: Deploy a producción
+
+# Por qué existe: el proyecto de Vercel NO tiene el repositorio conectado, así
+# que un push a main no publicaba nada y había que correr `vercel --prod` a
+# mano cada vez. Eso significa que cualquier arreglo se queda en el repo hasta
+# que alguien se acuerda de deployar.
+#
+# Ahora: push a main → se corren tipos y tests → se buildea → sale a producción.
+# Si los tests fallan, NO deploya: el error queda en la pestaña Actions.
+#
+# Requisito (una sola vez): cargar el secret VERCEL_TOKEN en el repo
+# (Settings → Secrets and variables → Actions → New repository secret).
+# El token se saca de https://vercel.com/account/settings/tokens
+#
+# ORG y PROJECT no son secretos: son identificadores públicos del proyecto.
+
+on:
+  push:
+    branches: [main]
+  # Botón para deployar a mano desde la pestaña Actions, sin tocar código.
+  workflow_dispatch:
+
+# Dos pushes seguidos no pelean por producción: el segundo espera al primero.
+concurrency:
+  group: deploy-produccion
+  cancel-in-progress: false
+
+env:
+  VERCEL_ORG_ID: team_QBULZuXAUp6EqWRBo1iOI7R0
+  VERCEL_PROJECT_ID: prj_wQvWVKz917UZ6k20PktnAaZtNmxv
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # La misma versión que usa Vercel para buildear este proyecto.
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Chequear tipos
+        run: npx tsc --noEmit
+
+      - name: Correr los tests
+        run: npx vitest run
+
+      # `pull` deja el proyecto enlazado en MODO PROYECTO (.vercel/project.json).
+      # No es opcional: si el CLI se enlaza solo dentro de un repo de git, entra
+      # en "modo repositorio" y el deploy muere con `Error: Not authorized`.
+      - name: Enlazar el proyecto de Vercel
+        run: npx vercel@latest pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      # Compila Vercel, no el runner: `vercel build` acá falla con
+      # "Unable to find lambda for route: /auth/reset-password" (bug del CLI con
+      # este proyecto). Subir las fuentes es lo que se venía haciendo a mano y
+      # funciona; los tipos y los tests ya se corrieron arriba.
+      - name: Publicar en producción
+        run: npx vercel@latest deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}

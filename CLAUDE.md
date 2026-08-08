@@ -2,7 +2,8 @@
 
 App de gestión de la agencia. Next.js 14 (App Router) + Supabase + Vercel.
 
-- Deploy manual: `vercel --prod` (el webhook de git está caído).
+- Deploy: **automático al pushear a `main`** (`.github/workflows/deploy.yml`: tipos + tests + deploy). El proyecto de Vercel no tiene el repo conectado, por eso va por Actions. Necesita el secret `VERCEL_TOKEN` en el repo.
+- Para deployar sin esperar al push: pestaña Actions → "Deploy a producción" → Run workflow. A mano desde la máquina también sirve, pero **primero `vercel pull`**: si el CLI se enlaza solo dentro del repo entra en "modo repositorio" y falla con `Error: Not authorized`.
 - Migrations: crear el `.sql` en `supabase/migrations/` y **las aplica el dueño** en Supabase — avisarle siempre que haya una pendiente. El código debe tolerar que la migración todavía no esté aplicada.
 - Antes de deployar: `npx tsc --noEmit`, `npx vitest run` y `npm run build` verdes.
 - Rutas de IA: el gateway corta respuestas no-streaming a los 60s (504 en texto plano). Toda ruta que llame a un modelo con inputs potencialmente largos va con **SSE + `maxDuration = 300`** (patrón de `api/diagnostico/generate` / `api/post-meet-message`).

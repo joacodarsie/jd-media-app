@@ -189,6 +189,43 @@ export function PublicationsMonth({
     localStorage.setItem("jd:contenidos:mode", mode);
   }, [mode]);
 
+  // Los filtros y el mes se recuerdan.
+  //
+  // Antes solo se guardaba la vista: quien filtraba por red y estado, entraba a
+  // una pieza y volvía, se encontraba el calendario entero otra vez y tenía que
+  // rearmar todo. Con 180 piezas por mes eso hace que nadie filtre.
+  useEffect(() => {
+    const red = localStorage.getItem("jd:contenidos:fRed");
+    if (red) setFRed(red);
+    const estado = localStorage.getItem("jd:contenidos:fEstado");
+    if (estado) setFEstado(estado);
+    const estadoCli = localStorage.getItem("jd:contenidos:fEstadoCliente");
+    if (estadoCli === "activos" || estadoCli === "inactivos" || estadoCli === "todos")
+      setFEstadoCliente(estadoCli);
+    // El mes que estaba mirando (formato YYYY-MM).
+    const mes = localStorage.getItem("jd:contenidos:mes");
+    if (mes && /^\d{4}-\d{2}$/.test(mes)) {
+      const [y, m] = mes.split("-").map(Number);
+      setCursor(new Date(y, m - 1, 1));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("jd:contenidos:fRed", fRed);
+  }, [fRed]);
+  useEffect(() => {
+    localStorage.setItem("jd:contenidos:fEstado", fEstado);
+  }, [fEstado]);
+  useEffect(() => {
+    localStorage.setItem("jd:contenidos:fEstadoCliente", fEstadoCliente);
+  }, [fEstadoCliente]);
+  useEffect(() => {
+    localStorage.setItem(
+      "jd:contenidos:mes",
+      `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`,
+    );
+  }, [cursor]);
+
   // Cliente por defecto: si no viene fijado por la URL, mostrar el último
   // cliente al que entró la persona (si sigue activo), o el primero que lleve.
   useEffect(() => {

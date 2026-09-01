@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getActiveUsers, getActiveClients } from "@/lib/cache";
 import type { TaskWithRels } from "@/lib/types";
 import { TaskViews } from "@/components/task-views";
+import { TaskRequestsPanel } from "@/components/task-requests-panel";
+import { pedidosPendientes } from "./pedidos-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -69,13 +71,23 @@ export default async function TareasPage() {
     ...(archivedTasks ?? []),
   ] as unknown as TaskWithRels[];
 
+  // Los problemas que reportó el equipo. Van arriba de todo y solo los ve
+  // quien puede resolverlos: la action devuelve vacío para el resto.
+  const pedidos = await pedidosPendientes();
+
   return (
-    <TaskViews
-      tasks={tasks}
-      users={users ?? []}
-      clients={clients ?? []}
-      currentUserId={me.id}
-      esCoordinacion={isStaffUser(me)}
-    />
+    <div className="space-y-4">
+      <TaskRequestsPanel
+        pedidos={pedidos}
+        usuarios={(users ?? []).map((u) => ({ id: u.id, nombre: u.nombre }))}
+      />
+      <TaskViews
+        tasks={tasks}
+        users={users ?? []}
+        clients={clients ?? []}
+        currentUserId={me.id}
+        esCoordinacion={isStaffUser(me)}
+      />
+    </div>
   );
 }

@@ -18,6 +18,8 @@ import { Markdown } from "@/components/markdown";
 import { TaskStatusSelect } from "@/components/task-status-select";
 import { TaskFormDialog } from "@/components/task-form-dialog";
 import { DeleteTaskButton } from "@/components/delete-task-button";
+import { TaskProblemButton } from "@/components/task-problem-button";
+import { createAdmin } from "@/lib/supabase/admin";
 import { TaskLinks } from "@/components/task-links";
 import { TaskComments } from "@/components/task-comments";
 import { TaskTimer, type TimeEntry } from "@/components/task-timer";
@@ -83,6 +85,22 @@ export default async function TaskDetail({
 
   if (!task) notFound();
   const t = task as TaskWithRels;
+
+  // ¿Ya hay un problema reportado sin resolver? Si sí, en vez del botón se
+  // muestra el aviso, para que no se reporte cinco veces lo mismo.
+  // (Tolera que la migración 0154 no esté aplicada todavía.)
+  let pedidoAbierto = false;
+  try {
+    const { data: pedido } = await createAdmin()
+      .from("task_change_requests")
+      .select("id")
+      .eq("task_id", params.id)
+      .eq("estado", "pendiente")
+      .maybeSingle();
+    pedidoAbierto = !!pedido;
+  } catch {
+    /* sin la migración, el botón se muestra igual */
+  }
   const due = dueState(t.fecha_limite, t.estado);
 
   // Pub vinculada (cuando esta tarea fue creada desde una publicación del calendario)
@@ -168,6 +186,9 @@ export default async function TaskDetail({
             estado={t.estado}
             className="h-9 w-40"
           />
+          {/* Cualquiera del equipo puede avisar que algo está mal acá: el que
+              sufre la tarea mal cargada no es el que puede arreglarla. */}
+          <TaskProblemButton taskId={t.id} yaReportado={pedidoAbierto} />
           <TaskFormDialog
             mode="edit"
             task={t}

@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { requireUser } from "@/lib/auth";
 import { SERVICE_TYPE_LABEL } from "@/lib/constants";
+import { reasignarTareasDeCuenta } from "@/lib/tareas/reasignar-run";
 
 async function ctx() {
   const supabase = createClient();
@@ -234,10 +235,15 @@ export async function updateClientRow(id: string, input: ClientInput) {
   const { supabase } = await ctx();
   const { error } = await supabase.from("clients").update(clean(input)).eq("id", id);
   if (error) return { error: error.message };
+  // Si cambió el diseñador / CM / editor, las tareas abiertas de la cuenta
+  // pasan al responsable nuevo. Sin esto quedaban a nombre de quien ya no la
+  // lleva, para siempre.
+  const { movidas } = await reasignarTareasDeCuenta(id);
   revalidatePath("/clientes");
   revalidatePath(`/clientes/${id}`);
+  revalidatePath("/tareas");
   invalidateClientsCache();
-  return { ok: true };
+  return { ok: true, tareasReasignadas: movidas };
 }
 
 export async function deleteClientRow(id: string) {

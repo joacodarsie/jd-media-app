@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
+import { reasignarTareasDeCuenta } from "@/lib/tareas/reasignar-run";
 
 const PATHS = ["/coordinacion/equipos", "/clientes", "/contenidos"];
-type Result = { ok: true; id?: string } | { ok: false; error: string };
+type Result = { ok: true; id?: string; tareasReasignadas?: number } | { ok: false; error: string };
 
 function revalidateAll() {
   for (const p of PATHS) revalidatePath(p);
@@ -97,6 +98,9 @@ export async function assignClientTeam(input: {
   }
   const { error } = await admin.from("clients").update(patch).eq("id", input.clienteId);
   if (error) return { ok: false, error: error.message };
+  // Al aplicar el equipo, las tareas abiertas de la cuenta pasan a sus nuevos
+  // responsables (si no, siguen a nombre del equipo anterior).
+  const { movidas } = await reasignarTareasDeCuenta(input.clienteId, { admin });
   revalidateAll();
-  return { ok: true };
+  return { ok: true, tareasReasignadas: movidas };
 }

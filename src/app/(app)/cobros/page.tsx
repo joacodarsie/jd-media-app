@@ -5,6 +5,7 @@ import { currentPeriod, periodLabel } from "@/lib/finanzas";
 import { isClientPausedFor } from "@/lib/client-pause";
 import { MonthPicker } from "@/components/month-picker";
 import { CobrosSimple, type FilaCliente } from "@/components/cobros-simple";
+import { totalCobrado, totalPendiente } from "@/lib/finanzas/cobro-gestion";
 
 export const dynamic = "force-dynamic";
 
@@ -41,17 +42,47 @@ export default async function CobrosSimplePage({
       .order("nombre"),
     admin
       .from("client_invoices")
-      .select("cliente_id, monto, fecha_cobro, notas")
+      .select("id, cliente_id, monto, fecha_cobro, notas, gestion_estado")
       .eq("periodo", periodo),
   ]);
 
   const invoices = (invRaw ?? []) as {
+    id: string;
     cliente_id: string;
     monto: number;
     fecha_cobro: string | null;
     notas: string | null;
+    gestion_estado: string | null;
   }[];
   const porCliente = new Map(invoices.map((i) => [i.cliente_id, i]));
+
+  // Entregas a cuenta del mes. Si falta la migración 0155, la pantalla anda
+  // igual: simplemente no hay pagos parciales.
+  const pagosPorFactura = new Map<
+    string,
+    { id: string; monto: number; fecha: string; nota: string | null }[]
+  >();
+  if (invoices.length > 0) {
+    const { data: pagosRaw } = await admin
+      .from("invoice_payments")
+      .select("id, invoice_id, monto, fecha, nota")
+      .in(
+        "invoice_id",
+        invoices.map((i) => i.id),
+      )
+      .order("fecha");
+    for (const p of (pagosRaw ?? []) as {
+      id: string;
+      invoice_id: string;
+      monto: number;
+      fecha: string;
+      nota: string | null;
+    }[]) {
+      const arr = pagosPorFactura.get(p.invoice_id) ?? [];
+      arr.push({ id: p.id, monto: Number(p.monto), fecha: p.fecha, nota: p.nota });
+      pagosPorFactura.set(p.invoice_id, arr);
+    }
+  }
 
   const filas: FilaCliente[] = ((clientesRaw ?? []) as {
     id: string;
@@ -78,11 +109,15 @@ export default async function CobrosSimplePage({
         contacto: c.contacto_nombre,
         telefono: c.contacto_telefono,
         esperandoPago: c.estado === "esperando_pago",
+        etapa: inv?.gestion_estado ?? null,
+        pagos: inv ? (pagosPorFactura.get(inv.id) ?? []) : [],
       };
     });
 
-  const cobrado = filas.filter((f) => f.cobradoEl).reduce((a, f) => a + f.monto, 0);
-  const falta = filas.filter((f) => !f.cobradoEl).reduce((a, f) => a + f.monto, 0);
+  // Los totales cuentan las entregas a cuenta: "falta cobrar" tiene que ser lo
+  // que falta DE VERDAD, no el abono entero de alguien que ya dejó la mitad.
+  const cobrado = totalCobrado(filas);
+  const falta = totalPendiente(filas);
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">

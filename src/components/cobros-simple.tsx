@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, Undo2, Pencil } from "lucide-react";
+import { Check, Undo2, Pencil, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,7 +11,11 @@ import {
   desmarcarCobrado,
   guardarMonto,
   guardarNota,
+  guardarEtapaCobro,
+  registrarPagoParcial,
+  borrarPagoParcial,
 } from "@/app/(app)/cobros/actions";
+import { ETAPAS, estadoDeCobro } from "@/lib/finanzas/cobro-gestion";
 
 export interface FilaCliente {
   clienteId: string;
@@ -23,6 +27,10 @@ export interface FilaCliente {
   telefono: string | null;
   /** Firmó pero todavía no pagó: no cuenta como cliente hasta que se cobre. */
   esperandoPago?: boolean;
+  /** En qué punto de la conversación de cobro está. */
+  etapa?: string | null;
+  /** Entregas a cuenta, de la más vieja a la más nueva. */
+  pagos?: { id: string; monto: number; fecha: string; nota: string | null }[];
 }
 
 export function CobrosSimple({ filas, periodo }: { filas: FilaCliente[]; periodo: string }) {
@@ -72,7 +80,16 @@ export function CobrosSimple({ filas, periodo }: { filas: FilaCliente[]; periodo
   return (
     <ul className="divide-y rounded-xl border bg-card">
       {filas.map((f) => {
-        const pagado = !!f.cobradoEl;
+        const pagos = f.pagos ?? [];
+        // La etapa sale de los números, no del último clic: si entregó algo,
+        // está "pagó una parte" aunque nadie haya tocado el selector.
+        const est = estadoDeCobro({
+          monto: f.monto,
+          pagos,
+          etapaGuardada: f.etapa,
+          cobradoEl: f.cobradoEl,
+        });
+        const pagado = est.saldado;
         return (
           <li key={f.clienteId} className="p-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -137,6 +154,104 @@ export function CobrosSimple({ filas, periodo }: { filas: FilaCliente[]; periodo
                 </Button>
               )}
             </div>
+
+            {/* La etapa y las entregas a cuenta: lo que pasa entre "le escribí"
+                y "me pagó", que es donde se pierde la plata. */}
+            {!pagado && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {ETAPAS.filter((e) => e.value !== "cobrado" && e.value !== "parcial").map((e) => (
+                  <button
+                    key={e.value}
+                    title={e.ayuda}
+                    disabled={pending}
+                    onClick={() =>
+                      start(async () => {
+                        const res = await guardarEtapaCobro({
+                          clienteId: f.clienteId,
+                          periodo,
+                          etapa: e.value,
+                          monto: f.monto,
+                          concepto: `Abono ${periodo}`,
+                        });
+                        if ("error" in res && res.error) toast.error(res.error);
+                        router.refresh();
+                      })
+                    }
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-opacity hover:opacity-80 ${
+                      est.etapa === e.value ? e.badge : "bg-muted/60 text-muted-foreground"
+                    }`}
+                  >
+                    {e.label}
+                  </button>
+                ))}
+                <EntregaParcial
+                  saldo={est.saldo}
+                  disabled={pending}
+                  onGuardar={(montoEntregado, fecha, nota) =>
+                    start(async () => {
+                      const res = await registrarPagoParcial({
+                        clienteId: f.clienteId,
+                        periodo,
+                        monto: f.monto,
+                        concepto: `Abono ${periodo}`,
+                        montoEntregado,
+                        fecha,
+                        nota,
+                      });
+                      if ("error" in res && res.error) {
+                        toast.error(res.error);
+                        return;
+                      }
+                      toast.success(
+                        "saldado" in res && res.saldado
+                          ? `${f.nombre} completó el pago ✅`
+                          : `Anotado. Le quedan $${(f.monto - (("entregado" in res ? res.entregado : 0) || 0)).toLocaleString("es-AR")}`,
+                      );
+                      router.refresh();
+                    })
+                  }
+                />
+              </div>
+            )}
+
+            {pagos.length > 0 && (
+              <ul className="mt-2 space-y-1">
+                {pagos.map((p) => (
+                  <li
+                    key={p.id}
+                    className="flex items-center gap-2 rounded-md bg-muted/40 px-2 py-1 text-xs"
+                  >
+                    <span className="font-medium tabular-nums">
+                      ${Number(p.monto).toLocaleString("es-AR")}
+                    </span>
+                    <span className="text-muted-foreground">
+                      el {p.fecha.slice(8, 10)}/{p.fecha.slice(5, 7)}
+                    </span>
+                    {p.nota && <span className="truncate text-muted-foreground">· {p.nota}</span>}
+                    <button
+                      title="Borrar esta entrega"
+                      disabled={pending}
+                      onClick={() =>
+                        start(async () => {
+                          const res = await borrarPagoParcial(p.id);
+                          if ("error" in res && res.error) toast.error(res.error);
+                          router.refresh();
+                        })
+                      }
+                      className="ml-auto shrink-0 text-muted-foreground hover:text-rose-500"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </li>
+                ))}
+                {!pagado && (
+                  <li className="px-2 text-xs font-medium text-violet-700 dark:text-violet-300">
+                    Entregó ${est.entregado.toLocaleString("es-AR")} · le quedan $
+                    {est.saldo.toLocaleString("es-AR")}
+                  </li>
+                )}
+              </ul>
+            )}
 
             <NotaInline
               inicial={f.nota ?? ""}
@@ -209,5 +324,82 @@ function NotaInline({
       placeholder="Anotá algo (me paga el 10, pagó la mitad…)"
       className="mt-2 w-full rounded-md border-0 bg-muted/40 px-2.5 py-1.5 text-xs placeholder:text-muted-foreground/60 focus:bg-muted focus:outline-none focus:ring-1 focus:ring-ring"
     />
+  );
+}
+
+/**
+ * "Me dio una parte": el caso que antes no tenía dónde anotarse y terminaba en
+ * un chat de WhatsApp. Se abre en la misma fila, sin diálogo, para que anotar
+ * una entrega cueste lo mismo que marcar el cobro completo.
+ */
+function EntregaParcial({
+  saldo,
+  disabled,
+  onGuardar,
+}: {
+  saldo: number;
+  disabled?: boolean;
+  onGuardar: (monto: number, fecha: string, nota: string) => void;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const [monto, setMonto] = useState("");
+  const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10));
+  const [nota, setNota] = useState("");
+
+  if (!abierto) {
+    return (
+      <button
+        onClick={() => setAbierto(true)}
+        disabled={disabled}
+        className="inline-flex items-center gap-1 rounded-full border border-dashed px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+      >
+        <Plus className="h-3 w-3" /> Me dio una parte
+      </button>
+    );
+  }
+
+  function guardar() {
+    const n = Number(String(monto).replace(/[^\d]/g, ""));
+    if (!(n > 0)) return;
+    onGuardar(n, fecha, nota);
+    setAbierto(false);
+    setMonto("");
+    setNota("");
+  }
+
+  return (
+    <div className="flex w-full flex-wrap items-center gap-1.5 rounded-lg border bg-background p-2">
+      <Input
+        autoFocus
+        value={monto}
+        onChange={(e) => setMonto(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") guardar();
+          if (e.key === "Escape") setAbierto(false);
+        }}
+        placeholder={`Cuánto entregó (falta $${saldo.toLocaleString("es-AR")})`}
+        className="h-8 w-48 text-xs"
+        inputMode="numeric"
+      />
+      <Input
+        type="date"
+        value={fecha}
+        onChange={(e) => setFecha(e.target.value)}
+        className="h-8 w-36 text-xs"
+      />
+      <Input
+        value={nota}
+        onChange={(e) => setNota(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && guardar()}
+        placeholder="Aclaración (ej: el resto el viernes)"
+        className="h-8 min-w-[180px] flex-1 text-xs"
+      />
+      <Button size="sm" className="h-8" onClick={guardar}>
+        Anotar
+      </Button>
+      <Button size="sm" variant="ghost" className="h-8" onClick={() => setAbierto(false)}>
+        Cancelar
+      </Button>
+    </div>
   );
 }

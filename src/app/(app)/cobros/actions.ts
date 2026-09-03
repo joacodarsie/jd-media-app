@@ -166,3 +166,123 @@ export async function guardarNota(input: {
   invalidate();
   return { ok: true as const };
 }
+
+// ── Seguimiento del cobro (etapa + entregas parciales) ─────────────────────
+// Ver `lib/finanzas/cobro-gestion.ts` para el porqué: el cobro no es binario,
+// y lo que pasa en el medio (le escribí / prometió / me dio una parte) es
+// justo donde se pierde la plata.
+
+/** En qué punto de la conversación está el cobro de ese cliente. */
+export async function guardarEtapaCobro(input: {
+  clienteId: string;
+  periodo: string;
+  etapa: string;
+  monto: number;
+  concepto: string;
+}) {
+  const { admin, userId } = await ctx();
+  const f = await asegurarFactura(admin, { ...input, userId });
+  if ("error" in f) return { error: f.error };
+
+  const { error } = await admin
+    .from("client_invoices")
+    .update({ gestion_estado: input.etapa, gestion_at: new Date().toISOString() })
+    .eq("id", f.id);
+  if (error) {
+    return {
+      error:
+        error.code === "42703"
+          ? "Falta aplicar la migración 0155 en Supabase."
+          : error.message,
+    };
+  }
+  invalidate();
+  return { ok: true as const };
+}
+
+/**
+ * Registra una entrega a cuenta. Si con esta entrega se cubre el total, la
+ * factura queda cobrada sola: nadie tiene que acordarse de marcarla después.
+ */
+export async function registrarPagoParcial(input: {
+  clienteId: string;
+  periodo: string;
+  monto: number;
+  concepto: string;
+  montoEntregado: number;
+  fecha?: string;
+  nota?: string;
+}) {
+  const { admin, userId } = await ctx();
+  if (!(input.montoEntregado > 0)) return { error: "El monto entregado tiene que ser mayor a cero." };
+
+  const f = await asegurarFactura(admin, { ...input, userId });
+  if ("error" in f) return { error: f.error };
+
+  const { error } = await admin.from("invoice_payments").insert({
+    invoice_id: f.id,
+    monto: input.montoEntregado,
+    fecha: input.fecha || hoyYmd(),
+    nota: input.nota?.trim().slice(0, 300) || null,
+    creado_por_id: userId,
+  });
+  if (error) {
+    return {
+      error:
+        error.code === "42P01"
+          ? "Falta aplicar la migración 0155 en Supabase."
+          : error.message,
+    };
+  }
+
+  // ¿Con esto quedó saldado?
+  const [{ data: pagos }, { data: inv }] = await Promise.all([
+    admin.from("invoice_payments").select("monto").eq("invoice_id", f.id),
+    admin.from("client_invoices").select("monto, fecha_cobro").eq("id", f.id).maybeSingle(),
+  ]);
+  const entregado = ((pagos ?? []) as { monto: number }[]).reduce((a, p) => a + Number(p.monto), 0);
+  const total = Number((inv as { monto: number } | null)?.monto ?? input.monto);
+  const yaCobrada = !!(inv as { fecha_cobro: string | null } | null)?.fecha_cobro;
+
+  if (!yaCobrada && total > 0 && entregado >= total) {
+    await admin
+      .from("client_invoices")
+      .update({ fecha_cobro: input.fecha || hoyYmd(), gestion_estado: "cobrado" })
+      .eq("id", f.id);
+  } else {
+    await admin.from("client_invoices").update({ gestion_estado: "parcial" }).eq("id", f.id);
+  }
+
+  invalidate();
+  return { ok: true as const, entregado, saldado: entregado >= total };
+}
+
+/** Borra una entrega mal cargada (y destraba el "cobrado" si ya no da). */
+export async function borrarPagoParcial(pagoId: string) {
+  const { admin } = await ctx();
+  const { data: pago } = await admin
+    .from("invoice_payments")
+    .select("invoice_id")
+    .eq("id", pagoId)
+    .maybeSingle();
+  if (!pago) return { error: "No encontré esa entrega." };
+  const invoiceId = (pago as { invoice_id: string }).invoice_id;
+
+  const { error } = await admin.from("invoice_payments").delete().eq("id", pagoId);
+  if (error) return { error: error.message };
+
+  const [{ data: pagos }, { data: inv }] = await Promise.all([
+    admin.from("invoice_payments").select("monto").eq("invoice_id", invoiceId),
+    admin.from("client_invoices").select("monto").eq("id", invoiceId).maybeSingle(),
+  ]);
+  const entregado = ((pagos ?? []) as { monto: number }[]).reduce((a, p) => a + Number(p.monto), 0);
+  const total = Number((inv as { monto: number } | null)?.monto ?? 0);
+  if (total > 0 && entregado < total) {
+    await admin
+      .from("client_invoices")
+      .update({ fecha_cobro: null, gestion_estado: entregado > 0 ? "parcial" : "pendiente" })
+      .eq("id", invoiceId);
+  }
+  invalidate();
+  return { ok: true as const };
+}

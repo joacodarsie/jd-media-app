@@ -43,13 +43,20 @@ export default async function TareasPage({
   const esStaff = myClientIds === null;
   const visibilityOr = esStaff
     ? null
-    : [
-        `asignado_a_id.eq.${me.id}`,
-        `creado_por_id.eq.${me.id}`,
-        ...(verCuentas && myClientIds.length
-          ? [`cliente_id.in.(${myClientIds.join(",")})`]
-          : []),
-      ].join(",");
+    : verCuentas
+      ? [
+          `asignado_a_id.eq.${me.id}`,
+          `creado_por_id.eq.${me.id}`,
+          ...(myClientIds.length ? [`cliente_id.in.(${myClientIds.join(",")})`] : []),
+        ].join(",")
+      : // "Mis tareas" es LO ASIGNADO A MÍ y nada más.
+        //
+        // Antes también entraba lo creado por uno, y eso traía un problema no
+        // obvio: cuando alguien carga una pieza en el calendario, el sistema
+        // genera solo la tarea de diseño y la de historia, y queda esa persona
+        // como creadora. Carlos cargaba las piezas y le volvían encima las
+        // tareas de Milena y de Darío de cada una.
+        `asignado_a_id.eq.${me.id}`;
 
   // Activas/recientes (todo lo no-archivado) en una query, y las archivadas
   // recientes acotadas en otra; se mergean. El working set no se recorta:

@@ -28,22 +28,66 @@ function normalizarUrl(u: string): string | null {
   }
 }
 
+/**
+ * Entidades con nombre más comunes en sitios en español. Las numéricas
+ * (`&#8211;`, `&#xE9;`) se resuelven aparte, que son las que más aparecen en
+ * los títulos de WordPress.
+ */
+const ENTIDADES: Record<string, string> = {
+  nbsp: " ",
+  amp: "&",
+  quot: '"',
+  apos: "'",
+  lt: "<",
+  gt: ">",
+  aacute: "á",
+  eacute: "é",
+  iacute: "í",
+  oacute: "ó",
+  uacute: "ú",
+  Aacute: "Á",
+  Eacute: "É",
+  Iacute: "Í",
+  Oacute: "Ó",
+  Uacute: "Ú",
+  ntilde: "ñ",
+  Ntilde: "Ñ",
+  uuml: "ü",
+  Uuml: "Ü",
+  iquest: "¿",
+  iexcl: "¡",
+  ordm: "º",
+  ordf: "ª",
+  deg: "°",
+  hellip: "…",
+  mdash: "—",
+  ndash: "–",
+  laquo: "«",
+  raquo: "»",
+  euro: "€",
+  trade: "™",
+  reg: "®",
+  copy: "©",
+};
+
+/** Traduce entidades HTML a caracteres de verdad. */
+export function decodificarEntidades(s: string): string {
+  return s
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number(dec)))
+    .replace(/&([a-z]+);/gi, (m, nombre) => ENTIDADES[nombre] ?? m);
+}
+
 /** HTML → texto legible: sin scripts, sin estilos, sin etiquetas ni espacios de más. */
 export function htmlATexto(html: string): string {
-  return html
+  const sinMarcado = html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
     .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
     .replace(/<svg[\s\S]*?<\/svg>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/\s+/g, " ")
-    .trim();
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<[^>]+>/g, " ");
+  return decodificarEntidades(sinMarcado).replace(/\s+/g, " ").trim();
 }
 
 /** El título y la descripción, que suelen decir en una línea a qué se dedican. */

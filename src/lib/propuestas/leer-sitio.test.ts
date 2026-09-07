@@ -13,7 +13,11 @@ describe("htmlATexto", () => {
   });
 
   it("traduce las entidades y colapsa espacios", () => {
-    expect(htmlATexto("<p>Caf&eacute;&nbsp;&amp; Bar</p>")).toBe("Caf&eacute; & Bar");
+    expect(htmlATexto("<p>Caf&eacute;&nbsp;&amp; Bar</p>")).toBe("Café & Bar");
+    // Caso real de un título de WordPress: "Córdoba Capital &#8211; LIENDO".
+    expect(htmlATexto("<p>Capital &#8211; LIENDO</p>")).toBe("Capital – LIENDO");
+    expect(htmlATexto("<p>Dise&ntilde;o &#xE9;pico</p>")).toBe("Diseño épico");
+    expect(htmlATexto("<p>hola</p><!-- oculto -->")).toBe("hola");
     expect(htmlATexto("<p>uno</p>\n\n   <p>dos</p>")).toBe("uno dos");
   });
 });

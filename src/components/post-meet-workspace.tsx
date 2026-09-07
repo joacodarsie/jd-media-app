@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { crearPropuesta } from "@/app/(app)/prospeccion/propuestas/actions";
 import {
   Check,
   Copy,
@@ -94,6 +95,7 @@ type DictTarget = "context" | "instructions";
 
 export function PostMeetWorkspace() {
   const [clientName, setClientName] = useState("");
+  const [armandoPropuesta, setArmandoPropuesta] = useState(false);
   const [context, setContext] = useState("");
   const [instructions, setInstructions] = useState("");
   const [images, setImages] = useState<AttachedImage[]>([]);
@@ -111,6 +113,49 @@ export function PostMeetWorkspace() {
 
   // Dictado: null = apagado, o el cuadro destino activo.
   const [dictating, setDictating] = useState<DictTarget | null>(null);
+
+  /**
+   * Arma la propuesta comercial con ESTA reunión.
+   *
+   * El mensaje de follow-up sirve para la mayoría de los casos; cuando el lead
+   * está caliente lo que cierra es el documento con los packs y el precio. Se
+   * usa la transcripción que ya está cargada acá —incluidas las capturas— así
+   * que no hay que volver a pegar nada, y sale una sola llamada a la IA.
+   */
+  async function armarPropuesta() {
+    if (!clientName.trim() || context.trim().length < 30) return;
+    setArmandoPropuesta(true);
+    try {
+      const r = await crearPropuesta({ empresa: clientName.trim(), rubroTexto: null });
+      if ("error" in r && r.error) {
+        toast.error(r.error);
+        return;
+      }
+      if ("id" in r && r.id) {
+        const res = await fetch("/api/propuestas/afinar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            propuestaId: r.id,
+            notas: context,
+            images: images.map((im) => ({ media_type: im.media_type, data: im.data })),
+          }),
+        });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          toast.error(j.error ?? "Se creó la propuesta, pero no se pudo escribir con la reunión.");
+        }
+      }
+      if ("url" in r && r.url) {
+        await navigator.clipboard.writeText(r.url).catch(() => {});
+        toast.success("Propuesta armada con esta reunión. El link ya está copiado.");
+      }
+    } catch {
+      toast.error("No se pudo armar la propuesta.");
+    } finally {
+      setArmandoPropuesta(false);
+    }
+  }
   const [srSupported, setSrSupported] = useState(false);
   const recognitionRef = useRef<SRecognition | null>(null);
   const dictatingRef = useRef(false);
@@ -660,6 +705,27 @@ export function PostMeetWorkspace() {
                   Generar mensaje
                 </>
               )}
+            </Button>
+            {/* El mensaje sirve para la mayoría; cuando el lead está caliente
+                lo que cierra es el documento. Se arma con la MISMA
+                transcripción que ya está cargada acá, sin volver a pegarla. */}
+            <Button
+              variant="outline"
+              onClick={armarPropuesta}
+              disabled={armandoPropuesta || loading || context.length < 30 || !clientName.trim()}
+              title={
+                !clientName.trim()
+                  ? "Poné el nombre del cliente para armar la propuesta"
+                  : "Arma la propuesta con esta misma reunión y copia el link"
+              }
+              className="gap-1"
+            >
+              {armandoPropuesta ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileText className="h-4 w-4" />
+              )}
+              Armar propuesta con esta reunión
             </Button>
             {(context || clientName || message) && (
               <Button

@@ -34,6 +34,10 @@ export interface CrearPropuestaInput {
   packSugerido?: string | null;
   contactoId?: string | null;
   campaignId?: string | null;
+  /** Sitio del prospecto: le da contexto real a la IA. */
+  sitioWeb?: string | null;
+  /** Su Instagram, que para estos rubros dice más que la web. */
+  instagram?: string | null;
 }
 
 export async function crearPropuesta(input: CrearPropuestaInput) {
@@ -54,6 +58,8 @@ export async function crearPropuesta(input: CrearPropuestaInput) {
       contacto_nombre: input.contactoNombre?.trim()?.slice(0, 120) || null,
       rubro_slug: ficha.slug,
       rubro_texto: input.rubroTexto?.trim()?.slice(0, 300) || null,
+      sitio_web: input.sitioWeb?.trim()?.slice(0, 300) || null,
+      instagram: input.instagram?.trim()?.slice(0, 120) || null,
       pack_sugerido: input.packSugerido || ficha.pack,
       servicios: ficha.servicios,
       contacto_id: input.contactoId || null,

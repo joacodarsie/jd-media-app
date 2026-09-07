@@ -6,6 +6,7 @@ import { trackAiUsage } from "@/lib/ai/usage";
 import { createAdmin } from "@/lib/supabase/admin";
 import { rubroPorSlug } from "@/lib/propuestas/rubros";
 import { cargarCatalogoServicios } from "@/lib/prospecting/catalogo";
+import { leerSitio, bloqueDeContextoWeb } from "@/lib/propuestas/leer-sitio";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,14 +54,21 @@ function imageBlocks(images?: ImageInput[]): Anthropic.ImageBlockParam[] {
 function systemPrompt(servicios: string) {
   return `Sos el director comercial de JD MEDIA, una agencia de marketing digital de Córdoba, Argentina.
 
-Te paso lo que un prospecto dijo por WhatsApp (texto o captura de pantalla) y tenés que escribir el bloque personalizado de la propuesta que le vamos a mandar.
+Te paso el contexto de un prospecto —lo que dijo por WhatsApp, la captura del chat, las notas o la TRANSCRIPCIÓN COMPLETA de la reunión comercial— y tenés que escribir el bloque personalizado de la propuesta que le vamos a mandar.
 
 # Lo que devolvés (JSON, sin nada más alrededor)
 {
   "titular": "Una frase de 6 a 12 palabras que le demuestre que lo escuchamos. Va como título de la propuesta. Sin signos de admiración.",
   "diagnostico": "2 o 3 oraciones que reformulan SU situación puntual con nuestras palabras: qué nos dijo que le importa y por qué tiene razón en que eso es lo que hay que resolver. Nada de halagos vacíos.",
-  "puntos": ["3 o 4 acciones CONCRETAS con las que lo resolvemos, una por elemento. Cada una de 1 o 2 oraciones."]
+  "puntos": ["3 o 4 acciones CONCRETAS con las que lo resolvemos, una por elemento. Cada una de 1 o 2 oraciones."],
+  "ideas": ["3 o 4 ideas de contenido para ESTE negocio en particular, no para su rubro en general. Si el contexto menciona sus productos, su local, su equipo o algo que lo distingue, usalo. Una idea por elemento, en una línea."]
 }
+
+# Si te paso el contenido del sitio del prospecto
+Es texto REAL bajado de su web. Usalo para saber qué vende, cómo se presenta y con qué palabras habla de lo suyo — y nombrá algo concreto de ahí en el diagnóstico o en las ideas, para que se note que lo miramos. No inventes nada que no esté en ese texto. Si te paso un Instagram, es solo el nombre de usuario: **no lo vimos**, así que no describas su feed ni cuánto publica.
+
+# Si te paso una transcripción de reunión
+Es una conversación real, con desvíos y charla suelta. Sacá de ahí: qué le duele, qué probó antes, qué le preocupa del precio o del compromiso, qué palabras usa él para describir su negocio, y cualquier dato concreto que haya dado (cuántos locales, de dónde le vienen los clientes, qué temporada le sirve). Ignorá el saludo, la charla social y lo que dijimos nosotros. Si dijo algo que contradice lo que suele pasar en su rubro, **gana lo que dijo él**.
 
 # Reglas que no se rompen
 1. **Solo servicios que existen.** Esto es lo único que vende JD MEDIA:
@@ -95,7 +103,7 @@ export async function POST(req: Request) {
   const admin = createAdmin();
   const { data: prop } = await admin
     .from("proposals")
-    .select("id, empresa, contacto_nombre, rubro_slug, rubro_texto")
+    .select("id, empresa, contacto_nombre, rubro_slug, rubro_texto, sitio_web, instagram")
     .eq("id", body.propuestaId)
     .maybeSingle();
   if (!prop) return NextResponse.json({ error: "No existe esa propuesta." }, { status: 404 });
@@ -106,13 +114,26 @@ export async function POST(req: Request) {
     contacto_nombre: string | null;
     rubro_slug: string | null;
     rubro_texto: string | null;
+    sitio_web: string | null;
+    instagram: string | null;
   };
 
   const imgs = imageBlocks(body.images);
-  const notas = (body.notas ?? "").trim().slice(0, 4000);
-  if (!notas && imgs.length === 0) {
+  const notas = (body.notas ?? "").trim().slice(0, 40000);
+
+  // El sitio se BAJA y se mete su contenido en el prompt: pasarle la URL
+  // pelada no sirve de nada porque el modelo no puede abrirla.
+  const web = await leerSitio(p.sitio_web);
+
+  // Con el sitio solo ya alcanza para escribir algo propio del negocio, así que
+  // no se exige que además haya notas o capturas.
+  if (!notas && imgs.length === 0 && !web) {
     return NextResponse.json(
-      { error: "Pegá lo que te dijo el prospecto o subí la captura del chat." },
+      {
+        error: p.sitio_web
+          ? "No pudimos leer ese sitio. Pegá lo que te dijo el prospecto o subí la captura del chat."
+          : "Pegá lo que te dijo el prospecto, subí la captura del chat o cargá su sitio web.",
+      },
       { status: 400 },
     );
   }
@@ -127,8 +148,11 @@ export async function POST(req: Request) {
     `Empresa: ${p.empresa}`,
     p.contacto_nombre ? `Persona: ${p.contacto_nombre}` : null,
     `Rubro: ${p.rubro_texto || ficha.nombre}`,
+    bloqueDeContextoWeb(web, p.instagram) || null,
     `Lo que solemos ver en el rubro (contexto nuestro, no lo repitas textual): ${ficha.diagnostico}`,
-    notas ? `\nLo que dijo el prospecto:\n"""\n${notas}\n"""` : null,
+    notas
+      ? `\nContexto de la conversación (lo que dijo, notas de la reunión o la transcripción):\n"""\n${notas}\n"""`
+      : null,
     imgs.length ? `\n(Se adjuntan ${imgs.length} captura/s de la conversación.)` : null,
   ]
     .filter(Boolean)
@@ -138,7 +162,7 @@ export async function POST(req: Request) {
   try {
     res = await client.messages.create({
       model: MODEL,
-      max_tokens: 1200,
+      max_tokens: 2000,
       system: systemPrompt(serviciosTxt),
       messages: [{ role: "user", content: [...imgs, { type: "text", text: contexto }] }],
     });
@@ -158,7 +182,7 @@ export async function POST(req: Request) {
 
   // El modelo a veces envuelve el JSON en ```json … ```.
   const json = texto.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
-  let parsed: { titular?: string; diagnostico?: string; puntos?: string[] };
+  let parsed: { titular?: string; diagnostico?: string; puntos?: string[]; ideas?: string[] };
   try {
     parsed = JSON.parse(json);
   } catch {
@@ -174,6 +198,9 @@ export async function POST(req: Request) {
   const ia = {
     titular: typeof parsed.titular === "string" ? parsed.titular.trim().slice(0, 160) : null,
     diagnostico: typeof parsed.diagnostico === "string" ? parsed.diagnostico.trim().slice(0, 1200) : null,
+    ideas: Array.isArray(parsed.ideas)
+      ? parsed.ideas.filter((x) => typeof x === "string" && x.trim()).slice(0, 6).map((x) => x.trim().slice(0, 400))
+      : [],
     puntos: Array.isArray(parsed.puntos)
       ? parsed.puntos.filter((x) => typeof x === "string" && x.trim()).slice(0, 5).map((x) => x.trim().slice(0, 400))
       : [],

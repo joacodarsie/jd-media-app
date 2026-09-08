@@ -376,6 +376,11 @@ function PersonCard({
               {est.estado === "parcial" && ` · faltan ${fmt(est.falta)}`}
             </span>
           )}
+          {est.falta > 0 && (
+            <div className="mt-1 flex justify-end">
+              <PagoParcialSueldo falta={est.falta} disabled={pending} onGuardar={anotarPago} />
+            </div>
+          )}
         </div>
       </div>
 
@@ -481,37 +486,34 @@ function PersonCard({
         )}
       </div>
 
-      <div className="flex items-center gap-2 border-t px-4 py-2.5">
+      <div className="flex items-center gap-1 border-t px-3 py-2.5">
         <ExtraItemDialog
           userId={person.userId}
           nombre={person.nombre}
           periodo={periodo}
           clientOptions={clientOptions}
         />
-        <Link
-          href={`/recibo/${person.userId}?periodo=${periodo}`}
-          target="_blank"
-          className="ml-auto inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm hover:bg-muted"
-          title="Ver recibo imprimible / PDF"
-        >
-          <Receipt className="h-4 w-4" /> Recibo
-        </Link>
-        <DesgloseDialog person={person} periodo={periodo} />
-        <button
-          onClick={copiarMensaje}
-          className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm hover:bg-muted"
-          title="Copiar el detalle para mandárselo"
-        >
-          <Copy className="h-4 w-4" /> Mensaje
-        </button>
-        <PagoParcialSueldo
-          falta={est.falta}
-          disabled={pending}
-          onGuardar={anotarPago}
-        />
-        <Button size="sm" className="gap-1.5" onClick={registrar} disabled={pending}>
+        <span className="ml-auto flex items-center gap-0.5">
+          <Link
+            href={`/recibo/${person.userId}?periodo=${periodo}`}
+            target="_blank"
+            className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            title="Recibo imprimible / PDF"
+          >
+            <Receipt className="h-4 w-4" />
+          </Link>
+          <DesgloseDialog person={person} periodo={periodo} />
+          <button
+            onClick={copiarMensaje}
+            className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            title="Copiar el detalle para mandárselo"
+          >
+            <Copy className="h-4 w-4" />
+          </button>
+        </span>
+        <Button size="sm" className="ml-1 gap-1.5" onClick={registrar} disabled={pending}>
           {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-          {person.registrado ? "Actualizar monto" : "Registrar"}
+          {person.registrado ? "Actualizar" : "Registrar"}
         </Button>
       </div>
     </div>
@@ -1560,7 +1562,7 @@ function PagoParcialSueldo({
   const [nota, setNota] = useState("");
 
   function guardar() {
-    const n = Number(String(monto).replace(/[^\d]/g, ""));
+    const n = Number(String(monto).replace(/[^d]/g, ""));
     if (!(n > 0)) return;
     onGuardar(n, nota);
     setAbierto(false);
@@ -1568,47 +1570,59 @@ function PagoParcialSueldo({
     setNota("");
   }
 
-  if (!abierto) {
-    return (
+  return (
+    <>
       <button
         onClick={() => setAbierto(true)}
         disabled={disabled}
         title="Anotar una transferencia parcial"
-        className="inline-flex items-center gap-1.5 rounded-md border border-dashed px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+        className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
       >
-        <Plus className="h-4 w-4" /> Le pagué una parte
+        <Plus className="h-3 w-3" /> Anotar pago
       </button>
-    );
-  }
 
-  return (
-    <div className="flex w-full flex-wrap items-center gap-1.5 rounded-lg border bg-background p-2">
-      <Input
-        autoFocus
-        value={monto}
-        onChange={(e) => setMonto(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") guardar();
-          if (e.key === "Escape") setAbierto(false);
-        }}
-        placeholder={`Cuánto le transferís (faltan ${falta.toLocaleString("es-AR")})`}
-        className="h-8 w-56 text-xs"
-        inputMode="numeric"
-      />
-      <Input
-        value={nota}
-        onChange={(e) => setNota(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && guardar()}
-        placeholder="Aclaración (ej: el resto la semana que viene)"
-        className="h-8 min-w-[180px] flex-1 text-xs"
-      />
-      <Button size="sm" className="h-8" onClick={guardar}>
-        Anotar
-      </Button>
-      <Button size="sm" variant="ghost" className="h-8" onClick={() => setAbierto(false)}>
-        Cancelar
-      </Button>
-    </div>
+      <Dialog open={abierto} onOpenChange={setAbierto}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Anotar un pago</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Le faltan <b className="text-foreground">{fmtARS(falta)}</b>. Si transferís
+              todo, queda pagado; si transferís menos, queda el saldo a la vista.
+            </p>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Cuánto le transferís</Label>
+              <Input
+                autoFocus
+                value={monto}
+                onChange={(e) => setMonto(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") guardar();
+                }}
+                placeholder={String(falta)}
+                inputMode="numeric"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Aclaración (opcional)</Label>
+              <Input
+                value={nota}
+                onChange={(e) => setNota(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && guardar()}
+                placeholder="Ej: el resto la semana que viene"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setAbierto(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={guardar}>Anotar</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -1656,10 +1670,10 @@ function DesgloseDialog({
     <>
       <button
         onClick={() => setAbierto(true)}
-        className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm hover:bg-muted"
-        title="Ver el detalle por cuenta y concepto"
+        className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+        title="Desglose por cuenta y concepto, como la planilla"
       >
-        <Table2 className="h-4 w-4" /> Desglose
+        <Table2 className="h-4 w-4" />
       </button>
 
       <Dialog open={abierto} onOpenChange={setAbierto}>

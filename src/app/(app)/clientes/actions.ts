@@ -9,6 +9,10 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { requireUser } from "@/lib/auth";
 import { SERVICE_TYPE_LABEL } from "@/lib/constants";
 import { reasignarTareasDeCuenta } from "@/lib/tareas/reasignar-run";
+import {
+  anotarPaseDeCuenta,
+  ROLES_CON_HISTORIAL,
+} from "@/lib/payroll/asignaciones-run";
 
 async function ctx() {
   const supabase = createClient();
@@ -227,14 +231,53 @@ async function notifyClientServiceAssignees(
   return notificados;
 }
 
-export async function updateClientRow(id: string, input: ClientInput) {
+export async function updateClientRow(
+  id: string,
+  input: ClientInput,
+  /** "YYYY-MM-DD": desde cuándo rige el pase de cuenta. Por defecto, hoy. */
+  paseDesde?: string
+) {
   const me = await requireUser();
   if (me.rol !== "admin") {
     return { error: "Solo un administrador puede editar la ficha del cliente." };
   }
   const { supabase } = await ctx();
-  const { error } = await supabase.from("clients").update(clean(input)).eq("id", id);
+
+  // Quién la llevaba ANTES, para poder anotar el pase. Sin esto, cambiar la CM
+  // reescribía los sueldos de los meses ya cerrados.
+  const admin = createAdmin();
+  const { data: antes } = await admin
+    .from("clients")
+    .select("cm_id, media_buyer_id, fecha_inicio")
+    .eq("id", id)
+    .maybeSingle();
+
+  const patch = clean(input);
+  const { error } = await supabase.from("clients").update(patch).eq("id", id);
   if (error) return { error: error.message };
+
+  if (antes) {
+    const previo = antes as {
+      cm_id: string | null;
+      media_buyer_id: string | null;
+      fecha_inicio: string | null;
+    };
+    for (const { rol, campo } of ROLES_CON_HISTORIAL) {
+      const nuevo = (patch as Record<string, unknown>)[campo] as string | null | undefined;
+      if (nuevo === undefined) continue;
+      const viejo = previo[campo as "cm_id" | "media_buyer_id"];
+      if ((nuevo ?? null) === (viejo ?? null)) continue;
+      await anotarPaseDeCuenta(admin, {
+        clienteId: id,
+        rol,
+        nuevoUserId: nuevo ?? null,
+        desde: paseDesde,
+        anteriorUserId: viejo,
+        clienteDesde: previo.fecha_inicio,
+        nota: "pase desde la ficha del cliente",
+      });
+    }
+  }
   // Si cambió el diseñador / CM / editor, las tareas abiertas de la cuenta
   // pasan al responsable nuevo. Sin esto quedaban a nombre de quien ya no la
   // lleva, para siempre.

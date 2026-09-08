@@ -381,3 +381,31 @@ export async function registrarPagoParcialSueldo(input: {
   revalidatePath("/finanzas/mes");
   return { ok: true as const, pagado: acumulado, saldado };
 }
+
+/**
+ * Carga o corrige el alias/CBU y el titular de una persona, desde la misma
+ * tarjeta de sueldos.
+ *
+ * Antes había que ir a Equipo a editar la ficha entera. Como el alias se usa
+ * justo acá —en el momento de transferir— se edita acá.
+ */
+export async function guardarDatosDeCobro(input: {
+  userId: string;
+  alias: string;
+  titular: string;
+}) {
+  await requireRole(["admin"]);
+  const alias = input.alias.trim();
+  const titular = input.titular.trim();
+  if (alias.length > 120 || titular.length > 120) {
+    return { error: "Demasiado largo." };
+  }
+  const admin = createAdmin();
+  const { error } = await admin
+    .from("users")
+    .update({ alias_cbu: alias || null, titular_cuenta: titular || null })
+    .eq("id", input.userId);
+  if (error) return { error: error.message };
+  revalidatePath(PATH);
+  return { ok: true };
+}

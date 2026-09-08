@@ -18,6 +18,13 @@ import {
   type AgencyRates,
   type RatePack,
 } from "./coordinacion";
+import {
+  responsablesDelPeriodo,
+  repartir,
+  diasDelMes,
+  type Asignacion,
+  type RolDeCuenta,
+} from "./payroll/asignaciones";
 
 /**
  * De dónde sale cada peso de la nómina. Es lo que permite agrupar la nómina por
@@ -101,6 +108,49 @@ export interface PayrollService {
 }
 
 /**
+ * Historial de pases de cuentas, para liquidar cada mes con quien realmente la
+ * llevó. Es opcional: sin esto, el cálculo usa el responsable actual de la
+ * ficha, que es como venía funcionando.
+ */
+export interface AsignacionesCtx {
+  asignaciones: Asignacion[];
+  periodo: string;
+}
+
+/**
+ * Devuelve un `add` que, antes de imputar la línea, resuelve quién llevaba esa
+ * cuenta en ese rol durante el período. Si hubo un pase a mitad de mes, parte
+ * la línea en dos y le aclara los días a cada uno.
+ */
+function repartidorPorRol(
+  add: (userId: string | null, line: PayrollLine) => void,
+  ctx?: AsignacionesCtx
+) {
+  return (rol: RolDeCuenta, actual: string | null, line: PayrollLine) => {
+    // Sin historial, o sin cuenta a la que atribuir: como siempre.
+    if (!ctx || !line.clienteId) return add(actual, line);
+    const tenencias = responsablesDelPeriodo(
+      ctx.asignaciones,
+      line.clienteId,
+      rol,
+      ctx.periodo,
+      actual
+    );
+    const total = diasDelMes(ctx.periodo);
+    for (const parte of repartir(line.monto, tenencias)) {
+      add(parte.userId, {
+        ...line,
+        monto: parte.monto,
+        concepto:
+          parte.tenencia.dias < total
+            ? `${line.concepto} · ${parte.tenencia.dias} de ${total} días`
+            : line.concepto,
+      });
+    }
+  };
+}
+
+/**
  * Calcula las líneas de nómina automáticas (recurrentes del mes) por persona,
  * a partir de los clientes activos, sus servicios y el modelo de tarifas.
  * Devuelve un mapa userId → líneas. No incluye comisiones ni extras manuales
@@ -110,7 +160,8 @@ export function computeAutoPayroll(
   clients: PayrollClient[],
   services: PayrollService[],
   rates: AgencyRates,
-  fallbackMediaBuyerId: string | null
+  fallbackMediaBuyerId: string | null,
+  ctx?: AsignacionesCtx
 ): Map<string, PayrollLine[]> {
   const byClient = new Map<string, PayrollService[]>();
   for (const s of services) {
@@ -124,6 +175,7 @@ export function computeAutoPayroll(
     if (!out.has(userId)) out.set(userId, []);
     out.get(userId)!.push(line);
   };
+  const addRol = repartidorPorRol(add, ctx);
 
   for (const c of clients) {
     const svcs = byClient.get(c.id) ?? [];
@@ -144,7 +196,7 @@ export function computeAutoPayroll(
       } else {
         // CM por pack (incluye historias). Diseño y edición NO se pagan acá:
         // se pagan por contenido real en computeContentPayroll.
-        add(c.cm_id, {
+        addRol("cm", c.cm_id, {
           clienteId: c.id,
           cliente: c.nombre,
           concepto: `CM ${pack}`,
@@ -160,7 +212,7 @@ export function computeAutoPayroll(
     // paga y queda como ganancia de la agencia. Default true (compat).
     if (gestion && gestion.media_buyer_aplica !== false) {
       const pack = (gestion.pack ?? "Personalizado") as RatePack;
-      add(c.media_buyer_id ?? fallbackMediaBuyerId, {
+      addRol("media_buyer", c.media_buyer_id ?? fallbackMediaBuyerId, {
         clienteId: c.id,
         cliente: c.nombre,
         concepto: `Media buyer ${pack}`,
@@ -186,7 +238,8 @@ export function computeOnboardingExtras(
   services: PayrollService[],
   rates: AgencyRates,
   periodo: string,
-  fallbackMediaBuyerId: string | null
+  fallbackMediaBuyerId: string | null,
+  ctx?: AsignacionesCtx
 ): Map<string, PayrollLine[]> {
   // Modelo FNA 2026-07: plus FIJO por persona el primer mes (antes era un %
   // de la tarifa). Si una config vieja no tiene el fijo, cae al % legacy.
@@ -205,6 +258,7 @@ export function computeOnboardingExtras(
     if (!out.has(userId)) out.set(userId, []);
     out.get(userId)!.push(line);
   };
+  const addRol = repartidorPorRol(add, ctx);
 
   for (const c of clients) {
     // Solo el primer mes de la cuenta.
@@ -215,7 +269,7 @@ export function computeOnboardingExtras(
 
     const cmExtra = plus > 0 ? plus : Math.round((rates.cm[pack] ?? 0) * pct);
     if (cmExtra > 0) {
-      add(c.cm_id, {
+      addRol("cm", c.cm_id, {
         clienteId: c.id,
         cliente: c.nombre,
         concepto:
@@ -230,7 +284,7 @@ export function computeOnboardingExtras(
     if (gestion.media_buyer_aplica !== false) {
       const mbExtra = plus > 0 ? plus : Math.round(mbCost(pack, rates) * pct);
       if (mbExtra > 0) {
-        add(c.media_buyer_id ?? fallbackMediaBuyerId, {
+        addRol("media_buyer", c.media_buyer_id ?? fallbackMediaBuyerId, {
           clienteId: c.id,
           cliente: c.nombre,
           concepto:

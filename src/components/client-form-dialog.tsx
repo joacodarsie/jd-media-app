@@ -20,6 +20,7 @@ import {
   type Facturacion,
 } from "@/lib/constants";
 import type { Client } from "@/lib/types";
+import { hoyYmd } from "@/lib/dates";
 import { usersForPuesto, type TeamUserOpt } from "@/lib/role-options";
 import {
   Dialog,
@@ -71,6 +72,8 @@ export function ClientFormDialog({
   const [fbUrl, setFbUrl] = useState(client?.facebook_url ?? "");
   const [webUrl, setWebUrl] = useState(client?.web_url ?? "");
   const [cmId, setCmId] = useState<string>(client?.cm_id ?? NONE);
+  /** Desde cuándo rige el pase de cuenta. Por defecto, hoy. */
+  const [paseDesde, setPaseDesde] = useState(hoyYmd());
   const [disenadorId, setDisenadorId] = useState<string>(client?.disenador_id ?? NONE);
   const [audiovisualId, setAudiovisualId] = useState<string>(
     client?.audiovisual_id ?? NONE
@@ -109,6 +112,15 @@ export function ClientFormDialog({
     responsables: string[];
   };
   const [draftServices, setDraftServices] = useState<DraftService[]>([]);
+
+  /**
+   * ¿Se está cambiando de mano la cuenta? Solo en edición y solo para los roles
+   * que se pagan por mes (CM y media buyer): son los que llevan historial.
+   */
+  const hayPase =
+    mode === "edit" &&
+    ((cmId === NONE ? null : cmId) !== (client?.cm_id ?? null) ||
+      (mediaBuyerId === NONE ? null : mediaBuyerId) !== (client?.media_buyer_id ?? null));
 
   function addService() {
     setDraftServices((prev) => [
@@ -213,7 +225,7 @@ export function ClientFormDialog({
       const res =
         mode === "create"
           ? await createClientRow(payload, servicesPayload)
-          : await updateClientRow(client!.id, payload);
+          : await updateClientRow(client!.id, payload, hayPase ? paseDesde : undefined);
       if (res?.error) {
         toast.error("No se pudo guardar: " + res.error);
         return;
@@ -423,6 +435,28 @@ export function ClientFormDialog({
               El coordinador/a de la cuenta cobra la comisión de coordinación
               recurrente sobre el abono de gestión de redes.
             </p>
+
+            {/* Un pase de cuenta cambia a quién se le paga. Si el cambio ya
+                venía hecho en la realidad, hay que poder fecharlo: si no, los
+                meses anteriores se le liquidan al nuevo. */}
+            {hayPase && (
+              <div className="mt-3 space-y-2 rounded-md border border-amber-300/60 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+                <Label htmlFor="pase-desde" className="text-xs font-semibold">
+                  Estás pasando la cuenta. ¿Desde cuándo la lleva la persona nueva?
+                </Label>
+                <Input
+                  id="pase-desde"
+                  type="date"
+                  value={paseDesde}
+                  onChange={(e) => setPaseDesde(e.target.value)}
+                  className="max-w-[200px] bg-background"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Los sueldos de los meses anteriores se le siguen pagando a quien la
+                  llevaba. Si el pase cae a mitad de mes, ese mes se reparte por días.
+                </p>
+              </div>
+            )}
           </div>
           )}
 

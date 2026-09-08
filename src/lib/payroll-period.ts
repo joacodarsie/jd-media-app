@@ -11,6 +11,7 @@ import { mergeSettings, serviceDeliveryCost, type AgencySettings } from "./coord
 import { SERVICE_TYPE_LABEL } from "./constants";
 import { computeJornadaSplit } from "./jornada";
 import { isClientPausedFor } from "./client-pause";
+import { cargarAsignaciones } from "./payroll/asignaciones-run";
 import {
   computeAutoPayroll,
   computeContentPayroll,
@@ -179,8 +180,21 @@ export async function buildPeriodPayroll(
 
   const fallbackMediaBuyer = users.find((u) => isRole(u, "paid_media"))?.id ?? null;
 
+  // ── Pases de cuentas ──
+  // Quién llevaba cada cuenta ESTE mes, que no siempre es quien figura hoy en
+  // la ficha. Sin esta tabla (migración 0158 sin aplicar) se cae al responsable
+  // actual, que es como venía funcionando.
+  const asignaciones = await cargarAsignaciones(admin);
+  const ctxAsignaciones = asignaciones.length ? { asignaciones, periodo } : undefined;
+
   // ── Nómina automática (modelo de tarifas) ──
-  const autoByUser = computeAutoPayroll(clients, services, settings.rates, fallbackMediaBuyer);
+  const autoByUser = computeAutoPayroll(
+    clients,
+    services,
+    settings.rates,
+    fallbackMediaBuyer,
+    ctxAsignaciones
+  );
 
   // ── Diseño y edición por contenido REAL del mes ──
   // Las cuentas con acuerdo fijo (override) cobran un monto único que cubre toda
@@ -266,7 +280,8 @@ export async function buildPeriodPayroll(
       services,
       settings.rates,
       periodo,
-      fallbackMediaBuyer
+      fallbackMediaBuyer,
+      ctxAsignaciones
     );
     for (const [uid, lines] of onboardingExtras) {
       if (!autoByUser.has(uid)) autoByUser.set(uid, []);

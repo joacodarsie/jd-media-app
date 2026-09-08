@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { reasignarTareasDeCuenta } from "@/lib/tareas/reasignar-run";
+import {
+  anotarPaseDeCuenta,
+  ROLES_CON_HISTORIAL,
+} from "@/lib/payroll/asignaciones-run";
 
 const PATHS = ["/coordinacion/equipos", "/clientes", "/contenidos"];
 type Result = { ok: true; id?: string; tareasReasignadas?: number } | { ok: false; error: string };
@@ -96,8 +100,39 @@ export async function assignClientTeam(input: {
       if (t.media_buyer_id) patch.media_buyer_id = t.media_buyer_id;
     }
   }
+  // Quiénes la llevaban antes, para anotar el pase y no reescribir los sueldos
+  // de los meses ya cerrados.
+  const { data: antes } = await admin
+    .from("clients")
+    .select("cm_id, media_buyer_id, fecha_inicio")
+    .eq("id", input.clienteId)
+    .maybeSingle();
+
   const { error } = await admin.from("clients").update(patch).eq("id", input.clienteId);
   if (error) return { ok: false, error: error.message };
+
+  if (antes) {
+    const previo = antes as {
+      cm_id: string | null;
+      media_buyer_id: string | null;
+      fecha_inicio: string | null;
+    };
+    for (const { rol, campo } of ROLES_CON_HISTORIAL) {
+      const nuevo = patch[campo] as string | null | undefined;
+      if (nuevo === undefined) continue;
+      const viejo = previo[campo as "cm_id" | "media_buyer_id"];
+      if ((nuevo ?? null) === (viejo ?? null)) continue;
+      await anotarPaseDeCuenta(admin, {
+        clienteId: input.clienteId,
+        rol,
+        nuevoUserId: nuevo ?? null,
+        anteriorUserId: viejo,
+        clienteDesde: previo.fecha_inicio,
+        nota: "pase al aplicar un equipo",
+      });
+    }
+  }
+
   // Al aplicar el equipo, las tareas abiertas de la cuenta pasan a sus nuevos
   // responsables (si no, siguen a nombre del equipo anterior).
   const { movidas } = await reasignarTareasDeCuenta(input.clienteId, { admin });

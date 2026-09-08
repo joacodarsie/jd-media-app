@@ -74,6 +74,7 @@ import {
   updatePayrollItem,
   deletePayrollItem,
   registrarPagoParcialSueldo,
+  guardarDatosDeCobro,
   registerSalaryPayment,
   proposeAdjustments,
   applyAdjustments,
@@ -342,22 +343,26 @@ function PersonCard({
         <div>
           <div className="font-semibold">{person.nombre}</div>
           <div className="text-xs text-muted-foreground">{roleLabel(person.rol)}</div>
-          {person.alias ? (
-            <button
-              onClick={() => {
-                navigator.clipboard?.writeText(person.alias!).catch(() => {});
-                toast.success("Alias copiado.");
-              }}
-              title={person.titular ? `Titular: ${person.titular}` : "Copiar el alias"}
-              className="mt-1 inline-flex items-center gap-1 rounded-md bg-muted/60 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
-            >
-              <Copy className="h-3 w-3" /> {person.alias}
-            </button>
-          ) : (
-            <span className="mt-1 block text-[11px] text-amber-600 dark:text-amber-400">
-              sin alias cargado
-            </span>
-          )}
+          <div className="mt-1 flex items-center gap-0.5">
+            {person.alias ? (
+              <button
+                onClick={() => {
+                  navigator.clipboard?.writeText(person.alias!).catch(() => {});
+                  toast.success("Alias copiado.");
+                }}
+                title={person.titular ? `Titular: ${person.titular}` : "Copiar el alias"}
+                className="inline-flex max-w-[200px] items-center gap-1 rounded-md bg-muted/60 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <Copy className="h-3 w-3 shrink-0" />
+                <span className="truncate">{person.alias}</span>
+              </button>
+            ) : (
+              <span className="text-[11px] text-amber-600 dark:text-amber-400">
+                sin alias cargado
+              </span>
+            )}
+            <DatosDeCobroDialog person={person} />
+          </div>
         </div>
         <div className="text-right">
           <div className="flex items-center justify-end gap-1.5">
@@ -486,7 +491,9 @@ function PersonCard({
         )}
       </div>
 
-      <div className="flex items-center gap-1 border-t px-3 py-2.5">
+      {/* flex-wrap + shrink: con dos tarjetas por fila el pie quedaba angosto y
+          los botones se salían de la caja. Ahora bajan de línea. */}
+      <div className="flex flex-wrap items-center gap-1 border-t px-3 py-2.5">
         <ExtraItemDialog
           userId={person.userId}
           nombre={person.nombre}
@@ -1631,6 +1638,93 @@ function PagoParcialSueldo({
  * columnas. Existe para poder cruzar la app contra el Excel de un vistazo, en
  * vez de ir línea por línea.
  */
+/**
+ * Cargar o corregir el alias desde la tarjeta.
+ *
+ * El alias se usa justo acá, cuando hay que transferir. Mandar al dueño a la
+ * ficha de Equipo para cambiar una letra era el camino largo.
+ */
+function DatosDeCobroDialog({ person }: { person: PersonPayroll }) {
+  const [open, setOpen] = useState(false);
+  const [alias, setAlias] = useState(person.alias ?? "");
+  const [titular, setTitular] = useState(person.titular ?? "");
+  const [pending, start] = useTransition();
+  const router = useRouter();
+
+  function guardar() {
+    start(async () => {
+      const res = await guardarDatosDeCobro({ userId: person.userId, alias, titular });
+      if (res?.error) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success("Datos de cobro guardados.");
+      setOpen(false);
+      router.refresh();
+    });
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v);
+        if (v) {
+          setAlias(person.alias ?? "");
+          setTitular(person.titular ?? "");
+        }
+      }}
+    >
+      <DialogTrigger asChild>
+        <button
+          className="grid h-5 w-5 shrink-0 place-items-center rounded text-muted-foreground/60 hover:bg-muted hover:text-foreground"
+          title={person.alias ? "Editar el alias" : "Cargar el alias"}
+        >
+          <Pencil className="h-3 w-3" />
+        </button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Datos de cobro de {firstName(person.nombre)}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor={`alias-${person.userId}`}>Alias o CBU</Label>
+            <Input
+              id={`alias-${person.userId}`}
+              value={alias}
+              onChange={(e) => setAlias(e.target.value)}
+              placeholder="mi.alias.mp"
+              autoComplete="off"
+              className="font-mono"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`titular-${person.userId}`}>Titular de la cuenta</Label>
+            <Input
+              id={`titular-${person.userId}`}
+              value={titular}
+              onChange={(e) => setTitular(e.target.value)}
+              placeholder="Nombre que figura en la cuenta"
+              autoComplete="off"
+            />
+            <p className="text-xs text-muted-foreground">
+              Opcional. Sirve para chequear antes de transferir cuando la cuenta no está a su
+              nombre.
+            </p>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={guardar} disabled={pending} className="gap-1.5">
+            {pending && <Loader2 className="h-4 w-4 animate-spin" />}
+            Guardar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function DesgloseDialog({
   person,
   periodo,

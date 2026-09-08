@@ -595,3 +595,52 @@ describe("selectFirstMonthCommissions", () => {
     expect(out).toHaveLength(0);
   });
 });
+
+describe("computeAutoPayroll con pases de cuentas", () => {
+  // Caso real: Magic la llevó Milena hasta agosto y el 1/9 pasó a Belén.
+  const historial = [
+    { clienteId: "c1", rol: "cm" as const, userId: "mile", desde: "2026-05-01", hasta: "2026-08-31" },
+    { clienteId: "c1", rol: "cm" as const, userId: "belen", desde: "2026-09-01", hasta: null },
+  ];
+  const magic = [cliente({ cm_id: "belen" })];
+
+  it("agosto se le paga a Milena aunque hoy la cuenta figure a nombre de Belén", () => {
+    const out = computeAutoPayroll(magic, [servicio()], r, null, {
+      asignaciones: historial,
+      periodo: "2026-08",
+    });
+    expect(out.get("mile")?.[0].monto).toBe(r.cm.Presencia);
+    expect(out.get("belen")?.some((l) => l.kind === "cm")).not.toBe(true);
+  });
+
+  it("septiembre sí se le paga a Belén", () => {
+    const out = computeAutoPayroll(magic, [servicio()], r, null, {
+      asignaciones: historial,
+      periodo: "2026-09",
+    });
+    expect(out.get("belen")?.[0].monto).toBe(r.cm.Presencia);
+    expect(out.has("mile")).toBe(false);
+  });
+
+  it("un pase a mitad de mes parte la línea y aclara los días", () => {
+    const out = computeAutoPayroll(magic, [servicio()], r, null, {
+      asignaciones: [
+        { clienteId: "c1", rol: "cm", userId: "mile", desde: "2026-05-01", hasta: "2026-08-10" },
+        { clienteId: "c1", rol: "cm", userId: "belen", desde: "2026-08-11", hasta: null },
+      ],
+      periodo: "2026-08",
+    });
+    const suma = (out.get("mile")?.[0].monto ?? 0) + (out.get("belen")?.[0].monto ?? 0);
+    expect(suma).toBe(r.cm.Presencia);
+    expect(out.get("mile")?.[0].concepto).toContain("10 de 31 días");
+    expect(out.get("belen")?.[0].concepto).toContain("21 de 31 días");
+  });
+
+  it("una cuenta sin historial sigue liquidando con el responsable de la ficha", () => {
+    const out = computeAutoPayroll([cliente({ cm_id: "cm1" })], [servicio()], r, null, {
+      asignaciones: historial.map((h) => ({ ...h, clienteId: "otra" })),
+      periodo: "2026-08",
+    });
+    expect(out.get("cm1")?.[0].monto).toBe(r.cm.Presencia);
+  });
+});

@@ -358,6 +358,10 @@ export async function registrarPagoParcialSueldo(input: {
       periodo: input.periodo,
       concepto: input.concepto,
       monto: input.total,
+      moneda: "ARS",
+      // `fecha_programada` es obligatoria en la tabla: sin esto el insert falla
+      // cuando se anota un pago parcial de alguien que todavía no tenía fila.
+      fecha_programada: hoyYmd(),
       monto_pagado: input.montoEntregado,
       fecha_pago: saldado ? hoyYmd() : null,
       notas: nota,

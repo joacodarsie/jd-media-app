@@ -16,6 +16,7 @@ import {
   Sparkles,
   X,
   Users,
+  Undo2,
   Table2,
   Receipt,
   Wallet,
@@ -83,6 +84,7 @@ import type { ProposedAdjustment } from "@/lib/payroll-adjustments";
 import { cn } from "@/lib/utils";
 import { estadoDePagoSueldo } from "@/lib/finanzas/pago-sueldo";
 import { armarDesglose } from "@/lib/finanzas/desglose-sueldo";
+import { resolverLineas } from "@/lib/finanzas/lineas-sueldo";
 
 interface ClientOption {
   id: string;
@@ -322,6 +324,11 @@ function PersonCard({
     });
   }
 
+  // Las líneas calculadas ya vienen resueltas contra los ajustes que las
+  // compensan: si no, "quitar" una línea mostraba dos filas (la original y el
+  // ajuste negativo) y parecía un error.
+  const { lineas, extras } = resolverLineas(person.autoLines, person.manualItems);
+
   const est = estadoDePagoSueldo({
     total: person.total,
     registrado: person.registrado,
@@ -373,28 +380,68 @@ function PersonCard({
       </div>
 
       <div className="flex-1 space-y-2 px-4 py-3">
-        {person.autoLines.length > 0 && (
+        {lineas.length > 0 && (
           <ul className="space-y-1 text-sm">
-            {person.autoLines.map((l, i) => (
-              <li key={i} className="group flex items-center justify-between gap-2">
+            {lineas.map((l, i) => (
+              <li
+                key={i}
+                className={cn(
+                  "group flex items-center justify-between gap-2",
+                  l.quitada && "opacity-50"
+                )}
+              >
                 <span className="min-w-0 truncate text-muted-foreground">
                   {l.cliente && l.cliente !== "—" && (
-                    <span className="text-foreground">{l.cliente}</span>
+                    <span className={cn("text-foreground", l.quitada && "line-through")}>
+                      {l.cliente}
+                    </span>
                   )}{" "}
-                  <span className="text-xs">{l.concepto}</span>
+                  <span className={cn("text-xs", l.quitada && "line-through")}>{l.concepto}</span>
+                  {l.quitada ? (
+                    <span className="ml-1 rounded bg-slate-100 px-1 text-[9px] font-semibold uppercase text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                      quitada
+                    </span>
+                  ) : (
+                    l.montoOriginal != null && (
+                      <span className="ml-1 text-[10px] text-muted-foreground">
+                        (era {fmt(l.montoOriginal)})
+                      </span>
+                    )
+                  )}
                 </span>
                 <span className="flex shrink-0 items-center gap-1.5">
-                  <span className="tabular-nums">{fmt(l.monto)}</span>
-                  <AutoLineAdjust userId={person.userId} periodo={periodo} line={l} />
+                  <span className={cn("tabular-nums", l.quitada && "line-through")}>
+                    {fmt(l.monto)}
+                  </span>
+                  {l.ajusteId ? (
+                    <button
+                      onClick={() => removeItem(l.ajusteId!)}
+                      title="Deshacer: vuelve al monto que calculó el sistema"
+                      className="text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+                    >
+                      <Undo2 className="h-3.5 w-3.5" />
+                    </button>
+                  ) : (
+                    <AutoLineAdjust
+                      userId={person.userId}
+                      periodo={periodo}
+                      line={{
+                        clienteId: l.clienteId,
+                        cliente: l.cliente ?? "—",
+                        concepto: l.concepto,
+                        monto: l.monto,
+                      }}
+                    />
+                  )}
                 </span>
               </li>
             ))}
           </ul>
         )}
 
-        {person.manualItems.length > 0 && (
+        {extras.length > 0 && (
           <ul className="space-y-1 border-t pt-2 text-sm">
-            {person.manualItems.map((it) => (
+            {extras.map((it) => (
               <li key={it.id} className="flex items-center justify-between gap-2">
                 <span className="flex min-w-0 items-center gap-1.5">
                   <span

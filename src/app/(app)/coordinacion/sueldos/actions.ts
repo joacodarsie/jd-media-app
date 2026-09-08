@@ -299,3 +299,81 @@ export async function applyAdjustments(input: {
   revalidatePath(PATH);
   return { ok: true as const, count: items.length };
 }
+
+/**
+ * Anota lo que efectivamente se transfirió.
+ *
+ * Existe porque el pago no es binario: en la planilla que el dueño lleva a mano
+ * hay meses con "pagado $679.300, falta $200.000". Si se cubre el total, se
+ * sella la fecha y queda saldado; si no, queda el saldo a la vista.
+ */
+export async function registrarPagoParcialSueldo(input: {
+  userId: string;
+  periodo: string;
+  concepto: string;
+  /** Total del mes, para saber si con esto queda saldado. */
+  total: number;
+  /** Lo transferido AHORA (se suma a lo que ya había). */
+  montoEntregado: number;
+  nota?: string;
+}) {
+  await requireRole(["admin"]);
+  const admin = createAdmin();
+  if (!(input.montoEntregado > 0)) return { error: "El monto tiene que ser mayor a cero." };
+
+  const { data: existing } = await admin
+    .from("team_payments")
+    .select("id, monto_pagado, notas")
+    .eq("user_id", input.userId)
+    .eq("periodo", input.periodo)
+    .eq("concepto", input.concepto)
+    .maybeSingle();
+
+  const yaPagado = Number((existing as { monto_pagado?: number } | null)?.monto_pagado ?? 0) || 0;
+  const acumulado = yaPagado + input.montoEntregado;
+  const saldado = input.total > 0 && acumulado >= input.total;
+  const nota = input.nota?.trim().slice(0, 300) || null;
+
+  if (existing) {
+    const notasPrevias = (existing as { notas?: string | null }).notas;
+    const { error } = await admin
+      .from("team_payments")
+      .update({
+        monto_pagado: acumulado,
+        fecha_pago: saldado ? hoyYmd() : null,
+        notas: nota ? [notasPrevias, nota].filter(Boolean).join(" · ").slice(0, 500) : notasPrevias,
+      })
+      .eq("id", (existing as { id: string }).id);
+    if (error) {
+      return {
+        error:
+          error.code === "42703"
+            ? "Falta aplicar la migración 0157 en Supabase."
+            : error.message,
+      };
+    }
+  } else {
+    const { error } = await admin.from("team_payments").insert({
+      user_id: input.userId,
+      periodo: input.periodo,
+      concepto: input.concepto,
+      monto: input.total,
+      monto_pagado: input.montoEntregado,
+      fecha_pago: saldado ? hoyYmd() : null,
+      notas: nota,
+    });
+    if (error) {
+      return {
+        error:
+          error.code === "42703"
+            ? "Falta aplicar la migración 0157 en Supabase."
+            : error.message,
+      };
+    }
+  }
+
+  revalidatePath(PATH);
+  revalidatePath("/finanzas");
+  revalidatePath("/finanzas/mes");
+  return { ok: true as const, pagado: acumulado, saldado };
+}

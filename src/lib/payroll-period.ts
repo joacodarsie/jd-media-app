@@ -113,7 +113,7 @@ export async function buildPeriodPayroll(
       .eq("periodo", periodo),
     admin
       .from("team_payments")
-      .select("id, user_id, concepto, monto, fecha_pago")
+      .select("id, user_id, concepto, monto, fecha_pago, monto_pagado")
       .eq("periodo", periodo),
     admin
       .from("production_sessions")
@@ -514,6 +514,9 @@ export async function buildPeriodPayroll(
       total: auto + manual,
       registrado: !!pago,
       pagado: !!pago?.fecha_pago,
+      // Lo efectivamente transferido: el pago no es binario (ver lib/finanzas/pago-sueldo).
+      montoPagado: Number((pago as { monto_pagado?: number } | null)?.monto_pagado ?? 0) || 0,
+      fechaPago: (pago as { fecha_pago?: string | null } | null)?.fecha_pago ?? null,
     });
   }
   people.sort((a, b) => b.total - a.total);

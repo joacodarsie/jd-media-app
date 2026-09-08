@@ -16,6 +16,7 @@ import {
   Sparkles,
   X,
   Users,
+  Table2,
   Receipt,
   Wallet,
 } from "lucide-react";
@@ -71,6 +72,7 @@ import {
   addPayrollItem,
   updatePayrollItem,
   deletePayrollItem,
+  registrarPagoParcialSueldo,
   registerSalaryPayment,
   proposeAdjustments,
   applyAdjustments,
@@ -79,6 +81,8 @@ import {
 } from "@/app/(app)/coordinacion/sueldos/actions";
 import type { ProposedAdjustment } from "@/lib/payroll-adjustments";
 import { cn } from "@/lib/utils";
+import { estadoDePagoSueldo } from "@/lib/finanzas/pago-sueldo";
+import { armarDesglose } from "@/lib/finanzas/desglose-sueldo";
 
 interface ClientOption {
   id: string;
@@ -265,9 +269,12 @@ function PersonCard({
     );
   }
 
-  function generarYRegistrar() {
-    const msg = buildMessage();
-    navigator.clipboard?.writeText(msg).catch(() => {});
+  /**
+   * Registra el pago en Finanzas. Ya NO copia el mensaje: el dueño pidió
+   * separarlo porque registrar y avisarle a la persona son dos momentos
+   * distintos, y el copiado automático le pisaba el portapapeles.
+   */
+  function registrar() {
     start(async () => {
       const res = await registerSalaryPayment({
         userId: person.userId,
@@ -276,7 +283,33 @@ function PersonCard({
         concepto: salaryConcepto,
       });
       if (res?.error) return void toast.error(res.error);
-      toast.success("Mensaje copiado y pago registrado en Finanzas.");
+      toast.success("Pago registrado en Finanzas.");
+      router.refresh();
+    });
+  }
+
+  /** El mensaje para la persona, cuando se lo quiere mandar. Aparte del registro. */
+  function copiarMensaje() {
+    navigator.clipboard?.writeText(buildMessage()).catch(() => {});
+    toast.success("Mensaje copiado.");
+  }
+
+  function anotarPago(montoEntregado: number, nota: string) {
+    start(async () => {
+      const res = await registrarPagoParcialSueldo({
+        userId: person.userId,
+        periodo,
+        concepto: salaryConcepto,
+        total: person.total,
+        montoEntregado,
+        nota,
+      });
+      if ("error" in res && res.error) return void toast.error(res.error);
+      toast.success(
+        "saldado" in res && res.saldado
+          ? `${firstName(person.nombre)} quedó pagado ✅`
+          : `Anotado. Le faltan ${fmt(person.total - (("pagado" in res ? res.pagado : 0) || 0))}`,
+      );
       router.refresh();
     });
   }
@@ -289,29 +322,51 @@ function PersonCard({
     });
   }
 
+  const est = estadoDePagoSueldo({
+    total: person.total,
+    registrado: person.registrado,
+    montoPagado: person.montoPagado,
+    fechaPago: person.fechaPago,
+  });
+
   return (
     <div className="flex flex-col rounded-xl border bg-card">
       <div className="flex items-start justify-between gap-3 border-b px-4 py-3">
         <div>
           <div className="font-semibold">{person.nombre}</div>
           <div className="text-xs text-muted-foreground">{roleLabel(person.rol)}</div>
+          {person.alias ? (
+            <button
+              onClick={() => {
+                navigator.clipboard?.writeText(person.alias!).catch(() => {});
+                toast.success("Alias copiado.");
+              }}
+              title={person.titular ? `Titular: ${person.titular}` : "Copiar el alias"}
+              className="mt-1 inline-flex items-center gap-1 rounded-md bg-muted/60 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <Copy className="h-3 w-3" /> {person.alias}
+            </button>
+          ) : (
+            <span className="mt-1 block text-[11px] text-amber-600 dark:text-amber-400">
+              sin alias cargado
+            </span>
+          )}
         </div>
         <div className="text-right">
           <div className="flex items-center justify-end gap-1.5">
             <div className="text-xl font-bold tabular-nums">{fmt(person.total)}</div>
             <SetTotalDialog person={person} periodo={periodo} />
           </div>
-          {person.registrado && (
+          {est.estado !== "sin_registrar" && (
             <span
               className={cn(
                 "mt-0.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium",
-                person.pagado
-                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                  : "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                est.badge
               )}
             >
               <Check className="h-3 w-3" />
-              {person.pagado ? "Pagado" : "Registrado"}
+              {est.label}
+              {est.estado === "parcial" && ` · faltan ${fmt(est.falta)}`}
             </span>
           )}
         </div>
@@ -394,14 +449,22 @@ function PersonCard({
         >
           <Receipt className="h-4 w-4" /> Recibo
         </Link>
-        <Button
-          size="sm"
-          className="gap-1.5"
-          onClick={generarYRegistrar}
-          disabled={pending}
+        <DesgloseDialog person={person} periodo={periodo} />
+        <button
+          onClick={copiarMensaje}
+          className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm hover:bg-muted"
+          title="Copiar el detalle para mandárselo"
         >
-          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
-          {person.registrado ? "Copiar y actualizar" : "Mensaje + registrar"}
+          <Copy className="h-4 w-4" /> Mensaje
+        </button>
+        <PagoParcialSueldo
+          falta={est.falta}
+          disabled={pending}
+          onGuardar={anotarPago}
+        />
+        <Button size="sm" className="gap-1.5" onClick={registrar} disabled={pending}>
+          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+          {person.registrado ? "Actualizar monto" : "Registrar"}
         </Button>
       </div>
     </div>
@@ -1428,4 +1491,204 @@ function nameOf(options: TeamOption[], id: string): string {
 
 function roleLabel(rol: string): string {
   return ROLE_LABEL[rol as keyof typeof ROLE_LABEL] ?? rol;
+}
+
+/**
+ * "Le pagué una parte": el caso que hoy vive en la planilla del dueño (agosto
+ * de Luz: $879.300 total, $679.300 pagado, $200.000 falta) y que la app no
+ * tenía dónde anotar. Se abre en la misma fila para que cueste lo mismo que
+ * marcar el pago completo.
+ */
+function PagoParcialSueldo({
+  falta,
+  disabled,
+  onGuardar,
+}: {
+  falta: number;
+  disabled?: boolean;
+  onGuardar: (monto: number, nota: string) => void;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const [monto, setMonto] = useState("");
+  const [nota, setNota] = useState("");
+
+  function guardar() {
+    const n = Number(String(monto).replace(/[^\d]/g, ""));
+    if (!(n > 0)) return;
+    onGuardar(n, nota);
+    setAbierto(false);
+    setMonto("");
+    setNota("");
+  }
+
+  if (!abierto) {
+    return (
+      <button
+        onClick={() => setAbierto(true)}
+        disabled={disabled}
+        title="Anotar una transferencia parcial"
+        className="inline-flex items-center gap-1.5 rounded-md border border-dashed px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+      >
+        <Plus className="h-4 w-4" /> Le pagué una parte
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex w-full flex-wrap items-center gap-1.5 rounded-lg border bg-background p-2">
+      <Input
+        autoFocus
+        value={monto}
+        onChange={(e) => setMonto(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") guardar();
+          if (e.key === "Escape") setAbierto(false);
+        }}
+        placeholder={`Cuánto le transferís (faltan ${falta.toLocaleString("es-AR")})`}
+        className="h-8 w-56 text-xs"
+        inputMode="numeric"
+      />
+      <Input
+        value={nota}
+        onChange={(e) => setNota(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && guardar()}
+        placeholder="Aclaración (ej: el resto la semana que viene)"
+        className="h-8 min-w-[180px] flex-1 text-xs"
+      />
+      <Button size="sm" className="h-8" onClick={guardar}>
+        Anotar
+      </Button>
+      <Button size="sm" variant="ghost" className="h-8" onClick={() => setAbierto(false)}>
+        Cancelar
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * El sueldo ordenado como la planilla: cuentas en las filas, conceptos en las
+ * columnas. Existe para poder cruzar la app contra el Excel de un vistazo, en
+ * vez de ir línea por línea.
+ */
+function DesgloseDialog({
+  person,
+  periodo,
+}: {
+  person: PersonPayroll;
+  periodo: string;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const d = useMemo(
+    () =>
+      armarDesglose([
+        ...person.autoLines.map((l) => ({
+          cliente: l.cliente,
+          concepto: l.concepto,
+          monto: l.monto,
+        })),
+        ...person.manualItems.map((i) => ({
+          cliente: i.cliente,
+          concepto: i.concepto,
+          monto: i.monto,
+        })),
+      ]),
+    [person]
+  );
+
+  function copiarTabla() {
+    const cab = ["Cuenta", ...d.conceptos, "Total"].join("\t");
+    const filas = d.filas.map((f) =>
+      [f.cliente, ...d.conceptos.map((c) => f.valores[c] ?? ""), f.total].join("\t")
+    );
+    const total = ["Total", ...d.conceptos.map((c) => d.totalPorConcepto[c] ?? ""), d.total].join("\t");
+    navigator.clipboard?.writeText([cab, ...filas, total].join("\n")).catch(() => {});
+    toast.success("Tabla copiada. Se pega directo en el Excel.");
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => setAbierto(true)}
+        className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm hover:bg-muted"
+        title="Ver el detalle por cuenta y concepto"
+      >
+        <Table2 className="h-4 w-4" /> Desglose
+      </button>
+
+      <Dialog open={abierto} onOpenChange={setAbierto}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              {person.nombre} · {periodLabel(periodo)}
+            </DialogTitle>
+          </DialogHeader>
+
+          {d.filas.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Este mes no tiene nada calculado todavía.
+            </p>
+          ) : (
+            <>
+              <div className="overflow-x-auto rounded-lg border">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
+                      <th className="px-3 py-2 font-medium">Cuenta</th>
+                      {d.conceptos.map((c) => (
+                        <th key={c} className="whitespace-nowrap px-3 py-2 text-right font-medium">
+                          {c}
+                        </th>
+                      ))}
+                      <th className="px-3 py-2 text-right font-medium">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {d.filas.map((f) => (
+                      <tr key={f.cliente} className="border-b last:border-0">
+                        <td className="px-3 py-1.5">{f.cliente}</td>
+                        {d.conceptos.map((c) => (
+                          <td
+                            key={c}
+                            className="px-3 py-1.5 text-right tabular-nums text-muted-foreground"
+                          >
+                            {f.valores[c] ? fmtARS(f.valores[c]) : ""}
+                          </td>
+                        ))}
+                        <td className="px-3 py-1.5 text-right font-medium tabular-nums">
+                          {fmtARS(f.total)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 bg-muted/30 font-semibold">
+                      <td className="px-3 py-2">Total</td>
+                      {d.conceptos.map((c) => (
+                        <td key={c} className="px-3 py-2 text-right tabular-nums">
+                          {d.totalPorConcepto[c] ? fmtARS(d.totalPorConcepto[c]) : ""}
+                        </td>
+                      ))}
+                      <td className="px-3 py-2 text-right tabular-nums">{fmtARS(d.total)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-muted-foreground">
+                  Mismo orden que tu planilla: una fila por cuenta, una columna por concepto.
+                </p>
+                <button
+                  onClick={copiarTabla}
+                  className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium hover:bg-accent"
+                >
+                  <Copy className="h-3.5 w-3.5" /> Copiar para el Excel
+                </button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }

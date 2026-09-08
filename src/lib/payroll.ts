@@ -67,6 +67,9 @@ export interface PersonPayroll {
   }[];
   total: number;
   registrado: boolean;
+  /** Lo efectivamente transferido (ver lib/finanzas/pago-sueldo). */
+  montoPagado?: number;
+  fechaPago?: string | null;
   pagado: boolean;
 }
 

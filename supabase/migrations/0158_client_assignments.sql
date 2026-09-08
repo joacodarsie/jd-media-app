@@ -69,7 +69,7 @@ declare
   v_cliente uuid;
 begin
   select id into v_mile from public.users
-   where lower(nombre) like '%milena%' or lower(nombre) like '%mile %'
+   where nombre ilike 'milena%'
    limit 1;
   if v_mile is null then
     raise notice '0158: no se encontro a Milena, se saltea la correccion del pase';
@@ -106,6 +106,6 @@ insert into public.review_flags (ruta, label, nota)
 values (
   '/coordinacion/sueldos',
   'Pase de cuentas en sueldos',
-  'Los sueldos ahora respetan la fecha del pase de cuentas. Chequear agosto 2026: Milena tiene que tener Magic y Amelia (deberia dar $150.000, no $50.000) y Belen tiene que bajar a $150.000. Septiembre al reves. En la ficha del cliente, al cambiar la CM ahora se pregunta desde que fecha.'
+  'Los sueldos ahora respetan la fecha del pase de cuentas. Magic y Amelia arrancaron el 5/7/2026 con Milena, asi que julio Y agosto vuelven a ser de ella. Chequear agosto 2026: Milena tiene que tener Magic y Amelia (deberia dar $150.000, no $50.000) y Belen tiene que bajar a $150.000. Septiembre al reves. En la ficha del cliente, al cambiar la CM ahora se pregunta desde que fecha.'
 )
 on conflict do nothing;

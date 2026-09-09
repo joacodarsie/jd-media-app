@@ -164,7 +164,7 @@ export function MonthlyMeetingWorkspace(props: MonthlyMeetingWorkspaceProps) {
     try {
       const form = new FormData();
       form.set("file", blob, filename);
-      const res = await fetch("/api/diagnostico/transcribe-audio", {
+      const res = await fetch("/api/transcribe-audio", {
         method: "POST",
         body: form,
       });

@@ -26,14 +26,19 @@ const OK_MIME = new Set([
 ]);
 
 /**
- * POST /api/diagnostico/transcribe-audio
+ * POST /api/transcribe-audio
  *
  * Multipart form-data: { file: audio }
  * Transcribe con Gemini a texto plano en español. Devuelve { text }.
  *
- * Se usa en la sección de correcciones del diagnóstico: el admin graba/sube el
- * audio con lo que le dijo el cliente y lo dejamos como texto editable antes de
- * mandarlo a la revisión con IA.
+ * Ruta compartida (antes vivía bajo /api/diagnostico, pero ya la usan varias
+ * pantallas): correcciones del diagnóstico, reunión mensual y el afinado de
+ * propuestas. Siempre devuelve TEXTO EDITABLE: la transcripción se revisa antes
+ * de mandarla a la IA, porque los nombres propios y los números salen mal
+ * seguido.
+ *
+ * El caso más común no es dictar, es la nota de voz que mandó el cliente por
+ * WhatsApp.
  */
 export async function POST(req: Request) {
   const supabase = createClient();
@@ -107,7 +112,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ text });
   } catch (err) {
-    console.error("[diagnostico/transcribe-audio] error", err);
+    console.error("[transcribe-audio] error", err);
     return NextResponse.json(
       { error: "Error al transcribir el audio. Probá de nuevo o escribí las correcciones a mano." },
       { status: 500 }

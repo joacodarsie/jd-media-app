@@ -140,7 +140,7 @@ export function DiagnosticCorrections({ clienteId, baseDiagnosticId }: Props) {
     try {
       const form = new FormData();
       form.set("file", blob, filename);
-      const res = await fetch("/api/diagnostico/transcribe-audio", { method: "POST", body: form });
+      const res = await fetch("/api/transcribe-audio", { method: "POST", body: form });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Error transcribiendo");
       const t = String(json.text ?? "").trim();

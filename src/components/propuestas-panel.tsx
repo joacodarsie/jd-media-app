@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { AudioATexto } from "@/components/audio-a-texto";
 import { fmtDate } from "@/lib/dates";
 import {
   crearPropuesta,
@@ -729,8 +730,9 @@ function DialogAfinar({
 
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Pegá <b>lo que te contestó</b> el prospecto (o subí la captura del chat). La
-            IA reescribe el diagnóstico y agrega cómo se lo resolvemos puntualmente.
+            Pegá <b>lo que te contestó</b> el prospecto, subí la captura del chat o cargá
+            el <b>audio</b> que te mandó. La IA reescribe el diagnóstico y agrega cómo se
+            lo resolvemos puntualmente.
           </p>
           <Textarea
             value={notas}
@@ -739,6 +741,13 @@ function DialogAfinar({
             placeholder={
               'Ej: "Para mí lo más importante es la segmentación. El 85% de nuestros huéspedes son extranjeros y no repiten compra."'
             }
+          />
+
+          {/* La transcripción se AGREGA al texto que ya haya: se puede sumar una
+              nota de voz del prospecto y arriba tus propias aclaraciones. */}
+          <AudioATexto
+            disabled={cargando}
+            onTexto={(t) => setNotas((prev) => (prev.trim() ? `${prev.trim()}\n\n${t}` : t))}
           />
 
           <div>

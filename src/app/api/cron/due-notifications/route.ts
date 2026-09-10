@@ -5,6 +5,7 @@ import {
   ensureFinanceNotifications,
   ensureCobroReminders,
   ensureProspectingNudges,
+  ensureRevisionCreativaNudges,
 } from "@/lib/notifications";
 import {
   runMonthEndCompliance,
@@ -105,6 +106,16 @@ export async function GET(req: NextRequest) {
     prospeccion = await ensureProspectingNudges(admin);
   } catch (e) {
     prospeccion = { error: e instanceof Error ? e.message : "falló" };
+  }
+
+  // Piezas trabadas en "revisión creativa": diseño ya cerró su tarea, así que
+  // el aviso de vencidas de arriba (que mira `tasks`) deja de nombrarlas y la
+  // pieza se cae del radar. Le avisa al CM y escala si pasa de 3 días.
+  let revisionCreativa: unknown = null;
+  try {
+    revisionCreativa = await ensureRevisionCreativaNudges(admin);
+  } catch (e) {
+    revisionCreativa = { error: e instanceof Error ? e.message : "falló" };
   }
 
   // Reabastecimiento de contactos: si a una campaña activa le quedan pocos sin
@@ -316,6 +327,7 @@ export async function GET(req: NextRequest) {
     processed_failed: failed,
     finance_notified: financeNotified,
     prospeccion,
+    revision_creativa: revisionCreativa,
     refill,
     tasks_archived: archivedRows?.length ?? 0,
     notifications_purged: purgedNotifs?.length ?? 0,

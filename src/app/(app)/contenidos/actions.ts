@@ -24,6 +24,37 @@ function writeDb() {
   return createAdmin();
 }
 
+/**
+ * Qué sumarle al patch para llevar el reloj de "revisión creativa".
+ *
+ * Existe porque ese estado no tenía dueño ni reloj: diseño cerraba su tarea, la
+ * pieza quedaba esperando que el CM la mirara, y como no quedaba tarea abierta
+ * el aviso de vencidas dejaba de nombrarla. Con la marca, el cron puede avisar
+ * y escalar (ver `lib/contenidos/revision-creativa`).
+ */
+function selloDeRevision(estado: string, estadoPrevio?: string | null) {
+  if (estado === estadoPrevio) return {};
+  return {
+    revision_creativa_at: estado === "revision_creativa" ? new Date().toISOString() : null,
+  };
+}
+
+/**
+ * El sello de arriba, tolerando que la 0161 no esté aplicada todavía: si la
+ * columna no existe, se reintenta sin ella en vez de fallar el cambio de estado.
+ */
+async function updateTolerandoSello<T>(
+  correr: (patch: Record<string, unknown>) => PromiseLike<{ error: { code?: string; message: string } | null } & T>,
+  patch: Record<string, unknown>
+) {
+  const r = await correr(patch);
+  if (r.error?.code === "42703" && "revision_creativa_at" in patch) {
+    const { revision_creativa_at: _omitida, ...sinSello } = patch;
+    return correr(sinSello);
+  }
+  return r;
+}
+
 // Quién puede EDITAR el calendario (crear/editar/mover fecha/borrar publicaciones).
 // El resto del equipo (diseño, audiovisual) solo comenta y marca el contenido
 // como hecho / sube su pieza.
@@ -126,13 +157,11 @@ export async function updatePublication(id: string, input: PublicationInput) {
   const gate = await ensureCalendarEditor();
   if (gate) return { error: gate };
   const payload: Record<string, unknown> = clean(input);
-  if (input.estado) payload.estado = input.estado;
-  const { data, error } = await writeDb()
-    .from("publications")
-    .update(payload)
-    .eq("id", id)
-    .select("cliente_id")
-    .single();
+  if (input.estado) Object.assign(payload, { estado: input.estado }, selloDeRevision(input.estado));
+  const { data, error } = await updateTolerandoSello(
+    (p) => writeDb().from("publications").update(p).eq("id", id).select("cliente_id").single(),
+    payload
+  );
   if (error) return { error: error.message };
   invalidate(data?.cliente_id);
   return { ok: true };
@@ -145,7 +174,7 @@ export async function changePublicationStatus(id: string, estado: string, notas?
   // no es "staff" el update le fallaba en silencio.
   const { data: pub } = await admin
     .from("publications")
-    .select("cliente_id")
+    .select("cliente_id, estado")
     .eq("id", id)
     .maybeSingle();
   if (!pub) return { error: "No se encontró la publicación." };
@@ -155,9 +184,12 @@ export async function changePublicationStatus(id: string, estado: string, notas?
         "No tenés permiso para cambiar el estado de esta pieza. Solo el equipo de esa cuenta (CM, diseño, edición, coordinación) puede.",
     };
   }
-  const patch: Record<string, unknown> = { estado };
+  const patch: Record<string, unknown> = { estado, ...selloDeRevision(estado, pub.estado) };
   if (notas !== undefined) patch.notas_revision = notas?.trim() || null;
-  const { error } = await admin.from("publications").update(patch).eq("id", id);
+  const { error } = await updateTolerandoSello(
+    (p) => admin.from("publications").update(p).eq("id", id),
+    patch
+  );
   if (error) return { error: error.message };
   invalidate(pub.cliente_id);
   return { ok: true };
@@ -403,10 +435,10 @@ export async function bulkChangePublicationStatus(ids: string[], estado: string)
   if (!ids.length) return { ok: true };
   const gate = await ensureCalendarEditor();
   if (gate) return { error: gate };
-  const { error } = await writeDb()
-    .from("publications")
-    .update({ estado })
-    .in("id", ids);
+  const { error } = await updateTolerandoSello(
+    (p) => writeDb().from("publications").update(p).in("id", ids),
+    { estado, ...selloDeRevision(estado) }
+  );
   if (error) return { error: error.message };
   revalidatePath("/contenidos");
   revalidatePath("/clientes/[id]/calendario", "page");

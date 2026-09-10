@@ -7,6 +7,11 @@ import {
   resumirActividad,
   type ContactoActividad,
 } from "./prospecting/actividad";
+import {
+  avisosDeRevisionCreativa,
+  type CuentaParaRevision,
+  type PiezaEnRevision,
+} from "./contenidos/revision-creativa";
 
 /** Roles de los que se espera que prospecten (los que reciben el aviso). */
 const ROLES_PROSPECTAN = ["comercial", "prospecting", "coordinador", "admin"];
@@ -308,4 +313,74 @@ export async function ensureCobroReminders(admin: SupabaseClient) {
       task_id: null,
     });
   }
+}
+
+/**
+ * Avisa por las piezas trabadas en "revisión creativa".
+ *
+ * El aviso de vencidas de arriba mira `tasks`, y una pieza en revisión creativa
+ * no tiene tarea abierta: diseño ya cerró la suya. Por eso se caía del radar.
+ * Acá se le avisa al CM de la cuenta y, si la pieza lleva más de
+ * `DIAS_PARA_ESCALAR` esperando, también a coordinación y a los dueños.
+ *
+ * Dedup: un aviso por persona y por cuenta por día.
+ */
+export async function ensureRevisionCreativaNudges(admin: SupabaseClient) {
+  const hoy = formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM-dd");
+  const inicioHoyCordoba = toZonedTime(new Date(hoy + "T00:00:00"), TIMEZONE);
+
+  const [{ data: pubsRaw, error: pubsErr }, { data: cuentasRaw }, { data: adminsRaw }] =
+    await Promise.all([
+      admin
+        .from("publications")
+        .select(
+          "id, cliente_id, titulo, estado, fecha_publicacion, frenado_cliente, revision_creativa_at"
+        )
+        .eq("estado", "revision_creativa"),
+      admin.from("clients").select("id, nombre, estado, cm_id, coordinador_id"),
+      admin.from("users").select("id").eq("rol", "admin").eq("activo", true),
+    ]);
+
+  // La 0161 puede no estar aplicada: sin la marca se mide desde la fecha en que
+  // la pieza debía salir, que para una trabada ya pasó. Peor que nada no es.
+  let piezas = (pubsRaw ?? []) as PiezaEnRevision[];
+  if (pubsErr) {
+    if ((pubsErr as { code?: string }).code !== "42703") return { avisados: 0 };
+    const { data } = await admin
+      .from("publications")
+      .select("id, cliente_id, titulo, estado, fecha_publicacion, frenado_cliente")
+      .eq("estado", "revision_creativa");
+    piezas = (data ?? []) as PiezaEnRevision[];
+  }
+  if (!piezas.length) return { avisados: 0 };
+
+  const avisos = avisosDeRevisionCreativa(
+    piezas,
+    (cuentasRaw ?? []) as CuentaParaRevision[],
+    ((adminsRaw ?? []) as { id: string }[]).map((u) => u.id),
+    hoy
+  );
+
+  let avisados = 0;
+  for (const a of avisos) {
+    const { data: yaHay } = await admin
+      .from("notifications")
+      .select("id")
+      .eq("user_id", a.userId)
+      .eq("tipo", "recordatorio")
+      .eq("link", a.link)
+      .gte("created_at", inicioHoyCordoba.toISOString())
+      .limit(1);
+    if (yaHay?.length) continue;
+    await admin.from("notifications").insert({
+      user_id: a.userId,
+      tipo: "recordatorio",
+      mensaje: a.mensaje,
+      link: a.link,
+      task_id: null,
+    });
+    avisados++;
+  }
+
+  return { avisados, piezas: piezas.length };
 }

@@ -161,3 +161,20 @@ export function nuevoToken(random: () => number = Math.random): string {
   for (let i = 0; i < 14; i++) out += abc[Math.floor(random() * abc.length)];
   return out;
 }
+
+/**
+ * Los puntos vienen como "Título corto: descripción". Se parten para poder
+ * pintarlos con jerarquía, como los pasos numerados del documento.
+ *
+ * Si no hay dos puntos, o lo que va antes es demasiado largo para ser un
+ * título, se devuelve todo como texto: es preferible un punto sin título a un
+ * título que en realidad era el arranque de una oración.
+ */
+export function partirPunto(s: string): { titulo: string | null; texto: string } {
+  const i = s.indexOf(":");
+  if (i <= 0 || i > 60) return { titulo: null, texto: s.trim() };
+  const titulo = s.slice(0, i).trim();
+  const texto = s.slice(i + 1).trim();
+  if (!texto || titulo.split(/\s+/).length > 8) return { titulo: null, texto: s.trim() };
+  return { titulo, texto };
+}

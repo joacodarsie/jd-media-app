@@ -38,6 +38,16 @@ export interface CrearPropuestaInput {
   sitioWeb?: string | null;
   /** Su Instagram, que para estos rubros dice más que la web. */
   instagram?: string | null;
+  /** Ciudad: define si las jornadas de producción llevan traslado. */
+  ciudad?: string | null;
+  /** Una entrada por cuenta a llevar: {handle, packSlug, nota}. */
+  cuentas?: { handle: string; packSlug: string; nota?: string | null }[] | null;
+  /** Descuento mensual por llevar varias cuentas. Se ignora si hay una sola. */
+  descuentoMonto?: number | null;
+  /** Desde cuándo arranca, para el proporcional del primer mes. */
+  fechaInicio?: string | null;
+  /** Descripción del negocio y transcripción: lo que la IA usa para escribir. */
+  contexto?: string | null;
 }
 
 export async function crearPropuesta(input: CrearPropuestaInput) {
@@ -50,9 +60,23 @@ export async function crearPropuesta(input: CrearPropuestaInput) {
   const ficha = input.rubroSlug ? rubroPorSlug(input.rubroSlug) : detectarRubro(input.rubroTexto);
   const token = nuevoToken();
 
-  const { data, error } = await createAdmin()
-    .from("proposals")
-    .insert({
+  const cuentas = (input.cuentas ?? [])
+    .map((c) => ({
+      handle: (c.handle ?? "").trim().slice(0, 80),
+      packSlug: (c.packSlug ?? "").trim(),
+      nota: c.nota?.trim()?.slice(0, 240) || null,
+    }))
+    .filter((c) => c.handle && c.packSlug);
+
+  const nuevas = {
+    ciudad: input.ciudad?.trim()?.slice(0, 120) || null,
+    cuentas: cuentas.length ? cuentas : null,
+    descuento_monto: Math.max(0, Math.round(input.descuentoMonto ?? 0)),
+    fecha_inicio: /^d{4}-d{2}-d{2}$/.test(input.fechaInicio ?? "") ? input.fechaInicio : null,
+    contexto: input.contexto?.trim()?.slice(0, 60000) || null,
+  };
+
+  const base = {
       token,
       empresa: empresa.slice(0, 160),
       contacto_nombre: input.contactoNombre?.trim()?.slice(0, 120) || null,
@@ -65,16 +89,27 @@ export async function crearPropuesta(input: CrearPropuestaInput) {
       contacto_id: input.contactoId || null,
       campaign_id: input.campaignId || null,
       creada_por_id: g.me.id,
-    })
+  };
+
+  const admin = createAdmin();
+  let { data, error } = await admin
+    .from("proposals")
+    .insert({ ...base, ...nuevas })
     .select("id, token")
     .single();
 
-  if (error) {
+  // 42703 = columna inexistente: la 0159 todavía no se aplicó. La propuesta se
+  // crea igual con los campos de siempre.
+  if (error?.code === "42703") {
+    ({ data, error } = await admin.from("proposals").insert(base).select("id, token").single());
+  }
+
+  if (error || !data) {
     return {
       error:
-        error.code === "42P01"
+        error?.code === "42P01"
           ? "Falta aplicar la migración 0153 en Supabase."
-          : error.message,
+          : error?.message ?? "No se pudo crear la propuesta.",
     };
   }
 

@@ -58,11 +58,17 @@ Te paso el contexto de un prospecto —lo que dijo por WhatsApp, la captura del 
 
 # Lo que devolvés (JSON, sin nada más alrededor)
 {
-  "titular": "Una frase de 6 a 12 palabras que le demuestre que lo escuchamos. Va como título de la propuesta. Sin signos de admiración.",
-  "diagnostico": "2 o 3 oraciones que reformulan SU situación puntual con nuestras palabras: qué nos dijo que le importa y por qué tiene razón en que eso es lo que hay que resolver. Nada de halagos vacíos.",
-  "puntos": ["3 o 4 acciones CONCRETAS con las que lo resolvemos, una por elemento. Cada una de 1 o 2 oraciones."],
+  "titular": "Una frase de 6 a 12 palabras que resuma el foco del trabajo. Uso interno, no se publica. Sin signos de admiración.",
+  "diagnostico": "2 o 3 oraciones que abren la propuesta. ARRANCÁ por lo que el negocio TIENE (trayectoria, reconocimiento, productos, equipo, agenda) y recién después decí qué falta ordenar o potenciar. Es lo primero que lee: tiene que sentir que entendimos su negocio, no que le estamos marcando lo que hace mal.",
+  "puntos": ["3 o 4 acciones concretas, cada una escrita como 'Título corto: descripción de una o dos oraciones.' El título va antes de los dos puntos y no lleva punto final. Ej: 'Cada cuenta con un rol claro: la principal lleva lo institucional y la segunda, su propia comunicación.'"],
   "ideas": ["3 o 4 ideas de contenido para ESTE negocio en particular, no para su rubro en general. Si el contexto menciona sus productos, su local, su equipo o algo que lo distingue, usalo. Una idea por elemento, en una línea."]
 }
+
+# Cómo se escribe (esto salió de corregir propuestas reales)
+- **Nunca lo cites textualmente.** Poner entre comillas algo que dijo en la reunión suena a que le estás devolviendo sus palabras para demostrar que tomaste nota. Usá lo que dijo, pero contado con nuestras palabras.
+- **No le marques sus errores.** Nada de "tu perfil está desordenado", "hace meses que no publicás", "lo venías haciendo vos y ya estás cansado". Aunque sea cierto y lo haya dicho él, leerlo en un documento comercial incomoda. Se dice qué vamos a hacer, no qué está mal.
+- **Corto.** Cada punto, dos oraciones como máximo. Si una frase explica algo que ya se entiende, sacala.
+- **Sin cerrar con moraleja.** Las frases del tipo "y así dejás de perder oportunidades" sobran: el beneficio ya se entiende.
 
 # Si te paso el contenido del sitio del prospecto
 Es texto REAL bajado de su web. Usalo para saber qué vende, cómo se presenta y con qué palabras habla de lo suyo — y nombrá algo concreto de ahí en el diagnóstico o en las ideas, para que se note que lo miramos. No inventes nada que no esté en ese texto. Si te paso un Instagram, es solo el nombre de usuario: **no lo vimos**, así que no describas su feed ni cuánto publica.

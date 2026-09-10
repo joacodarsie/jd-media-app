@@ -10,7 +10,7 @@ import {
   topeDelDia,
 } from "./cold-email";
 import { emailDeToken, tokenDeBaja } from "./cold-email-token";
-import { dominioDe, extraerEmails } from "./email-finder";
+import { dominioDe, esSitioDeDirectorio, extraerEmails } from "./email-finder";
 
 const REMITENTE = {
   nombre: "Joaquín Darsie",
@@ -205,6 +205,35 @@ describe("extraerEmails", () => {
 
   it("devuelve vacío si no hay nada", () => {
     expect(extraerEmails("<p>sin mails</p>", "https://e.com")).toEqual([]);
+  });
+});
+
+describe("esSitioDeDirectorio", () => {
+  it("reconoce la ficha en un portal, no el sitio del negocio", () => {
+    // Google Places devuelve esto cuando la empresa no tiene web propia.
+    expect(esSitioDeDirectorio("https://www.zonaprop.com.ar/inmobiliarias/x_123")).toBe(true);
+    expect(esSitioDeDirectorio("https://www.argenprop.com/inmobiliarias/nueva-cordoba")).toBe(true);
+    expect(esSitioDeDirectorio("https://www.facebook.com/NorteInmobiliari")).toBe(true);
+    expect(esSitioDeDirectorio("https://instagram.com/unnegocio")).toBe(true);
+    expect(esSitioDeDirectorio("https://linktr.ee/unnegocio")).toBe(true);
+  });
+
+  it("deja pasar el sitio propio", () => {
+    expect(esSitioDeDirectorio("https://www.cattaneoinmobiliaria.com.ar")).toBe(false);
+    expect(esSitioDeDirectorio("soysinmobiliaria.com.ar")).toBe(false);
+    expect(esSitioDeDirectorio("no es una url")).toBe(false);
+  });
+
+  it("no confunde un dominio que TERMINA parecido", () => {
+    expect(esSitioDeDirectorio("https://miyelp.com.ar")).toBe(false);
+  });
+});
+
+describe("extraerEmails: portales", () => {
+  it("no se queda con el mail del portal", () => {
+    // Pasaba de verdad: "Nueva Córdoba Inmuebles" quedó con info@argenprop.com.
+    const html = `<a href="mailto:info@argenprop.com">contacto</a>`;
+    expect(extraerEmails(html, "https://www.argenprop.com/inmobiliarias/x")).toEqual([]);
   });
 });
 

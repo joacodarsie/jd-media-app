@@ -32,5 +32,6 @@ export async function POST(
     revisados: r.revisados,
     encontrados: r.encontrados,
     pendientes: r.pendientes,
+    salteados: r.salteados,
   });
 }

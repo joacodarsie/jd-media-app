@@ -46,6 +46,7 @@ export function ColdEmailPanel({
     setBuscando(c.id);
     try {
       let total = 0;
+      let fichas = 0;
       for (let vuelta = 0; vuelta < 20; vuelta++) {
         const res = await fetch(`/api/prospeccion/${c.id}/emails`, { method: "POST" });
         const data = (await res.json()) as {
@@ -53,17 +54,23 @@ export function ColdEmailPanel({
           encontrados?: number;
           pendientes?: number;
           revisados?: number;
+          salteados?: number;
         };
         if (data.error) {
           toast.error(data.error);
           break;
         }
         total += data.encontrados ?? 0;
+        fichas += data.salteados ?? 0;
         toast.info(
           `${total} emails encontrados${data.pendientes ? ` · quedan ${data.pendientes} sitios` : ""}`
         );
         if (!data.pendientes || !data.revisados) break;
       }
+      // Sin esto parece que el buscador falló: son contactos cuyo "sitio web"
+      // es la ficha de un portal (Instagram, Facebook, Booking), y ahí no hay
+      // mail que sacar por más veces que se apriete el botón.
+      if (fichas) toast.info(`${fichas} eran fichas de portales, sin mail para sacar`);
       toast.success(`Listo: ${total} emails nuevos en ${c.nombre}`);
       router.refresh();
     } finally {

@@ -44,7 +44,54 @@ const DOMINIOS_BASURA = [
   "instagram.com",
   "whatsapp.com",
   "sentry.wixpress.com",
+  // Portales y directorios: el mail que publican es el del portal, no el del
+  // negocio. Ver DIRECTORIOS abajo.
+  "argenprop.com",
+  "zonaprop.com.ar",
+  "yelp.com",
+  "paginasamarillas.com.ar",
 ];
+
+/**
+ * Sitios que son una FICHA del negocio en un portal, no su sitio propio.
+ * Google Places devuelve esto cuando la empresa no tiene web, y bajarlos es
+ * tiempo tirado: el único mail que hay es el del portal. Se saltean enteros.
+ */
+const DIRECTORIOS = [
+  "argenprop.com",
+  "zonaprop.com.ar",
+  "zonaprop.com",
+  "yelp.com",
+  "yelp.com.ar",
+  "facebook.com",
+  "instagram.com",
+  "mercadolibre.com.ar",
+  "paginasamarillas.com.ar",
+  "guiaoleo.com.ar",
+  "tripadvisor.com",
+  "tripadvisor.com.ar",
+  "booking.com",
+  "linkedin.com",
+  "properati.com.ar",
+  "inmuebles24.com",
+  "doctoralia.com.ar",
+  "doctoraliar.com",
+  "empresasdecordoba.com",
+  "gimnasios.com",
+  // No son directorios, pero tampoco son un sitio: nunca hay un mail adentro.
+  "linktr.ee",
+  "wa.me",
+  "api.whatsapp.com",
+  "goo.gl",
+  "maps.app.goo.gl",
+];
+
+/** ¿El "sitio web" del contacto es en realidad su ficha en un portal? */
+export function esSitioDeDirectorio(url: string): boolean {
+  const d = dominioDe(url);
+  if (!d) return false;
+  return DIRECTORIOS.some((x) => d === x || d.endsWith(`.${x}`));
+}
 
 /** Buzones que no lee una persona: escribirles es tirar el envío. */
 const PREFIJOS_NO_HUMANOS = [
@@ -142,6 +189,7 @@ export async function buscarEmailDeSitio(
   sitioUrl: string,
   opts: { timeoutMs?: number } = {}
 ): Promise<string | null> {
+  if (esSitioDeDirectorio(sitioUrl)) return null;
   const base = sitioUrl.startsWith("http") ? sitioUrl : `https://${sitioUrl}`;
   let origen: string;
   try {

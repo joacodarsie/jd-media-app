@@ -195,6 +195,13 @@ export function PublicationAutoPublish({
         se usa como portada; si no, Instagram elige un cuadro al azar.
       </p>
 
+      {media.length === 0 && (
+        <p className="rounded border border-amber-300/60 bg-amber-50/60 p-2 text-[11px] text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300">
+          Sin el archivo final acá, diseño y edición no pueden dar por
+          completada la tarea de esta pieza — y la pieza no puede salir sola.
+        </p>
+      )}
+
       {publishError && (
         <div className="flex flex-wrap items-center gap-2 rounded border border-red-300/60 bg-red-50/50 p-2 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300">
           <span className="min-w-0 flex-1">⚠️ {publishError}</span>

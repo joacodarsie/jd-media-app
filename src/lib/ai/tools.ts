@@ -1,4 +1,5 @@
 import { hoyYmd } from "@/lib/dates";
+import { motivoParaNoCerrarTarea } from "@/lib/contenidos/archivo-final-db";
 
 import type Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
@@ -533,6 +534,10 @@ export async function runTool(
           id = data?.id;
         }
         if (!id) return { ok: false, error: "No se pudo identificar la tarea." };
+        // Mismo candado que en la pantalla: pedirle a la IA que la cierre no
+        // puede ser la forma de saltear el archivo final.
+        const bloqueo = await motivoParaNoCerrarTarea(sb, id, input.nuevo_estado as string);
+        if (bloqueo) return { ok: false, error: bloqueo };
         const { error } = await sb.from("tasks").update({ estado: input.nuevo_estado }).eq("id", id);
         if (error) return { ok: false, error: error.message };
         return { ok: true, data: { id, nuevo_estado: input.nuevo_estado } };

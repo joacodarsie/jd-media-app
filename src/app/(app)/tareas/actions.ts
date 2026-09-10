@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import type { TaskLink } from "@/lib/types";
+import { motivoParaNoCerrarTareas } from "@/lib/contenidos/archivo-final-db";
 
 async function uid() {
   const supabase = createClient();
@@ -46,6 +47,8 @@ export async function createTask(input: {
 
 export async function updateTaskStatus(id: string, estado: string) {
   const { supabase } = await uid();
+  const bloqueo = await motivoParaNoCerrarTareas(createAdmin(), [id], estado);
+  if (bloqueo) return { error: bloqueo };
   const { error } = await supabase
     .from("tasks")
     .update({ estado })
@@ -73,6 +76,8 @@ export async function updateTask(
   }
 ) {
   const { supabase } = await uid();
+  const bloqueo = await motivoParaNoCerrarTareas(createAdmin(), [id], input.estado);
+  if (bloqueo) return { error: bloqueo };
   const { error } = await supabase
     .from("tasks")
     .update({
@@ -108,6 +113,9 @@ export async function deleteTask(id: string) {
 export async function bulkUpdateTaskStatus(ids: string[], estado: string) {
   const { supabase } = await uid();
   if (!ids.length) return { error: "Sin selección." };
+  // Si no, marcar 20 tareas de una era la puerta de atrás del candado.
+  const bloqueo = await motivoParaNoCerrarTareas(createAdmin(), ids, estado);
+  if (bloqueo) return { error: bloqueo };
   const { error } = await supabase
     .from("tasks")
     .update({ estado })

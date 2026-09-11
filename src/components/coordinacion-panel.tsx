@@ -69,9 +69,12 @@ function NumInput({
 export function CoordinacionPanel({
   initial,
   panorama,
+  fijosPorCuenta = 0,
 }: {
   initial: AgencySettings;
   panorama: PanoramaRow[];
+  /** Parte de los gastos fijos de la agencia que le toca a cada cuenta. */
+  fijosPorCuenta?: number;
 }) {
   const router = useRouter();
   const [packs, setPacks] = useState<PackParam[]>(initial.packs);
@@ -113,11 +116,15 @@ export function CoordinacionPanel({
   const packRows = useMemo(
     () =>
       packs.map((p) => {
-        const costo = packCost(p, rates);
+        const equipo = packCost(p, rates);
+        // La coordinación es un % del precio y los fijos existen igual: si no se
+        // cuentan, el margen del pack sale muy por encima de lo que queda.
+        const coord = Math.round(p.precio * (rates.comision_coordinacion ?? 0));
+        const costo = equipo + coord + fijosPorCuenta;
         const margen = p.precio - costo;
-        return { p, costo, margen, pct: pctOf(margen, p.precio) };
+        return { p, equipo, coord, costo, margen, pct: pctOf(margen, p.precio) };
       }),
-    [packs, rates]
+    [packs, rates, fijosPorCuenta]
   );
 
   // Simulador: primer mes vs. meses siguientes vs. año 1
@@ -289,6 +296,10 @@ export function CoordinacionPanel({
       <section className="rounded-xl border bg-card">
         <div className="border-b px-4 py-3">
           <h2 className="text-base font-semibold">Economía por pack (precio de lista)</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            El margen ya descuenta la comisión de coordinación y la parte de los gastos fijos de
+            la agencia que le toca a cada cuenta.
+          </p>
         </div>
         <div className="overflow-x-auto p-4">
           <table className="w-full min-w-[480px] text-sm">
@@ -296,17 +307,23 @@ export function CoordinacionPanel({
               <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <th className="pb-2 font-medium">Pack</th>
                 <th className="pb-2 text-right font-medium">Precio</th>
-                <th className="pb-2 text-right font-medium">Costo</th>
+                <th className="pb-2 text-right font-medium">Equipo</th>
+                <th className="pb-2 text-right font-medium">Coord.</th>
+                <th className="pb-2 text-right font-medium">Fijos</th>
                 <th className="pb-2 text-right font-medium">Margen</th>
                 <th className="pb-2 text-right font-medium">%</th>
               </tr>
             </thead>
             <tbody>
-              {packRows.map(({ p, costo, margen, pct }) => (
+              {packRows.map(({ p, equipo, coord, margen, pct }) => (
                 <tr key={p.id} className="border-t">
                   <td className="py-2 font-medium">{p.id}</td>
                   <td className="py-2 text-right tabular-nums">{fmt(p.precio)}</td>
-                  <td className="py-2 text-right tabular-nums text-muted-foreground">{fmt(costo)}</td>
+                  <td className="py-2 text-right tabular-nums text-muted-foreground">{fmt(equipo)}</td>
+                  <td className="py-2 text-right tabular-nums text-muted-foreground">{fmt(coord)}</td>
+                  <td className="py-2 text-right tabular-nums text-muted-foreground">
+                    {fijosPorCuenta > 0 ? fmt(fijosPorCuenta) : "—"}
+                  </td>
                   <td className={cn("py-2 text-right font-semibold tabular-nums", margen < 0 ? "text-red-600" : "text-emerald-600")}>{fmt(margen)}</td>
                   <td className={cn("py-2 text-right font-semibold tabular-nums", pct < 25 ? "text-amber-600" : "text-emerald-600")}>{pct}%</td>
                 </tr>

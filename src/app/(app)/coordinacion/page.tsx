@@ -1,5 +1,8 @@
 import { requireRole } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
+import { getExchangeRates } from "@/lib/exchange";
+import { toARSFijos } from "@/lib/finanzas";
+import { prorrateoFijos } from "@/lib/finanzas/cotizador";
 import {
   mergeSettings,
   productionBase,
@@ -17,9 +20,10 @@ export default async function CoordinacionPage() {
   await requireRole(["admin"]);
   const admin = createAdmin();
 
-  const [{ data: settingsRow }, { data: clients }, { data: services }] =
+  const [{ data: settingsRow }, { data: subs }, { data: clients }, { data: services }] =
     await Promise.all([
       admin.from("agency_settings").select("packs, rates").eq("id", 1).maybeSingle(),
+      admin.from("subscriptions").select("costo, moneda, ciclo").eq("activa", true),
       admin
         .from("clients")
         .select("id, nombre, estado, es_interno")
@@ -32,6 +36,21 @@ export default async function CoordinacionPage() {
     ]);
 
   const settings: AgencySettings = mergeSettings(settingsRow);
+
+  // Los gastos fijos de la agencia repartidos entre las cuentas activas. Sin
+  // esto la tabla de economía por pack mostraba 50% de margen en Presencia
+  // cuando lo que queda de verdad, después de coordinación y fijos, es la mitad.
+  const rates = await getExchangeRates();
+  const fijosMensuales = ((subs ?? []) as {
+    costo: number | null;
+    moneda: string | null;
+    ciclo: string | null;
+  }[]).reduce((acc, sb) => {
+    const monto = Number(sb.costo) || 0;
+    if (monto <= 0) return acc;
+    return acc + toARSFijos(sb.ciclo === "anual" ? monto / 12 : monto, sb.moneda ?? "ARS", rates);
+  }, 0);
+  const fijosPorCuenta = prorrateoFijos(fijosMensuales, (clients ?? []).length);
   const packQty = new Map(settings.packs.map((p) => [p.id, p]));
 
   // Panorama real: por cada cliente activo (no interno), ingreso mensual
@@ -112,7 +131,7 @@ export default async function CoordinacionPage() {
           necesites. Solo vos lo ves.
         </p>
       </div>
-      <CoordinacionPanel initial={settings} panorama={panorama} />
+      <CoordinacionPanel initial={settings} panorama={panorama} fijosPorCuenta={fijosPorCuenta} />
     </div>
   );
 }

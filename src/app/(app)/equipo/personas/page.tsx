@@ -73,8 +73,13 @@ export default async function EquipoPersonasPage() {
                     <div className="min-w-0">
                       <div className="font-medium">{u.nombre}</div>
                       <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-                        <span>{pos ? pos.nombre : "Sin puesto"}</span>
-                        <span>· {u.area}</span>
+                        {/* El puesto NO se escribe acá cuando a la derecha está
+                            el desplegable para cambiarlo: decía lo mismo dos
+                            veces en la misma fila. Para quien no puede
+                            editarlo (no-admin) sí se muestra, porque si no, no
+                            lo ve en ningún lado. */}
+                        {!isAdmin && <span>{pos ? pos.nombre : "Sin puesto"} ·</span>}
+                        <span>{u.area}</span>
                         {u.email && (
                           <span className="inline-flex items-center gap-1">
                             <Mail className="h-3 w-3" /> {u.email}

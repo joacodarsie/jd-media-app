@@ -7,7 +7,7 @@ import { AtSign, Check, Loader2, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { bulkConnectIg } from "@/app/(app)/clientes/conectar-instagram/actions";
+import { bulkConnectIg, guardarIgHandle } from "@/app/(app)/clientes/conectar-instagram/actions";
 import type { IgCuenta, MotivoMatch } from "@/lib/social/ig-match";
 
 export interface FilaConexion {
@@ -19,6 +19,84 @@ export interface FilaConexion {
 }
 
 const SIN = "__sin__";
+
+/**
+ * El @ de la ficha, editable acá mismo.
+ *
+ * Antes esta celda solo decía "sin cargar" y no había forma de arreglarlo sin
+ * irse a la ficha del cliente. Cuatro cuentas activas estuvieron meses sin el
+ * dato: mientras no está, no hay con qué pedirle el acceso a Meta. El lugar
+ * para cargarlo es donde se ve que falta.
+ */
+function CeldaHandle({
+  clienteId,
+  instagramUrl,
+  onGuardado,
+}: {
+  clienteId: string;
+  instagramUrl: string | null;
+  onGuardado: () => void;
+}) {
+  const actual = instagramUrl
+    ? instagramUrl.replace(/^https?:\/\/(www\.)?instagram\.com\//, "").replace(/\/$/, "")
+    : "";
+  const [valor, setValor] = useState(actual);
+  const [guardando, setGuardando] = useState(false);
+  const cambio = valor.trim() !== actual;
+
+  async function guardar() {
+    if (!cambio || guardando) return;
+    setGuardando(true);
+    const res = await guardarIgHandle(clienteId, valor);
+    setGuardando(false);
+    if ("error" in res) {
+      toast.error(res.error);
+      return;
+    }
+    toast.success(`Guardado @${res.handle}`);
+    onGuardado();
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-muted-foreground">@</span>
+      <input
+        value={valor}
+        onChange={(e) => setValor(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && guardar()}
+        onBlur={guardar}
+        placeholder="usuario"
+        aria-label="Usuario de Instagram del cliente"
+        className={cn(
+          "w-40 rounded-md border bg-background px-2 py-1 text-xs text-foreground",
+          !actual && "border-amber-400 bg-amber-50/50 dark:bg-amber-500/5"
+        )}
+      />
+      {guardando ? (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      ) : cambio ? (
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={guardar}
+          className="rounded-md border px-1.5 py-1 text-[10px] font-medium hover:bg-accent"
+        >
+          Guardar
+        </button>
+      ) : actual ? (
+        <a
+          href={instagramUrl!}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Abrir el perfil"
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <Link2 className="h-3 w-3" />
+        </a>
+      ) : null}
+    </div>
+  );
+}
 
 const MOTIVO_LABEL: Record<Exclude<MotivoMatch, null>, { txt: string; clase: string }> = {
   handle: {
@@ -96,7 +174,7 @@ export function IgBulkConnect({
           <thead className="border-b bg-muted/40 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-3 py-2">Cliente</th>
-              <th className="px-3 py-2">@ en la ficha</th>
+              <th className="px-3 py-2">@ de la cuenta</th>
               <th className="px-3 py-2">Cuenta de Instagram a conectar</th>
             </tr>
           </thead>
@@ -112,19 +190,11 @@ export function IgBulkConnect({
                     </Link>
                   </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">
-                    {f.instagramUrl ? (
-                      <a
-                        href={f.instagramUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 hover:text-foreground"
-                      >
-                        <Link2 className="h-3 w-3" />
-                        {f.instagramUrl.replace(/^https?:\/\/(www\.)?instagram\.com\//, "@").replace(/\/$/, "")}
-                      </a>
-                    ) : (
-                      <span className="opacity-60">sin cargar</span>
-                    )}
+                    <CeldaHandle
+                      clienteId={f.clienteId}
+                      instagramUrl={f.instagramUrl}
+                      onGuardado={() => router.refresh()}
+                    />
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap items-center gap-2">

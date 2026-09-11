@@ -3,8 +3,39 @@
 import { revalidatePath } from "next/cache";
 import { requireUser, isStaffUser, userInRoles } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
+import { normalizarHandle } from "@/lib/social/ig-handle";
 
 const CAN_MANAGE = ["admin", "coordinador", "paid_media"];
+
+/**
+ * Guarda el @ de Instagram en la ficha del cliente.
+ *
+ * Está acá y no solo en la ficha porque esta es la pantalla donde se ve el
+ * hueco: cuatro cuentas activas no tenían el @ en ningún campo de la base, y
+ * mientras no esté, no hay con qué pedirle el acceso a Meta ni con qué
+ * matchear. Cargarlo donde se nota que falta es lo que hace que se cargue.
+ */
+export async function guardarIgHandle(
+  clienteId: string,
+  valor: string
+): Promise<{ ok: true; handle: string } | { error: string }> {
+  const me = await requireUser();
+  if (!isStaffUser(me) && !userInRoles(me, CAN_MANAGE)) return { error: "Sin acceso." };
+
+  const n = normalizarHandle(valor);
+  if (!n.ok) return { error: n.error! };
+
+  const admin = createAdmin();
+  const { error } = await admin
+    .from("clients")
+    .update({ ig_username: n.handle, instagram_url: n.url })
+    .eq("id", clienteId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/clientes/conectar-instagram");
+  revalidatePath(`/clientes/${clienteId}`);
+  return { ok: true, handle: n.handle! };
+}
 
 export interface ParConexion {
   clienteId: string;

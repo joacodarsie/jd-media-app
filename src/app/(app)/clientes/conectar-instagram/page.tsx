@@ -33,6 +33,21 @@ export default async function ConectarInstagramPage() {
     .eq("es_interno", false)
     .order("nombre");
 
+  /**
+   * Los Instagram que ya están tomados por CUALQUIER ficha, no solo por las
+   * cuentas activas de esta lista: la cuenta interna de la agencia y los
+   * clientes que se dieron de baja también tienen el suyo. Sin esto,
+   * `jdmedia.digital` —el Instagram propio— aparecía entre las cuentas libres y
+   * se lo podía asignar a un cliente de un clic.
+   */
+  const { data: tomadosRaw } = await admin
+    .from("clients")
+    .select("ig_user_id")
+    .not("ig_user_id", "is", null);
+  const tomados = new Set(
+    ((tomadosRaw ?? []) as { ig_user_id: string }[]).map((c) => c.ig_user_id)
+  );
+
   const clientes = (clientesRaw ?? []) as {
     id: string;
     nombre: string;
@@ -59,9 +74,8 @@ export default async function ConectarInstagramPage() {
     }
   }
 
-  // Las cuentas ya asignadas a otro cliente no se vuelven a ofrecer.
-  const yaAsignadas = new Set(clientes.map((c) => c.ig_user_id).filter(Boolean) as string[]);
-  const libres = cuentas.filter((c) => !yaAsignadas.has(c.igUserId));
+  // Las cuentas ya asignadas a otra ficha no se vuelven a ofrecer.
+  const libres = cuentas.filter((c) => !tomados.has(c.igUserId));
 
   const sugerencias = matchIgAccounts(
     sinConectar.map((c) => ({ id: c.id, nombre: c.nombre, instagram_url: c.instagram_url })),

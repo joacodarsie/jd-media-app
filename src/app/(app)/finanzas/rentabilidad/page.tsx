@@ -4,7 +4,7 @@ import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { getExchangeRates } from "@/lib/exchange";
-import { toARS, fmtARS } from "@/lib/finanzas";
+import { toARS, toARSFijos, fmtARS } from "@/lib/finanzas";
 import {
   mergeSettings,
   productionBase,
@@ -14,6 +14,7 @@ import {
   type AgencySettings,
   type RatePack,
 } from "@/lib/coordinacion";
+import { prorrateoFijos } from "@/lib/finanzas/cotizador";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -68,6 +69,7 @@ interface ServiceRow {
   costo_override: number | null;
   costo_pct: number | null;
   costo_override_user: string | null;
+  media_buyer_aplica: boolean | null;
 }
 
 export default async function RentabilidadPage({
@@ -84,7 +86,7 @@ export default async function RentabilidadPage({
   const mode = searchParams.mode === "devengado" ? "devengado" : "cashflow";
 
   const admin = createAdmin();
-  const [clientsRes, invRes, expRes, payRes, svcRes, settingsRes] = await Promise.all([
+  const [clientsRes, invRes, expRes, payRes, svcRes, settingsRes, subsRes] = await Promise.all([
     supabase
       .from("clients")
       .select("id, nombre, estado")
@@ -103,10 +105,11 @@ export default async function RentabilidadPage({
     supabase
       .from("client_services")
       .select(
-        "cliente_id, monto_mensual, moneda, activo, tipo, pack, facturacion, pack_detalle, costo_override, costo_pct, costo_override_user"
+        "cliente_id, monto_mensual, moneda, activo, tipo, pack, facturacion, pack_detalle, costo_override, costo_pct, costo_override_user, media_buyer_aplica"
       )
       .eq("activo", true),
     admin.from("agency_settings").select("packs, rates").eq("id", 1).maybeSingle(),
+    admin.from("subscriptions").select("costo, moneda, ciclo").eq("activa", true),
   ]);
 
   const settings: AgencySettings = mergeSettings(
@@ -117,6 +120,23 @@ export default async function RentabilidadPage({
   const exps = (expRes.data ?? []) as ExpRow[];
   const pays = (payRes.data ?? []) as PayRow[];
   const svcs = (svcRes.data ?? []) as ServiceRow[];
+
+  // Los gastos fijos de la agencia (plataformas, monotributo, la cuenta propia)
+  // no se imputan a ningún cliente, así que el margen de cada cuenta salía
+  // inflado: una que "dejaba $59.000" podía estar dejando $5.000. Se reparten
+  // en partes iguales entre las cuentas activas.
+  const subsFijas = (subsRes.data ?? []) as {
+    costo: number | null;
+    moneda: string | null;
+    ciclo: string | null;
+  }[];
+  const fijosMensuales = subsFijas.reduce((acc, sb) => {
+    const monto = Number(sb.costo) || 0;
+    if (monto <= 0) return acc;
+    const mensual = sb.ciclo === "anual" ? monto / 12 : monto;
+    return acc + toARSFijos(mensual, sb.moneda ?? "ARS", rates);
+  }, 0);
+  const fijosPorCuenta = prorrateoFijos(fijosMensuales, clients.length);
 
   // Agrego por cliente
   const byClient = new Map<
@@ -186,14 +206,16 @@ export default async function RentabilidadPage({
       let costo = 0;
       if (gestion) {
         const pack = asPack(gestion.pack);
+        // Si la cuenta no contrató pauta no hay media buyer que pagar.
+        const mb = gestion.media_buyer_aplica === false ? 0 : mbCost(pack, rt);
         if (gestion.costo_override != null) {
-          costo += Number(gestion.costo_override) + mbCost(pack, rt);
+          costo += Number(gestion.costo_override) + mb;
         } else {
           const std = packQty.get(pack as never) as { posts: number; reels: number } | undefined;
           const pd = gestion.pack_detalle ?? {};
           const posts = std ? std.posts : Number(pd.posts ?? 0);
           const reels = std ? std.reels : Number(pd.reels ?? 0);
-          costo += productionBase(pack, posts, reels, rt) + mbCost(pack, rt);
+          costo += productionBase(pack, posts, reels, rt) + mb;
         }
       }
       for (const sv of cs) {
@@ -216,12 +238,14 @@ export default async function RentabilidadPage({
   const rows = clients
     .map((c) => {
       const data = byClient.get(c.id)!;
-      const egresos = data.egresosEquipo + data.egresosGastos;
+      const fijos = mode === "devengado" ? fijosPorCuenta : 0;
+      const egresos = data.egresosEquipo + data.egresosGastos + fijos;
       const margen = data.ingresos - egresos;
       const margenPct = data.ingresos > 0 ? (margen / data.ingresos) * 100 : null;
       return {
         cliente: c,
         ...data,
+        fijos,
         egresos,
         margen,
         margenPct,
@@ -255,9 +279,9 @@ export default async function RentabilidadPage({
           <b>Cashflow real</b> = plata que entró/salió de verdad (si está vacío es
           porque todavía no cargaste cobros/pagos). <b>Devengado / modelo</b> = el
           abono contratado menos el <b>costo real del equipo</b> según tus tarifas
-          de Coordinación (CM, diseño, edición, media buyer y coordinación). Es la
-          rentabilidad <b>recurrente</b> (de 2° mes en adelante); el arranque del
-          1er mes tiene costos extra que se cotizan aparte.
+          de Coordinación (CM, diseño, edición, media buyer y coordinación) <b>y su parte de
+          los gastos fijos</b> de la agencia. Es la rentabilidad <b>recurrente</b> (de 2° mes
+          en adelante); el arranque del 1er mes tiene costos extra que se cotizan aparte.
         </p>
       </div>
 
@@ -290,7 +314,7 @@ export default async function RentabilidadPage({
         <p className="text-xs text-muted-foreground">
           {mode === "cashflow"
             ? "Solo lo cobrado y pagado efectivamente (histórico real)."
-            : "Abono contratado − costo del equipo según tus tarifas de Coordinación. Muestra el margen recurrente de cada cuenta aunque todavía no hayas cargado cobros/pagos."}
+            : "Abono contratado − costo del equipo − su parte de los gastos fijos. Muestra lo que deja de verdad cada cuenta, aunque todavía no hayas cargado cobros/pagos."}
         </p>
       </div>
 
@@ -346,6 +370,7 @@ export default async function RentabilidadPage({
                     <th className="px-3 py-2 text-right">Ingresos</th>
                     <th className="px-3 py-2 text-right">Equipo</th>
                     <th className="px-3 py-2 text-right">Gastos</th>
+                    <th className="px-3 py-2 text-right">Fijos</th>
                     <th className="px-3 py-2 text-right">Margen</th>
                     <th className="px-3 py-2 text-right">%</th>
                   </tr>
@@ -381,6 +406,9 @@ export default async function RentabilidadPage({
                       <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
                         {r.egresosGastos > 0 ? fmtARS(r.egresosGastos) : "—"}
                       </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                        {r.fijos > 0 ? fmtARS(r.fijos) : "—"}
+                      </td>
                       <td
                         className={cn(
                           "px-3 py-2 text-right font-semibold tabular-nums",
@@ -401,7 +429,7 @@ export default async function RentabilidadPage({
                     <td className="px-3 py-2 text-right tabular-nums">
                       {fmtARS(totales.ingresos)}
                     </td>
-                    <td className="px-3 py-2" colSpan={2}>
+                    <td className="px-3 py-2" colSpan={3}>
                       <span className="text-right tabular-nums text-muted-foreground">
                         ({fmtARS(totales.egresos)})
                       </span>

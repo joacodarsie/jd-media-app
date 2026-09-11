@@ -34,6 +34,7 @@ export function equipoTabs(
 /** Pestañas de Coordinación (solo admin). */
 export const coordinacionTabs: SectionTab[] = [
   { href: "/coordinacion", label: "Panel" },
+  { href: "/coordinacion/cotizador", label: "Cotizador" },
   { href: "/coordinacion/equipos", label: "Equipos" },
   { href: "/coordinacion/riesgo", label: "Riesgo" },
   { href: "/coordinacion/comercial", label: "Comercial" },

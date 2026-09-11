@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // El buscador real sale a internet; acá lo que se prueba es la rotación.
-const buscar = vi.fn(async (_url: string): Promise<string | null> => null);
+const buscar = vi.fn<(url: string) => Promise<string | null>>(async () => null);
 vi.mock("./email-finder", async () => {
   const real = await vi.importActual<typeof import("./email-finder")>("./email-finder");
   return { ...real, buscarEmailDeSitio: (url: string) => buscar(url) };

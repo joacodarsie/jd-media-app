@@ -49,7 +49,8 @@ async function updateTolerandoSello<T>(
 ) {
   const r = await correr(patch);
   if (r.error?.code === "42703" && "revision_creativa_at" in patch) {
-    const { revision_creativa_at: _omitida, ...sinSello } = patch;
+    const sinSello = { ...patch };
+    delete sinSello.revision_creativa_at;
     return correr(sinSello);
   }
   return r;

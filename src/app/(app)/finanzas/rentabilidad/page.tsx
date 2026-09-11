@@ -381,7 +381,11 @@ export default async function RentabilidadPage({
                       key={r.cliente.id}
                       className={cn(
                         "border-b last:border-0 hover:bg-muted/30",
-                        r.margen < 0 && "bg-red-50/40 dark:bg-red-950/10"
+                        r.margen < 0 && "bg-red-50/40 dark:bg-red-950/10",
+                        r.margen >= 0 &&
+                          r.margenPct !== null &&
+                          r.margenPct < 10 &&
+                          "bg-amber-50/50 dark:bg-amber-950/10"
                       )}
                     >
                       <td className="px-3 py-2">
@@ -417,7 +421,14 @@ export default async function RentabilidadPage({
                       >
                         {fmtARS(r.margen)}
                       </td>
-                      <td className="px-3 py-2 text-right text-xs tabular-nums text-muted-foreground">
+                      <td
+                        className={cn(
+                          "px-3 py-2 text-right text-xs tabular-nums text-muted-foreground",
+                          r.margenPct !== null &&
+                            r.margenPct < 10 &&
+                            "font-semibold text-amber-700 dark:text-amber-400"
+                        )}
+                      >
                         {r.margenPct !== null ? `${r.margenPct.toFixed(0)}%` : "—"}
                       </td>
                     </tr>

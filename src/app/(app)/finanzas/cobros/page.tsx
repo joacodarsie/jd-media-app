@@ -20,6 +20,8 @@ import { MonthPicker } from "@/components/month-picker";
 import { PaymentReminderCard, type ReminderCardData } from "@/components/payment-reminder-card";
 import { Card, CardContent } from "@/components/ui/card";
 import { AGENCY } from "@/lib/agency";
+import { whatsappApiConfigured } from "@/lib/meta/whatsapp";
+import { COBRO_DESDE_DIA } from "@/lib/finanzas/ciclo-cobro";
 import { CopyButton } from "@/components/copy-button";
 import { cn } from "@/lib/utils";
 
@@ -201,6 +203,23 @@ export default async function CobrosPage({
             <CopyButton value={AGENCY.bank.cvu} />
           </div>
         </div>
+
+        {!whatsappApiConfigured() && (
+          <Card className="border-amber-400 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10">
+            <CardContent className="p-3 text-sm">
+              <p className="font-semibold text-amber-900 dark:text-amber-200">
+                El envío automático no está activo: estos mensajes hay que mandarlos a mano.
+              </p>
+              <p className="mt-1 text-amber-800 dark:text-amber-300/90">
+                El recordatorio automático del {COBRO_DESDE_DIA} de cada mes está programado y
+                corre, pero sale sin mandar nada porque falta conectar la API de WhatsApp
+                Business: el <code>WHATSAPP_PHONE_NUMBER_ID</code> y el{" "}
+                <code>WHATSAPP_ACCESS_TOKEN</code> no están cargados en Vercel, y la plantilla
+                tiene que estar aprobada por Meta. Hasta entonces, usá los botones de acá abajo.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {sinMontoCount > 0 && (
           <Card className="border-amber-300">

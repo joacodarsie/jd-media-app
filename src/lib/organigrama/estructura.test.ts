@@ -91,6 +91,19 @@ describe("la estructura en sí", () => {
     expect(operaciones.hijos?.map((h) => h.id)).toEqual(["community", "diseno", "edicion"]);
   });
 
+  it("las responsabilidades permanentes viven en el puesto, no en tareas", () => {
+    // Eran once tareas `[Función]` sin fecha límite en `tasks`, donde no las
+    // veía nadie y ensuciaban la cola de pendientes.
+    const cg = nodos.find((n) => n.id === "coordinacion-general")!;
+    expect(cg.responsabilidades).toHaveLength(11);
+    expect(cg.responsabilidades).toContain("Llevar las finanzas de la agencia");
+    expect(cg.responsabilidades).toContain("Cobrar a clientes en tiempo y forma");
+    // Ninguna se coló como si fuera una tarea con pantalla propia.
+    for (const r of cg.responsabilidades!) {
+      expect(cg.tareas.some((t) => t.label === r)).toBe(false);
+    }
+  });
+
   it("Paid Media va en paralelo: no cuelga de Operaciones", () => {
     const operaciones = nodos.find((n) => n.id === "operaciones")!;
     expect(operaciones.hijos?.some((h) => h.id === "paid-media")).toBe(false);

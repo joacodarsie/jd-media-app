@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CircleAlert, Users } from "lucide-react";
+import { ArrowRight, CircleAlert, ListChecks, Users } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import {
   iniciales,
@@ -309,6 +309,25 @@ export function OrganigramaArbol({
               </div>
 
               <p className="text-sm leading-relaxed text-muted-foreground">{abierto.resumen}</p>
+
+              {abierto.responsabilidades && abierto.responsabilidades.length > 0 && (
+                <div>
+                  <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <ListChecks className="h-3.5 w-3.5" /> Tiene a cargo, siempre
+                  </p>
+                  <ul className="space-y-1 rounded-lg border p-3">
+                    {abierto.responsabilidades.map((r) => (
+                      <li key={r} className="flex gap-2 text-sm">
+                        <span className="mt-[7px] h-1 w-1 flex-none rounded-full bg-muted-foreground" />
+                        <span>{r}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    No son tareas: no se terminan nunca, así que no llevan fecha.
+                  </p>
+                </div>
+              )}
 
               {abierto.notas && abierto.notas.length > 0 && (
                 <ul className="space-y-2">

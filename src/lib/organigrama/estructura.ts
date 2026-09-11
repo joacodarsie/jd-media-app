@@ -39,6 +39,15 @@ export interface NodoOrg {
   tareas: TareaDelRol[];
   /** Aclaraciones que se decidieron el 10/9 y conviene no perder. */
   notas?: string[];
+  /**
+   * Lo que el puesto tiene a cargo de forma permanente.
+   *
+   * No son tareas: no se terminan nunca y por lo tanto no llevan fecha. Vivían
+   * como tareas sin fecha límite en `tasks` (once `[Función]` de Coordinación
+   * General), donde ensuciaban la cola de pendientes y no las veía nadie. El
+   * lugar de una responsabilidad permanente es el puesto.
+   */
+  responsabilidades?: string[];
   /** Marca los puestos que NO cuelgan de operaciones (van en paralelo). */
   paralelo?: boolean;
   /**
@@ -74,6 +83,19 @@ export const ORGANIGRAMA: NodoOrg = {
       respondePor: "Que el plan de crecimiento avance, no solo el día a día.",
       resumen:
         "Mano derecha de la dirección. Mira el mediano plazo: los procesos, la máquina de clientes y que las coordinaciones no se pisen entre sí.",
+      responsabilidades: [
+        "Llevar las finanzas de la agencia",
+        "Cobrar a clientes en tiempo y forma",
+        "Abonar sueldos en tiempo y forma",
+        "Controlar que los colaboradores cumplan sus tareas en tiempo y forma",
+        "Coordinación de reuniones entre coordinadores",
+        "Seguimiento y desarrollo de objetivos de la empresa y sus áreas",
+        "Desarrollo del manual de puestos y funciones (procesos)",
+        "Desarrollo del manual de crisis",
+        "Reclutamiento",
+        "Closer de ventas",
+        "Testear y pulir la plataforma de JD Media",
+      ],
       tareas: [
         { label: "Máquina de clientes", href: "/objetivos/maquina", detalle: "El embudo: cuántos contactos hacen falta para un cliente." },
         { label: "Procesos", href: "/procesos", detalle: "El manual de cómo se hace cada cosa." },

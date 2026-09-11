@@ -2,6 +2,16 @@
 title: Novedades
 ---
 
+## 2026-09-11 — Toda tarea con fecha, el organigrama en vivo y las piezas que se trababan
+
+- 📆 **Toda tarea lleva fecha límite.** En los tres lugares donde nace una tarea ahora es obligatoria. Había 57 tareas sin fecha y por eso eran invisibles: no aparecían en "Mi día" ni en los avisos de vencimiento, así que nadie las veía hasta que alguien preguntaba. En /tareas hay un chip **"Sin fecha"** para encontrar las viejas y ponerles fecha en lote.
+- 🎨 **Las piezas ya no se caen del radar en revisión creativa.** Cuando diseño cerraba su parte, la pieza quedaba esperando aprobación y nadie se enteraba: había dos trabadas desde hacía 19 y 20 días. Ahora se le avisa al CM y, si a los 3 días sigue sin moverse, escala.
+- 🗂️ **El archivo final es parte de entregar la pieza.** No alcanza con marcarla lista: si no está el archivo cargado, no sale publicada.
+- 🧭 **Organigrama en vivo** (/organigrama): cada puesto es clickeable y muestra qué incluye, qué no, herramientas y procesos. Las responsabilidades permanentes viven en el puesto, no como tareas sueltas que nadie cerraba nunca.
+- ⏸️ **Estado nuevo "En pausa"** para el cliente que frenó pero no se fue (temporada baja, se tomó un mes). Antes se marcaba "perdido" y ensuciaba la lectura de la rotación. Y una marca **"Para recuperar"** sobre las bajas que vale la pena ir a buscar.
+- 📸 **El @ de Instagram se carga desde donde se ve que falta**, sin dar la vuelta por la ficha del cliente.
+- 💸 **Cobros es una sección propia del menú**, con el número de los que faltan al lado. Se tildan varios y se marcan de una, en vez de uno por uno.
+
 ## 2026-08-05 — El cobro pasa a ser del 25 al 1º
 
 - 📅 **Nueva ventana de cobro**: el abono se cobra por adelantado **entre el 25 del mes anterior y el 1º del mes a abonar**. El motivo es concreto: los sueldos se pagan el 5, y cobrando el 10 la caja llegaba corta.

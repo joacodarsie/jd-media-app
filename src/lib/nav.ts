@@ -110,12 +110,20 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       // Métricas agrupa: Objetivos y Productividad (pestañas).
       { href: "/objetivos", label: "Métricas", icon: "Goal", match: ["/global"] },
+      // Cobros vive afuera de Finanzas a propósito: estaba escondido como un
+      // botón más entre cinco y el dueño no sabía "de dónde se marca" un cobro.
+      // Septiembre cerró con las 12 facturas del mes sin marcar.
+      {
+        href: "/cobros",
+        label: "Cobros",
+        icon: "HandCoins",
+        feature: "finanzas",
+      },
       {
         href: "/finanzas",
         label: "Finanzas",
         icon: "Wallet",
         feature: "finanzas",
-        match: ["/cobros"],
       },
       // Coordinación agrupa: Panel, Equipos, Riesgo, Comercial, Sueldos,
       // Jornadas, Mes 1 y Director IA (pestañas).

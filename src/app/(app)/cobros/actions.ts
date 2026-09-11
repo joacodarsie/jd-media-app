@@ -286,3 +286,110 @@ export async function borrarPagoParcial(pagoId: string) {
   invalidate();
   return { ok: true as const };
 }
+
+// ── Lo que faltaba para que el mes se cierre de una sentada ────────────────
+// El dueño no marca cobro por cobro: llega a fin de mes y sabe "me pagaron
+// casi todos, quedan dos". Doce clics con un refresh cada uno es justamente
+// por qué nunca lo hacía. Acá se tilda y se marca todo junto.
+
+/** Marca varios cobros de un saque, con una sola fecha. */
+export async function marcarCobradosEnLote(input: {
+  periodo: string;
+  fecha?: string;
+  items: { clienteId: string; monto: number }[];
+}) {
+  const { admin, userId } = await ctx();
+  if (!input.items.length) return { error: "No tildaste a nadie." };
+
+  const fecha = input.fecha || hoyYmd();
+  const errores: string[] = [];
+  let activados = 0;
+
+  for (const it of input.items) {
+    const res = await asegurarFactura(admin, {
+      clienteId: it.clienteId,
+      periodo: input.periodo,
+      monto: it.monto,
+      concepto: `Abono ${input.periodo}`,
+      userId,
+    });
+    if ("error" in res) {
+      errores.push(res.error);
+      continue;
+    }
+    const { error } = await admin
+      .from("client_invoices")
+      .update({ fecha_cobro: fecha, monto: it.monto, gestion_estado: "cobrado" })
+      .eq("id", res.id);
+    if (error) {
+      errores.push(error.message);
+      continue;
+    }
+    const { data: cli } = await admin
+      .from("clients")
+      .select("estado")
+      .eq("id", it.clienteId)
+      .maybeSingle();
+    if ((cli as { estado?: string } | null)?.estado === "esperando_pago") {
+      const { error: upErr } = await admin
+        .from("clients")
+        .update({ estado: "activo", fecha_activado: new Date().toISOString() })
+        .eq("id", it.clienteId);
+      if (!upErr) activados++;
+    }
+  }
+
+  invalidate();
+  revalidatePath("/clientes");
+  if (errores.length) return { error: errores[0], marcados: input.items.length - errores.length };
+  return { ok: true as const, marcados: input.items.length, activados };
+}
+
+/**
+ * Sella una factura colgada (otro mes, o una cuenta que ya no está) sin tener
+ * que ir al mes de esa factura a buscarla.
+ */
+export async function marcarFacturaCobrada(facturaId: string, fecha?: string) {
+  const { admin } = await ctx();
+  const { error } = await admin
+    .from("client_invoices")
+    .update({ fecha_cobro: fecha || hoyYmd(), gestion_estado: "cobrado" })
+    .eq("id", facturaId);
+  if (error) return { error: error.message };
+  invalidate();
+  return { ok: true as const };
+}
+
+/**
+ * Borra una factura que nunca debió existir: se emitió a una cuenta que se fue,
+ * o a una propuesta que nunca pagó. Mientras queden colgadas, "lo que me deben"
+ * es un número que nadie se cree.
+ *
+ * Solo se puede borrar lo que NO está cobrado ni tiene entregas a cuenta: si
+ * entró plata, es un cobro real y se corrige, no se borra.
+ */
+export async function borrarFactura(facturaId: string) {
+  const { admin } = await ctx();
+  const { data: inv } = await admin
+    .from("client_invoices")
+    .select("fecha_cobro")
+    .eq("id", facturaId)
+    .maybeSingle();
+  if (!inv) return { error: "No encontré esa factura." };
+  if ((inv as { fecha_cobro: string | null }).fecha_cobro) {
+    return { error: "Esa factura figura cobrada. Deshacé el cobro antes de borrarla." };
+  }
+  const { data: pagos } = await admin
+    .from("invoice_payments")
+    .select("id")
+    .eq("invoice_id", facturaId)
+    .limit(1);
+  if ((pagos ?? []).length > 0) {
+    return { error: "Esa factura tiene entregas a cuenta cargadas. Borralas primero." };
+  }
+
+  const { error } = await admin.from("client_invoices").delete().eq("id", facturaId);
+  if (error) return { error: error.message };
+  invalidate();
+  return { ok: true as const };
+}

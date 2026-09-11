@@ -3,11 +3,12 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, Undo2, Pencil, Plus, X } from "lucide-react";
+import { Check, Undo2, Pencil, Plus, X, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   marcarCobrado,
+  marcarCobradosEnLote,
   desmarcarCobrado,
   guardarMonto,
   guardarNota,
@@ -16,27 +17,19 @@ import {
   borrarPagoParcial,
 } from "@/app/(app)/cobros/actions";
 import { ETAPAS, estadoDeCobro } from "@/lib/finanzas/cobro-gestion";
+import type { FilaCobro } from "@/lib/finanzas/cobros-mes";
 
-export interface FilaCliente {
-  clienteId: string;
-  nombre: string;
-  monto: number;
-  cobradoEl: string | null;
-  nota: string | null;
-  contacto: string | null;
-  telefono: string | null;
-  /** Firmó pero todavía no pagó: no cuenta como cliente hasta que se cobre. */
-  esperandoPago?: boolean;
-  /** En qué punto de la conversación de cobro está. */
-  etapa?: string | null;
-  /** Entregas a cuenta, de la más vieja a la más nueva. */
-  pagos?: { id: string; monto: number; fecha: string; nota: string | null }[];
-}
+/** La fila la arma `lib/finanzas/cobros-mes`: un solo lugar define qué se cobra. */
+export type FilaCliente = FilaCobro;
 
 export function CobrosSimple({ filas, periodo }: { filas: FilaCliente[]; periodo: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [editando, setEditando] = useState<string | null>(null);
+  // Tildar varios y marcarlos de una: el dueño no viene cliente por cliente,
+  // viene con "me pagaron casi todos, quedan dos".
+  const [tildados, setTildados] = useState<Set<string>>(() => new Set());
+  const [fechaLote, setFechaLote] = useState(() => new Date().toISOString().slice(0, 10));
 
   if (!filas.length) {
     return (
@@ -77,7 +70,80 @@ export function CobrosSimple({ filas, periodo }: { filas: FilaCliente[]; periodo
     });
   }
 
+  const pendientes = filas.filter(
+    (f) => !estadoDeCobro({ monto: f.monto, pagos: f.pagos ?? [], cobradoEl: f.cobradoEl }).saldado
+  );
+  const tildadosVivos = pendientes.filter((f) => tildados.has(f.clienteId));
+  const montoTildado = tildadosVivos.reduce((a, f) => a + f.monto, 0);
+
+  function toggle(clienteId: string) {
+    setTildados((prev) => {
+      const next = new Set(prev);
+      if (next.has(clienteId)) next.delete(clienteId);
+      else next.add(clienteId);
+      return next;
+    });
+  }
+
+  function marcarTildados() {
+    if (!tildadosVivos.length) return;
+    start(async () => {
+      const res = await marcarCobradosEnLote({
+        periodo,
+        fecha: fechaLote,
+        items: tildadosVivos.map((f) => ({ clienteId: f.clienteId, monto: f.monto })),
+      });
+      if ("error" in res && res.error) {
+        toast.error(res.error);
+      } else {
+        toast.success(
+          `${tildadosVivos.length} ${tildadosVivos.length === 1 ? "cobro marcado" : "cobros marcados"} ✅`
+        );
+      }
+      setTildados(new Set());
+      router.refresh();
+    });
+  }
+
   return (
+    <div className="space-y-3">
+      {pendientes.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-muted/40 p-3">
+          <button
+            onClick={() =>
+              setTildados(
+                tildadosVivos.length === pendientes.length
+                  ? new Set()
+                  : new Set(pendientes.map((f) => f.clienteId))
+              )
+            }
+            className="rounded-full border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-accent"
+          >
+            {tildadosVivos.length === pendientes.length
+              ? "Destildar todos"
+              : `Tildar los ${pendientes.length} que faltan`}
+          </button>
+          {tildadosVivos.length > 0 ? (
+            <>
+              <span className="text-xs text-muted-foreground">pagaron el</span>
+              <Input
+                type="date"
+                value={fechaLote}
+                onChange={(e) => setFechaLote(e.target.value)}
+                className="h-8 w-36 text-xs"
+              />
+              <Button size="sm" className="h-8" disabled={pending} onClick={marcarTildados}>
+                <CheckCheck className="mr-1.5 h-4 w-4" />
+                Marcar {tildadosVivos.length} · ${montoTildado.toLocaleString("es-AR")}
+              </Button>
+            </>
+          ) : (
+            <span className="text-xs text-muted-foreground">
+              Tildá a los que te pagaron y marcalos todos juntos.
+            </span>
+          )}
+        </div>
+      )}
     <ul className="divide-y rounded-xl border bg-card">
       {filas.map((f) => {
         const pagos = f.pagos ?? [];
@@ -93,6 +159,15 @@ export function CobrosSimple({ filas, periodo }: { filas: FilaCliente[]; periodo
         return (
           <li key={f.clienteId} className="p-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
+              {!pagado && (
+                <input
+                  type="checkbox"
+                  checked={tildados.has(f.clienteId)}
+                  onChange={() => toggle(f.clienteId)}
+                  aria-label={`Marcar que ${f.nombre} pagó`}
+                  className="h-5 w-5 shrink-0 cursor-pointer accent-emerald-600"
+                />
+              )}
               <div className="min-w-0 flex-1">
                 <p className="flex flex-wrap items-center gap-2 font-medium">
                   {f.nombre}
@@ -273,6 +348,7 @@ export function CobrosSimple({ filas, periodo }: { filas: FilaCliente[]; periodo
         );
       })}
     </ul>
+    </div>
   );
 }
 

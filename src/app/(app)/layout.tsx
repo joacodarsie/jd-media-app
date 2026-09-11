@@ -6,6 +6,8 @@ import { NotificationBell } from "@/components/notification-bell";
 import { AIChatLauncher } from "@/components/ai-chat-launcher";
 import { QuickCashLauncher } from "@/components/quick-cash-launcher";
 import { getActiveClients, getActiveUsers } from "@/lib/cache";
+import { currentPeriod } from "@/lib/finanzas";
+import { cargarCobrosDelMes, cuantasFaltanCobrar } from "@/lib/finanzas/cobros-mes";
 import { RealtimeBadgesSync } from "@/components/realtime-badges-sync";
 import { WelcomeTour } from "@/components/welcome-tour";
 import type { QuickLinkRow } from "@/components/quick-links-manager";
@@ -44,6 +46,7 @@ export default async function AppLayout({
     quickSubsRes,
     quickDebtsRes,
     reviewFlagsRes,
+    cobrosMes,
   ] = await Promise.all([
     supabase
       .from("notifications")
@@ -96,6 +99,13 @@ export default async function AppLayout({
           .is("approved_at", null)
           .order("created_at")
       : Promise.resolve({ data: [] }),
+    // Cuántos cobros del mes siguen sin marcar: el número del sidebar. Va acá
+    // adentro para no agregarle un roundtrip a cada navegación — agosto se
+    // marcó de golpe un día y después nunca más, así que el recordatorio tiene
+    // que estar donde el dueño ya mira.
+    isAdmin
+      ? cargarCobrosDelMes(currentPeriod()).catch(() => ({ filas: [], viejas: [] }))
+      : Promise.resolve({ filas: [], viejas: [] }),
   ]);
 
   const bell = (
@@ -124,6 +134,7 @@ export default async function AppLayout({
     "/tareas": taskUnreadCount ?? 0,
     // Portal: priorizan los avisos sin leer; si no hay, el puntito de novedades.
     "/portal": unreadAvisos > 0 ? unreadAvisos : showNovedadesBadge ? 1 : 0,
+    "/cobros": cuantasFaltanCobrar(cobrosMes.filas),
   };
 
   const isLiveOwner =

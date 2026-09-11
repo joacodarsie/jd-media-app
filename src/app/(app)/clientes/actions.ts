@@ -441,18 +441,26 @@ export async function activateClient(id: string) {
  * portal) pero no cuenta como cliente. Al marcar el cobro en /cobros vuelve
  * sola a "activo".
  */
-export async function marcarEsperandoPago(id: string) {
+/**
+ * Pone la cuenta "en pausa": frenó pero no se fue.
+ *
+ * No es lo mismo que darla de baja. Un cliente de temporada que para tres meses
+ * marcado como "perdido" ensucia el número que más mira el dueño —cuántos
+ * clientes se van— y además nadie vuelve a mirarlo. En pausa no cuenta en
+ * Finanzas ni en Sueldos, igual que perdido, pero se lee por lo que es.
+ */
+export async function marcarEnPausa(id: string) {
   const me = await requireUser();
   if (me.rol !== "admin" && me.rol !== "coordinador") {
     return { error: "No autorizado" };
   }
   const { error } = await createAdmin()
     .from("clients")
-    .update({ estado: "esperando_pago" })
+    .update({ estado: "en_pausa" })
     .eq("id", id);
   if (error) {
     if (error.message?.includes("invalid input value"))
-      return { error: "Falta aplicar la migración 0145." };
+      return { error: "Falta aplicar la migración 0162." };
     return { error: error.message };
   }
   revalidatePath("/clientes");
@@ -461,6 +469,33 @@ export async function marcarEsperandoPago(id: string) {
   revalidatePath("/finanzas");
   invalidateClientsCache();
   return { ok: true as const };
+}
+
+/**
+ * Marca (o desmarca) una cuenta dada de baja como "para recuperar".
+ *
+ * Es una marca, no un estado: la cuenta sigue perdida y no vuelve a contar en
+ * ningún número. Lo único que cambia es que deja de perderse entre las 24 bajas
+ * y queda en una lista corta de a quién vale la pena ir a buscar.
+ */
+export async function toggleParaRecuperar(id: string, valor: boolean) {
+  const me = await requireUser();
+  if (me.rol !== "admin" && me.rol !== "coordinador") {
+    return { error: "No autorizado" };
+  }
+  const { error } = await createAdmin()
+    .from("clients")
+    .update({ para_recuperar: valor })
+    .eq("id", id);
+  if (error) {
+    if (error.message?.includes("para_recuperar"))
+      return { error: "Falta aplicar la migración 0162." };
+    return { error: error.message };
+  }
+  revalidatePath("/clientes");
+  revalidatePath(`/clientes/${id}`);
+  invalidateClientsCache();
+  return { ok: true as const, valor };
 }
 
 /**

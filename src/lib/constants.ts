@@ -121,13 +121,22 @@ export const CLIENT_STATUS_LABEL: Record<ClientStatus, string> = {
   perdido: "Inactivo",
   propuesta: "Propuesta",
   esperando_pago: "Esperando pago",
+  en_pausa: "En pausa",
 };
 
 /** Estados visibles en formularios y filtros (omite legacy `at_risk`). */
+/**
+ * Estados que se eligen a mano en formularios y filtros.
+ *
+ * Quedan afuera los dos que no se eligen: `at_risk` (legacy) y `esperando_pago`
+ * —que se dejó de usar porque mezclaba en Clientes a los que no habían pagado
+ * con los clientes de verdad; quien firmó y no pagó es una propuesta, y quien
+ * debe el mes se ve en Cobros.
+ */
 export const VISIBLE_CLIENT_STATUSES: { value: ClientStatus; label: string }[] = [
   { value: "propuesta", label: "Propuesta" },
-  { value: "esperando_pago", label: "Esperando pago" },
   { value: "activo", label: "Activo" },
+  { value: "en_pausa", label: "En pausa" },
   { value: "perdido", label: "Inactivo" },
 ];
 

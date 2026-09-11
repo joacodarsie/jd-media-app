@@ -18,6 +18,8 @@ import { Input } from "@/components/ui/input";
 import { TaskList } from "@/components/task-list";
 
 interface ClientRow extends Client {
+  /** Baja marcada como recuperable (migración 0162). */
+  para_recuperar?: boolean | null;
   cm?: { id: string; nombre: string } | null;
   disenador?: { id: string; nombre: string } | null;
   audiovisual?: { id: string; nombre: string } | null;
@@ -34,12 +36,21 @@ interface UpcomingPub {
   estado: string;
 }
 
-type Quick = "activos" | "esperando_pago" | "propuesta" | "perdido" | "todos";
+type Quick =
+  | "activos"
+  | "en_pausa"
+  | "propuesta"
+  | "recuperar"
+  | "perdido"
+  | "todos";
 const QUICK_LABEL: Record<Quick, string> = {
   activos: "Activos",
-  esperando_pago: "Esperando pago",
+  // Frenó pero no se fue. No cuenta en Finanzas, pero tampoco es una baja.
+  en_pausa: "En pausa",
   propuesta: "Propuestas",
-  perdido: "Perdidos",
+  // Bajas que vale la pena ir a buscar. Es una marca, no un estado.
+  recuperar: "Para recuperar",
+  perdido: "Inactivos",
   todos: "Todos",
 };
 
@@ -53,6 +64,7 @@ const ESTADO_BADGE: Record<string, string> = {
   // Firmó pero todavía no pagó: no es cliente aún, por eso no va en verde.
   esperando_pago:
     "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+  en_pausa: "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300",
 };
 
 export function ClientsDashboard({
@@ -126,21 +138,15 @@ export function ClientsDashboard({
     return Array.from(m.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [realClients]);
 
-  // Los que firmaron pero NO pagaron van en su propio bloque arriba, nunca
-  // mezclados con los clientes de verdad: si aparecen en la misma lista, el
-  // conteo de "cuántos clientes tengo" miente.
-  const esperandoPago = useMemo(
-    () => realClients.filter((c) => c.estado === "esperando_pago"),
-    [realClients]
-  );
-
   const filtered = useMemo(() => {
     return realClients.filter((c) => {
-      // Fuera de la lista principal salvo que se pida ese filtro puntual.
-      if (c.estado === "esperando_pago" && quick !== "esperando_pago") return false;
+      // Los que firmaron y nunca pagaron ya no se mezclan en ningún lado: solo
+      // aparecen si se pide "Todos". Ese caso hoy se maneja como propuesta.
+      if (c.estado === "esperando_pago" && quick !== "todos") return false;
       if (quick === "activos" && c.estado !== "activo") return false;
-      if (quick === "esperando_pago" && c.estado !== "esperando_pago") return false;
+      if (quick === "en_pausa" && c.estado !== "en_pausa") return false;
       if (quick === "propuesta" && c.estado !== "propuesta") return false;
+      if (quick === "recuperar" && !c.para_recuperar) return false;
       if (quick === "perdido" && c.estado !== "perdido") return false;
       if (pack !== "__all__" && c.pack !== pack) return false;
       if (resp !== "__all__" && (c as { cm_id?: string | null }).cm_id !== resp)
@@ -156,8 +162,9 @@ export function ClientsDashboard({
   const counts = useMemo(
     () => ({
       activos: realClients.filter((c) => c.estado === "activo").length,
-      esperando_pago: realClients.filter((c) => c.estado === "esperando_pago").length,
+      en_pausa: realClients.filter((c) => c.estado === "en_pausa").length,
       propuesta: realClients.filter((c) => c.estado === "propuesta").length,
+      recuperar: realClients.filter((c) => c.para_recuperar).length,
       perdido: realClients.filter((c) => c.estado === "perdido").length,
       todos: realClients.length,
     }),
@@ -246,33 +253,6 @@ export function ClientsDashboard({
           {filtered.length} cliente{filtered.length === 1 ? "" : "s"}
         </span>
       </div>
-
-      {esperandoPago.length > 0 && quick !== "esperando_pago" && (
-        <div className="rounded-xl border-2 border-dashed border-amber-400 bg-amber-50/50 p-3 dark:border-amber-500/50 dark:bg-amber-500/5">
-          <h2 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-            ⏳ Esperando pago ({esperandoPago.length}) — todavía no son clientes
-          </h2>
-          <p className="mb-2 text-xs text-amber-900/70 dark:text-amber-100/70">
-            Les mandaste la carta acuerdo pero no pagaron. No cuentan como
-            clientes ni suman a la facturación. Cuando marques el cobro en{" "}
-            <Link href="/cobros" className="underline">
-              ¿Quién me pagó?
-            </Link>{" "}
-            pasan solos a activos.
-          </p>
-          <div className="space-y-2">
-            {esperandoPago.map((c) => (
-              <ClientCard
-                key={c.id}
-                client={c}
-                tasks={byClient.get(c.id) ?? []}
-                nextPub={pubByClient.get(c.id) ?? null}
-                pubsTotal={pubCountByClient.get(c.id) ?? 0}
-              />
-            ))}
-          </div>
-        </div>
-      )}
 
       <div className="space-y-2">
         {filtered.length === 0 ? (

@@ -38,7 +38,10 @@ import { HelpTrigger } from "@/components/help-trigger";
 import { TaskList } from "@/components/task-list";
 import { ClientFormDialog } from "@/components/client-form-dialog";
 import { DeleteClientButton } from "@/components/delete-client-button";
-import { MarcarSinPagarButton } from "@/components/marcar-sin-pagar";
+import {
+  PonerEnPausaButton,
+  ParaRecuperarButton,
+} from "@/components/estado-cuenta-botones";
 import { ClientServicesEditor } from "@/components/client-services-editor";
 import { ClientTeamAssign } from "@/components/client-team-assign";
 import type { TeamUserOpt } from "@/lib/role-options";
@@ -402,7 +405,14 @@ export default async function ClientDetail({
                 }
               />
               {c.estado === "activo" && (
-                <MarcarSinPagarButton clienteId={c.id} nombre={c.nombre} />
+                <PonerEnPausaButton clienteId={c.id} nombre={c.nombre} />
+              )}
+              {(c.estado === "perdido" || c.estado === "en_pausa") && (
+                <ParaRecuperarButton
+                  clienteId={c.id}
+                  nombre={c.nombre}
+                  inicial={Boolean((c as { para_recuperar?: boolean }).para_recuperar)}
+                />
               )}
               {me.rol === "admin" && <DeleteClientButton id={c.id} nombre={c.nombre} />}
             </div>

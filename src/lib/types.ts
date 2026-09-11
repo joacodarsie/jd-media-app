@@ -29,7 +29,10 @@ export type ClientStatus =
   // Firmó / se le mandó la carta acuerdo pero TODAVÍA NO PAGÓ. Existe como
   // cuenta (carta, onboarding, portal) pero no cuenta como cliente ni suma a
   // la facturación hasta que se marque el cobro.
-  | "esperando_pago";
+  | "esperando_pago"
+  // Frenó pero no se fue: temporada baja, se tomó un mes, está esperando plata.
+  // No cuenta en Finanzas ni en Sueldos, pero tampoco es una baja.
+  | "en_pausa";
 
 export type ServiceType =
   | "gestion_redes"

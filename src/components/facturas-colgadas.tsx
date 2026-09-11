@@ -26,7 +26,9 @@ export function FacturasColgadas({ facturas }: { facturas: FacturaColgada[] }) {
 
   if (!facturas.length) return null;
 
-  const total = facturas.reduce((a, f) => a + f.monto, 0);
+  // Lo que falta DE VERDAD: si entregó una parte, la deuda es el saldo.
+  const saldo = (f: FacturaColgada) => Math.max(f.monto - f.entregado, 0);
+  const total = facturas.reduce((a, f) => a + saldo(f), 0);
   const deBaja = facturas.filter((f) => f.motivo === "cuenta_de_baja").length;
 
   return (
@@ -59,7 +61,10 @@ export function FacturasColgadas({ facturas }: { facturas: FacturaColgada[] }) {
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{f.nombre}</p>
                 <p className="text-xs text-muted-foreground">
-                  {periodLabel(f.periodo)} · ${f.monto.toLocaleString("es-AR")} ·{" "}
+                  {periodLabel(f.periodo)} · ${saldo(f).toLocaleString("es-AR")}
+                  {f.entregado > 0 &&
+                    ` (de $${f.monto.toLocaleString("es-AR")}, ya entregó $${f.entregado.toLocaleString("es-AR")})`}{" "}
+                  ·{" "}
                   {f.motivo === "cuenta_de_baja"
                     ? `la cuenta figura ${(CLIENT_STATUS_LABEL[f.estado as keyof typeof CLIENT_STATUS_LABEL] ?? f.estado).toLowerCase()}`
                     : "mes anterior"}

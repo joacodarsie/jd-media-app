@@ -117,12 +117,22 @@ export async function desmarcarCobrado(clienteId: string, periodo: string) {
   return { ok: true as const };
 }
 
-/** Cambia cuánto pagó de verdad (a veces no es el abono exacto). */
+/**
+ * Cambia el monto del mes. Con `permanente`, además sube el abono: es un
+ * aumento, no una excepción de este mes.
+ *
+ * Existe porque aplicar un aumento era "un viaje" — había que entrar a la ficha
+ * del cliente, encontrar el servicio y editarlo ahí, y el abono del header
+ * quedaba desincronizado igual. Ahora se hace desde la fila donde ya estás
+ * mirando cuánto te tiene que pagar.
+ */
 export async function guardarMonto(input: {
   clienteId: string;
   periodo: string;
   monto: number;
   concepto?: string;
+  /** true = de ahora en más (aumento). false/undefined = solo este mes. */
+  permanente?: boolean;
 }) {
   const { admin, userId } = await ctx();
   const res = await asegurarFactura(admin, {
@@ -138,8 +148,41 @@ export async function guardarMonto(input: {
     .update({ monto: input.monto })
     .eq("id", res.id);
   if (error) return { error: error.message };
+
+  let aviso: string | null = null;
+  if (input.permanente) {
+    // El abono vive en DOS lugares: `clients.monto_mensual` (lo que se ve en
+    // listas y en Cobros cuando todavía no hay factura) y el servicio. Si se
+    // toca uno solo, los números dejan de cerrar, así que se tocan los dos.
+    await admin
+      .from("clients")
+      .update({ monto_mensual: input.monto })
+      .eq("id", input.clienteId);
+
+    const { data: svRaw } = await admin
+      .from("client_services")
+      .select("id, facturacion")
+      .eq("cliente_id", input.clienteId)
+      .eq("activo", true);
+    const mensuales = ((svRaw ?? []) as { id: string; facturacion: string | null }[]).filter(
+      (sv) => (sv.facturacion ?? "mensual") === "mensual"
+    );
+    if (mensuales.length === 1) {
+      await admin
+        .from("client_services")
+        .update({ monto_mensual: input.monto })
+        .eq("id", mensuales[0].id);
+    } else if (mensuales.length > 1) {
+      // Con varios servicios no hay forma de saber cuál subió: se actualiza el
+      // total del cliente y se avisa, en vez de repartir a ciegas.
+      aviso = "El cliente tiene varios servicios mensuales: revisá el detalle en su ficha.";
+    }
+    revalidatePath("/clientes");
+    revalidatePath(`/clientes/${input.clienteId}`);
+  }
+
   invalidate();
-  return { ok: true as const };
+  return { ok: true as const, aviso };
 }
 
 /** La anotación que hoy vive en la cabeza: "me paga el 10", "pagó la mitad". */

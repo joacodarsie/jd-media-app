@@ -183,14 +183,20 @@ export function CobrosSimple({ filas, periodo }: { filas: FilaCliente[]; periodo
                 {editando === f.clienteId ? (
                   <MontoEditor
                     inicial={f.monto}
-                    onGuardar={(monto) =>
+                    onGuardar={(monto, permanente) =>
                       start(async () => {
                         const res = await guardarMonto({
                           clienteId: f.clienteId,
                           periodo,
                           monto,
+                          permanente,
                         });
-                        if (res?.error) toast.error(res.error);
+                        if ("error" in res && res.error) toast.error(res.error);
+                        else if (permanente)
+                          toast.success(
+                            `${f.nombre}: el abono queda en $${monto.toLocaleString("es-AR")}` +
+                              ("aviso" in res && res.aviso ? `. ${res.aviso}` : "")
+                          );
                         setEditando(null);
                         router.refresh();
                       })
@@ -200,10 +206,11 @@ export function CobrosSimple({ filas, periodo }: { filas: FilaCliente[]; periodo
                 ) : (
                   <button
                     onClick={() => setEditando(f.clienteId)}
-                    className="group flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+                    title="Cambiar el monto: solo este mes, o el abono de acá en adelante"
+                    className="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
                   >
                     <span className="tabular-nums">${f.monto.toLocaleString("es-AR")}</span>
-                    <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100" />
+                    <Pencil className="h-3 w-3" />
                   </button>
                 )}
               </div>
@@ -352,31 +359,52 @@ export function CobrosSimple({ filas, periodo }: { filas: FilaCliente[]; periodo
   );
 }
 
+/**
+ * Cambiar el monto son DOS cosas distintas y confundirlas ensucia los números:
+ * "este mes me pagó otra cosa" (una excepción) no es lo mismo que "me sube el
+ * abono" (un aumento). Antes solo existía la primera, y aplicar un aumento
+ * había que ir a buscarlo a la ficha del cliente, servicio por servicio.
+ */
 function MontoEditor({
   inicial,
   onGuardar,
   onCancelar,
 }: {
   inicial: number;
-  onGuardar: (monto: number) => void;
+  onGuardar: (monto: number, permanente: boolean) => void;
   onCancelar: () => void;
 }) {
   const [valor, setValor] = useState(String(inicial));
+  const n = Number(valor) || 0;
   return (
-    <div className="mt-1 flex items-center gap-1.5">
+    <div className="mt-1 flex flex-wrap items-center gap-1.5">
       <Input
         autoFocus
         value={valor}
         onChange={(e) => setValor(e.target.value.replace(/[^\d]/g, ""))}
         onKeyDown={(e) => {
-          if (e.key === "Enter") onGuardar(Number(valor) || 0);
+          if (e.key === "Enter") onGuardar(n, false);
           if (e.key === "Escape") onCancelar();
         }}
         className="h-8 w-32 text-sm tabular-nums"
       />
-      <Button size="sm" className="h-8" onClick={() => onGuardar(Number(valor) || 0)}>
-        Guardar
+      <Button size="sm" variant="outline" className="h-8" onClick={() => onGuardar(n, false)}>
+        Solo este mes
       </Button>
+      <Button
+        size="sm"
+        className="h-8"
+        title="Cambia el abono del cliente: de acá en adelante le facturás esto"
+        onClick={() => onGuardar(n, true)}
+      >
+        {n > inicial ? "Es un aumento" : "De ahora en más"}
+      </Button>
+      <button
+        onClick={onCancelar}
+        className="px-1 text-xs text-muted-foreground hover:text-foreground"
+      >
+        Cancelar
+      </button>
     </div>
   );
 }
@@ -429,7 +457,7 @@ function EntregaParcial({
         disabled={disabled}
         className="inline-flex items-center gap-1 rounded-full border border-dashed px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
       >
-        <Plus className="h-3 w-3" /> Me dio una parte
+        <Plus className="h-3 w-3" /> Me pagó una parte
       </button>
     );
   }

@@ -44,6 +44,8 @@ export interface FacturaColgada {
   estado: string;
   periodo: string;
   monto: number;
+  /** Lo que ya entregó a cuenta: lo que falta es `monto - entregado`. */
+  entregado: number;
   /** Por qué quedó afuera del mes: se fue la cuenta, o es de un mes anterior. */
   motivo: "cuenta_de_baja" | "mes_anterior";
 }
@@ -99,13 +101,13 @@ export async function cargarCobrosDelMes(periodo: string): Promise<{
   // Entregas a cuenta. Si falta la migración 0155 la pantalla anda igual:
   // simplemente no hay pagos parciales.
   const pagosPorFactura = new Map<string, PagoEntrega[]>();
-  if (delMes.length > 0) {
+  if (invoices.length > 0) {
     const { data: pagosRaw } = await admin
       .from("invoice_payments")
       .select("id, invoice_id, monto, fecha, nota")
       .in(
         "invoice_id",
-        delMes.map((i) => i.id)
+        invoices.map((i) => i.id)
       )
       .order("fecha");
     for (const p of (pagosRaw ?? []) as {
@@ -159,17 +161,18 @@ export async function cargarCobrosDelMes(periodo: string): Promise<{
     .filter((i) => !(i.periodo === periodo && enElMes.has(i.cliente_id)))
     .map((i) => {
       const motivo = clasificarColgada(i.clients?.estado ?? "", i.periodo, periodo);
-      return motivo
-        ? {
-            id: i.id,
-            clienteId: i.cliente_id,
-            nombre: i.clients?.nombre ?? "—",
-            estado: i.clients?.estado ?? "—",
-            periodo: i.periodo,
-            monto: Number(i.monto),
-            motivo,
-          }
-        : null;
+      if (!motivo) return null;
+      const entregado = (pagosPorFactura.get(i.id) ?? []).reduce((a, p) => a + p.monto, 0);
+      return {
+        id: i.id,
+        clienteId: i.cliente_id,
+        nombre: i.clients?.nombre ?? "—",
+        estado: i.clients?.estado ?? "—",
+        periodo: i.periodo,
+        monto: Number(i.monto),
+        entregado,
+        motivo,
+      };
     })
     .filter((x): x is FacturaColgada => x !== null)
     .sort((a, b) => a.periodo.localeCompare(b.periodo) || a.nombre.localeCompare(b.nombre));

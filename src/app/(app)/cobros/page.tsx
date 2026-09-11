@@ -44,6 +44,12 @@ export default async function CobrosSimplePage({
           <p className="text-muted-foreground">
             {periodLabel(periodo)}. Tildá a los que te pagaron y marcalos de una.
           </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            ¿Te pagó otro monto? Tocá el número y elegí si es{" "}
+            <b className="font-semibold">solo este mes</b> o{" "}
+            <b className="font-semibold">de ahora en más</b> (un aumento). ¿Te quedó
+            debiendo? Usá <b className="font-semibold">Me pagó una parte</b>.
+          </p>
         </div>
         <MonthPicker value={periodo} />
       </div>

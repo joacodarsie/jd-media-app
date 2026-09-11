@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import type { TaskLink } from "@/lib/types";
 import { motivoParaNoCerrarTareas } from "@/lib/contenidos/archivo-final-db";
+import { validarFechaLimite } from "@/lib/tareas/fecha-limite";
 
 async function uid() {
   const supabase = createClient();
@@ -27,6 +28,11 @@ export async function createTask(input: {
   requiere_aprobacion?: boolean;
 }) {
   const { supabase, userId } = await uid();
+  // Toda tarea lleva fecha límite: sin ella no aparece en el aviso diario y
+  // deja de existir para todos. Se valida acá y no solo en el formulario
+  // porque este es el único paso por el que pasan todas.
+  const fecha = validarFechaLimite(input.fecha_limite);
+  if (!fecha.ok) return { error: fecha.error! };
   const { error } = await supabase.from("tasks").insert({
     titulo: input.titulo,
     descripcion: input.descripcion || null,
@@ -35,7 +41,7 @@ export async function createTask(input: {
     cliente_id: input.cliente_id || null,
     area: input.area,
     prioridad: input.prioridad,
-    fecha_limite: input.fecha_limite || null,
+    fecha_limite: fecha.fecha,
     aprobador_id: input.aprobador_id || null,
     requiere_aprobacion: input.requiere_aprobacion ?? !!input.aprobador_id,
   });
@@ -78,6 +84,9 @@ export async function updateTask(
   const { supabase } = await uid();
   const bloqueo = await motivoParaNoCerrarTareas(createAdmin(), [id], input.estado);
   if (bloqueo) return { error: bloqueo };
+  // Editar una tarea tampoco puede dejarla sin fecha.
+  const fecha = validarFechaLimite(input.fecha_limite);
+  if (!fecha.ok) return { error: fecha.error! };
   const { error } = await supabase
     .from("tasks")
     .update({
@@ -88,7 +97,7 @@ export async function updateTask(
       area: input.area,
       prioridad: input.prioridad,
       estado: input.estado,
-      fecha_limite: input.fecha_limite || null,
+      fecha_limite: fecha.fecha,
       aprobador_id: input.aprobador_id || null,
       requiere_aprobacion: input.requiere_aprobacion ?? !!input.aprobador_id,
     })
@@ -131,6 +140,28 @@ export async function bulkDeleteTasks(ids: string[]) {
   const { supabase } = await uid();
   if (!ids.length) return { error: "Sin selección." };
   const { error } = await supabase.from("tasks").delete().in("id", ids);
+  if (error) return { error: error.message };
+  revalidatePath("/tareas");
+  revalidatePath("/dashboard");
+  return { ok: true, count: ids.length };
+}
+
+/**
+ * Le pone la misma fecha límite a varias tareas (bulk action).
+ *
+ * Es la herramienta del triage de "Sin fecha": esas tareas existen pero nadie
+ * las ve, y la salida es ponerles fecha o archivarlas. Sin esto había que
+ * entrar de a una, y son decenas.
+ */
+export async function bulkSetDueDate(ids: string[], fechaLimite: string) {
+  const { supabase } = await uid();
+  if (!ids.length) return { error: "Sin selección." };
+  const fecha = validarFechaLimite(fechaLimite);
+  if (!fecha.ok) return { error: fecha.error! };
+  const { error } = await supabase
+    .from("tasks")
+    .update({ fecha_limite: fecha.fecha })
+    .in("id", ids);
   if (error) return { error: error.message };
   revalidatePath("/tareas");
   revalidatePath("/dashboard");

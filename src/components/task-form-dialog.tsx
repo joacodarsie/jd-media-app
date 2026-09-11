@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { createTask, updateTask } from "@/app/(app)/tareas/actions";
 import { AREAS, PRIORITY_LABEL, STATUS_LABEL } from "@/lib/constants";
 import type { AppUser, Client, TaskWithRels } from "@/lib/types";
+import { validarFechaLimite } from "@/lib/tareas/fecha-limite";
 import {
   Dialog,
   DialogContent,
@@ -68,6 +69,13 @@ export function TaskFormDialog({
       toast.error("Poné un título.");
       return;
     }
+    // La fecha también se valida en el servidor; acá se avisa antes de mandar
+    // para no perder lo escrito.
+    const chequeo = validarFechaLimite(fecha);
+    if (!chequeo.ok) {
+      toast.error(chequeo.error!);
+      return;
+    }
     start(async () => {
       const payload = {
         titulo: titulo.trim(),
@@ -76,7 +84,7 @@ export function TaskFormDialog({
         cliente_id: cliente === NONE ? null : cliente,
         area,
         prioridad,
-        fecha_limite: fecha || null,
+        fecha_limite: chequeo.fecha!,
         aprobador_id: aprobador === NONE ? null : aprobador,
         requiere_aprobacion: aprobador !== NONE,
       };
@@ -211,7 +219,9 @@ export function TaskFormDialog({
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="fecha">Fecha límite</Label>
+              <Label htmlFor="fecha">
+                Fecha límite <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="fecha"
                 type="date"

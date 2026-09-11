@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import {
   AlertCircle,
   CalendarDays,
+  CalendarOff,
   ChevronLeft,
   ChevronRight,
   Filter,
@@ -26,6 +27,7 @@ import {
   bulkUpdateTaskStatus,
   bulkDeleteTasks,
   bulkReassignTasks,
+  bulkSetDueDate,
 } from "@/app/(app)/tareas/actions";
 import {
   AREAS,
@@ -70,7 +72,14 @@ const TaskCalendar = dynamic(
 );
 
 const ALL = "__all__";
-type QuickFilter = "todas" | "mias" | "vencidas" | "vencidas_equipo" | "hoy" | "semana";
+type QuickFilter =
+  | "todas"
+  | "mias"
+  | "vencidas"
+  | "vencidas_equipo"
+  | "sin_fecha"
+  | "hoy"
+  | "semana";
 type ViewMode = "lista" | "tabla" | "kanban" | "calendario";
 
 const QUICK_LABELS: Record<QuickFilter, string> = {
@@ -80,6 +89,10 @@ const QUICK_LABELS: Record<QuickFilter, string> = {
   // Solo para coordinación: las vencidas de TODO el equipo, para poder hacer la
   // limpieza en lote (cerrar, reasignar o archivar) sin entrar una por una.
   vencidas_equipo: "Vencidas del equipo",
+  // Una tarea sin fecha límite no entra en el aviso diario: no está vencida ni
+  // por vencer, así que no existe para nadie. Este chip es el único lugar donde
+  // se la ve, para ponerle fecha o archivarla.
+  sin_fecha: "Sin fecha",
   hoy: "Hoy",
   semana: "Esta semana",
 };
@@ -170,6 +183,7 @@ export function TaskViews({
         // "Vencidas" son las tuyas; "del equipo" son las de todos (coordinación).
         if (quick === "vencidas" && t.asignado_a_id !== currentUserId) return false;
       }
+      if (quick === "sin_fecha" && t.fecha_limite) return false;
       if (quick === "hoy") {
         if (!t.fecha_limite || t.fecha_limite.slice(0, 10) !== today) return false;
       }
@@ -237,6 +251,8 @@ export function TaskViews({
       vencidasEquipo: tasks.filter(
         (t) => isOpen(t) && t.fecha_limite && t.fecha_limite.slice(0, 10) < today
       ).length,
+      // Sin filtro de mes, a propósito: justamente no tienen mes.
+      sinFecha: tasks.filter((t) => isOpen(t) && !t.fecha_limite).length,
       hoy: tasks.filter(
         (t) => isOpen(t) && t.fecha_limite && t.fecha_limite.slice(0, 10) === today
       ).length,
@@ -315,6 +331,16 @@ export function TaskViews({
             active={quick === "vencidas_equipo"}
             danger
             onClick={() => setQuick("vencidas_equipo")}
+          />
+        )}
+        {esCoordinacion && counts.sinFecha > 0 && (
+          <QuickChip
+            icon={CalendarOff}
+            label={QUICK_LABELS.sin_fecha}
+            count={counts.sinFecha}
+            active={quick === "sin_fecha"}
+            danger
+            onClick={() => setQuick("sin_fecha")}
           />
         )}
         <QuickChip
@@ -543,6 +569,18 @@ export function TaskViews({
               }
             })
           }
+          onSetDueDate={(fecha) =>
+            startBulk(async () => {
+              const ids = Array.from(selectedIds);
+              const res = await bulkSetDueDate(ids, fecha);
+              if (res?.error) toast.error(res.error);
+              else {
+                toast.success(`${res.count} tareas con fecha ${fecha}`);
+                clearSelection();
+                router.refresh();
+              }
+            })
+          }
           onDelete={() => {
             if (
               !confirm(
@@ -678,6 +716,7 @@ function BulkActionsBar({
   onClear,
   onChangeStatus,
   onReassign,
+  onSetDueDate,
   onDelete,
 }: {
   count: number;
@@ -686,6 +725,7 @@ function BulkActionsBar({
   onClear: () => void;
   onChangeStatus: (estado: string) => void;
   onReassign: (uid: string) => void;
+  onSetDueDate: (fecha: string) => void;
   onDelete: () => void;
 }) {
   return (
@@ -729,6 +769,20 @@ function BulkActionsBar({
               ))}
             </SelectContent>
           </Select>
+          {/* Poner fecha a varias de una: es la salida del triage de "Sin
+              fecha", donde entrar de a una no es viable. */}
+          <label className="flex items-center gap-1 text-xs text-muted-foreground">
+            <CalendarDays className="h-3.5 w-3.5" />
+            <input
+              type="date"
+              disabled={pending}
+              onChange={(e) => {
+                if (e.target.value) onSetDueDate(e.target.value);
+              }}
+              className="h-8 rounded-md border bg-background px-2 text-xs"
+              title="Poner esta fecha límite a todas las seleccionadas"
+            />
+          </label>
           <Button
             size="sm"
             variant="ghost"
@@ -765,6 +819,12 @@ function EmptyState({ filter }: { filter: QuickFilter }) {
       title: "El equipo está al día",
       description: "Ninguna tarea vencida en toda la agencia.",
       emoji: "🎉",
+    },
+    sin_fecha: {
+      title: "Todas las tareas tienen fecha",
+      description:
+        "Una tarea sin fecha no aparece en los avisos y termina olvidada. Acá no quedó ninguna.",
+      emoji: "📅",
     },
     hoy: {
       title: "Nada vence hoy",

@@ -1,5 +1,6 @@
 import { hoyYmd } from "@/lib/dates";
 import { motivoParaNoCerrarTarea } from "@/lib/contenidos/archivo-final-db";
+import { fechaParaTareaDeIA } from "@/lib/tareas/fecha-limite";
 
 import type Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
@@ -77,10 +78,11 @@ export const TOOLS: Anthropic.Tool[] = [
         },
         fecha_limite: {
           type: "string",
-          description: "Fecha límite en formato YYYY-MM-DD. Ej: '2026-06-15'.",
+          description:
+            "Fecha límite en formato YYYY-MM-DD. Ej: '2026-06-15'. OBLIGATORIA: toda tarea tiene que tener una. Si el usuario no dijo para cuándo, estimá una fecha razonable según lo que pide.",
         },
       },
-      required: ["titulo"],
+      required: ["titulo", "fecha_limite"],
     },
   },
   {
@@ -521,7 +523,13 @@ export async function runTool(
           cliente_id,
           area: input.area ?? "Community Manager",
           prioridad: input.prioridad ?? "media",
-          fecha_limite: input.fecha_limite ?? null,
+          // El schema la pide, pero el modelo igual puede no mandarla. Si se
+          // guardara en null la tarea nacería invisible: no entra en el aviso
+          // diario de vencidas. Una fecha estimada se corrige en dos clics.
+          fecha_limite: fechaParaTareaDeIA(
+            input.fecha_limite as string | undefined,
+            new Date().toISOString()
+          ),
         }).select("id, titulo").single();
         if (error) return { ok: false, error: error.message };
         return { ok: true, data };

@@ -39,6 +39,7 @@ const PUBLIC_PATHS = [
   // El informe en JSON lo consume el script de Google Sheets del dueño, que no
   // tiene sesión de navegador: se autentica con INFORME_TOKEN en la propia ruta.
   "/api/finanzas/informe/datos",
+  "/api/finanzas/informe/script",
   // Páginas legales públicas (requeridas por TikTok/Meta para el alta de la app).
   "/privacidad",
   "/terminos",

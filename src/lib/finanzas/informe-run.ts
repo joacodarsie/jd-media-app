@@ -241,6 +241,12 @@ export async function generarInforme(
     fijos,
     cobros,
     movimientos,
+    margenes: {
+      minimo: 25,
+      sano: 40,
+      comisionCierre: Math.round((settings.rates.comision_cierre ?? 0) * 100),
+      plusPrimerMes: settings.rates.plus_primer_mes ?? 0,
+    },
     cuadres: cuadres({
       entroResumen: mes.entro,
       sumaCobrosDelMes,

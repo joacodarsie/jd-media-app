@@ -2,25 +2,42 @@ import ExcelJS from "exceljs";
 import { periodLabel } from "@/lib/finanzas";
 import { cascada, type MesResumen } from "./resumen";
 import type { Cuadre, FilaCliente, FilaEquipo } from "./informe-mensual";
+import {
+  hoja,
+  titulo,
+  seccion,
+  encabezado,
+  fila,
+  resultado,
+  resultadoEn,
+  total,
+  parrafo,
+  aire,
+  marcar,
+  PESOS,
+  PORCENTAJE,
+  ENTERO,
+  VERDE,
+  ROJO,
+  AMBAR,
+  BLANCO,
+  TINTA_SUAVE,
+  FUENTE,
+} from "./informe-estilos";
 
 /**
- * El informe mensual de finanzas, en Excel.
+ * El informe mensual de finanzas de JD Media.
  *
- * Seis hojas, cada una contesta UNA pregunta, y una hoja de control que cruza
- * los totales entre ellas. Esa última es la que hace al informe creíble: si
- * "Entró" del Resumen coincide con la suma de Cobros, el número no depende de
- * confiar en quien armó la planilla.
+ * Siete hojas: una guía que explica el negocio y el informe, y seis de datos.
+ * La primera versión salió —textual del dueño— "soso, mucho números, medio
+ * mareador", así que todo el formato pasa ahora por `informe-estilos`, con la
+ * planilla que él armó como referencia: bandas de color para los resultados,
+ * secciones grises centradas, aire entre bloques y sin líneas de grilla.
  *
- * Se eligió .xlsx y no Google Sheets a propósito: el Sheets necesitaría una
- * cuenta de Google conectada con permisos —una pieza más que se puede romper—
- * mientras que el .xlsx lo genera la app sola y Drive lo convierte si hace
- * falta.
+ * Lo que lo hace creíble está en la hoja Resumen: un bloque de CONTROL que
+ * cruza los totales entre hojas y dice si cierran. Si cierran solos, el número
+ * no depende de confiarle a nadie.
  */
-
-/** La paleta de la marca, para que el informe se vea como JD Media. */
-const AMARILLO = "FFFFD400";
-const GRIS = "FFF3F4F6";
-const NEGRO = "FF111111";
 
 export interface FilaFijo {
   concepto: string;
@@ -38,9 +55,7 @@ export interface FilaCobro {
   moneda: string;
   cobrado: boolean;
   fechaCobro: string | null;
-  /** Lo entregado a cuenta, cuando hubo pagos parciales. */
   aCuenta: number;
-  /** Lo que todavía falta cobrar. */
   saldo: number;
 }
 
@@ -49,14 +64,12 @@ export interface FilaMovimiento {
   tipo: "Cobro" | "Equipo" | "Gasto";
   contraparte: string;
   concepto: string;
-  /** Positivo si entró, negativo si salió. */
   montoARS: number;
 }
 
 export interface DatosInforme {
   periodo: string;
   generadoEl: string;
-  /** El dólar con el que se convirtió todo. */
   dolar: number;
   serie: MesResumen[];
   clientes: FilaCliente[];
@@ -65,325 +78,524 @@ export interface DatosInforme {
   cobros: FilaCobro[];
   movimientos: FilaMovimiento[];
   cuadres: Cuadre[];
+  /** Los márgenes de referencia, para explicarlos en la guía. */
+  margenes: { minimo: number; sano: number; comisionCierre: number; plusPrimerMes: number };
 }
-
-const PLATA = '"$"#,##0';
-const PCT = "0%";
 
 function mesCorto(p: string): string {
   const [y, m] = p.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString("es-AR", { month: "short", year: "2-digit" });
+  const s = new Date(y, m - 1, 1).toLocaleDateString("es-AR", { month: "short", year: "2-digit" });
+  return s.replace(".", "").replace(/^./, (c) => c.toUpperCase());
 }
 
-/** Título de sección: amarillo de la marca, en negro y en negrita. */
-function titulo(ws: ExcelJS.Worksheet, fila: number, texto: string, ancho: number) {
-  const row = ws.getRow(fila);
-  row.getCell(1).value = texto;
-  row.font = { bold: true, size: 12, color: { argb: NEGRO } };
-  for (let c = 1; c <= ancho; c++) {
-    row.getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: AMARILLO } };
-  }
-  row.height = 20;
-}
-
-/** Encabezado de tabla: gris, en negrita, con borde abajo. */
-function encabezado(ws: ExcelJS.Worksheet, fila: number, celdas: string[]) {
-  const row = ws.getRow(fila);
-  celdas.forEach((t, i) => {
-    const c = row.getCell(i + 1);
-    c.value = t;
-    c.font = { bold: true, size: 10 };
-    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: GRIS } };
-    c.border = { bottom: { style: "thin", color: { argb: "FFCCCCCC" } } };
-  });
-}
-
-function anchos(ws: ExcelJS.Worksheet, cols: number[]) {
-  cols.forEach((w, i) => {
-    ws.getColumn(i + 1).width = w;
-  });
-}
+const plata = (n: number) => `$${Math.round(n).toLocaleString("es-AR")}`;
 
 export async function construirInforme(d: DatosInforme): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   wb.creator = "JD Media";
   wb.created = new Date(d.generadoEl);
 
-  const conMov = d.serie.filter((m) => m.entro > 0 || m.salio > 0);
+  const meses = d.serie.filter((m) => m.entro > 0 || m.salio > 0);
+  const cols = meses.length;
+  const cascadas = meses.map((m) => cascada(m));
+  const ultima = cascadas[cascadas.length - 1];
+  const mesActual = periodLabel(d.periodo);
 
-  // ═══════════════════ 1. RESUMEN ═══════════════════
+  // ═══════════════════════ 0. CÓMO LEER ESTO ═══════════════════════
   {
-    const ws = wb.addWorksheet("1. Resumen", { views: [{ state: "frozen", xSplit: 1 }] });
-    anchos(ws, [34, ...conMov.map(() => 15)]);
+    const ANCHO = 6;
+    const ws = hoja(wb, "Cómo leer esto", [4, 22, 22, 22, 22, 22]);
+    let f = titulo(
+      ws,
+      1,
+      "Cómo leer este informe",
+      `JD Media · cierre de ${mesActual} · generado el ${d.generadoEl.slice(0, 10)}`,
+      ANCHO
+    );
 
-    ws.getCell("A1").value = "JD Media · Finanzas";
-    ws.getCell("A1").font = { bold: true, size: 16 };
-    ws.getCell("A2").value = `Cierre de ${periodLabel(d.periodo)}`;
-    ws.getCell("A2").font = { size: 11, color: { argb: "FF666666" } };
-    ws.getCell("A3").value = `Generado el ${d.generadoEl.slice(0, 10)} · dólar $${d.dolar.toLocaleString("es-AR")} (Dólar App)`;
-    ws.getCell("A3").font = { size: 9, color: { argb: "FF999999" } };
+    f = seccion(ws, f, "EL NEGOCIO EN CUATRO PASOS", ANCHO);
+    f = aire(ws, f);
+    f = parrafo(ws, f, "1.  Entra el abono de cada cliente.", ANCHO);
+    f = parrafo(
+      ws,
+      f,
+      "2.  Se paga la producción de ese cliente: diseño, edición, community manager, pauta y coordinación. Lo que queda es el MARGEN DE LA AGENCIA.",
+      ANCHO,
+      { alto: 32 }
+    );
+    f = parrafo(
+      ws,
+      f,
+      "3.  Con la suma de todos esos márgenes se pagan los GASTOS FIJOS: monotributo, plataformas, la cuenta propia de la agencia. Son los mismos con 1 cliente o con 20.",
+      ANCHO,
+      { alto: 32 }
+    );
+    f = parrafo(ws, f, "4.  Lo que sobra es TU SUELDO.", ANCHO, { negrita: true });
+    f = aire(ws, f);
+    f = parrafo(
+      ws,
+      f,
+      `La referencia: un ${d.margenes.sano}% de margen es sano para una cuenta de gestión, y por debajo del ${d.margenes.minimo}% la cuenta es frágil.`,
+      ANCHO,
+      { alto: 28 }
+    );
+    f = aire(ws, f);
 
-    titulo(ws, 5, "De lo que entró a lo que te queda a vos", conMov.length + 1);
-    encabezado(ws, 6, ["", ...conMov.map((m) => mesCorto(m.periodo))]);
-
-    // Las filas de la cascada, una por concepto y un mes por columna.
-    const pasos: [string, (c: ReturnType<typeof cascada>) => number, boolean][] = [
-      ["Entró — lo que te pagaron los clientes", (c) => c.entro, false],
-      ["Le pagaste al equipo", (c) => -c.equipo, false],
-      ["Margen de la agencia", (c) => c.margenAgencia, true],
-      ["Gastos fijos", (c) => -c.fijos, false],
-      ["TU SUELDO — lo que sobra", (c) => c.tuSueldo, true],
-    ];
-    const cascadas = conMov.map((m) => cascada(m));
-
-    pasos.forEach(([label, get, fuerte], i) => {
-      const row = ws.getRow(7 + i);
-      row.getCell(1).value = label;
-      if (fuerte) row.getCell(1).font = { bold: true };
-      cascadas.forEach((c, j) => {
-        const cell = row.getCell(j + 2);
-        cell.value = Math.round(get(c));
-        cell.numFmt = PLATA;
-        if (fuerte) cell.font = { bold: true };
-        if (get(c) < 0 && label.startsWith("TU SUELDO")) {
-          cell.font = { bold: true, color: { argb: "FFC00000" } };
+    // Los cuatro pasos con los números del mes: la guía deja de ser abstracta.
+    if (ultima) {
+      f = seccion(ws, f, `LOS CUATRO PASOS CON TUS NÚMEROS DE ${mesActual.toUpperCase()}`, ANCHO);
+      f = encabezado(ws, f, ["", "", "", "", "En pesos", "De lo que entró"]);
+      const paso = (etiqueta: string, monto: number, pct: number | null) => {
+        const r = ws.getRow(f);
+        r.height = 19;
+        ws.mergeCells(f, 1, f, 4);
+        r.getCell(1).value = etiqueta;
+        r.getCell(1).font = { name: FUENTE, size: 11 };
+        r.getCell(1).alignment = { vertical: "middle", indent: 1 };
+        r.getCell(5).value = Math.round(monto);
+        r.getCell(5).numFmt = PESOS;
+        r.getCell(5).alignment = { vertical: "middle", horizontal: "right", indent: 1 };
+        r.getCell(5).font = { name: FUENTE, size: 11 };
+        if (pct != null) {
+          r.getCell(6).value = pct / 100;
+          r.getCell(6).numFmt = PORCENTAJE;
+          r.getCell(6).alignment = { vertical: "middle", horizontal: "right", indent: 1 };
+          r.getCell(6).font = { name: FUENTE, size: 11 };
         }
-      });
-      if (fuerte) {
-        row.eachCell((c) => {
-          c.border = { top: { style: "thin", color: { argb: "FFCCCCCC" } } };
-        });
-      }
-    });
+        f++;
+      };
+      paso("1.  Entró de los clientes", ultima.entro, 100);
+      paso("2.  Menos la producción del equipo", -ultima.equipo, -(ultima.equipo / (ultima.entro || 1)) * 100);
+      f = resultado(ws, f, "      = MARGEN DE LA AGENCIA", [ultima.margenAgencia]);
+      paso("3.  Menos los gastos fijos", -ultima.fijos, -ultima.fijosPct);
+      f = resultado(ws, f, "      = TU SUELDO", [ultima.tuSueldo]);
+      f = aire(ws, f);
+    }
 
-    // Los porcentajes, que es como el dueño se maneja.
-    titulo(ws, 13, "En porcentaje de lo que entró", conMov.length + 1);
-    encabezado(ws, 14, ["", ...conMov.map((m) => mesCorto(m.periodo))]);
-    const pctPasos: [string, (c: ReturnType<typeof cascada>) => number][] = [
-      ["Margen de la agencia", (c) => c.margenPct / 100],
-      ["Gastos fijos", (c) => c.fijosPct / 100],
-      ["Tu sueldo", (c) => c.tuSueldoPct / 100],
+    f = seccion(ws, f, "EL PRIMER MES DE UN CLIENTE ES OTRO NEGOCIO", ANCHO);
+    f = aire(ws, f);
+    f = parrafo(
+      ws,
+      f,
+      `Solo en el primer mes se pagan el manual de marca, la comisión del comercial (${d.margenes.comisionCierre}% del primer abono) y el plus de arranque (${plata(d.margenes.plusPrimerMes)} a la community manager y otro tanto al media buyer).`,
+      ANCHO,
+      { alto: 32 }
+    );
+    f = parrafo(
+      ws,
+      f,
+      "Por eso el primer mes deja mucho menos que los demás. La regla es no perder plata nunca: el precio mínimo de una cotización ya tiene ese arranque adentro. Si una cuenta se va antes del mes 3, el arranque no se recuperó.",
+      ANCHO,
+      { alto: 46 }
+    );
+    f = aire(ws, f);
+
+    f = seccion(ws, f, "QUÉ HAY EN CADA HOJA", ANCHO);
+    f = aire(ws, f);
+    const guia: [string, string][] = [
+      ["1. Resumen", "La cascada de los cuatro pasos, mes por mes, en pesos y en porcentaje. Es la hoja que se muestra."],
+      ["2. Clientes", "Qué deja cada cuenta, ordenadas de mejor a peor margen. Arriba las que conviene cuidar, abajo las que hay que renegociar."],
+      ["3. Equipo", "Lo que cobró cada persona, mes por mes."],
+      ["4. Gastos fijos", "La estructura línea por línea, en su moneda y en pesos."],
+      ["5. Cobros", "Cada factura: si se cobró, cuándo, y qué saldo queda."],
+      ["6. Movimientos", "El libro completo, fecha por fecha. Es el respaldo de todo lo anterior."],
     ];
-    pctPasos.forEach(([label, get], i) => {
-      const row = ws.getRow(15 + i);
-      row.getCell(1).value = label;
-      if (label === "Tu sueldo") row.getCell(1).font = { bold: true };
-      cascadas.forEach((c, j) => {
-        const cell = row.getCell(j + 2);
-        cell.value = get(c);
-        cell.numFmt = PCT;
-        if (label === "Tu sueldo") cell.font = { bold: true };
-      });
-    });
+    for (const [h, q] of guia) {
+      const r = ws.getRow(f);
+      r.height = 30;
+      r.getCell(1).value = "";
+      r.getCell(2).value = h;
+      r.getCell(2).font = { name: FUENTE, size: 11, bold: true };
+      r.getCell(2).alignment = { vertical: "middle", indent: 1 };
+      ws.mergeCells(f, 3, f, ANCHO);
+      r.getCell(3).value = q;
+      r.getCell(3).font = { name: FUENTE, size: 11 };
+      r.getCell(3).alignment = { vertical: "middle", wrapText: true, indent: 1 };
+      f++;
+    }
+    f = aire(ws, f);
 
-    // El control: si esto cierra, no hace falta creerle a nadie.
-    const base = 20;
-    titulo(ws, base, "Control: las hojas tienen que decir lo mismo", 5);
-    encabezado(ws, base + 1, ["Concepto", "Hoja", "Dice", "Contra", "Dice"]);
-    d.cuadres.forEach((c, i) => {
-      const row = ws.getRow(base + 2 + i);
-      row.getCell(1).value = c.concepto;
-      row.getCell(2).value = c.hojaA;
-      row.getCell(3).value = c.a;
-      row.getCell(3).numFmt = PLATA;
-      row.getCell(4).value = c.hojaB;
-      row.getCell(5).value = c.b;
-      row.getCell(5).numFmt = PLATA;
-      const color = c.cierra ? "FF107C41" : "FFC00000";
-      row.getCell(6).value = c.cierra ? "✓ cierra" : "✗ NO CIERRA";
-      row.getCell(6).font = { bold: true, color: { argb: color } };
-    });
+    f = seccion(ws, f, "DE DÓNDE SALEN LOS NÚMEROS", ANCHO);
+    f = aire(ws, f);
+    f = parrafo(
+      ws,
+      f,
+      "Todo lo que aparece acá es plata que se movió de verdad: facturas con fecha de cobro y pagos con fecha de pago. Lo facturado y todavía no cobrado NO cuenta como ingreso — está aparte, en la hoja Cobros.",
+      ANCHO,
+      { alto: 46 }
+    );
+    f = parrafo(
+      ws,
+      f,
+      `Los dólares se convierten con el dólar de Dólar App del día en que se generó el informe: $${d.dolar.toLocaleString("es-AR")}.`,
+      ANCHO,
+      { alto: 28 }
+    );
+    f = aire(ws, f);
+
+    f = seccion(ws, f, "CÓMO SABER SI PODÉS CONFIAR EN ESTE INFORME", ANCHO);
+    f = aire(ws, f);
+    f = parrafo(
+      ws,
+      f,
+      "Al final de la hoja Resumen hay un bloque de CONTROL. Compara los totales de hojas distintas entre sí: lo que entró según el Resumen contra la suma de la hoja Cobros, y así con el equipo y los gastos fijos.",
+      ANCHO,
+      { alto: 46 }
+    );
+    f = parrafo(
+      ws,
+      f,
+      "Si los tres dicen «cierra», los números no dependen de confiarle a nadie: se verifican solos. Si alguno dijera «NO CIERRA», ese número está mal y hay que revisarlo antes de usar el informe.",
+      ANCHO,
+      { alto: 46 }
+    );
   }
 
-  // ═══════════════════ 2. CLIENTES ═══════════════════
+  // ═══════════════════════ 1. RESUMEN ═══════════════════════
   {
-    const ws = wb.addWorksheet("2. Clientes", { views: [{ state: "frozen", ySplit: 3 }] });
-    anchos(ws, [26, 20, 16, 14, 14, 14, 14, 9, 9]);
-    titulo(ws, 1, "Qué deja cada cuenta — de mejor a peor", 9);
-    ws.getCell("A2").value =
-      "El margen no descuenta los gastos fijos: esos se pagan con la suma de todos los márgenes.";
-    ws.getCell("A2").font = { size: 9, italic: true, color: { argb: "FF666666" } };
-    encabezado(ws, 3, [
+    const ANCHO = cols + 1;
+    const ws = hoja(wb, "1. Resumen", [38, ...meses.map(() => 16)], { x: 1 });
+    let f = titulo(
+      ws,
+      1,
+      `JD Media · ${mesActual}`,
+      "De lo que entró a lo que te queda a vos, mes por mes.",
+      ANCHO
+    );
+
+    f = seccion(ws, f, "EN PESOS", ANCHO);
+    f = encabezado(ws, f, ["", ...meses.map((m) => mesCorto(m.periodo))]);
+    f = fila(ws, f, "Entró", cascadas.map((c) => c.entro), {
+      detalle: "lo que te pagaron los clientes",
+    });
+    f = fila(ws, f, "Le pagaste al equipo", cascadas.map((c) => -c.equipo), {
+      detalle: "producción de las cuentas",
+      rayada: true,
+    });
+    f = resultado(ws, f, "MARGEN DE LA AGENCIA", cascadas.map((c) => c.margenAgencia));
+    f = fila(ws, f, "Gastos fijos", cascadas.map((c) => -c.fijos), {
+      detalle: "la estructura, con clientes o sin ellos",
+      rayada: true,
+    });
+    f = resultado(ws, f, "TU SUELDO", cascadas.map((c) => c.tuSueldo), {
+      detalle: "lo que sobra después de todo",
+    });
+    f = aire(ws, f);
+
+    f = seccion(ws, f, "EN PORCENTAJE DE LO QUE ENTRÓ", ANCHO);
+    f = encabezado(ws, f, ["", ...meses.map((m) => mesCorto(m.periodo))]);
+    f = fila(ws, f, "Margen de la agencia", cascadas.map((c) => c.margenPct / 100), {
+      formato: PORCENTAJE,
+    });
+    f = fila(ws, f, "Gastos fijos", cascadas.map((c) => c.fijosPct / 100), {
+      formato: PORCENTAJE,
+      rayada: true,
+    });
+    f = resultado(ws, f, "TU SUELDO", cascadas.map((c) => c.tuSueldoPct / 100), {
+      formato: PORCENTAJE,
+    });
+    f = aire(ws, f);
+
+    // El control cruzado: lo que hace verificable al informe.
+    f = seccion(ws, f, "CONTROL · LAS HOJAS TIENEN QUE DECIR LO MISMO", ANCHO);
+    f = encabezado(ws, f, ["Concepto", "Dice el Resumen", "Dice la otra hoja", "¿Cierra?"]);
+    for (const c of d.cuadres) {
+      const r = ws.getRow(f);
+      r.height = 19;
+      r.getCell(1).value = `${c.concepto}   (contra ${c.hojaB})`;
+      r.getCell(1).font = { name: FUENTE, size: 11 };
+      r.getCell(1).alignment = { vertical: "middle", indent: 1 };
+      [c.a, c.b].forEach((v, i) => {
+        const cell = r.getCell(i + 2);
+        cell.value = v;
+        cell.numFmt = PESOS;
+        cell.font = { name: FUENTE, size: 11 };
+        cell.alignment = { vertical: "middle", horizontal: "right", indent: 1 };
+      });
+      const est = r.getCell(4);
+      est.value = c.cierra ? "Cierra" : "NO CIERRA";
+      marcar(est, c.cierra ? VERDE : ROJO, BLANCO);
+      est.alignment = { vertical: "middle", horizontal: "center" };
+      f++;
+    }
+    f = aire(ws, f);
+    f = parrafo(
+      ws,
+      f,
+      "Si los tres dicen «Cierra», los números se verifican solos. Ver la hoja «Cómo leer esto».",
+      ANCHO
+    );
+    ws.getRow(f - 1).getCell(1).font = {
+      name: FUENTE,
+      size: 10,
+      italic: true,
+      color: { argb: TINTA_SUAVE },
+    };
+  }
+
+  // ═══════════════════════ 2. CLIENTES ═══════════════════════
+  {
+    const ANCHO = 7;
+    const ws = hoja(wb, "2. Clientes", [30, 22, 15, 15, 15, 11, 10], { y: 5 });
+    let f = titulo(
+      ws,
+      1,
+      "Qué deja cada cuenta",
+      `Ordenadas de mejor a peor margen. Los gastos fijos no se descuentan acá: se pagan con la suma de todos estos márgenes.`,
+      ANCHO
+    );
+
+    f = seccion(ws, f, `LAS ${d.clientes.length} CUENTAS ACTIVAS`, ANCHO);
+    f = encabezado(ws, f, [
       "Cliente",
       "Servicio",
-      "Pack",
       "Abono",
-      "Costo de entrega",
-      "Coordinación",
+      "Producción",
       "Margen",
       "%",
       "Meses",
     ]);
 
-    d.clientes.forEach((f, i) => {
-      const row = ws.getRow(4 + i);
-      row.getCell(1).value = f.cliente;
-      row.getCell(2).value = f.servicio;
-      row.getCell(3).value = f.pack;
-      row.getCell(4).value = f.abono;
-      row.getCell(5).value = -f.costoEntrega;
-      row.getCell(6).value = -f.coordinacion;
-      row.getCell(7).value = f.margen;
-      row.getCell(8).value = f.margenPct / 100;
-      row.getCell(9).value = f.meses ?? "—";
-      [4, 5, 6, 7].forEach((c) => (row.getCell(c).numFmt = PLATA));
-      row.getCell(8).numFmt = PCT;
-      row.getCell(7).font = { bold: true };
-      // Ámbar las que no llegan al 25%, rojo las que pierden.
-      if (f.margenPct < 0) {
-        row.getCell(8).font = { bold: true, color: { argb: "FFC00000" } };
-      } else if (f.margenPct < 25) {
-        row.getCell(8).font = { bold: true, color: { argb: "FFB45309" } };
-      }
-    });
-
-    const fin = 4 + d.clientes.length;
-    const tot = ws.getRow(fin);
-    tot.getCell(1).value = "TOTAL";
-    tot.getCell(4).value = d.clientes.reduce((a, f) => a + f.abono, 0);
-    tot.getCell(7).value = d.clientes.reduce((a, f) => a + f.margen, 0);
-    [4, 7].forEach((c) => {
-      tot.getCell(c).numFmt = PLATA;
-    });
-    tot.font = { bold: true };
-    tot.eachCell((c) => {
-      c.border = { top: { style: "double", color: { argb: "FF999999" } } };
-    });
-  }
-
-  // ═══════════════════ 3. EQUIPO ═══════════════════
-  {
-    const ws = wb.addWorksheet("3. Equipo", { views: [{ state: "frozen", xSplit: 1, ySplit: 2 }] });
-    anchos(ws, [26, ...conMov.map(() => 14), 15]);
-    titulo(ws, 1, "Lo que cobró cada uno, mes por mes", conMov.length + 2);
-    encabezado(ws, 2, ["Persona", ...conMov.map((m) => mesCorto(m.periodo)), "Total"]);
-
-    d.equipo.forEach((f, i) => {
-      const row = ws.getRow(3 + i);
-      row.getCell(1).value = f.persona;
-      conMov.forEach((m, j) => {
-        const cell = row.getCell(j + 2);
-        const v = f.porMes[m.periodo] ?? 0;
-        cell.value = v || null;
-        cell.numFmt = PLATA;
+    d.clientes.forEach((c, i) => {
+      const r = ws.getRow(f);
+      r.height = 19;
+      const celdas: (string | number)[] = [
+        c.cliente,
+        c.servicio,
+        c.abono,
+        -(c.costoEntrega + c.coordinacion),
+        c.margen,
+        c.margenPct / 100,
+        c.meses ?? 0,
+      ];
+      celdas.forEach((v, j) => {
+        const cell = r.getCell(j + 1);
+        cell.value = v;
+        cell.font = { name: FUENTE, size: 11, bold: j === 4 };
+        if (j >= 2 && j <= 4) cell.numFmt = PESOS;
+        if (j === 5) cell.numFmt = PORCENTAJE;
+        if (j === 6) cell.numFmt = ENTERO;
+        cell.alignment = {
+          vertical: "middle",
+          horizontal: j <= 1 ? "left" : "right",
+          indent: 1,
+        };
       });
-      const t = row.getCell(conMov.length + 2);
-      t.value = f.total;
-      t.numFmt = PLATA;
-      t.font = { bold: true };
+      if (i % 2 === 1) {
+        for (let cc = 1; cc <= ANCHO; cc++) {
+          r.getCell(cc).fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFF7F8F9" },
+          };
+        }
+      }
+      // El semáforo va SOLO en el porcentaje: una celda de color por fila.
+      const pct = r.getCell(6);
+      if (c.margenPct < 0) marcar(pct, ROJO, BLANCO);
+      else if (c.margenPct < d.margenes.minimo) marcar(pct, AMBAR);
+      pct.alignment = { vertical: "middle", horizontal: "center" };
+      f++;
     });
 
-    const fin = 3 + d.equipo.length;
-    const tot = ws.getRow(fin);
-    tot.getCell(1).value = "TOTAL";
-    conMov.forEach((m, j) => {
-      const cell = tot.getCell(j + 2);
-      cell.value = d.equipo.reduce((a, f) => a + (f.porMes[m.periodo] ?? 0), 0);
-      cell.numFmt = PLATA;
-    });
-    const t = tot.getCell(conMov.length + 2);
-    t.value = d.equipo.reduce((a, f) => a + f.total, 0);
-    t.numFmt = PLATA;
-    tot.font = { bold: true };
-    tot.eachCell((c) => {
-      c.border = { top: { style: "double", color: { argb: "FF999999" } } };
-    });
-  }
-
-  // ═══════════════════ 4. GASTOS FIJOS ═══════════════════
-  {
-    const ws = wb.addWorksheet("4. Gastos fijos", { views: [{ state: "frozen", ySplit: 3 }] });
-    anchos(ws, [34, 22, 14, 10, 16]);
-    titulo(ws, 1, `La estructura de ${periodLabel(d.periodo)}`, 5);
-    ws.getCell("A2").value = `Se paga todos los meses, con clientes o sin ellos. Los dólares van a $${d.dolar.toLocaleString("es-AR")} (Dólar App).`;
-    ws.getCell("A2").font = { size: 9, italic: true, color: { argb: "FF666666" } };
-    encabezado(ws, 3, ["Concepto", "Proveedor", "Monto", "Moneda", "En pesos"]);
-
-    d.fijos.forEach((f, i) => {
-      const row = ws.getRow(4 + i);
-      row.getCell(1).value = f.concepto;
-      row.getCell(2).value = f.proveedor;
-      row.getCell(3).value = f.montoOriginal;
-      row.getCell(4).value = f.moneda;
-      row.getCell(5).value = Math.round(f.montoARS);
-      row.getCell(5).numFmt = PLATA;
-    });
-
-    const fin = 4 + d.fijos.length;
-    const tot = ws.getRow(fin);
-    tot.getCell(1).value = "TOTAL";
-    tot.getCell(5).value = Math.round(d.fijos.reduce((a, f) => a + f.montoARS, 0));
-    tot.getCell(5).numFmt = PLATA;
-    tot.font = { bold: true };
-    tot.eachCell((c) => {
-      c.border = { top: { style: "double", color: { argb: "FF999999" } } };
-    });
-  }
-
-  // ═══════════════════ 5. COBROS ═══════════════════
-  {
-    const ws = wb.addWorksheet("5. Cobros", { views: [{ state: "frozen", ySplit: 3 }] });
-    anchos(ws, [26, 12, 40, 14, 10, 12, 13, 16, 15]);
-    titulo(ws, 1, "Cada factura: quién pagó, cuándo y qué falta", 9);
-    ws.getCell("A2").value =
-      "Lo cobrado del mes es lo que alimenta el Resumen. Lo pendiente todavía no cuenta como plata que entró.";
-    ws.getCell("A2").font = { size: 9, italic: true, color: { argb: "FF666666" } };
-    encabezado(ws, 3, [
-      "Cliente",
-      "Mes",
-      "Concepto",
-      "Monto",
-      "Moneda",
-      "¿Cobrado?",
-      "Fecha de cobro",
-      "Entregado a cuenta",
-      "Saldo pendiente",
+    const sumaAbono = d.clientes.reduce((a, c) => a + c.abono, 0);
+    const sumaProd = d.clientes.reduce((a, c) => a + c.costoEntrega + c.coordinacion, 0);
+    const sumaMargen = d.clientes.reduce((a, c) => a + c.margen, 0);
+    f = total(ws, f, "TOTAL DE LA CARTERA", [
+      null,
+      sumaAbono,
+      -sumaProd,
+      sumaMargen,
+      sumaAbono > 0 ? sumaMargen / sumaAbono : 0,
     ]);
-
-    d.cobros.forEach((f, i) => {
-      const row = ws.getRow(4 + i);
-      row.getCell(1).value = f.cliente;
-      row.getCell(2).value = f.periodo;
-      row.getCell(3).value = f.concepto;
-      row.getCell(4).value = f.monto;
-      row.getCell(4).numFmt = PLATA;
-      row.getCell(5).value = f.moneda;
-      row.getCell(6).value = f.cobrado ? "Sí" : "No";
-      row.getCell(6).font = {
-        bold: true,
-        color: { argb: f.cobrado ? "FF107C41" : "FFB45309" },
-      };
-      row.getCell(7).value = f.fechaCobro ?? "—";
-      row.getCell(8).value = f.aCuenta || null;
-      row.getCell(8).numFmt = PLATA;
-      row.getCell(9).value = f.saldo || null;
-      row.getCell(9).numFmt = PLATA;
-      if (f.saldo > 0) row.getCell(9).font = { bold: true, color: { argb: "FFB45309" } };
-    });
+    ws.getRow(f - 1).getCell(6).numFmt = PORCENTAJE;
+    f = aire(ws, f);
+    f = parrafo(
+      ws,
+      f,
+      `En ámbar, las cuentas por debajo del ${d.margenes.minimo}%: a ese margen un mes con una pieza de más se lo come entero.`,
+      ANCHO
+    );
+    ws.getRow(f - 1).getCell(1).font = {
+      name: FUENTE,
+      size: 10,
+      italic: true,
+      color: { argb: TINTA_SUAVE },
+    };
   }
 
-  // ═══════════════════ 6. MOVIMIENTOS ═══════════════════
+  // ═══════════════════════ 3. EQUIPO ═══════════════════════
   {
-    const ws = wb.addWorksheet("6. Movimientos", { views: [{ state: "frozen", ySplit: 3 }] });
-    anchos(ws, [13, 11, 26, 46, 16]);
-    titulo(ws, 1, "El libro completo: todo lo que entró y salió", 5);
-    ws.getCell("A2").value = "Es el respaldo de las cinco hojas anteriores. Ordenado del más nuevo al más viejo.";
-    ws.getCell("A2").font = { size: 9, italic: true, color: { argb: "FF666666" } };
-    encabezado(ws, 3, ["Fecha", "Tipo", "Contraparte", "Concepto", "Monto"]);
+    const ANCHO = cols + 2;
+    const ws = hoja(wb, "3. Equipo", [28, ...meses.map(() => 15), 16], { x: 1, y: 5 });
+    let f = titulo(ws, 1, "Lo que cobró cada uno", "Mes por mes, según los pagos registrados.", ANCHO);
+    f = seccion(ws, f, "EQUIPO", ANCHO);
+    f = encabezado(ws, f, ["Persona", ...meses.map((m) => mesCorto(m.periodo)), "Total"]);
 
-    d.movimientos.forEach((f, i) => {
-      const row = ws.getRow(4 + i);
-      row.getCell(1).value = f.fecha;
-      row.getCell(2).value = f.tipo;
-      row.getCell(3).value = f.contraparte;
-      row.getCell(4).value = f.concepto;
-      const c = row.getCell(5);
-      c.value = Math.round(f.montoARS);
-      c.numFmt = PLATA;
-      c.font = { color: { argb: f.montoARS >= 0 ? "FF107C41" : "FFC00000" } };
+    d.equipo.forEach((p, i) => {
+      f = fila(
+        ws,
+        f,
+        p.persona,
+        [...meses.map((m) => p.porMes[m.periodo] || null), p.total],
+        { rayada: i % 2 === 1 }
+      );
+      ws.getRow(f - 1).getCell(cols + 2).font = { name: FUENTE, size: 11, bold: true };
     });
 
-    ws.autoFilter = { from: { row: 3, column: 1 }, to: { row: 3, column: 5 } };
+    f = total(ws, f, "TOTAL", [
+      ...meses.map((m) => d.equipo.reduce((a, p) => a + (p.porMes[m.periodo] ?? 0), 0)),
+      d.equipo.reduce((a, p) => a + p.total, 0),
+    ]);
+  }
+
+  // ═══════════════════════ 4. GASTOS FIJOS ═══════════════════════
+  {
+    const ANCHO = 4;
+    const ws = hoja(wb, "4. Gastos fijos", [36, 16, 12, 18], { y: 5 });
+    let f = titulo(
+      ws,
+      1,
+      "La estructura",
+      `Se paga todos los meses, con clientes o sin ellos. Los dólares van a $${d.dolar.toLocaleString("es-AR")} (Dólar App).`,
+      ANCHO
+    );
+    f = seccion(ws, f, mesActual.toUpperCase(), ANCHO);
+    f = encabezado(ws, f, ["Concepto", "Monto", "Moneda", "En pesos"]);
+
+    d.fijos.forEach((g, i) => {
+      const r = ws.getRow(f);
+      r.height = 19;
+      r.getCell(1).value = g.proveedor;
+      r.getCell(1).font = { name: FUENTE, size: 11 };
+      r.getCell(1).alignment = { vertical: "middle", indent: 1 };
+      r.getCell(2).value = g.montoOriginal;
+      r.getCell(2).numFmt = g.moneda === "USD" ? '"US$ "#,##0' : PESOS;
+      r.getCell(3).value = g.moneda;
+      r.getCell(4).value = Math.round(g.montoARS);
+      r.getCell(4).numFmt = PESOS;
+      [2, 3, 4].forEach((c) => {
+        r.getCell(c).font = { name: FUENTE, size: 11 };
+        r.getCell(c).alignment = {
+          vertical: "middle",
+          horizontal: c === 3 ? "center" : "right",
+          indent: 1,
+        };
+      });
+      if (i % 2 === 1) {
+        for (let cc = 1; cc <= ANCHO; cc++) {
+          r.getCell(cc).fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFF7F8F9" },
+          };
+        }
+      }
+      f++;
+    });
+
+    resultadoEn(
+      ws,
+      f,
+      "TOTAL DE LA ESTRUCTURA",
+      ANCHO,
+      4,
+      -Math.round(d.fijos.reduce((a, g) => a + g.montoARS, 0))
+    );
+  }
+
+  // ═══════════════════════ 5. COBROS ═══════════════════════
+  {
+    const ANCHO = 6;
+    const ws = hoja(wb, "5. Cobros", [28, 12, 16, 13, 16, 16], { y: 5 });
+    let f = titulo(
+      ws,
+      1,
+      "Cada factura",
+      "Lo cobrado alimenta el Resumen. Lo pendiente todavía no es plata que entró.",
+      ANCHO
+    );
+
+    const pendientes = d.cobros.filter((c) => !c.cobrado);
+    const cobradas = d.cobros.filter((c) => c.cobrado);
+
+    if (pendientes.length > 0) {
+      f = seccion(ws, f, "FALTA COBRAR", ANCHO);
+      f = encabezado(ws, f, ["Cliente", "Mes", "Monto", "¿Cobrado?", "Entregó a cuenta", "Saldo"]);
+      pendientes.forEach((c, i) => {
+        f = fila(ws, f, c.cliente, [c.periodo, c.monto, "No", c.aCuenta || null, c.saldo], {
+          rayada: i % 2 === 1,
+        });
+        const r = ws.getRow(f - 1);
+        r.getCell(2).alignment = { vertical: "middle", horizontal: "center" };
+        r.getCell(4).alignment = { vertical: "middle", horizontal: "center" };
+        marcar(r.getCell(6), AMBAR);
+        r.getCell(6).numFmt = PESOS;
+        r.getCell(6).alignment = { vertical: "middle", horizontal: "right", indent: 1 };
+      });
+      f = total(ws, f, "TOTAL PENDIENTE", [
+        null,
+        null,
+        null,
+        null,
+        pendientes.reduce((a, c) => a + c.saldo, 0),
+      ]);
+      f = aire(ws, f);
+    }
+
+    f = seccion(ws, f, `COBRADO EN ${mesActual.toUpperCase()}`, ANCHO);
+    f = encabezado(ws, f, ["Cliente", "Mes", "Monto", "¿Cobrado?", "Fecha de cobro", ""]);
+    cobradas.forEach((c, i) => {
+      f = fila(ws, f, c.cliente, [c.periodo, c.monto, "Sí", c.fechaCobro ?? "—", null], {
+        rayada: i % 2 === 1,
+      });
+      const r = ws.getRow(f - 1);
+      [2, 4, 5].forEach((cc) => {
+        r.getCell(cc).alignment = { vertical: "middle", horizontal: "center" };
+      });
+    });
+    f = total(ws, f, "TOTAL COBRADO", [
+      null,
+      cobradas.reduce((a, c) => a + c.monto, 0),
+    ]);
+  }
+
+  // ═══════════════════════ 6. MOVIMIENTOS ═══════════════════════
+  {
+    const ANCHO = 5;
+    const ws = hoja(wb, "6. Movimientos", [13, 12, 26, 44, 17], { y: 5 });
+    let f = titulo(
+      ws,
+      1,
+      "El libro completo",
+      "Todo lo que entró y salió, del más nuevo al más viejo. Es el respaldo de las hojas anteriores.",
+      ANCHO
+    );
+    f = seccion(ws, f, "MOVIMIENTOS", ANCHO);
+    const filaEncabezado = f;
+    f = encabezado(ws, f, ["Fecha", "Tipo", "Contraparte", "Concepto", "Monto"]);
+
+    d.movimientos.forEach((m, i) => {
+      f = fila(ws, f, m.fecha, [m.tipo, m.contraparte, m.concepto, m.montoARS], {
+        rayada: i % 2 === 1,
+        texto: true,
+      });
+      const r = ws.getRow(f - 1);
+      r.getCell(2).alignment = { vertical: "middle", horizontal: "center" };
+      const monto = r.getCell(5);
+      monto.numFmt = PESOS;
+      monto.alignment = { vertical: "middle", horizontal: "right", indent: 1 };
+      monto.font = {
+        name: FUENTE,
+        size: 11,
+        color: { argb: m.montoARS >= 0 ? VERDE : ROJO },
+      };
+    });
+
+    ws.autoFilter = {
+      from: { row: filaEncabezado, column: 1 },
+      to: { row: filaEncabezado, column: ANCHO },
+    };
   }
 
   const buf = await wb.xlsx.writeBuffer();

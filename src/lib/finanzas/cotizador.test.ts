@@ -4,6 +4,7 @@ import {
   costoDeItems,
   resultadoDePrecio,
   precioParaMargen,
+  precioSinPerdidaPrimerMes,
   prorrateoFijos,
   ITEMS_VACIOS,
   type CostoCotizacion,
@@ -146,6 +147,56 @@ describe("el arranque: lo que solo se paga el primer mes", () => {
     const r = resultadoDePrecio(150_000, soloPauta, rates, { conComisionCierre: false });
     expect(r.arranque).toBe(10_000); // solo el plus del media buyer
     expect(r.margenPrimerMes).toBe(r.margen - 10_000);
+  });
+});
+
+describe("precioSinPerdidaPrimerMes", () => {
+  const conManual = costoDeItems({ ...PRESENCIA, manualMarca: true }, rates);
+
+  it("al precio que devuelve, el primer mes no da pérdida", () => {
+    const piso = precioSinPerdidaPrimerMes(conManual, rates)!;
+    const r = resultadoDePrecio(piso, conManual, rates);
+    expect(r.margenPrimerMes).toBeGreaterThanOrEqual(0);
+  });
+
+  it("un peso menos que el piso sí da pérdida", () => {
+    const piso = precioSinPerdidaPrimerMes(conManual, rates)!;
+    // El piso redondea a los $5.000 de arriba, así que se baja un escalón entero.
+    const r = resultadoDePrecio(piso - 5000, conManual, rates);
+    expect(r.margenPrimerMes).toBeLessThan(0);
+  });
+
+  it("sin comercial el piso es más bajo: no hay comisión que pagar", () => {
+    const conComercial = precioSinPerdidaPrimerMes(conManual, rates)!;
+    const sinComercial = precioSinPerdidaPrimerMes(conManual, rates, {
+      conComisionCierre: false,
+    })!;
+    expect(sinComercial).toBeLessThan(conComercial);
+  });
+
+  it("sin costos de arranque, el piso apenas supera el costo del mes", () => {
+    const sinArranque = costoDeItems({ ...ITEMS_VACIOS, cm: "Presencia" }, rates);
+    const sinComercial = { conComisionCierre: false };
+    const piso = precioSinPerdidaPrimerMes(sinArranque, rates, sinComercial)!;
+    const r = resultadoDePrecio(piso, sinArranque, rates, sinComercial);
+    // Solo queda el plus de la CM.
+    expect(r.margenPrimerMes).toBeGreaterThanOrEqual(0);
+    expect(r.margenPrimerMes).toBeLessThan(10_000);
+  });
+
+  it("🔴 con la comisión real del 15%, un margen del 30% arranca en pérdida", () => {
+    // Es la razón por la que el piso se muestra aparte del margen objetivo: el
+    // margen recurrente puede ser razonable y el mes 1 quedar igual en rojo.
+    const reales = { ...rates, comision_cierre: 0.15, comision_coord_general: 0 };
+    const precio30 = precioParaMargen(conManual.recurrenteSinCoord, 30, reales)!;
+    const piso = precioSinPerdidaPrimerMes(conManual, reales)!;
+    expect(precio30).toBeLessThan(piso);
+    expect(resultadoDePrecio(precio30, conManual, reales).margenPrimerMes).toBeLessThan(0);
+  });
+
+  it("si las comisiones se comen el precio entero, no hay piso posible", () => {
+    const imposible = { ...rates, comision_cierre: 0.9, comision_coordinacion: 0.2 };
+    expect(precioSinPerdidaPrimerMes(conManual, imposible)).toBeNull();
   });
 });
 

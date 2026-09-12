@@ -259,6 +259,7 @@ function lineasDeArranque(
   conComisionCierre: boolean
 ): LineaArranque[] {
   const lineas: LineaArranque[] = [];
+  const pctDiseno = rates.comision_coord_diseno ?? 0;
 
   if (costo.unaVez > 0) {
     lineas.push({
@@ -269,7 +270,6 @@ function lineasDeArranque(
   }
 
   // La coordinación de diseño también cobra su % sobre el manual de marca.
-  const pctDiseno = rates.comision_coord_diseno ?? 0;
   const coordManual = Math.round(costo.unaVez * pctDiseno);
   if (coordManual > 0) {
     lineas.push({
@@ -307,6 +307,50 @@ function lineasDeArranque(
   }
 
   return lineas;
+}
+
+/**
+ * La parte del arranque que NO depende del precio: manual de marca, el % de la
+ * coordinación de diseño sobre ese manual, y el plus de la CM y del media buyer.
+ * La comisión del comercial queda afuera porque sale del precio.
+ */
+function arranqueFijo(costo: CostoCotizacion, rates: AgencyRates): number {
+  const pctDiseno = rates.comision_coord_diseno ?? 0;
+  const plus = rates.plus_primer_mes ?? 0;
+  const personas = (costo.conCM ? 1 : 0) + (costo.conMediaBuyer ? 1 : 0);
+  return costo.unaVez + Math.round(costo.unaVez * pctDiseno) + plus * personas;
+}
+
+/**
+ * El precio más bajo con el que NO se pierde plata el primer mes.
+ *
+ * Es el piso real de una cotización: el dueño lo puso así —"partir de la base
+ * de que no tengo que perder plata nunca"—. Un margen objetivo del 30% puede
+ * sonar razonable y aun así dejar el mes 1 en rojo, porque la comisión del
+ * comercial y el manual de marca se pagan enteros ese mes.
+ *
+ * Se despeja igual que `precioParaMargen`, pero pidiendo que el primer mes dé
+ * cero en vez de un margen:
+ *   precio − (costo + precio·coord) − (arranqueFijo + precio·cierre) = 0
+ *   precio = (costo + arranqueFijo) / (1 − coord − cierre)
+ */
+export function precioSinPerdidaPrimerMes(
+  costo: CostoCotizacion,
+  rates: AgencyRates,
+  opts: {
+    conComisionCierre?: boolean;
+    conCoordinacion?: boolean;
+    conCoordGeneral?: boolean;
+  } = {}
+): number | null {
+  const coord =
+    (opts.conCoordinacion === false ? 0 : (rates.comision_coordinacion ?? 0)) +
+    (opts.conCoordGeneral === false ? 0 : (rates.comision_coord_general ?? 0));
+  const cierre = opts.conComisionCierre === false ? 0 : (rates.comision_cierre ?? 0);
+  const divisor = 1 - coord - cierre;
+  if (divisor <= 0.0001) return null;
+  const precio = (costo.recurrenteSinCoord + arranqueFijo(costo, rates)) / divisor;
+  return Math.ceil(Math.max(precio, 0) / 5000) * 5000;
 }
 
 /**

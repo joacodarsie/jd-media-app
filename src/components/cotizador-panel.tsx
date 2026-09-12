@@ -1,19 +1,25 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Calculator, Info, ChevronDown, Check, X } from "lucide-react";
+import { Calculator, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { AgencyRates, RatePack } from "@/lib/coordinacion";
 import {
   costoDeItems,
   resultadoDePrecio,
   precioParaMargen,
+  precioSinPerdidaPrimerMes,
   type ItemsCotizacion,
 } from "@/lib/finanzas/cotizador";
 import { cn } from "@/lib/utils";
 
 const PACKS: RatePack[] = ["Presencia", "Crecimiento", "Escala", "Personalizado"];
-const OBJETIVOS = [35, 45, 55];
+
+/**
+ * Los márgenes de referencia, dictados por el dueño: 30% es el mínimo real,
+ * 40% lo sano para el pack más básico, 50% lo que conviene apuntar.
+ */
+const OBJETIVOS = [30, 40, 50];
 
 /** Debajo de esto el margen no aguanta un mes con una pieza de más. */
 const MARGEN_FLOJO = 25;
@@ -34,23 +40,14 @@ function ars(n: number) {
  * sumados en un solo número escondía por qué una cuenta que dura poco no se
  * paga sola.
  *
- * Sobre los gastos fijos: NO se descuentan de lo que deja la cuenta, y es a
- * propósito. El monotributo y Canva se pagan igual con o sin este cliente, así
- * que restárselos hace parecer que una cuenta rentable da pérdida y lleva a
- * rechazar plata que conviene tomar. Lo que la cuenta deja es su APORTE; los
- * fijos se muestran aparte, como la vara que ese aporte tiene que superar.
+ * Los gastos fijos NO entran acá, y es a propósito. El monotributo y Canva se
+ * pagan igual con o sin este cliente, así que restárselos hace parecer que una
+ * cuenta rentable da pérdida y lleva a rechazar plata que conviene tomar. Acá
+ * la pregunta es una sola —¿esta cuenta le suma plata a la agencia?—; si la
+ * estructura queda cubierta o no es una pregunta de la cartera entera, y se
+ * responde en Finanzas.
  */
-export function CotizadorPanel({
-  rates,
-  fijosProrrateados,
-  cuentasActivas,
-  fijosMensuales,
-}: {
-  rates: AgencyRates;
-  fijosProrrateados: number;
-  cuentasActivas: number;
-  fijosMensuales: number;
-}) {
+export function CotizadorPanel({ rates }: { rates: AgencyRates }) {
   const [items, setItems] = useState<ItemsCotizacion>({
     reels: 4,
     piezas: 4,
@@ -65,12 +62,8 @@ export function CotizadorPanel({
 
   const costo = useMemo(() => costoDeItems(items, rates), [items, rates]);
   const res = useMemo(
-    () =>
-      resultadoDePrecio(precio, costo, rates, {
-        fijosProrrateados,
-        conComisionCierre: conCierre,
-      }),
-    [precio, costo, rates, fijosProrrateados, conCierre]
+    () => resultadoDePrecio(precio, costo, rates, { conComisionCierre: conCierre }),
+    [precio, costo, rates, conCierre]
   );
 
   const set = <K extends keyof ItemsCotizacion>(k: K, v: ItemsCotizacion[K]) =>
@@ -82,12 +75,28 @@ export function CotizadorPanel({
   const pct = res.margenPct;
   const pctMes1 = precio > 0 ? (mes1 / precio) * 100 : 0;
 
-  // Cuántos meses de la cuenta hacen falta para que lo aportado cubra lo que le
-  // toca de estructura desde que arrancó.
-  const cubreDesde =
-    recurrente > fijosProrrateados
-      ? 1 + Math.max(0, Math.ceil((fijosProrrateados - mes1) / (recurrente - fijosProrrateados)))
-      : null;
+  // El piso de la cotización: el precio más bajo con el que el primer mes no da
+  // pérdida. Todo lo que esté debajo de esto arranca en rojo.
+  const piso = useMemo(
+    () => precioSinPerdidaPrimerMes(costo, rates, { conComisionCierre: conCierre }),
+    [costo, rates, conCierre]
+  );
+
+  // Las referencias de precio, cada una con lo que deja el mes 1 y el mes 2.
+  // Se calculan con el mismo motor que el resto para que no puedan discrepar.
+  const opciones = useMemo(() => {
+    const armar = (etiqueta: string, nota: string, p: number | null) => {
+      if (p == null) return null;
+      const r = resultadoDePrecio(p, costo, rates, { conComisionCierre: conCierre });
+      return { etiqueta, nota, precio: p, mes1: r.margenPrimerMes, mes2: r.margen, pct: r.margenPct };
+    };
+    return [
+      armar("Piso", "no perdés plata ni el primer mes", piso),
+      ...OBJETIVOS.map((obj) =>
+        armar(`${obj}%`, obj === 30 ? "el mínimo real" : obj === 40 ? "lo sano" : "lo bueno", precioParaMargen(costo.recurrenteSinCoord, obj, rates))
+      ),
+    ].filter((o): o is NonNullable<typeof o> => o != null);
+  }, [costo, rates, conCierre, piso]);
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_1.05fr]">
@@ -247,42 +256,13 @@ export function CotizadorPanel({
           ) : null}
         </div>
 
-        {/* La estructura: la vara que el aporte tiene que superar */}
-        <Estructura
-          fijosProrrateados={fijosProrrateados}
-          fijosMensuales={fijosMensuales}
-          cuentasActivas={cuentasActivas}
-          mes1={mes1}
-          recurrente={recurrente}
-          cubreDesde={cubreDesde}
+        {/* Precios de referencia: el piso y los márgenes objetivo */}
+        <QuePrecioPoner
+          opciones={opciones}
+          precioActual={precio}
+          onElegir={setPrecio}
+          piso={piso}
         />
-
-        {/* Precio sugerido por margen objetivo */}
-        <div className="rounded-xl border bg-card p-5">
-          <h3 className="text-sm font-semibold">Qué precio poner</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Para que la cuenta te deje esto <b>del mes 2 en adelante</b>, ya con su parte de la
-            estructura cubierta.
-          </p>
-          <div className="mt-3 grid grid-cols-3 gap-3">
-            {OBJETIVOS.map((obj) => {
-              const p = precioParaMargen(costo.recurrenteSinCoord, obj, rates, fijosProrrateados);
-              return (
-                <button
-                  key={obj}
-                  onClick={() => p && setPrecio(p)}
-                  disabled={!p}
-                  className="rounded-lg border p-3 text-left transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {obj}% para vos
-                  </p>
-                  <p className="mt-1 text-lg font-bold tabular-nums">{p ? ars(p) : "—"}</p>
-                </button>
-              );
-            })}
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -350,102 +330,110 @@ function Dato({ label, valor }: { label: string; valor: string }) {
   );
 }
 
-/**
- * Qué son los gastos fijos y qué tienen que ver con esta cuenta.
- *
- * Es la parte que más confunde, y restarlos del margen de la cuenta era peor
- * que no mostrarlos: hacía parecer que un cliente rentable daba pérdida. Acá se
- * muestran como lo que son — la vara que el aporte de la cuenta tiene que
- * superar para que la agencia gane plata.
- */
-function Estructura({
-  fijosProrrateados,
-  fijosMensuales,
-  cuentasActivas,
-  mes1,
-  recurrente,
-  cubreDesde,
-}: {
-  fijosProrrateados: number;
-  fijosMensuales: number;
-  cuentasActivas: number;
+interface OpcionPrecio {
+  etiqueta: string;
+  nota: string;
+  precio: number;
   mes1: number;
-  recurrente: number;
-  cubreDesde: number | null;
-}) {
-  const cubreRecurrente = recurrente >= fijosProrrateados;
-  const cubreMes1 = mes1 >= fijosProrrateados;
-  const siguiente = cuentasActivas + 1;
-
-  return (
-    <div className="rounded-xl border bg-card p-5">
-      <h3 className="text-sm font-semibold">Su parte de la estructura</h3>
-      <p className="mt-0.5 text-xs text-muted-foreground">
-        Lo de arriba es lo que la cuenta te <b>aporta</b>. Con ese aporte se paga la estructura
-        que existe igual: hoy le tocan <b>{ars(fijosProrrateados)} por mes</b>.
-      </p>
-
-      <ul className="mt-3 space-y-1.5 text-sm">
-        <Tilde ok={cubreMes1}>
-          Mes 1: aporta {ars(mes1)} de los {ars(fijosProrrateados)} que le tocan
-        </Tilde>
-        <Tilde ok={cubreRecurrente}>
-          Mes 2 en adelante: aporta {ars(recurrente)}
-          {cubreRecurrente
-            ? ` — ${ars(recurrente - fijosProrrateados)} limpios para vos`
-            : " — no le alcanza para pagar su parte"}
-        </Tilde>
-      </ul>
-
-      {!cubreMes1 && cubreDesde && cubreDesde > 1 && (
-        <p className="mt-3 text-xs text-muted-foreground">
-          Recién en el <b className="text-foreground">mes {cubreDesde}</b> lo aportado alcanza
-          para cubrir toda la estructura que le tocó desde que arrancó.{" "}
-          <b className="text-foreground">Si se va antes, la pagaste vos.</b>
-        </p>
-      )}
-
-      <details className="group mt-3 border-t pt-3">
-        <summary className="flex cursor-pointer list-none items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-          <ChevronDown className="h-3 w-3 transition-transform group-open:rotate-180" />
-          ¿De dónde sale ese número?
-        </summary>
-        <div className="mt-2 space-y-2 text-xs leading-relaxed text-muted-foreground">
-          <p>
-            Son los gastos que pagás <b>tengas 1 cliente o 20</b>: monotributo, Canva, las
-            licencias de IA, la cuenta propia de JD Media. Hoy suman{" "}
-            <b className="text-foreground">{ars(fijosMensuales)} por mes</b> y se reparten entre
-            las <b className="text-foreground">{cuentasActivas} cuentas activas</b>:{" "}
-            {ars(fijosMensuales)} ÷ {cuentasActivas} ={" "}
-            <b className="text-foreground">{ars(fijosProrrateados)} a cada una</b>.
-          </p>
-          <p>
-            <b className="text-foreground">Por qué no se los resto a la cuenta:</b> estos gastos
-            los pagás con este cliente o sin él. Si se los restara, una cuenta que te deja plata
-            aparecería en rojo y podrías rechazar trabajo que te conviene tomar. Lo que la cuenta
-            deja es su aporte; la estructura es la vara.
-          </p>
-          <p>
-            <b className="text-foreground">Y hay una ventaja escondida:</b> con {siguiente}{" "}
-            cuentas esta cifra baja a {ars(Math.round(fijosMensuales / siguiente))} para{" "}
-            <b>todas</b>. Cada cliente nuevo mejora el resultado de los que ya tenés.
-          </p>
-        </div>
-      </details>
-    </div>
-  );
+  mes2: number;
+  pct: number;
 }
 
-function Tilde({ ok, children }: { ok: boolean; children: React.ReactNode }) {
+/**
+ * Las referencias de precio, con lo que deja cada una el mes 1 y el mes 2.
+ *
+ * La regla que puso el dueño es "no perder plata nunca", y por eso el piso va
+ * primero y aparte: un objetivo de margen razonable puede dejar igual el primer
+ * mes en rojo, porque la comisión del comercial y el manual de marca se pagan
+ * enteros ese mes. Mostrar solo el margen recurrente escondía eso.
+ */
+function QuePrecioPoner({
+  opciones,
+  precioActual,
+  onElegir,
+  piso,
+}: {
+  opciones: OpcionPrecio[];
+  precioActual: number;
+  onElegir: (p: number) => void;
+  piso: number | null;
+}) {
   return (
-    <li className="flex items-start gap-2">
-      {ok ? (
-        <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-      ) : (
-        <X className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+    <div className="rounded-xl border bg-card p-5">
+      <h3 className="text-sm font-semibold">Qué precio poner</h3>
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        Tocá una fila para probarla arriba. El <b>%</b> es lo que te queda del mes 2 en adelante.
+      </p>
+
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-[11px] uppercase tracking-wide text-muted-foreground">
+              <th className="pb-1.5 text-left font-semibold">Precio</th>
+              <th className="pb-1.5 text-right font-semibold">Mes 1</th>
+              <th className="pb-1.5 text-right font-semibold">Mes 2 en adelante</th>
+            </tr>
+          </thead>
+          <tbody>
+            {opciones.map((o) => {
+              const esPiso = piso != null && o.precio === piso && o.etiqueta === "Piso";
+              const enRojo = o.mes1 < 0;
+              return (
+                <tr
+                  key={o.etiqueta}
+                  onClick={() => onElegir(o.precio)}
+                  className={cn(
+                    "cursor-pointer border-b last:border-0 transition-colors hover:bg-muted/60",
+                    o.precio === precioActual && "bg-muted"
+                  )}
+                >
+                  <td className="py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold tabular-nums">{ars(o.precio)}</span>
+                      {esPiso && (
+                        <span className="rounded bg-foreground px-1.5 py-0.5 text-[10px] font-bold uppercase text-background">
+                          Piso
+                        </span>
+                      )}
+                      {!esPiso && (
+                        <span className="text-xs font-semibold text-muted-foreground">
+                          {o.etiqueta}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">{o.nota}</div>
+                  </td>
+                  <td
+                    className={cn(
+                      "py-2 text-right tabular-nums",
+                      enRojo && "font-semibold text-rose-600 dark:text-rose-400"
+                    )}
+                  >
+                    {ars(o.mes1)}
+                    {enRojo && <div className="text-[10px] font-normal">perdés plata</div>}
+                  </td>
+                  <td className="py-2 text-right tabular-nums">
+                    {ars(o.mes2)}
+                    <div className="text-[10px] text-muted-foreground">
+                      {Math.round(o.pct)}% del precio
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {opciones.some((o) => o.mes1 < 0) && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Las filas en rojo tienen un margen mensual razonable pero{" "}
+          <b className="text-foreground">arrancan en pérdida</b>: el manual de marca y la comisión
+          del comercial se pagan enteros el primer mes. Si vas a cobrar ahí, conviene cobrar la
+          puesta en marcha aparte.
+        </p>
       )}
-      <span className="tabular-nums">{children}</span>
-    </li>
+    </div>
   );
 }
 

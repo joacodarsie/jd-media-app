@@ -247,6 +247,13 @@ export default async function FinanzasPage({
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            href={`/finanzas/resumen?m=${period}`}
+            title="Una hoja: cuánto entró, cuánto salió y cuánto quedó"
+            className="inline-flex items-center gap-1.5 rounded-lg border-2 border-primary px-3 py-2 text-sm font-semibold hover:bg-primary/10"
+          >
+            <ClipboardCheck className="h-4 w-4" /> El resumen
+          </Link>
           {isAdmin && (
             <Link
               href="/finanzas/panorama"

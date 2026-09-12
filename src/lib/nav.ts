@@ -119,6 +119,15 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "HandCoins",
         feature: "finanzas",
       },
+      // El resumen va afuera de Finanzas por lo mismo que Cobros: es la hoja
+      // que el dueño mira para saber cómo viene (y la que le muestra a su
+      // familia), y adentro de un menú de doce pantallas no la iba a encontrar.
+      {
+        href: "/finanzas/resumen",
+        label: "El resumen",
+        icon: "FileText",
+        feature: "finanzas",
+      },
       {
         href: "/finanzas",
         label: "Finanzas",

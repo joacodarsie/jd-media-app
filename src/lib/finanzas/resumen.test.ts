@@ -1,0 +1,119 @@
+import { describe, it, expect } from "vitest";
+import {
+  ultimosPeriodos,
+  armarSerie,
+  compararMes,
+  frase,
+  mesesDeAire,
+  type MovimientoARS,
+} from "./resumen";
+
+const movs: MovimientoARS[] = [
+  { fecha: "2026-09-05", montoARS: 350_000, tipo: "cobro" },
+  { fecha: "2026-09-10", montoARS: 650_000, tipo: "cobro" },
+  { fecha: "2026-09-15", montoARS: 400_000, tipo: "equipo" },
+  { fecha: "2026-09-20", montoARS: 100_000, tipo: "gasto" },
+  { fecha: "2026-08-05", montoARS: 800_000, tipo: "cobro" },
+  { fecha: "2026-08-15", montoARS: 500_000, tipo: "equipo" },
+  // Fuera de la ventana: no tiene que sumar en ningún lado.
+  { fecha: "2025-01-05", montoARS: 9_999_999, tipo: "cobro" },
+];
+
+describe("ultimosPeriodos", () => {
+  it("devuelve los meses del más viejo al más nuevo", () => {
+    expect(ultimosPeriodos("2026-09", 3)).toEqual(["2026-07", "2026-08", "2026-09"]);
+  });
+
+  it("cruza el cambio de año sin romperse", () => {
+    expect(ultimosPeriodos("2026-02", 4)).toEqual(["2025-11", "2025-12", "2026-01", "2026-02"]);
+  });
+});
+
+describe("armarSerie", () => {
+  const serie = armarSerie(ultimosPeriodos("2026-09", 3), movs);
+
+  it("suma cada movimiento en su mes y su columna", () => {
+    const sep = serie.find((m) => m.periodo === "2026-09")!;
+    expect(sep.entro).toBe(1_000_000);
+    expect(sep.equipo).toBe(400_000);
+    expect(sep.gastos).toBe(100_000);
+    expect(sep.salio).toBe(500_000);
+    expect(sep.quedo).toBe(500_000);
+    expect(sep.pctQuedo).toBe(50);
+  });
+
+  it("ignora lo que cae fuera de la ventana pedida", () => {
+    expect(serie.reduce((a, m) => a + m.entro, 0)).toBe(1_800_000);
+  });
+
+  it("un mes sin movimientos queda en cero, no se saltea", () => {
+    const jul = serie.find((m) => m.periodo === "2026-07")!;
+    expect(jul.entro).toBe(0);
+    expect(jul.quedo).toBe(0);
+    expect(jul.pctQuedo).toBe(0);
+  });
+});
+
+describe("compararMes", () => {
+  const serie = armarSerie(ultimosPeriodos("2026-09", 3), movs);
+
+  it("compara contra el mes anterior", () => {
+    const c = compararMes(serie, "2026-09")!;
+    expect(c.anterior?.periodo).toBe("2026-08");
+    expect(c.delta).toBe(500_000 - 300_000);
+  });
+
+  it("los meses vacíos NO tiran el promedio para abajo", () => {
+    const c = compararMes(serie, "2026-09")!;
+    // Julio está vacío: promedian solo agosto y septiembre.
+    expect(c.mesesConMovimiento).toBe(2);
+    expect(c.promedio).toBe(400_000);
+  });
+
+  it("un período que no está en la serie devuelve null", () => {
+    expect(compararMes(serie, "2020-01")).toBeNull();
+  });
+});
+
+describe("frase", () => {
+  const serie = armarSerie(ultimosPeriodos("2026-09", 3), movs);
+
+  it("dice cuánto queda de cada $100 y cómo viene contra el mes pasado", () => {
+    const f = frase(compararMes(serie, "2026-09")!);
+    expect(f).toContain("De cada $100");
+    expect(f).toContain("$50");
+    expect(f).toContain("más que el mes pasado");
+  });
+
+  it("cuando se gastó de más lo dice sin vueltas, y sin porcentajes", () => {
+    const enRojo = armarSerie(
+      ["2026-09"],
+      [
+        { fecha: "2026-09-01", montoARS: 100_000, tipo: "cobro" },
+        { fecha: "2026-09-02", montoARS: 400_000, tipo: "equipo" },
+      ]
+    );
+    const f = frase(compararMes(enRojo, "2026-09")!);
+    expect(f).toContain("gastó $300.000 más de lo que cobró");
+    expect(f).not.toContain("%");
+  });
+
+  it("un mes sin datos lo dice, en vez de mostrar ceros como si fueran reales", () => {
+    const vacio = armarSerie(["2026-09"], []);
+    expect(frase(compararMes(vacio, "2026-09")!)).toContain("Todavía no hay movimientos");
+  });
+});
+
+describe("mesesDeAire", () => {
+  it("dice cuántos meses de estructura cubre lo acumulado", () => {
+    expect(mesesDeAire(1_320_000, 660_000)).toBe(2);
+  });
+
+  it("acumulado negativo es cero meses de aire, no un número negativo", () => {
+    expect(mesesDeAire(-500_000, 660_000)).toBe(0);
+  });
+
+  it("sin costo fijo cargado no inventa un número", () => {
+    expect(mesesDeAire(1_000_000, 0)).toBeNull();
+  });
+});

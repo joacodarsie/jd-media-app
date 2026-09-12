@@ -49,12 +49,19 @@ export function CotizadorPanel({
   });
   const [precio, setPrecio] = useState(400000);
   const [conFijos, setConFijos] = useState(true);
+  // Si la venta la cerró el dueño, no hay comisión que pagar. Antes se cobraba
+  // siempre y el primer mes salía más caro de lo que era.
+  const [conCierre, setConCierre] = useState(true);
 
   const costo = useMemo(() => costoDeItems(items, rates), [items, rates]);
   const fijos = conFijos ? fijosProrrateados : 0;
   const res = useMemo(
-    () => resultadoDePrecio(precio, costo, rates, { fijosProrrateados: fijos }),
-    [precio, costo, rates, fijos]
+    () =>
+      resultadoDePrecio(precio, costo, rates, {
+        fijosProrrateados: fijos,
+        conComisionCierre: conCierre,
+      }),
+    [precio, costo, rates, fijos, conCierre]
   );
 
   const set = <K extends keyof ItemsCotizacion>(k: K, v: ItemsCotizacion[K]) =>
@@ -62,7 +69,17 @@ export function CotizadorPanel({
 
   const pctMostrado = conFijos ? res.margenNetoPct : res.margenPct;
   const margenMostrado = conFijos ? res.margenNeto : res.margen;
+  const primerMesMostrado = conFijos ? res.margenPrimerMesNeto : res.margenPrimerMes;
   const tono = margenMostrado < 0 ? "malo" : pctMostrado < 25 ? "flojo" : "bien";
+
+  // Cuántos meses hay que aguantar la cuenta para recuperar el arranque. Es el
+  // número que vuelve tangible la retención: si se va antes, fue pérdida.
+  const mesesParaRecuperar =
+    primerMesMostrado >= 0
+      ? 1
+      : margenMostrado > 0
+        ? 1 + Math.ceil(-primerMesMostrado / margenMostrado)
+        : null;
 
   return (
     <div className="space-y-5">
@@ -144,6 +161,17 @@ export function CotizadorPanel({
                   <span className="shrink-0 tabular-nums">{ars(res.coordinacion)}</span>
                 </li>
               )}
+              {res.coordGeneral > 0 && (
+                <li className="flex items-baseline justify-between gap-3 text-sm">
+                  <span>
+                    Coordinación general{" "}
+                    <span className="text-xs text-muted-foreground">
+                      {Math.round((rates.comision_coord_general ?? 0) * 100)}% del precio
+                    </span>
+                  </span>
+                  <span className="shrink-0 tabular-nums">{ars(res.coordGeneral)}</span>
+                </li>
+              )}
               {conFijos && fijos > 0 && (
                 <li className="flex items-baseline justify-between gap-3 text-sm">
                   <span>
@@ -161,26 +189,10 @@ export function CotizadorPanel({
               </li>
             </ul>
 
-            {costo.lineas.some((l) => l.unaVez) && (
-              <>
-                <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Aparte, una sola vez
-                </p>
-                <ul className="mt-2 space-y-1.5">
-                  {costo.lineas
-                    .filter((l) => l.unaVez)
-                    .map((l) => (
-                      <li key={l.concepto} className="flex items-baseline justify-between gap-3 text-sm">
-                        <span>
-                          {l.concepto}{" "}
-                          <span className="text-xs text-muted-foreground">{l.detalle}</span>
-                        </span>
-                        <span className="shrink-0 tabular-nums">{ars(l.monto)}</span>
-                      </li>
-                    ))}
-                </ul>
-              </>
-            )}
+            <p className="mt-2 text-xs text-muted-foreground">
+              Esto se repite todos los meses. Lo del arranque va aparte, en{" "}
+              <b>El primer mes</b>.
+            </p>
           </div>
         </div>
 
@@ -277,27 +289,64 @@ export function CotizadorPanel({
           {/* Primer mes */}
           <div className="rounded-xl border bg-card p-5">
             <h3 className="text-sm font-semibold">El primer mes</h3>
-            <ul className="mt-2 space-y-1.5 text-sm">
-              <li className="flex justify-between gap-3">
-                <span className="text-muted-foreground">Costos de arranque</span>
-                <span className="tabular-nums">{ars(res.arranque)}</span>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Todo esto se paga <b>una sola vez</b>, al arrancar la cuenta.
+            </p>
+
+            <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={conCierre}
+                onChange={(e) => setConCierre(e.target.checked)}
+                className="h-3.5 w-3.5 accent-primary"
+              />
+              La cerró un comercial (comisión{" "}
+              {Math.round((rates.comision_cierre ?? 0) * 100)}% del primer abono)
+            </label>
+
+            <ul className="mt-3 space-y-1.5 text-sm">
+              {res.arranqueLineas.length === 0 && (
+                <li className="text-xs text-muted-foreground">
+                  Sin costos de arranque: el primer mes deja lo mismo que los demás.
+                </li>
+              )}
+              {res.arranqueLineas.map((l) => (
+                <li key={l.concepto} className="flex items-baseline justify-between gap-3">
+                  <span>
+                    {l.concepto} <span className="text-xs text-muted-foreground">{l.detalle}</span>
+                  </span>
+                  <span className="shrink-0 tabular-nums">− {ars(l.monto)}</span>
+                </li>
+              ))}
+              <li className="flex justify-between gap-3 border-t pt-2 text-sm">
+                <span className="text-muted-foreground">Total del arranque</span>
+                <span className="tabular-nums">− {ars(res.arranque)}</span>
               </li>
-              <li className="flex justify-between gap-3 font-semibold">
+              <li className="flex justify-between gap-3 font-bold">
                 <span>Te queda el primer mes</span>
                 <span
                   className={cn(
                     "tabular-nums",
-                    res.margenPrimerMes < 0 && "text-rose-600 dark:text-rose-400"
+                    primerMesMostrado < 0 && "text-rose-600 dark:text-rose-400"
                   )}
                 >
-                  {ars(res.margenPrimerMes)}
+                  {ars(primerMesMostrado)}
                 </span>
               </li>
             </ul>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Incluye manual de marca, comisión de cierre ({Math.round((rates.comision_cierre ?? 0) * 100)}%)
-              y el plus de primer mes. <b>Si la cuenta se va antes del mes 3, el arranque no se recupera.</b>
-            </p>
+
+            {primerMesMostrado < 0 ? (
+              <p className="mt-3 flex items-start gap-2 text-sm font-semibold text-rose-700 dark:text-rose-300">
+                <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                A este precio el primer mes da pérdida: la cuenta recién empieza a dejar plata
+                desde el mes 2, y hay que aguantarla {mesesParaRecuperar ?? "varios"}{" "}
+                {mesesParaRecuperar === 1 ? "mes" : "meses"} solo para volver a cero.
+              </p>
+            ) : (
+              <p className="mt-3 text-xs text-muted-foreground">
+                <b>Si la cuenta se va antes del mes 3, el arranque no se recupera.</b>
+              </p>
+            )}
           </div>
         </div>
       </div>

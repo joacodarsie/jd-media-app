@@ -6,9 +6,19 @@ import {
   precioParaMargen,
   prorrateoFijos,
   ITEMS_VACIOS,
+  type CostoCotizacion,
 } from "./cotizador";
 
 const rates = DEFAULT_AGENCY_SETTINGS.rates;
+
+/** Una cuenta Presencia de lista: 4 reels, 4 piezas, CM y pauta. */
+const PRESENCIA = {
+  ...ITEMS_VACIOS,
+  reels: 4,
+  piezas: 4,
+  cm: "Presencia" as const,
+  mediaBuyer: "Presencia" as const,
+};
 
 describe("costoDeItems", () => {
   it("sin nada cargado, no cuesta nada", () => {
@@ -19,19 +29,31 @@ describe("costoDeItems", () => {
   });
 
   it("reproduce el Pack Presencia de lista", () => {
-    // 4 reels + 4 piezas + CM y media buyer de Presencia.
-    const c = costoDeItems(
-      { ...ITEMS_VACIOS, reels: 4, piezas: 4, cm: "Presencia", mediaBuyer: "Presencia" },
-      rates
-    );
-    // CM 50.000 + edición 60.000 + portadas 8.000 + diseño 32.000 + media buyer 50.000
-    expect(c.recurrenteSinCoord).toBe(200_000);
+    const c = costoDeItems(PRESENCIA, rates);
+    // CM 50.000 + edición 60.000 + portadas 8.000 + diseño 32.000 +
+    // media buyer 50.000 + coordinación de diseño 2.000
+    expect(c.recurrenteSinCoord).toBe(202_000);
+  });
+
+  it("la coordinación de diseño cobra sobre el diseño del mes, no sobre el precio", () => {
+    const c = costoDeItems(PRESENCIA, rates);
+    expect(c.baseDiseno).toBe(40_000); // 4 piezas + 4 portadas
+    const linea = c.lineas.find((l) => l.concepto === "Coordinación de diseño");
+    expect(linea?.monto).toBe(2_000); // 5% de 40.000
+  });
+
+  it("una cuenta sin diseño no paga coordinación de diseño", () => {
+    const c = costoDeItems({ ...ITEMS_VACIOS, mediaBuyer: "Presencia" }, rates);
+    expect(c.lineas.some((l) => l.concepto === "Coordinación de diseño")).toBe(false);
   });
 
   it("el manual de marca no ensucia el costo mensual", () => {
     const c = costoDeItems({ ...ITEMS_VACIOS, reels: 1, manualMarca: true }, rates);
     expect(c.unaVez).toBe(rates.manual_marca);
-    expect(c.recurrenteSinCoord).toBe(rates.edicion_reel + (rates.portada_reel ?? 0));
+    // Edición + portada + el 5% de coordinación sobre esa portada.
+    expect(c.recurrenteSinCoord).toBe(
+      rates.edicion_reel + (rates.portada_reel ?? 0) + Math.round((rates.portada_reel ?? 0) * 0.05)
+    );
   });
 
   it("las portadas se pueden desacoplar de los reels", () => {
@@ -42,37 +64,25 @@ describe("costoDeItems", () => {
   it("una cuenta sin pauta no paga media buyer", () => {
     const c = costoDeItems({ ...ITEMS_VACIOS, cm: "Presencia", mediaBuyer: null }, rates);
     expect(c.recurrenteSinCoord).toBe(rates.cm.Presencia);
+    expect(c.conMediaBuyer).toBe(false);
+    expect(c.conCM).toBe(true);
   });
 });
 
 describe("resultadoDePrecio", () => {
-  const costo = costoDeItems(
-    { ...ITEMS_VACIOS, reels: 4, piezas: 4, cm: "Presencia", mediaBuyer: "Presencia" },
-    rates
-  );
+  const costo = costoDeItems(PRESENCIA, rates);
 
-  it("da el mismo margen que el pack de lista", () => {
+  it("cobra las dos coordinaciones, que salen del precio", () => {
     const r = resultadoDePrecio(400_000, costo, rates);
-    // 200.000 de equipo + 40.000 de coordinación = 240.000
-    expect(r.costoMensual).toBe(240_000);
-    expect(r.margen).toBe(160_000);
-    expect(Math.round(r.margenPct)).toBe(40);
+    expect(r.coordinacion).toBe(40_000); // 10%
+    expect(r.coordGeneral).toBe(20_000); // 5%
+    expect(r.costoMensual).toBe(262_000);
+    expect(r.margen).toBe(138_000);
   });
 
   it("descuenta los fijos para mostrar lo que queda de verdad", () => {
     const r = resultadoDePrecio(400_000, costo, rates, { fijosProrrateados: 54_000 });
-    expect(r.margenNeto).toBe(106_000);
-  });
-
-  it("el primer mes deja mucho menos por el arranque", () => {
-    const conManual = costoDeItems(
-      { ...ITEMS_VACIOS, reels: 4, piezas: 4, cm: "Presencia", mediaBuyer: "Presencia", manualMarca: true },
-      rates
-    );
-    const r = resultadoDePrecio(400_000, conManual, rates);
-    // arranque = manual 50.000 + cierre 40.000 + plus 10.000
-    expect(r.arranque).toBe(100_000);
-    expect(r.margenPrimerMes).toBe(60_000);
+    expect(r.margenNeto).toBe(84_000);
   });
 
   it("un precio por debajo del costo da margen negativo, no cero", () => {
@@ -80,19 +90,78 @@ describe("resultadoDePrecio", () => {
     expect(r.margen).toBeLessThan(0);
   });
 
-  it("sin coordinación asignada, esa comisión no se cobra", () => {
-    const r = resultadoDePrecio(400_000, costo, rates, { conCoordinacion: false });
+  it("sin coordinación asignada, esas comisiones no se cobran", () => {
+    const r = resultadoDePrecio(400_000, costo, rates, {
+      conCoordinacion: false,
+      conCoordGeneral: false,
+    });
     expect(r.coordinacion).toBe(0);
-    expect(r.costoMensual).toBe(200_000);
+    expect(r.coordGeneral).toBe(0);
+    expect(r.costoMensual).toBe(202_000);
+  });
+});
+
+describe("el arranque: lo que solo se paga el primer mes", () => {
+  const conManual = costoDeItems({ ...PRESENCIA, manualMarca: true }, rates);
+
+  it("el plus lo cobran los DOS: la CM y el media buyer", () => {
+    const r = resultadoDePrecio(400_000, conManual, rates);
+    const plus = r.arranqueLineas.find((l) => l.concepto === "Plus de arranque");
+    expect(plus?.monto).toBe(20_000); // $10.000 cada uno, no $10.000 en total
+  });
+
+  it("sin media buyer, el plus es solo el de la CM", () => {
+    const sinPauta = costoDeItems({ ...PRESENCIA, mediaBuyer: null, manualMarca: true }, rates);
+    const r = resultadoDePrecio(400_000, sinPauta, rates);
+    const plus = r.arranqueLineas.find((l) => l.concepto === "Plus de arranque");
+    expect(plus?.monto).toBe(10_000);
+  });
+
+  it("desglosa el arranque completo de una cuenta Presencia", () => {
+    const r = resultadoDePrecio(400_000, conManual, rates);
+    // manual 50.000 + 5% del manual para coordinación de diseño 2.500 +
+    // comisión del comercial 40.000 + plus 20.000
+    expect(r.arranque).toBe(112_500);
+    expect(r.margenPrimerMes).toBe(25_500);
+  });
+
+  it("si la venta la cerró el dueño, no hay comisión que pagar", () => {
+    const conComercial = resultadoDePrecio(400_000, conManual, rates);
+    const sinComercial = resultadoDePrecio(400_000, conManual, rates, {
+      conComisionCierre: false,
+    });
+    expect(sinComercial.arranque).toBe(conComercial.arranque - 40_000);
+    expect(sinComercial.arranqueLineas.some((l) => l.concepto === "Comisión del comercial")).toBe(
+      false
+    );
+  });
+
+  it("con los fijos descontados, el primer mes de una Presencia da PÉRDIDA", () => {
+    const r = resultadoDePrecio(400_000, conManual, rates, { fijosProrrateados: 55_293 });
+    expect(r.margenPrimerMesNeto).toBeLessThan(0);
+  });
+
+  it("una cuenta sin arranque deja lo mismo el primer mes que los demás", () => {
+    const soloPauta = costoDeItems({ ...ITEMS_VACIOS, mediaBuyer: "Presencia" }, rates);
+    const r = resultadoDePrecio(150_000, soloPauta, rates, { conComisionCierre: false });
+    expect(r.arranque).toBe(10_000); // solo el plus del media buyer
+    expect(r.margenPrimerMes).toBe(r.margen - 10_000);
   });
 });
 
 describe("precioParaMargen", () => {
+  const vacio = (recurrente: number): CostoCotizacion => ({
+    lineas: [],
+    recurrenteSinCoord: recurrente,
+    unaVez: 0,
+    conCM: false,
+    conMediaBuyer: false,
+    baseDiseno: 0,
+  });
+
   it("el precio que devuelve cumple el margen pedido", () => {
-    const costo = 200_000;
-    const precio = precioParaMargen(costo, 40, rates)!;
-    const c = { lineas: [], recurrenteSinCoord: costo, unaVez: 0 };
-    const r = resultadoDePrecio(precio, c, rates);
+    const precio = precioParaMargen(200_000, 40, rates)!;
+    const r = resultadoDePrecio(precio, vacio(200_000), rates);
     // Redondea a los $5.000 de arriba, así que el margen real es ≥ el pedido.
     expect(r.margenPct).toBeGreaterThanOrEqual(40);
     expect(r.margenPct).toBeLessThan(42);
@@ -110,7 +179,7 @@ describe("precioParaMargen", () => {
   });
 
   it("un margen imposible devuelve null en vez de un número absurdo", () => {
-    // 90% de margen + 10% de coordinación no deja nada para el costo.
+    // 90% de margen + 15% de coordinaciones no deja nada para el costo.
     expect(precioParaMargen(200_000, 90, rates)).toBeNull();
     expect(precioParaMargen(200_000, 120, rates)).toBeNull();
   });

@@ -58,7 +58,7 @@ var TINTA_SUAVE = "#6b7280";
 var BLANCO = "#ffffff";
 var LINEA = "#d1d5db";
 
-var FUENTE = "Inter";
+var FUENTE = "Roboto";
 var PESOS = '"$"#,##0;"- $"#,##0';
 var PESOS_USD = '"US$ "#,##0';
 var PCT = "0%;-0%";
@@ -134,12 +134,13 @@ function actualizarInforme() {
       ss.moveActiveSheet(j + 1);
     }
   }
+  var sobrantes = [];
   var todas = ss.getSheets();
   for (var k = 0; k < todas.length; k++) {
-    if (orden.indexOf(todas[k].getName()) === -1 && todas.length > orden.length) {
-      ss.deleteSheet(todas[k]);
-    }
+    if (orden.indexOf(todas[k].getName()) === -1) sobrantes.push(todas[k]);
   }
+  // Google no deja quedarse sin ninguna hoja, pero acá siempre quedan las 7.
+  for (var z = 0; z < sobrantes.length; z++) ss.deleteSheet(sobrantes[z]);
   ss.setActiveSheet(ss.getSheetByName("Cómo leer esto"));
   ss.rename("JD Media · Finanzas · " + mesLargo(d.periodo));
   ss.toast("Informe actualizado.", "JD Media", 5);
@@ -171,6 +172,12 @@ function prepararHoja(ss, nombre, anchos) {
   if (sh.getFrozenColumns() > 0) sh.setFrozenColumns(0);
   // Quitar merges viejos, si no fallan los nuevos.
   sh.getRange(1, 1, Math.max(sh.getMaxRows(), 1), Math.max(sh.getMaxColumns(), 1)).breakApart();
+  // El filtro y las bandas sobreviven a clear(): si no se sacan, la segunda
+  // corrida falla al recrearlos.
+  var filtroViejo = sh.getFilter();
+  if (filtroViejo) filtroViejo.remove();
+  var bandas = sh.getBandings();
+  for (var b = 0; b < bandas.length; b++) bandas[b].remove();
   sh.setHiddenGridlines(true);
   for (var i = 0; i < anchos.length; i++) sh.setColumnWidth(i + 1, anchos[i]);
   // Sacar columnas de más, para que la hoja termine donde termina la tabla.
@@ -275,8 +282,10 @@ function resultado(sh, f, etiqueta, valores, ancho, o) {
   r.setFontColor(BLANCO).setFontWeight("bold");
   sh.getRange(f, 1).setValue(etiqueta).setHorizontalAlignment("left").setFontSize(11);
 
-  // Los valores van en las ÚLTIMAS columnas, alineados con la tabla de arriba.
-  var desde = ancho - valores.length + 1;
+  // Los valores van alineados con la columna de la tabla de arriba: por defecto
+  // las últimas, o desde o.columna cuando la tabla tiene columnas vacías al
+  // final (el total de Cobros va bajo "Monto", no al borde de la hoja).
+  var desde = o.columna ? o.columna : ancho - valores.length + 1;
   var rv = sh.getRange(f, desde, 1, valores.length);
   rv.setValues([valores])
     .setNumberFormat(o.formato || PESOS)
@@ -590,7 +599,6 @@ function hojaResumen(ss, d, meses) {
   f = parrafo(sh, f, "Si los tres dicen «Cierra», los números se verifican solos. Ver la hoja «Cómo leer esto».", ANCHO, { chico: true });
 
   sh.setFrozenRows(2);
-  sh.setFrozenColumns(1);
 }
 
 /** Recorta o rellena una lista de encabezados al ancho de la hoja. */
@@ -698,7 +706,6 @@ function hojaEquipo(ss, d, meses) {
   totales.push(granTotal);
   total(sh, f, "TOTAL", totales, ANCHO);
   sh.setFrozenRows(primera - 1);
-  sh.setFrozenColumns(1);
 }
 
 function hojaGastosFijos(ss, d) {
@@ -786,8 +793,8 @@ function hojaCobros(ss, d) {
     sh.setRowHeight(f, 24);
     f++;
   }
-  resultado(sh, f, "TOTAL COBRADO", [sCobr], ANCHO);
-  sh.setFrozenRows(Math.min(primera - 1, 6));
+  resultado(sh, f, "TOTAL COBRADO", [sCobr], ANCHO, { columna: 3 });
+  sh.setFrozenRows(2);
 }
 
 function hojaMovimientos(ss, d) {

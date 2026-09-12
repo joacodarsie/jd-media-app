@@ -32,14 +32,37 @@ var MES = "";
 
 // ---------------------------------------------------------------------
 
+function actualizarInforme() {
+  var ss = SpreadsheetApp.getActive();
+  ss.toast("Trayendo los numeros...", "JD Media", 15);
+
+  // El codigo que arma el informe vive en la app, no aca: asi se actualiza solo.
+  // Devuelve la funcion de entrada, que recibe los datos y la planilla.
+  var construir = eval(pedirle("/api/finanzas/informe/script"));
+  var datos = JSON.parse(pedirle("/api/finanzas/informe/datos"));
+  construir(datos, ss);
+}
+
+/**
+ * Dibuja el menú. Google la llama sola al abrir la planilla; a mano no puede
+ * correr —no hay interfaz a la que colgarle el menú— así que si alguien aprieta
+ * Ejecutar con esta seleccionada, se avisa en vez de tirar un error críptico.
+ */
 function onOpen() {
-  SpreadsheetApp.getUi()
-    .createMenu("JD Media")
-    .addItem("Actualizar ahora", "actualizarInforme")
-    .addSeparator()
-    .addItem("Actualizar solo, el dia 1 de cada mes", "activarAutomatico")
-    .addItem("Desactivar la actualizacion automatica", "desactivarAutomatico")
-    .addToUi();
+  try {
+    SpreadsheetApp.getUi()
+      .createMenu("JD Media")
+      .addItem("Actualizar ahora", "actualizarInforme")
+      .addSeparator()
+      .addItem("Actualizar solo, el dia 1 de cada mes", "activarAutomatico")
+      .addItem("Desactivar la actualizacion automatica", "desactivarAutomatico")
+      .addToUi();
+  } catch (e) {
+    throw new Error(
+      "onOpen solo corre sola al abrir la planilla. Para generar el informe, " +
+        "elegí la función actualizarInforme en el desplegable de arriba."
+    );
+  }
 }
 
 function activarAutomatico() {
@@ -71,15 +94,4 @@ function pedirle(ruta) {
     throw new Error("La app respondio " + res.getResponseCode() + ": " + res.getContentText());
   }
   return res.getContentText();
-}
-
-function actualizarInforme() {
-  var ss = SpreadsheetApp.getActive();
-  ss.toast("Trayendo los numeros...", "JD Media", 15);
-
-  // El codigo que arma el informe vive en la app, no aca: asi se actualiza solo.
-  // Devuelve la funcion de entrada, que recibe los datos y la planilla.
-  var construir = eval(pedirle("/api/finanzas/informe/script"));
-  var datos = JSON.parse(pedirle("/api/finanzas/informe/datos"));
-  construir(datos, ss);
 }

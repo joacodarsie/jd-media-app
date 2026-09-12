@@ -295,12 +295,12 @@ function lineasDeArranque(
   const plus = rates.plus_primer_mes ?? 0;
   if (plus > 0) {
     const quienes: string[] = [];
-    if (costo.conCM) quienes.push("la CM");
-    if (costo.conMediaBuyer) quienes.push("el media buyer");
+    if (costo.conCM) quienes.push("a la CM");
+    if (costo.conMediaBuyer) quienes.push("al media buyer");
     if (quienes.length > 0) {
       lineas.push({
         concepto: "Plus de arranque",
-        detalle: `$${plus.toLocaleString("es-AR")} a ${quienes.join(" y a ")}`,
+        detalle: `$${plus.toLocaleString("es-AR")} ${quienes.join(" y ")}`,
         monto: plus * quienes.length,
       });
     }

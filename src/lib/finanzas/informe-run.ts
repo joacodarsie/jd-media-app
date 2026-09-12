@@ -4,7 +4,15 @@ import { getExchangeRates } from "@/lib/exchange";
 import { toARS } from "@/lib/finanzas";
 import { mergeSettings, type AgencySettings } from "@/lib/coordinacion";
 import { ultimosPeriodos, armarSerie, type MovimientoARS } from "./resumen";
-import { filasClientes, filasEquipo, cuadres, type ServicioInforme } from "./informe-mensual";
+import {
+  filasClientes,
+  filasEquipo,
+  cuadres,
+  desgloseEquipo,
+  type LineaNomina,
+  type ServicioInforme,
+} from "./informe-mensual";
+import { buildPeriodPayroll } from "@/lib/payroll-period";
 import {
   construirInforme,
   type DatosInforme,
@@ -40,6 +48,7 @@ export async function armarDatos(db: SupabaseClient, periodo: string): Promise<D
     { data: exps },
     { data: svcs },
     { data: settingsRaw },
+    payroll,
     { data: entregas },
     rates,
   ] = await Promise.all([
@@ -64,6 +73,8 @@ export async function armarDatos(db: SupabaseClient, periodo: string): Promise<D
       )
       .eq("activo", true),
     db.from("agency_settings").select("packs, rates").eq("id", 1).maybeSingle(),
+    // La nómina calculada del mes: es la que sabe POR QUÉ cobra cada uno.
+    buildPeriodPayroll(db, periodo),
     // Entregas parciales, para el saldo de cada factura.
     db.from("invoice_payments").select("invoice_id, monto"),
     getExchangeRates(),
@@ -163,6 +174,35 @@ export async function armarDatos(db: SupabaseClient, periodo: string): Promise<D
     periodos
   );
 
+  // ── El desglose del equipo: cuentas en filas, roles en columnas ──
+  const lineas: LineaNomina[] = [];
+  for (const persona of payroll.people) {
+    for (const l of persona.autoLines) {
+      lineas.push({ persona: persona.nombre, cuenta: l.cliente, concepto: l.concepto, monto: l.monto });
+    }
+    for (const it of persona.manualItems) {
+      lineas.push({ persona: persona.nombre, cuenta: it.cliente, concepto: it.concepto, monto: it.monto });
+    }
+  }
+  // Lo PAGADO sale de los pagos registrados del mes, no de la nómina calculada.
+  // Si se usara el total calculado, "falta $0" saldría siempre y la columna no
+  // diría nada: la nómina puede crecer después de pagar (una pieza que se
+  // publicó tarde) y eso es justo lo que hay que ver.
+  const pagadoPorPersona = new Map<string, number>();
+  for (const p of pagos) {
+    if (p.periodo !== periodo) continue;
+    const nombre = p.usuario?.nombre ?? "Sin asignar";
+    pagadoPorPersona.set(nombre, (pagadoPorPersona.get(nombre) ?? 0) + ars(p.monto, p.moneda));
+  }
+  const desglose = desgloseEquipo(
+    lineas,
+    payroll.people.map((p) => ({
+      persona: p.nombre,
+      total: p.total,
+      pagado: pagadoPorPersona.get(p.nombre) ?? 0,
+    }))
+  );
+
   // ── Gastos fijos del mes ──
   const fijos: FilaFijo[] = gastos
     .filter((e) => e.periodo === periodo)
@@ -242,6 +282,7 @@ export async function armarDatos(db: SupabaseClient, periodo: string): Promise<D
     serie,
     clientes,
     equipo,
+    desglose,
     fijos,
     cobros,
     movimientos,

@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { periodLabel } from "@/lib/finanzas";
 import { cascada, type MesResumen } from "./resumen";
-import type { Cuadre, FilaCliente, FilaEquipo } from "./informe-mensual";
+import type { Cuadre, DesglosePersona, FilaCliente, FilaEquipo } from "./informe-mensual";
 import {
   hoja,
   titulo,
@@ -74,6 +74,8 @@ export interface DatosInforme {
   serie: MesResumen[];
   clientes: FilaCliente[];
   equipo: FilaEquipo[];
+  /** Cuentas en filas y roles en columnas, por persona. */
+  desglose: DesglosePersona[];
   fijos: FilaFijo[];
   cobros: FilaCobro[];
   movimientos: FilaMovimiento[];

@@ -6,6 +6,8 @@ import {
   piezasDelServicio,
   mesesDeAntiguedad,
   cuadres,
+  rolDeConcepto,
+  desgloseEquipo,
   asPack,
   type ServicioInforme,
 } from "./informe-mensual";
@@ -187,5 +189,71 @@ describe("cuadres", () => {
       sumaFijosDelMes: 0,
     });
     expect(c[0].cierra).toBe(true);
+  });
+});
+
+describe("rolDeConcepto", () => {
+  it("traduce los conceptos en prosa de la nómina a la columna que corresponde", () => {
+    expect(rolDeConcepto("CM Presencia")).toBe("CM");
+    expect(rolDeConcepto("Media buyer Crecimiento")).toBe("Paid media");
+    expect(rolDeConcepto("Diseño · 4 piezas")).toBe("Diseño");
+    expect(rolDeConcepto("Portadas · 4 reels")).toBe("Portadas");
+    expect(rolDeConcepto("Edición · 4 reels")).toBe("Edición");
+    expect(rolDeConcepto("Coordinación gestión de redes (10%)")).toBe("Coordinación");
+    expect(rolDeConcepto("Coordinación de diseño · 5% del diseño del mes")).toBe("Coord. diseño");
+    expect(rolDeConcepto("Aprobación manual de marca · Magic")).toBe("Manual de marca");
+    expect(rolDeConcepto("Onboarding CM · plus 1er mes")).toBe("Plus 1er mes");
+  });
+
+  it("🔴 coordinación de DISEÑO no se confunde con coordinación a secas", () => {
+    // Las dos tienen la palabra "coordinación": el orden de los ifs importa.
+    expect(rolDeConcepto("Coordinación de diseño · 5%")).not.toBe("Coordinación");
+  });
+
+  it("un concepto desconocido cae en Otros en vez de perderse", () => {
+    expect(rolDeConcepto("Algo que nadie previó")).toBe("Otros");
+  });
+});
+
+describe("desgloseEquipo", () => {
+  const lineas = [
+    { persona: "Luz", cuenta: "Magic", concepto: "Coordinación gestión de redes (10%)", monto: 35_000 },
+    { persona: "Luz", cuenta: "Magic", concepto: "CM Presencia", monto: 50_000 },
+    { persona: "Luz", cuenta: "Boxescar", concepto: "Coordinación gestión de redes (10%)", monto: 25_000 },
+    { persona: "Darío", cuenta: "Magic", concepto: "Diseño · 4 piezas", monto: 32_000 },
+    { persona: "Nadie", cuenta: "Magic", concepto: "Diseño · 0 piezas", monto: 0 },
+  ];
+  const estados = [
+    { persona: "Luz", total: 110_000, pagado: 80_000 },
+    { persona: "Darío", total: 32_000, pagado: 32_000 },
+  ];
+
+  it("arma una tabla por persona: cuentas en filas, roles en columnas", () => {
+    const d = desgloseEquipo(lineas, estados);
+    const luz = d.find((x) => x.persona === "Luz")!;
+    expect(luz.roles).toEqual(["Coordinación", "CM"]);
+    expect(luz.filas.map((f) => f.cuenta)).toEqual(["Magic", "Boxescar"]); // de mayor a menor
+    expect(luz.filas[0].montos["CM"]).toBe(50_000);
+    expect(luz.filas[0].total).toBe(85_000);
+  });
+
+  it("las columnas son por persona: quien hace una sola cosa tiene una sola columna", () => {
+    const d = desgloseEquipo(lineas, estados);
+    expect(d.find((x) => x.persona === "Darío")!.roles).toEqual(["Diseño"]);
+  });
+
+  it("trae Total, Pagado y Falta como en la planilla de honorarios", () => {
+    const luz = desgloseEquipo(lineas, estados).find((x) => x.persona === "Luz")!;
+    expect(luz.total).toBe(110_000);
+    expect(luz.pagado).toBe(80_000);
+    expect(luz.falta).toBe(30_000);
+  });
+
+  it("una línea en $0 no crea una fila ni una columna fantasma", () => {
+    expect(desgloseEquipo(lineas, estados).some((x) => x.persona === "Nadie")).toBe(false);
+  });
+
+  it("ordena de quien más cobra a quien menos", () => {
+    expect(desgloseEquipo(lineas, estados).map((x) => x.persona)).toEqual(["Luz", "Darío"]);
   });
 });

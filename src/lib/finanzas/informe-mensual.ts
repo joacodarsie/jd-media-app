@@ -249,3 +249,131 @@ export function nombreArchivo(periodo: string): string {
 }
 
 export type { AgencyRates };
+
+/**
+ * ── El desglose del equipo, al estilo de la planilla de honorarios ──
+ *
+ * El dueño lleva a mano una planilla donde cada persona tiene su tabla: las
+ * CUENTAS en filas, los ROLES en columnas, y al final Total / Pagado / Falta.
+ * Es el formato que ya sabe leer de un vistazo, y dice algo que "cuánto cobró
+ * este mes" no dice: POR QUÉ cobra eso.
+ *
+ * La nómina calculada tiene esa información, pero con los conceptos escritos
+ * en prosa ("Diseño · 4 piezas", "Coordinación gestión de redes (10%)"). Acá se
+ * traducen a la columna que corresponde.
+ */
+
+/** El rol al que pertenece una línea de la nómina, según cómo está redactada. */
+export function rolDeConcepto(concepto: string): string {
+  const c = concepto.toLowerCase();
+  if (c.startsWith("cm ") || c.includes("community")) return "CM";
+  if (c.includes("media buyer") || c.includes("paid media")) return "Paid media";
+  if (c.startsWith("portadas")) return "Portadas";
+  if (c.startsWith("edición") || c.startsWith("edicion")) return "Edición";
+  if (c.includes("coordinación de diseño") || c.includes("coordinacion de diseño"))
+    return "Coord. diseño";
+  if (c.includes("manual de marca")) return "Manual de marca";
+  if (c.includes("coordinación") || c.includes("coordinacion")) return "Coordinación";
+  if (c.includes("standalone")) return "Diseño standalone";
+  if (c.startsWith("diseño") || c.startsWith("diseno")) return "Diseño";
+  if (c.includes("jornada")) return "Jornada";
+  if (c.includes("plus") || c.includes("onboarding")) return "Plus 1er mes";
+  if (c.includes("comisión") || c.includes("comision")) return "Comisión";
+  if (c.includes("acuerdo fijo")) return "Acuerdo fijo";
+  return "Otros";
+}
+
+/** El orden en que se muestran las columnas de rol. */
+const ORDEN_ROLES = [
+  "Coordinación",
+  "CM",
+  "Paid media",
+  "Diseño",
+  "Portadas",
+  "Edición",
+  "Coord. diseño",
+  "Diseño standalone",
+  "Jornada",
+  "Manual de marca",
+  "Plus 1er mes",
+  "Comisión",
+  "Acuerdo fijo",
+  "Otros",
+];
+
+export interface LineaNomina {
+  persona: string;
+  cuenta: string | null;
+  concepto: string;
+  monto: number;
+}
+
+export interface FilaDesglose {
+  cuenta: string;
+  /** rol → monto. */
+  montos: Record<string, number>;
+  total: number;
+}
+
+export interface DesglosePersona {
+  persona: string;
+  /** Solo los roles que esa persona efectivamente cobra. */
+  roles: string[];
+  filas: FilaDesglose[];
+  total: number;
+  pagado: number;
+  falta: number;
+}
+
+/**
+ * Una tabla por persona: cuentas en filas, roles en columnas.
+ *
+ * Las columnas se calculan por persona, no globales: si alguien solo hace
+ * edición, su tabla tiene una sola columna en vez de catorce vacías. Es la
+ * diferencia entre una tabla que se lee y una que hay que descifrar.
+ */
+export function desgloseEquipo(
+  lineas: LineaNomina[],
+  estados: { persona: string; total: number; pagado: number }[]
+): DesglosePersona[] {
+  const porPersona = new Map<string, Map<string, Record<string, number>>>();
+  const rolesPorPersona = new Map<string, Set<string>>();
+
+  for (const l of lineas) {
+    if (!l.monto) continue;
+    const rol = rolDeConcepto(l.concepto);
+    const cuenta = l.cuenta ?? "Sin cuenta";
+    if (!porPersona.has(l.persona)) porPersona.set(l.persona, new Map());
+    if (!rolesPorPersona.has(l.persona)) rolesPorPersona.set(l.persona, new Set());
+    const cuentas = porPersona.get(l.persona)!;
+    if (!cuentas.has(cuenta)) cuentas.set(cuenta, {});
+    const fila = cuentas.get(cuenta)!;
+    fila[rol] = (fila[rol] ?? 0) + l.monto;
+    rolesPorPersona.get(l.persona)!.add(rol);
+  }
+
+  const estadoDe = new Map(estados.map((e) => [e.persona, e]));
+
+  const out: DesglosePersona[] = [];
+  for (const [persona, cuentas] of porPersona) {
+    const roles = ORDEN_ROLES.filter((r) => rolesPorPersona.get(persona)!.has(r));
+    const filas: FilaDesglose[] = [];
+    for (const [cuenta, montos] of cuentas) {
+      const total = Object.values(montos).reduce((a, v) => a + v, 0);
+      filas.push({ cuenta, montos, total: Math.round(total) });
+    }
+    filas.sort((a, b) => b.total - a.total);
+    const est = estadoDe.get(persona);
+    const total = Math.round(est?.total ?? filas.reduce((a, f) => a + f.total, 0));
+    const pagado = Math.round(est?.pagado ?? 0);
+    out.push({
+      persona,
+      roles,
+      filas,
+      total,
+      pagado,
+      falta: Math.max(0, total - pagado),
+    });
+  }
+  return out.sort((a, b) => b.total - a.total);
+}

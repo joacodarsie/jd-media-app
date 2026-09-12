@@ -381,8 +381,8 @@ function cascada(m) {
 // ─────────────────────────── LAS HOJAS ───────────────────────────
 
 function hojaGuia(ss, d, meses) {
-  var ANCHO = 5;
-  var sh = prepararHoja(ss, "Cómo leer esto", [330, 130, 130, 130, 130]);
+  var ANCHO = 3;
+  var sh = prepararHoja(ss, "Cómo leer esto", [440, 150, 160]);
   var f = titulo(
     sh,
     1,
@@ -424,23 +424,23 @@ function hojaGuia(ss, d, meses) {
   var ult = meses.length ? cascada(meses[meses.length - 1]) : null;
   if (ult) {
     f = seccion(sh, f, "LOS CUATRO PASOS CON TUS NÚMEROS DE " + mesLargo(d.periodo).toUpperCase(), ANCHO);
-    f = encabezado(sh, f, ["", "", "", "En pesos", "De lo que entró"]);
-    f = fila(sh, f, "1.   Entró de los clientes", ["", "", ult.entro, 1], { formato: PESOS });
-    sh.getRange(f - 1, 5).setNumberFormat(PCT);
-    f = fila(sh, f, "2.   Menos la producción del equipo", ["", "", -ult.equipo, -ult.equipo / (ult.entro || 1)], {
+    f = encabezado(sh, f, ["", "En pesos", "De lo que entró"]);
+    f = fila(sh, f, "1.   Entró de los clientes", [ult.entro, 1], { formato: PESOS });
+    sh.getRange(f - 1, 3).setNumberFormat(PCT);
+    f = fila(sh, f, "2.   Menos la producción del equipo", [-ult.equipo, -ult.equipo / (ult.entro || 1)], {
       formato: PESOS,
       rayada: true,
     });
-    sh.getRange(f - 1, 5).setNumberFormat(PCT);
+    sh.getRange(f - 1, 3).setNumberFormat(PCT);
     f = resultado(sh, f, "      = MARGEN DE LA AGENCIA", [ult.margen, ult.margenPct / 100], ANCHO);
-    sh.getRange(f - 1, 5).setNumberFormat(PCT);
-    f = fila(sh, f, "3.   Menos los gastos fijos", ["", "", -ult.fijos, -ult.fijosPct / 100], {
+    sh.getRange(f - 1, 3).setNumberFormat(PCT);
+    f = fila(sh, f, "3.   Menos los gastos fijos", [-ult.fijos, -ult.fijosPct / 100], {
       formato: PESOS,
       rayada: true,
     });
-    sh.getRange(f - 1, 5).setNumberFormat(PCT);
+    sh.getRange(f - 1, 3).setNumberFormat(PCT);
     f = resultado(sh, f, "      = TU SUELDO", [ult.sueldo, ult.sueldoPct / 100], ANCHO);
-    sh.getRange(f - 1, 5).setNumberFormat(PCT);
+    sh.getRange(f - 1, 3).setNumberFormat(PCT);
     f = aire(sh, f);
   }
 
@@ -522,9 +522,10 @@ function hojaGuia(ss, d, meses) {
 }
 
 function hojaResumen(ss, d, meses) {
-  var ANCHO = meses.length + 1;
+  var ANCHO = meses.length + 2;
   var anchos = [300];
   for (var i = 0; i < meses.length; i++) anchos.push(130);
+  anchos.push(140);
   var sh = prepararHoja(ss, "1. Resumen", anchos);
 
   var f = titulo(
@@ -539,10 +540,18 @@ function hojaResumen(ss, d, meses) {
   for (var j = 0; j < meses.length; j++) cas.push(cascada(meses[j]));
   var cabecera = [""];
   for (var k = 0; k < meses.length; k++) cabecera.push(mesCorto(meses[k].periodo));
+  cabecera.push("Promedio");
 
+  var promediar = function (valores) {
+    if (!valores.length) return 0;
+    var s2 = 0;
+    for (var i9 = 0; i9 < valores.length; i9++) s2 += valores[i9];
+    return Math.round(s2 / valores.length);
+  };
   var mapa = function (campo, signo) {
     var out = [];
     for (var i2 = 0; i2 < cas.length; i2++) out.push((signo || 1) * cas[i2][campo]);
+    out.push(promediar(out));
     return out;
   };
 
@@ -571,6 +580,9 @@ function hojaResumen(ss, d, meses) {
   var pctDe = function (campo) {
     var out = [];
     for (var i3 = 0; i3 < cas.length; i3++) out.push(cas[i3][campo] / 100);
+    var s3 = 0;
+    for (var i4 = 0; i4 < out.length; i4++) s3 += out[i4];
+    out.push(out.length ? s3 / out.length : 0);
     return out;
   };
   f = fila(sh, f, "Margen de la agencia", pctDe("margenPct"), { formato: PCT });
@@ -597,6 +609,12 @@ function hojaResumen(ss, d, meses) {
   }
   f = aire(sh, f);
   f = parrafo(sh, f, "Si los tres dicen «Cierra», los números se verifican solos. Ver la hoja «Cómo leer esto».", ANCHO, { chico: true });
+
+  // La columna del promedio va con una línea a la izquierda: es un resumen de
+  // las anteriores, no un mes más.
+  sh.getRange(4, ANCHO, 13, 1).setBorder(
+    null, true, null, null, null, null, TINTA_SUAVE, SpreadsheetApp.BorderStyle.SOLID
+  );
 
   sh.setFrozenRows(2);
 }
@@ -671,41 +689,87 @@ function hojaClientes(ss, d) {
   sh.setFrozenRows(primera - 1);
 }
 
+/**
+ * El equipo, al formato de la planilla de honorarios que el dueño lleva a mano:
+ * una tabla por persona, CUENTAS en filas y ROLES en columnas, con Total,
+ * Pagado y Falta al final. Dice algo que "cuánto cobró este mes" no dice: por
+ * qué cobra eso.
+ */
 function hojaEquipo(ss, d, meses) {
-  var ANCHO = meses.length + 2;
-  var anchos = [220];
-  for (var i = 0; i < meses.length; i++) anchos.push(125);
-  anchos.push(135);
+  // El ancho lo manda la persona con más roles, más Cuenta y Total.
+  var maxRoles = 1;
+  for (var a = 0; a < d.desglose.length; a++) {
+    if (d.desglose[a].roles.length > maxRoles) maxRoles = d.desglose[a].roles.length;
+  }
+  var ANCHO = maxRoles + 2;
+  var anchos = [230];
+  for (var b = 0; b < maxRoles; b++) anchos.push(130);
+  anchos.push(140);
+
   var sh = prepararHoja(ss, "3. Equipo", anchos);
-  var f = titulo(sh, 1, "Lo que cobró cada uno", "Mes por mes, según los pagos registrados.", ANCHO);
+  var f = titulo(
+    sh,
+    1,
+    "Lo que cobra cada uno, y por qué",
+    "Una tabla por persona: las cuentas en filas, los roles en columnas. " + mesLargo(d.periodo) + ".",
+    ANCHO
+  );
 
-  f = seccion(sh, f, "EQUIPO", ANCHO);
-  var cabecera = ["Persona"];
-  for (var j = 0; j < meses.length; j++) cabecera.push(mesCorto(meses[j].periodo));
-  cabecera.push("Total");
-  f = encabezado(sh, f, cabecera);
-  var primera = f;
+  for (var i = 0; i < d.desglose.length; i++) {
+    var p = d.desglose[i];
+    f = seccion(sh, f, p.persona.toUpperCase(), ANCHO);
 
-  for (var k = 0; k < d.equipo.length; k++) {
-    var p = d.equipo[k];
-    var valores = [];
-    for (var m = 0; m < meses.length; m++) valores.push(p.porMes[meses[m].periodo] || "");
-    valores.push(p.total);
-    f = fila(sh, f, p.persona, valores, { formato: PESOS, rayada: k % 2 === 1 });
+    var cab = ["Cuenta"];
+    for (var r = 0; r < p.roles.length; r++) cab.push(p.roles[r]);
+    while (cab.length < ANCHO - 1) cab.push("");
+    cab.push("Total");
+    f = encabezado(sh, f, cab);
+
+    for (var j = 0; j < p.filas.length; j++) {
+      var fi = p.filas[j];
+      var vals = [];
+      for (var k = 0; k < p.roles.length; k++) vals.push(fi.montos[p.roles[k]] || "");
+      while (vals.length < ANCHO - 2) vals.push("");
+      vals.push(fi.total);
+      f = fila(sh, f, fi.cuenta, vals, { formato: PESOS, rayada: j % 2 === 1 });
+      sh.getRange(f - 1, ANCHO).setFontWeight("bold");
+    }
+
+    // Total · Pagado · Falta, como en su planilla.
+    f = resultado(sh, f, "TOTAL DEL MES · " + p.persona.toUpperCase(), [p.total], ANCHO);
+    sh.getRange(f, 1).setValue("Ya le transferiste");
+    sh.getRange(f, ANCHO).setValue(p.pagado).setNumberFormat(PESOS).setHorizontalAlignment("right");
+    sh.setRowHeight(f, 24);
+    f++;
+    sh.getRange(f, 1).setValue("Falta pagarle").setFontWeight("bold");
+    var celdaFalta = sh.getRange(f, ANCHO);
+    celdaFalta.setValue(p.falta).setNumberFormat(PESOS).setHorizontalAlignment("right").setFontWeight("bold");
+    if (p.falta > 0) celdaFalta.setBackground(AMBAR);
+    sh.setRowHeight(f, 24);
+    f++;
+    f = aire(sh, f);
+  }
+
+  // Y al final, el histórico mes a mes, que sigue siendo útil.
+  f = seccion(sh, f, "LO PAGADO, MES A MES", ANCHO);
+  var cabMes = ["Persona"];
+  for (var m1 = 0; m1 < meses.length; m1++) cabMes.push(mesCorto(meses[m1].periodo));
+  while (cabMes.length < ANCHO - 1) cabMes.push("");
+  cabMes.push("Total");
+  f = encabezado(sh, f, cabMes);
+  for (var q = 0; q < d.equipo.length; q++) {
+    var e = d.equipo[q];
+    var v2 = [];
+    for (var m2 = 0; m2 < meses.length; m2++) v2.push(e.porMes[meses[m2].periodo] || "");
+    while (v2.length < ANCHO - 2) v2.push("");
+    v2.push(e.total);
+    f = fila(sh, f, e.persona, v2, { formato: PESOS, rayada: q % 2 === 1 });
     sh.getRange(f - 1, ANCHO).setFontWeight("bold");
   }
-
-  var totales = [];
-  for (var n = 0; n < meses.length; n++) {
-    var s = 0;
-    for (var q = 0; q < d.equipo.length; q++) s += d.equipo[q].porMes[meses[n].periodo] || 0;
-    totales.push(s);
-  }
   var granTotal = 0;
-  for (var r = 0; r < d.equipo.length; r++) granTotal += d.equipo[r].total;
-  totales.push(granTotal);
-  total(sh, f, "TOTAL", totales, ANCHO);
-  sh.setFrozenRows(primera - 1);
+  for (var t = 0; t < d.equipo.length; t++) granTotal += d.equipo[t].total;
+  total(sh, f, "TOTAL", [granTotal], ANCHO);
+  sh.setFrozenRows(2);
 }
 
 function hojaGastosFijos(ss, d) {

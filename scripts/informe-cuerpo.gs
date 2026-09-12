@@ -55,8 +55,17 @@ function prepararHoja(ss, nombre, anchos) {
   var bandas = sh.getBandings();
   for (var b = 0; b < bandas.length; b++) bandas[b].remove();
   sh.setHiddenGridlines(true);
+
+  // Primero AGRANDAR si hace falta. Una corrida anterior pudo haber dejado la
+  // hoja con menos columnas de las que ahora necesita (pasó al sumar la columna
+  // Promedio al Resumen: la hoja tenía 4 y el ancho pedía 5), y pedirle a Sheets
+  // una columna que no existe falla con "Those columns are out of bounds".
+  if (sh.getMaxColumns() < anchos.length) {
+    sh.insertColumnsAfter(sh.getMaxColumns(), anchos.length - sh.getMaxColumns());
+  }
   for (var i = 0; i < anchos.length; i++) sh.setColumnWidth(i + 1, anchos[i]);
-  // Sacar columnas de más, para que la hoja termine donde termina la tabla.
+  // Y recién ahora sacar las que sobran, para que la hoja termine donde termina
+  // la tabla.
   if (sh.getMaxColumns() > anchos.length) {
     sh.deleteColumns(anchos.length + 1, sh.getMaxColumns() - anchos.length);
   }
@@ -398,10 +407,13 @@ function hojaGuia(ss, d, meses) {
 }
 
 function hojaResumen(ss, d, meses) {
-  var ANCHO = meses.length + 2;
+  // El bloque de CONTROL de abajo ocupa 4 columnas siempre, así que la hoja no
+  // puede ser más angosta que eso aunque haya un solo mes con datos.
+  var ANCHO = Math.max(meses.length + 2, 4);
   var anchos = [300];
   for (var i = 0; i < meses.length; i++) anchos.push(130);
   anchos.push(140);
+  while (anchos.length < ANCHO) anchos.push(130);
   var sh = prepararHoja(ss, "1. Resumen", anchos);
 
   var f = titulo(
@@ -577,9 +589,11 @@ function hojaEquipo(ss, d, meses) {
   for (var a = 0; a < d.desglose.length; a++) {
     if (d.desglose[a].roles.length > maxRoles) maxRoles = d.desglose[a].roles.length;
   }
-  var ANCHO = maxRoles + 2;
+  // Abajo va la tabla de "lo pagado mes a mes": la hoja tiene que entrar los dos
+  // bloques, el de roles y el de meses.
+  var ANCHO = Math.max(maxRoles + 2, meses.length + 2);
   var anchos = [230];
-  for (var b = 0; b < maxRoles; b++) anchos.push(130);
+  for (var b = 0; b < ANCHO - 2; b++) anchos.push(130);
   anchos.push(140);
 
   var sh = prepararHoja(ss, "3. Equipo", anchos);

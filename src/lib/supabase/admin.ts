@@ -17,5 +17,13 @@ export function createAdmin() {
   }
   return createAdminClient(url, key, {
     auth: { autoRefreshToken: false, persistSession: false },
+    // Next parchea el fetch global y cachea los GET. Con el service role eso es
+    // siempre un bug: se leen datos viejos sin que nadie se entere. Pasó con el
+    // abono de Magic, que se corrigió en la base y el informe siguió sirviendo
+    // el valor anterior.
+    global: {
+      fetch: (input: RequestInfo | URL, init?: RequestInit) =>
+        fetch(input, { ...init, cache: "no-store" }),
+    },
   });
 }

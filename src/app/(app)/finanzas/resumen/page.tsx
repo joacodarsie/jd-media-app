@@ -17,6 +17,7 @@ import {
 } from "@/lib/finanzas/resumen";
 import { MonthPicker } from "@/components/month-picker";
 import { PrintButton } from "@/components/print-button";
+import { CerrarPagosBoton } from "@/components/cerrar-pagos-boton";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -48,8 +49,15 @@ export default async function ResumenPage({
   const periodos = ultimosPeriodos(periodo, MESES_SERIE);
   const desde = `${periodos[0]}-01`;
 
-  const [{ data: invs }, { data: pays }, { data: exps }, { data: subs }, rates, payroll] =
-    await Promise.all([
+  const [
+    { data: invs },
+    { data: pays },
+    { data: exps },
+    { data: subs },
+    { data: fijosPend },
+    rates,
+    payroll,
+  ] = await Promise.all([
       supabase
         .from("client_invoices")
         .select("monto, moneda, fecha_cobro, cliente:clients(nombre)")
@@ -66,6 +74,13 @@ export default async function ResumenPage({
         .not("fecha_pago", "is", null)
         .gte("fecha_pago", desde),
       supabase.from("subscriptions").select("costo, moneda, ciclo").eq("activa", true),
+      // Los gastos fijos del mes que la app ya generó pero nadie marcó pagados.
+      supabase
+        .from("expenses")
+        .select("monto, moneda")
+        .eq("periodo", periodo)
+        .eq("recurrente", true)
+        .is("fecha_pago", null),
       getExchangeRates(),
       // La nómina CALCULADA del mes. No es lo que se registró como pagado: es
       // lo que el trabajo del mes costó. Sirve para detectar el agujero de
@@ -155,9 +170,12 @@ export default async function ResumenPage({
   // contra la nómina calculada y, si hay diferencia, se dice antes que nada.
   const nominaCalculada = payroll.totalNomina;
   const faltaEquipo = Math.max(0, nominaCalculada - mes.equipo);
-  // La estructura se paga todos los meses; si no hay ningún gasto registrado,
-  // tampoco está contada.
-  const faltaEstructura = mes.gastos === 0 ? estructura : 0;
+  // La estructura: lo que quedó generado como gasto del mes y sin marcar. Es
+  // exacto, no una estimación — si la mitad ya está marcada, solo cuenta la otra.
+  const faltaEstructura = ((fijosPend ?? []) as { monto: number; moneda: string }[]).reduce(
+    (a, g) => a + ars(g.monto, g.moneda),
+    0
+  );
   const faltante = faltaEquipo + faltaEstructura;
   // Solo avisamos si el agujero cambia el resultado de forma relevante.
   const hayAgujero = !sinDatos && faltante > mes.entro * 0.05;
@@ -249,9 +267,14 @@ export default async function ResumenPage({
             )}
           </ul>
           <p className="mt-3 text-xs text-muted-foreground">
-            Son dos minutos: marcar los pagos del equipo y cargar la estructura del mes. Recién
-            ahí esta hoja deja de ser una estimación y se puede mostrar afuera.
+            Si ya les transferiste y la estructura se debitó, dejalo registrado de una. Recién ahí
+            esta hoja deja de ser una estimación y se puede mostrar afuera.
           </p>
+          <CerrarPagosBoton
+            periodo={periodo}
+            etiquetaMes={periodLabel(periodo)}
+            monto={fmtARS(faltante)}
+          />
         </div>
       )}
 

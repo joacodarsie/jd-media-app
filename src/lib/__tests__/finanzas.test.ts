@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   toARS,
+  toARSFijos,
   isOverdue,
   nextPeriod,
   prevPeriod,
@@ -9,18 +10,26 @@ import {
 } from "@/lib/finanzas";
 
 const rates = {
+  // USD es el blue: NO se usa para convertir. Queda distinto de USDC a propósito
+  // para que el test falle si alguien vuelve a convertir dólares con el blue.
   USD: 1000,
   EUR: 1100,
+  USDC: 1200,
   source: "fallback" as const,
   fetchedAt: "2026-06-16T00:00:00.000Z",
 };
 
 describe("toARS", () => {
-  it("convierte USD y EUR a la tasa, ARS queda igual", () => {
-    expect(toARS(100, "USD", rates)).toBe(100_000);
+  it("los dólares van al de Dólar App (USDC), no al blue", () => {
+    // Es la aplicación con la que el dueño paga todo lo que está en dólares.
+    expect(toARS(100, "USD", rates)).toBe(120_000);
     expect(toARS(100, "EUR", rates)).toBe(110_000);
     expect(toARS(100, "ARS", rates)).toBe(100);
     expect(toARS(100, "lo-que-sea", rates)).toBe(100); // desconocida → ARS
+  });
+
+  it("toARSFijos quedó como alias: los dos dólares son el mismo", () => {
+    expect(toARSFijos(100, "USD", rates)).toBe(toARS(100, "USD", rates));
   });
 });
 

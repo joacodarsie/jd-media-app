@@ -39,20 +39,26 @@ export function periodLabel(p: string): string {
   return date.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
 }
 
+/**
+ * Pasa un monto a pesos.
+ *
+ * Los dólares van SIEMPRE al cripto/USDC, que es la cotización de Dólar App —
+ * la aplicación con la que el dueño paga todo lo que está en dólares. Antes
+ * esto usaba el blue y los costos en USD salían ~4% baratos de lo que cuestan
+ * de verdad: una diferencia chica por línea que igual ensucia el margen de
+ * todas las cuentas cuando se prorratea la estructura.
+ */
 export function toARS(monto: number, moneda: string, rates: ExchangeRates): number {
-  const tasa = moneda === "USD" ? rates.USD : moneda === "EUR" ? rates.EUR : 1;
+  const tasa = moneda === "USD" ? rates.USDC : moneda === "EUR" ? rates.EUR : 1;
   return monto * tasa;
 }
 
 /**
- * Igual que `toARS` pero para COSTOS FIJOS / suscripciones: los dólares se
- * convierten con el cripto/USDC (lo que la agencia realmente paga), no con el
- * blue. Usar en la conversión de subscriptions (panorama y ganancia de Finanzas).
+ * @deprecated Quedó como alias de `toARS`: la distinción entre "dólar de los
+ * fijos" y "dólar de todo lo demás" desapareció cuando se unificó todo en el de
+ * Dólar App. Se mantiene para no tocar los ~7 lugares que ya lo llamaban.
  */
-export function toARSFijos(monto: number, moneda: string, rates: ExchangeRates): number {
-  const tasa = moneda === "USD" ? rates.USDC : moneda === "EUR" ? rates.EUR : 1;
-  return monto * tasa;
-}
+export const toARSFijos = toARS;
 
 export function fmtARS(n: number): string {
   return `ARS ${Math.round(n).toLocaleString("es-AR")}`;

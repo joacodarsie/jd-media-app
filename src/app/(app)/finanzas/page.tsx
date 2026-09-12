@@ -294,10 +294,10 @@ export default async function FinanzasPage({
           <MonthPicker value={period} />
           <div className="rounded-lg border bg-card px-3 py-2 text-right">
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              Dólar blue
+              Dólar App
             </div>
             <div className="text-sm font-bold tabular-nums">
-              ARS {rates.USD.toLocaleString("es-AR")}
+              ARS {rates.USDC.toLocaleString("es-AR")}
             </div>
           </div>
         </div>

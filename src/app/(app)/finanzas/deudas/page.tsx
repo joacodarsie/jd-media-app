@@ -68,7 +68,7 @@ export default async function DeudasPage() {
             )}
           </div>
           <div className="text-right text-xs text-muted-foreground">
-            Dólar blue: ARS {rates.USD.toLocaleString("es-AR")}
+            Dólar App: ARS {rates.USDC.toLocaleString("es-AR")}
           </div>
         </CardContent>
       </Card>

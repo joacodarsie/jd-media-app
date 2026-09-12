@@ -43,3 +43,5 @@ next-env.d.ts
 
 # Tooling local de Claude Code (launch.json para preview)
 .claude/
+# Informes generados a mano durante el desarrollo
+/informe.xlsx

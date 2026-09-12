@@ -62,8 +62,8 @@ export async function GET(req: NextRequest) {
         tipo: "recordatorio" as const,
         mensaje:
           `Se cerró ${periodLabel(periodo)}: quedaron pagados los ${res.gastosMarcados} gastos ` +
-          `fijos del mes (${monto}). Si ya les pagaste al equipo, marcalo en El resumen para ` +
-          `que el número quede real.`,
+          `fijos del mes (${monto}). Si ya les pagaste al equipo, marcalo en El resumen y bajate ` +
+          `el informe en Excel, que ya tiene el mes completo.`,
       }));
       if (filas.length > 0) {
         // Si la tabla de notificaciones cambia o falla, el cierre ya se hizo:

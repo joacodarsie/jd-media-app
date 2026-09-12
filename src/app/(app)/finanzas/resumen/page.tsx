@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { ArrowLeft, AlertTriangle, FileSpreadsheet } from "lucide-react";
 import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -210,6 +210,13 @@ export default async function ResumenPage({
         </Link>
         <div className="flex items-center gap-3">
           <MonthPicker value={periodo} />
+          <a
+            href={`/api/finanzas/informe?m=${periodo}`}
+            className="inline-flex items-center gap-1.5 rounded-md border-2 border-emerald-600 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"
+            title="Las 6 hojas con todos los números, para abrir en Excel o subir a Drive"
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5" /> Bajar el informe
+          </a>
           <PrintButton label="Imprimir / PDF" />
         </div>
       </div>

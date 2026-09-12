@@ -111,36 +111,43 @@ export function compararMes(serie: MesResumen[], periodo: string): Comparado | n
 }
 
 /**
- * La frase en castellano que va arriba de todo.
+ * La cascada del mes: de lo que entró a lo que te queda a vos.
  *
- * Es lo que hace que la hoja se entienda sola. Está escrita para que la lea
- * alguien que no conoce el negocio: sin porcentajes sueltos, sin jerga, y
- * diciendo qué significa el número, no solo cuál es.
+ * Es el modelo que el dueño tiene en la cabeza y que la hoja no mostraba: cada
+ * cliente deja un margen después de pagar su producción; con la suma de esos
+ * márgenes se pagan los gastos fijos; lo que sobra es su sueldo. Antes la hoja
+ * juntaba equipo y estructura en un solo "se fue", que escondía los dos
+ * porcentajes que le importan.
  */
-export function frase(c: Comparado): string {
-  const { mes } = c;
-  const plata = (n: number) => `$${Math.abs(Math.round(n)).toLocaleString("es-AR")}`;
+export interface Cascada {
+  entro: number;
+  /** Lo que costó producir: sueldos del equipo. */
+  equipo: number;
+  /** Lo que dejan las cuentas después de pagar su producción. */
+  margenAgencia: number;
+  /** % de lo que entró que queda como margen de la agencia. */
+  margenPct: number;
+  /** La estructura que se paga con ese margen. */
+  fijos: number;
+  fijosPct: number;
+  /** Lo que sobra después de todo: el sueldo del dueño. */
+  tuSueldo: number;
+  tuSueldoPct: number;
+}
 
-  if (mes.entro === 0 && mes.salio === 0) {
-    return "Todavía no hay movimientos cargados en este mes.";
-  }
-  if (mes.quedo < 0) {
-    return `Este mes la agencia gastó ${plata(mes.quedo)} más de lo que cobró. Entraron ${plata(
-      mes.entro
-    )} y se fueron ${plata(mes.salio)} en sueldos y gastos.`;
-  }
-
-  const porCien = Math.round((mes.quedo / mes.entro) * 100);
-  let f =
-    `De cada $100 que cobró la agencia este mes, quedaron $${porCien} ` +
-    `después de pagarle al equipo y cubrir los gastos.`;
-
-  if (c.anterior && (c.anterior.entro > 0 || c.anterior.salio > 0)) {
-    if (c.delta > 0) f += ` Quedó ${plata(c.delta)} más que el mes pasado.`;
-    else if (c.delta < 0) f += ` Quedó ${plata(c.delta)} menos que el mes pasado.`;
-    else f += " Quedó lo mismo que el mes pasado.";
-  }
-  return f;
+export function cascada(mes: MesResumen): Cascada {
+  const pct = (n: number) => (mes.entro > 0 ? (n / mes.entro) * 100 : 0);
+  const margenAgencia = mes.entro - mes.equipo;
+  return {
+    entro: mes.entro,
+    equipo: mes.equipo,
+    margenAgencia,
+    margenPct: pct(margenAgencia),
+    fijos: mes.gastos,
+    fijosPct: pct(mes.gastos),
+    tuSueldo: margenAgencia - mes.gastos,
+    tuSueldoPct: pct(margenAgencia - mes.gastos),
+  };
 }
 
 /**

@@ -3,7 +3,7 @@ import {
   ultimosPeriodos,
   armarSerie,
   compararMes,
-  frase,
+  cascada,
   mesesDeAire,
   type MovimientoARS,
 } from "./resumen";
@@ -75,32 +75,35 @@ describe("compararMes", () => {
   });
 });
 
-describe("frase", () => {
+describe("cascada", () => {
   const serie = armarSerie(ultimosPeriodos("2026-09", 3), movs);
 
-  it("dice cuánto queda de cada $100 y cómo viene contra el mes pasado", () => {
-    const f = frase(compararMes(serie, "2026-09")!);
-    expect(f).toContain("De cada $100");
-    expect(f).toContain("$50");
-    expect(f).toContain("más que el mes pasado");
+  it("va de lo que entró a lo que te queda, con los porcentajes", () => {
+    // Entró 1.000.000 · equipo 400.000 · fijos 100.000
+    const c = cascada(serie.find((m) => m.periodo === "2026-09")!);
+    expect(c.entro).toBe(1_000_000);
+    expect(c.margenAgencia).toBe(600_000);
+    expect(Math.round(c.margenPct)).toBe(60);
+    expect(c.fijos).toBe(100_000);
+    expect(Math.round(c.fijosPct)).toBe(10);
+    expect(c.tuSueldo).toBe(500_000);
+    expect(Math.round(c.tuSueldoPct)).toBe(50);
   });
 
-  it("cuando se gastó de más lo dice sin vueltas, y sin porcentajes", () => {
-    const enRojo = armarSerie(
-      ["2026-09"],
-      [
-        { fecha: "2026-09-01", montoARS: 100_000, tipo: "cobro" },
-        { fecha: "2026-09-02", montoARS: 400_000, tipo: "equipo" },
-      ]
-    );
-    const f = frase(compararMes(enRojo, "2026-09")!);
-    expect(f).toContain("gastó $300.000 más de lo que cobró");
-    expect(f).not.toContain("%");
+  it("el margen de la agencia NO descuenta los fijos: los paga después", () => {
+    // Es la distinción que el dueño pidió ver: primero el margen que dejan las
+    // cuentas, y recién después la estructura que se paga con ese margen.
+    const c = cascada(serie.find((m) => m.periodo === "2026-09")!);
+    expect(c.margenAgencia).toBe(c.tuSueldo + c.fijos);
   });
 
-  it("un mes sin datos lo dice, en vez de mostrar ceros como si fueran reales", () => {
-    const vacio = armarSerie(["2026-09"], []);
-    expect(frase(compararMes(vacio, "2026-09")!)).toContain("Todavía no hay movimientos");
+  it("un mes sin ingresos no divide por cero", () => {
+    const vacio = armarSerie(["2026-09"], [
+      { fecha: "2026-09-01", montoARS: 50_000, tipo: "equipo" as const },
+    ]);
+    const c = cascada(vacio[0]);
+    expect(c.margenPct).toBe(0);
+    expect(c.tuSueldo).toBe(-50_000);
   });
 });
 

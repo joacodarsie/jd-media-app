@@ -10,8 +10,9 @@ import {
   ultimosPeriodos,
   armarSerie,
   compararMes,
-  frase,
+  cascada,
   mesesDeAire,
+  type Cascada as DatosCascada,
   type MesResumen,
   type MovimientoARS,
 } from "@/lib/finanzas/resumen";
@@ -195,7 +196,7 @@ export default async function ResumenPage({
         pctQuedo: mes.entro > 0 ? (quedoReal / mes.entro) * 100 : 0,
       }
     : mes;
-  const compTitular = hayAgujero ? { ...comp, mes: mesTitular, anterior: null, delta: 0 } : comp;
+  const casc = cascada(mesTitular);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 print:max-w-none">
@@ -278,7 +279,7 @@ export default async function ResumenPage({
         </div>
       )}
 
-      {/* La frase: lo primero que se lee, y se entiende sin explicación */}
+      {/* La cascada: de lo que entró a lo que te queda a vos. Es lo primero que se lee. */}
       <div
         className={cn(
           "rounded-xl border-2 p-6",
@@ -289,28 +290,12 @@ export default async function ResumenPage({
               : "border-rose-400 bg-rose-50/60 dark:border-rose-500/40 dark:bg-rose-500/10"
         )}
       >
-        <p className="text-lg font-medium leading-relaxed">{frase(compTitular)}</p>
-
-        {!sinDatos && (
-          <>
-            <div className="mt-5 grid gap-4 sm:grid-cols-3">
-              <Gran label="Entró" valor={mesTitular.entro} tono="neutro" />
-              <Gran label="Se fue" valor={-mesTitular.salio} tono="neutro" />
-              <Gran
-                label="Quedó"
-                valor={mesTitular.quedo}
-                tono={mesTitular.quedo >= 0 ? "bien" : "malo"}
-                destacado
-              />
-            </div>
-            {hayAgujero && (
-              <p className="mt-3 text-xs text-muted-foreground">
-                Lo que se fue incluye {fmtARS(faltante)} que todavía no están cargados como
-                pagados: son los sueldos calculados del mes y la estructura. El detalle de abajo
-                solo muestra lo que sí está registrado.
-              </p>
-            )}
-          </>
+        <Cascada cascada={casc} sinDatos={sinDatos} />
+        {hayAgujero && !sinDatos && (
+          <p className="mt-3 text-xs text-muted-foreground">
+            Incluye {fmtARS(faltante)} que todavía no están cargados como pagados: los sueldos
+            calculados del mes y la estructura. El detalle de abajo solo muestra lo registrado.
+          </p>
         )}
       </div>
 
@@ -436,32 +421,101 @@ function agrupar<T>(
   return [...orden.slice(0, 8), { nombre: `Otros (${orden.length - 8})`, monto: resto }];
 }
 
-function Gran({
+/**
+ * De lo que entró a lo que te queda a vos, en cuatro pasos.
+ *
+ * Los porcentajes son lo importante: el dueño se maneja con ellos —"del mes 2
+ * en adelante tengo un 40% en el pack básico, de ahí pago los fijos y lo que
+ * sobra es mi sueldo"— y son lo que hace comparable un mes con otro aunque
+ * haya facturado distinto.
+ */
+function Cascada({ cascada: c, sinDatos }: { cascada: DatosCascada; sinDatos: boolean }) {
+  if (sinDatos) {
+    return (
+      <p className="text-lg font-medium">Todavía no hay movimientos cargados en este mes.</p>
+    );
+  }
+  return (
+    <>
+      <dl className="space-y-1">
+        <Paso label="Entró" detalle="lo que te pagaron los clientes" monto={c.entro} />
+        <Paso
+          label="Le pagaste al equipo"
+          detalle="producción: diseño, edición, CM, pauta y coordinación"
+          monto={-c.equipo}
+          pct={c.entro > 0 ? -(c.equipo / c.entro) * 100 : 0}
+        />
+        <Paso
+          label="Margen de la agencia"
+          detalle="lo que dejan las cuentas después de pagar su producción"
+          monto={c.margenAgencia}
+          pct={c.margenPct}
+          fuerte
+        />
+        <Paso
+          label="Gastos fijos"
+          detalle="monotributo, plataformas, la cuenta propia: se pagan con ese margen"
+          monto={-c.fijos}
+          pct={-c.fijosPct}
+        />
+      </dl>
+
+      <div className="mt-3 flex flex-wrap items-end justify-between gap-3 border-t-2 pt-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Tu sueldo
+          </p>
+          <p className="text-[11px] text-muted-foreground">lo que sobra después de todo</p>
+        </div>
+        <div className="text-right">
+          <p
+            className={cn(
+              "text-3xl font-bold tabular-nums",
+              c.tuSueldo < 0 && "text-rose-600 dark:text-rose-400"
+            )}
+          >
+            {fmtARS(c.tuSueldo)}
+          </p>
+          <p className="text-sm font-semibold tabular-nums text-muted-foreground">
+            {Math.round(c.tuSueldoPct)}% de lo que entró
+          </p>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function Paso({
   label,
-  valor,
-  tono,
-  destacado,
+  detalle,
+  monto,
+  pct,
+  fuerte,
 }: {
   label: string;
-  valor: number;
-  tono: "neutro" | "bien" | "malo";
-  destacado?: boolean;
+  detalle: string;
+  monto: number;
+  pct?: number;
+  fuerte?: boolean;
 }) {
   return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <p
-        className={cn(
-          "font-bold tabular-nums",
-          destacado ? "text-3xl" : "text-2xl",
-          tono === "bien" && "text-emerald-700 dark:text-emerald-400",
-          tono === "malo" && "text-rose-700 dark:text-rose-400"
+    <div
+      className={cn(
+        "flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5",
+        fuerte && "border-t pt-1.5 font-semibold"
+      )}
+    >
+      <dt className="min-w-0">
+        {label} <span className="text-xs font-normal text-muted-foreground">{detalle}</span>
+      </dt>
+      <dd className="shrink-0 text-right tabular-nums">
+        {fmtARS(monto)}
+        {pct != null && (
+          <span className="ml-2 inline-block w-12 text-xs text-muted-foreground">
+            {Math.round(pct)}%
+          </span>
         )}
-      >
-        {fmtARS(valor)}
-      </p>
+      </dd>
     </div>
   );
 }

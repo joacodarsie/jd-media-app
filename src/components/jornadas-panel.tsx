@@ -31,17 +31,17 @@ import {
   deleteProductionSession,
   type JornadaInput,
 } from "@/app/(app)/coordinacion/jornadas/actions";
-import {
-  computeJornadaSplit,
-  JORNADA_MONTO_DEFAULT,
-  JORNADA_VIATICOS,
-} from "@/lib/jornada";
+import { splitJornada, precioJornada } from "@/lib/jornada";
 
 export interface Jornada {
   id: string;
   fecha: string;
   periodo: string;
+  /** Precio del trabajo, sin viáticos. */
   monto: number;
+  horas: number;
+  viaticos: number;
+  viaticosLosPaga: "cliente" | "agencia";
   clienteId: string | null;
   cliente: string | null;
   lugar: string | null;
@@ -120,7 +120,12 @@ function JornadaCard({
   const [pending, start] = useTransition();
   const directorId = jornada.asistentes[0] ?? null;
   const acompananteId = jornada.asistentes[1] ?? null;
-  const split = computeJornadaSplit(jornada.monto, !!acompananteId);
+  const split = splitJornada({
+    precio: jornada.monto,
+    viaticos: jornada.viaticos,
+    hasAcompanante: !!acompananteId,
+    viaticosLosPaga: jornada.viaticosLosPaga,
+  });
 
   function remove() {
     if (!confirm("¿Eliminar esta jornada? Se descontará de la nómina del mes.")) return;
@@ -222,14 +227,24 @@ function JornadaDialog({
   const nameById = new Map(team.map((t) => [t.id, t.nombre]));
 
   const [fecha, setFecha] = useState(jornada?.fecha ?? today);
-  const [monto, setMonto] = useState(jornada?.monto ?? JORNADA_MONTO_DEFAULT);
+  const [horas, setHoras] = useState(jornada?.horas ?? 1);
+  const [viaticos, setViaticos] = useState(jornada?.viaticos ?? 0);
+  const [viaticosLosPaga, setViaticosLosPaga] = useState<"cliente" | "agencia">(
+    jornada?.viaticosLosPaga ?? "cliente"
+  );
+  const monto = precioJornada(horas);
   const [clienteId, setClienteId] = useState(jornada?.clienteId ?? "");
   const [lugar, setLugar] = useState(jornada?.lugar ?? "");
   const [notas, setNotas] = useState(jornada?.notas ?? "");
   const [directorId, setDirectorId] = useState(jornada?.asistentes?.[0] ?? "");
   const [acompananteId, setAcompananteId] = useState(jornada?.asistentes?.[1] ?? "");
 
-  const split = computeJornadaSplit(monto, !!acompananteId);
+  const split = splitJornada({
+    precio: monto,
+    viaticos,
+    hasAcompanante: !!acompananteId,
+    viaticosLosPaga,
+  });
 
   function submit() {
     if (!directorId) return void toast.error("Elegí quién dirige la jornada.");
@@ -239,6 +254,9 @@ function JornadaDialog({
     const input: JornadaInput = {
       fecha,
       monto,
+      horas,
+      viaticos,
+      viaticosLosPaga,
       clienteId: clienteId || null,
       lugar: lugar || null,
       notas: notas || null,
@@ -279,17 +297,46 @@ function JornadaDialog({
               <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
             </div>
             <div>
-              <Label>Monto cobrado</Label>
+              <Label>Cuántas horas</Label>
               <Input
                 type="number"
-                value={monto || ""}
-                onChange={(e) => setMonto(Number(e.target.value))}
-                placeholder="$"
+                step="0.5"
+                min="0.5"
+                value={horas || ""}
+                onChange={(e) => setHoras(Number(e.target.value))}
               />
               <p className="mt-1 text-[11px] text-muted-foreground">
-                Tarifa: $50.000 la 1ª hora + $25.000 por hora extra + $25.000 de
-                viáticos (1 hora = $75.000).
+                Se cobra <b>{fmt(monto)}</b> · $50.000 la 1ª hora + $25.000 cada extra.
               </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Viáticos</Label>
+              <Input
+                type="number"
+                value={viaticos || ""}
+                onChange={(e) => setViaticos(Number(e.target.value))}
+                placeholder="$0"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Lo que se gastó de verdad. Va entero a quienes fueron.
+              </p>
+            </div>
+            <div>
+              <Label>Los viáticos los paga</Label>
+              <Select
+                value={viaticosLosPaga}
+                onValueChange={(v) => setViaticosLosPaga(v as "cliente" | "agencia")}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cliente">El cliente (se le factura aparte)</SelectItem>
+                  <SelectItem value="agencia">La agencia (sale de la caja)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -354,7 +401,7 @@ function JornadaDialog({
 
           <div className="rounded-lg border bg-muted/30 p-3 text-sm">
             <div className="mb-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
-              Reparto ({fmt(JORNADA_VIATICOS)} de viáticos + resto 50/30/20)
+              Reparto · {fmt(split.viaticos)} de viáticos aparte + {fmt(split.precio)} al 50/30/20
             </div>
             <div className="space-y-1">
               <div className="flex justify-between">

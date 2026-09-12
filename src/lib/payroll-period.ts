@@ -9,7 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { nextPeriod } from "./finanzas";
 import { mergeSettings, serviceDeliveryCost, type AgencySettings } from "./coordinacion";
 import { SERVICE_TYPE_LABEL } from "./constants";
-import { computeJornadaSplit } from "./jornada";
+import { splitJornada } from "./jornada";
 import { isClientPausedFor } from "./client-pause";
 import { cargarAsignaciones } from "./payroll/asignaciones-run";
 import {
@@ -118,7 +118,7 @@ export async function buildPeriodPayroll(
       .eq("periodo", periodo),
     admin
       .from("production_sessions")
-      .select("id, fecha, monto, cliente_id, lugar, asistentes")
+      .select("*")
       .eq("periodo", periodo),
     // Publicaciones aprobadas/publicadas del período → pago por contenido real.
     admin
@@ -416,6 +416,9 @@ export async function buildPeriodPayroll(
     id: string;
     fecha: string;
     monto: number;
+    horas?: number | null;
+    viaticos?: number | null;
+    viaticos_los_paga?: string | null;
     cliente_id: string | null;
     lugar: string | null;
     asistentes: string[];
@@ -425,7 +428,23 @@ export async function buildPeriodPayroll(
     if (asistentes.length === 0) continue;
     const directorId = asistentes[0];
     const acompananteId = asistentes[1] ?? null;
-    const split = computeJornadaSplit(Number(s.monto), !!acompananteId);
+    // Las jornadas cargadas antes de 0163 traían los viáticos adentro del monto;
+    // las nuevas los tienen aparte. Se distingue por la columna nueva.
+    const viaticos = Number(s.viaticos ?? 0) || 0;
+    const tieneCamposNuevos = s.viaticos != null;
+    const split = tieneCamposNuevos
+      ? splitJornada({
+          precio: Number(s.monto),
+          viaticos,
+          hasAcompanante: !!acompananteId,
+          viaticosLosPaga: s.viaticos_los_paga === "agencia" ? "agencia" : "cliente",
+        })
+      : splitJornada({
+          precio: Math.max(0, Number(s.monto) - 25000),
+          viaticos: Math.min(25000, Number(s.monto)),
+          hasAcompanante: !!acompananteId,
+          viaticosLosPaga: "cliente",
+        });
     const detalle = s.lugar ?? new Date(s.fecha + "T12:00:00").toLocaleDateString("es-AR");
     if (!autoByUser.has(directorId)) autoByUser.set(directorId, []);
     autoByUser.get(directorId)!.push({

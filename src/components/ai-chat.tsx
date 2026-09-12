@@ -6,6 +6,8 @@ import {
   MessageCircle,
   Send,
   X,
+  GripVertical,
+  CornerDownRight,
   Loader2,
   Paperclip,
   Mic,
@@ -19,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/markdown";
 import { useDictation } from "@/hooks/use-dictation";
+import { usePanelArrastrable } from "@/components/use-panel-arrastrable";
 
 type AttachmentKind = "image" | "pdf" | "csv";
 
@@ -317,6 +320,15 @@ export function AIChat({
     }
   }
 
+  // El panel se puede correr de lugar y recuerda dónde quedó.
+  const {
+    ref: panelRef,
+    style: estiloPanel,
+    handleProps,
+    movido,
+    volver,
+  } = usePanelArrastrable("jd:panel:asistente");
+
   function handleKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -339,26 +351,49 @@ export function AIChat({
         </button>
       )}
 
+      {/* Sin fondo oscuro y arrastrable a propósito: el asistente sirve mientras
+          mirás la pantalla que tenés detrás, y clavado en la esquina tapando el
+          contenido no se usaba nunca. */}
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-end p-3 sm:p-5">
+        <div className="pointer-events-none fixed inset-0 z-50 flex items-end justify-end p-3 sm:p-5">
           <div
-            className="absolute inset-0 bg-black/30"
-            onClick={() => setOpen(false)}
-          />
-          <div className="relative flex h-[85vh] w-full max-w-md flex-col rounded-xl border bg-card shadow-2xl sm:h-[640px]">
-            <div className="flex items-center justify-between border-b px-4 py-3">
-              <div>
-                <div className="text-sm font-semibold">Asistente JD</div>
-                <div className="text-xs text-muted-foreground">
-                  Tareas, clientes, procesos · acepta imágenes, PDFs, CSV, voz y links
+            ref={panelRef}
+            style={estiloPanel}
+            className="pointer-events-auto relative flex h-[85vh] w-full max-w-md flex-col rounded-xl border bg-card shadow-2xl sm:h-[640px]"
+          >
+            <div
+              {...handleProps}
+              className="flex items-center justify-between border-b px-4 py-3"
+              title="Arrastrame para correr el asistente"
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold">Asistente JD</div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    Tareas, clientes, procesos · acepta imágenes, PDFs, CSV, voz y links
+                  </div>
                 </div>
               </div>
-              <button
-                onClick={() => setOpen(false)}
-                className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <div className="flex shrink-0 items-center gap-1">
+                {movido && (
+                  <button
+                    onClick={volver}
+                    className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label="Volver a la esquina"
+                    title="Volver a la esquina"
+                  >
+                    <CornerDownRight className="h-4 w-4" />
+                  </button>
+                )}
+                <button
+                  onClick={() => setOpen(false)}
+                  className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  aria-label="Cerrar"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3 text-sm">

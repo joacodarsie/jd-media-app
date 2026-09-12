@@ -2,11 +2,11 @@
 
 import { hoyYmd } from "@/lib/dates";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  Banknote,
+  Banknote, GripVertical, CornerDownRight,
   X,
   Loader2,
   ArrowDownCircle,
@@ -46,6 +46,7 @@ import {
 import { registerSubscriptionPayment } from "@/app/(app)/finanzas/suscripciones/actions";
 import { quickPayDebt } from "@/app/(app)/finanzas/debts-actions";
 import { cn } from "@/lib/utils";
+import { usePanelArrastrable } from "@/components/use-panel-arrastrable";
 
 type Mini = { id: string; nombre: string };
 type SubMini = { id: string; nombre: string; costo: number; moneda: string };
@@ -171,7 +172,14 @@ export function QuickCashLauncher({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
-  const panelRef = useRef<HTMLDivElement>(null);
+  // El panel se puede correr: clavado abajo a la derecha tapaba el contenido.
+  const {
+    ref: panelRef,
+    style: estiloPanel,
+    handleProps,
+    movido,
+    volver,
+  } = usePanelArrastrable("jd:panel:carga-rapida");
 
   const [dir, setDir] = useState<Direccion>("in");
   const [salida, setSalida] = useState<Salida>("gasto");
@@ -221,7 +229,7 @@ export function QuickCashLauncher({
       clearTimeout(t);
       document.removeEventListener("mousedown", onClick);
     };
-  }, [open]);
+  }, [open, panelRef]);
 
   // Cargar pendientes al elegir contraparte
   useEffect(() => {
@@ -387,13 +395,30 @@ export function QuickCashLauncher({
   return (
     <div
       ref={panelRef}
+      style={estiloPanel}
       className="fixed bottom-5 right-5 z-50 flex max-h-[80vh] w-[min(360px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border bg-card shadow-2xl"
     >
-      {/* Header */}
-      <div className="flex items-center justify-between border-b px-4 py-3">
+      {/* Header: además de título, es la manija para arrastrar el panel. */}
+      <div
+        {...handleProps}
+        className="flex items-center justify-between border-b px-4 py-3"
+        title="Arrastrame para correr el panel"
+      >
         <div className="flex items-center gap-2 font-semibold">
+          <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
           <Banknote className="h-4 w-4 text-emerald-600" /> Carga rápida
         </div>
+        <div className="flex items-center gap-1">
+        {movido && (
+          <button
+            onClick={volver}
+            className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+            aria-label="Volver a la esquina"
+            title="Volver a la esquina"
+          >
+            <CornerDownRight className="h-4 w-4" />
+          </button>
+        )}
         <button
           onClick={() => setOpen(false)}
           className="rounded-md p-1 text-muted-foreground hover:bg-muted"
@@ -401,6 +426,7 @@ export function QuickCashLauncher({
         >
           <X className="h-4 w-4" />
         </button>
+        </div>
       </div>
 
       {/* Toggle entró / salió */}

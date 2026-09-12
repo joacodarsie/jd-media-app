@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Calculator, Info, ChevronDown } from "lucide-react";
+import { Calculator, Info, ChevronDown, Check, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { AgencyRates, RatePack } from "@/lib/coordinacion";
 import {
@@ -15,6 +15,11 @@ import { cn } from "@/lib/utils";
 const PACKS: RatePack[] = ["Presencia", "Crecimiento", "Escala", "Personalizado"];
 const OBJETIVOS = [35, 45, 55];
 
+/** Debajo de esto el margen no aguanta un mes con una pieza de más. */
+const MARGEN_FLOJO = 25;
+/** El margen que se considera sano para una cuenta de gestión. */
+const MARGEN_SANO = 40;
+
 function ars(n: number) {
   const s = Math.abs(Math.round(n)).toLocaleString("es-AR");
   return `${n < 0 ? "−" : ""}$${s}`;
@@ -23,15 +28,17 @@ function ars(n: number) {
 /**
  * Cotizador a medida.
  *
- * Arma una combinación cualquiera de componentes y responde las dos preguntas
- * que antes se contestaban a ojo: cuánto cuesta entregarlo y qué precio hay que
- * poner.
+ * La pantalla está partida a propósito en dos tiempos: el MES 1 y el MES 2 EN
+ * ADELANTE. Son dos negocios distintos —el primero paga el manual de marca, la
+ * comisión del comercial y el plus de arranque, y los otros no— y verlos
+ * sumados en un solo número escondía por qué una cuenta que dura poco no se
+ * paga sola.
  *
- * La pantalla está partida a propósito en dos columnas de tiempo: el MES 1 y el
- * MES 2 EN ADELANTE. Son dos negocios distintos —el primero paga el manual de
- * marca, la comisión del comercial y el plus de arranque, y los otros no— y
- * mirarlos juntos en un solo número escondía que muchas cuentas arrancan en
- * pérdida y recién se recuperan más adelante.
+ * Sobre los gastos fijos: NO se descuentan de lo que deja la cuenta, y es a
+ * propósito. El monotributo y Canva se pagan igual con o sin este cliente, así
+ * que restárselos hace parecer que una cuenta rentable da pérdida y lleva a
+ * rechazar plata que conviene tomar. Lo que la cuenta deja es su APORTE; los
+ * fijos se muestran aparte, como la vara que ese aporte tiene que superar.
  */
 export function CotizadorPanel({
   rates,
@@ -53,35 +60,34 @@ export function CotizadorPanel({
     otros: 0,
   });
   const [precio, setPrecio] = useState(400000);
-  const [conFijos, setConFijos] = useState(true);
-  // Si la venta la cerró el dueño, no hay comisión que pagar. Antes se cobraba
-  // siempre y el primer mes salía más caro de lo que era.
+  // Si la venta la cerró el dueño, no hay comisión que pagar.
   const [conCierre, setConCierre] = useState(true);
 
   const costo = useMemo(() => costoDeItems(items, rates), [items, rates]);
-  const fijos = conFijos ? fijosProrrateados : 0;
   const res = useMemo(
     () =>
       resultadoDePrecio(precio, costo, rates, {
-        fijosProrrateados: fijos,
+        fijosProrrateados,
         conComisionCierre: conCierre,
       }),
-    [precio, costo, rates, fijos, conCierre]
+    [precio, costo, rates, fijosProrrateados, conCierre]
   );
 
   const set = <K extends keyof ItemsCotizacion>(k: K, v: ItemsCotizacion[K]) =>
     setItems((p) => ({ ...p, [k]: v }));
 
-  const pctMostrado = conFijos ? res.margenNetoPct : res.margenPct;
-  const recurrente = conFijos ? res.margenNeto : res.margen;
-  const primerMes = conFijos ? res.margenPrimerMesNeto : res.margenPrimerMes;
-  const costoDelMes = res.costoMensual + fijos;
-  const tono = recurrente < 0 ? "malo" : pctMostrado < 25 ? "flojo" : "bien";
+  // Lo que la cuenta APORTA, sin restarle los fijos (ver el comentario de arriba).
+  const mes1 = res.margenPrimerMes;
+  const recurrente = res.margen;
+  const pct = res.margenPct;
+  const pctMes1 = precio > 0 ? (mes1 / precio) * 100 : 0;
 
-  // Cuántos meses hay que aguantar la cuenta para recuperar el arranque. Es el
-  // número que vuelve tangible la retención: si se va antes, fue pérdida.
-  const mesesParaRecuperar =
-    primerMes >= 0 ? 1 : recurrente > 0 ? 1 + Math.ceil(-primerMes / recurrente) : null;
+  // Cuántos meses de la cuenta hacen falta para que lo aportado cubra lo que le
+  // toca de estructura desde que arrancó.
+  const cubreDesde =
+    recurrente > fijosProrrateados
+      ? 1 + Math.max(0, Math.ceil((fijosProrrateados - mes1) / (recurrente - fijosProrrateados)))
+      : null;
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_1.05fr]">
@@ -133,209 +139,134 @@ export function CotizadorPanel({
         </div>
 
         {/* ── Todos los meses ── */}
-        <div className="mt-5 border-t pt-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Lo que te cuesta todos los meses
-          </p>
-          <ul className="mt-2 space-y-1.5">
-            {costo.lineas.length === 0 && (
-              <li className="text-sm text-muted-foreground">
-                Cargá algún componente para ver el costo.
-              </li>
-            )}
-            {costo.lineas
-              .filter((l) => !l.unaVez)
-              .map((l) => (
-                <li key={l.concepto} className="flex items-baseline justify-between gap-3 text-sm">
-                  <span>
-                    {l.concepto} <span className="text-xs text-muted-foreground">{l.detalle}</span>
-                  </span>
-                  <span className="shrink-0 tabular-nums">{ars(l.monto)}</span>
-                </li>
-              ))}
-            {res.coordinacion > 0 && (
-              <li className="flex items-baseline justify-between gap-3 text-sm">
-                <span>
-                  Coordinación{" "}
-                  <span className="text-xs text-muted-foreground">
-                    {Math.round((rates.comision_coordinacion ?? 0) * 100)}% del precio
-                  </span>
-                </span>
-                <span className="shrink-0 tabular-nums">{ars(res.coordinacion)}</span>
-              </li>
-            )}
-            {res.coordGeneral > 0 && (
-              <li className="flex items-baseline justify-between gap-3 text-sm">
-                <span>
-                  Coordinación general{" "}
-                  <span className="text-xs text-muted-foreground">
-                    {Math.round((rates.comision_coord_general ?? 0) * 100)}% del precio
-                  </span>
-                </span>
-                <span className="shrink-0 tabular-nums">{ars(res.coordGeneral)}</span>
-              </li>
-            )}
-            {fijos > 0 && (
-              <li className="flex items-baseline justify-between gap-3 text-sm">
-                <span>
-                  Gastos fijos{" "}
-                  <span className="text-xs text-muted-foreground">su parte de la estructura</span>
-                </span>
-                <span className="shrink-0 tabular-nums">{ars(fijos)}</span>
-              </li>
-            )}
-            <li className="flex items-baseline justify-between gap-3 border-t pt-2 text-sm font-bold">
-              <span>Costo del mes</span>
-              <span className="tabular-nums">{ars(costoDelMes)}</span>
+        <Bloque titulo="Lo que te cuesta todos los meses" total={res.costoMensual}>
+          {costo.lineas.length === 0 && (
+            <li className="text-sm text-muted-foreground">
+              Cargá algún componente para ver el costo.
             </li>
-          </ul>
-
-          <ExplicacionFijos
-            conFijos={conFijos}
-            setConFijos={setConFijos}
-            fijosProrrateados={fijosProrrateados}
-            fijosMensuales={fijosMensuales}
-            cuentasActivas={cuentasActivas}
-          />
-        </div>
+          )}
+          {costo.lineas
+            .filter((l) => !l.unaVez)
+            .map((l) => (
+              <Linea key={l.concepto} concepto={l.concepto} detalle={l.detalle} monto={l.monto} />
+            ))}
+          {res.coordinacion > 0 && (
+            <Linea
+              concepto="Coordinación"
+              detalle={`${Math.round((rates.comision_coordinacion ?? 0) * 100)}% del precio`}
+              monto={res.coordinacion}
+            />
+          )}
+          {res.coordGeneral > 0 && (
+            <Linea
+              concepto="Coordinación general"
+              detalle={`${Math.round((rates.comision_coord_general ?? 0) * 100)}% del precio`}
+              monto={res.coordGeneral}
+            />
+          )}
+        </Bloque>
 
         {/* ── Solo el primer mes ── */}
-        <div className="mt-5 border-t pt-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Lo que pagás una sola vez, al arrancar
-          </p>
-
-          <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={conCierre}
-              onChange={(e) => setConCierre(e.target.checked)}
-              className="h-4 w-4 accent-primary"
-            />
-            La cerró un comercial (comisión{" "}
-            {Math.round((rates.comision_cierre ?? 0) * 100)}% del primer abono)
-          </label>
-
-          <ul className="mt-2 space-y-1.5">
-            {res.arranqueLineas.length === 0 && (
-              <li className="text-sm text-muted-foreground">
-                Sin costos de arranque: el primer mes deja lo mismo que los demás.
-              </li>
-            )}
-            {res.arranqueLineas.map((l) => (
-              <li key={l.concepto} className="flex items-baseline justify-between gap-3 text-sm">
-                <span>
-                  {l.concepto} <span className="text-xs text-muted-foreground">{l.detalle}</span>
-                </span>
-                <span className="shrink-0 tabular-nums">{ars(l.monto)}</span>
-              </li>
-            ))}
-            <li className="flex items-baseline justify-between gap-3 border-t pt-2 text-sm font-bold">
-              <span>Costo del arranque</span>
-              <span className="tabular-nums">{ars(res.arranque)}</span>
+        <Bloque titulo="Lo que pagás una sola vez, al arrancar" total={res.arranque}>
+          <li className="pb-1">
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={conCierre}
+                onChange={(e) => setConCierre(e.target.checked)}
+                className="h-4 w-4 accent-primary"
+              />
+              La cerró un comercial (comisión{" "}
+              {Math.round((rates.comision_cierre ?? 0) * 100)}% del primer abono)
+            </label>
+          </li>
+          {res.arranqueLineas.length === 0 && (
+            <li className="text-sm text-muted-foreground">
+              Sin costos de arranque: el primer mes deja lo mismo que los demás.
             </li>
-          </ul>
-        </div>
+          )}
+          {res.arranqueLineas.map((l) => (
+            <Linea key={l.concepto} concepto={l.concepto} detalle={l.detalle} monto={l.monto} />
+          ))}
+        </Bloque>
       </div>
 
-      {/* ══ DERECHA: qué te deja, mes 1 contra mes 2 ══ */}
+      {/* ══ DERECHA: qué te deja ══ */}
       <div className="space-y-4">
-        <div
-          className={cn(
-            "rounded-xl border p-5",
-            tono === "malo"
-              ? "border-rose-400 bg-rose-50 dark:border-rose-500/40 dark:bg-rose-500/10"
-              : tono === "flojo"
-                ? "border-amber-400 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10"
-                : "border-emerald-400 bg-emerald-50 dark:border-emerald-500/40 dark:bg-emerald-500/10"
-          )}
-        >
+        <div className="rounded-xl border bg-card p-5">
           <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Precio al cliente
           </label>
           <div className="mt-1 flex items-center gap-2">
-            <span className="text-2xl font-bold">$</span>
+            <span className="text-2xl font-bold text-muted-foreground">$</span>
             <Input
               value={String(precio)}
               onChange={(e) => setPrecio(Number(e.target.value.replace(/[^\d]/g, "")) || 0)}
-              className="h-11 w-44 text-xl font-bold tabular-nums"
+              className="h-12 w-48 text-2xl font-bold tabular-nums"
               inputMode="numeric"
             />
           </div>
 
-          {/* La comparativa: son dos negocios distintos. */}
-          <table className="mt-4 w-full text-sm">
-            <thead>
-              <tr className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                <th className="pb-1 text-left font-semibold">&nbsp;</th>
-                <th className="pb-1 text-right font-semibold">Mes 1</th>
-                <th className="pb-1 text-right font-semibold">Mes 2 en adelante</th>
-              </tr>
-            </thead>
-            <tbody className="tabular-nums">
-              <Fila label="Precio" mes1={precio} mes2={precio} />
-              <Fila label="Costo del mes" mes1={-costoDelMes} mes2={-costoDelMes} />
-              <Fila
-                label="Costo del arranque"
-                mes1={-res.arranque}
-                mes2={null}
-                nota="manual de marca, comisión y plus"
-              />
-              <tr className="border-t">
-                <td className="pt-2 font-bold">Te queda</td>
-                <td
-                  className={cn(
-                    "pt-2 text-right text-lg font-bold",
-                    primerMes < 0 && "text-rose-600 dark:text-rose-400"
-                  )}
-                >
-                  {ars(primerMes)}
-                </td>
-                <td className="pt-2 text-right text-lg font-bold">{ars(recurrente)}</td>
-              </tr>
-              <tr className="text-xs text-muted-foreground">
-                <td />
-                <td className="text-right">
-                  {precio > 0 ? `${Math.round((primerMes / precio) * 100)}% del precio` : "—"}
-                </td>
-                <td className="text-right">{Math.round(pctMostrado)}% del precio</td>
-              </tr>
-            </tbody>
-          </table>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <Periodo
+              etiqueta="Mes 1"
+              sub="el del arranque"
+              precio={precio}
+              entrega={res.costoMensual}
+              arranque={res.arranque}
+              queda={mes1}
+              pct={pctMes1}
+              acento="arranque"
+            />
+            <Periodo
+              etiqueta="Mes 2 en adelante"
+              sub="el mes normal"
+              precio={precio}
+              entrega={res.costoMensual}
+              arranque={null}
+              queda={recurrente}
+              pct={pct}
+              acento={recurrente < 0 ? "malo" : Math.round(pct) < MARGEN_FLOJO ? "flojo" : "bien"}
+            />
+          </div>
 
-          {primerMes < 0 && (
-            <p className="mt-3 flex items-start gap-2 text-sm font-semibold text-rose-700 dark:text-rose-300">
-              <Info className="mt-0.5 h-4 w-4 shrink-0" />
-              El primer mes da pérdida.{" "}
-              {mesesParaRecuperar
-                ? `Hay que aguantar la cuenta hasta el mes ${mesesParaRecuperar} solo para volver a cero.`
-                : "Con este margen no se recupera nunca."}
-            </p>
-          )}
-          {primerMes >= 0 && recurrente >= 0 && pctMostrado < 25 && (
-            <p className="mt-3 flex items-start gap-2 text-sm font-semibold text-amber-800 dark:text-amber-300">
-              <Info className="mt-0.5 h-4 w-4 shrink-0" />
-              Margen flojo: cualquier mes con una pieza de más lo come entero.
-            </p>
-          )}
-          {recurrente < 0 && (
-            <p className="mt-3 flex items-start gap-2 text-sm font-semibold text-rose-700 dark:text-rose-300">
-              <Info className="mt-0.5 h-4 w-4 shrink-0" />
-              A este precio la cuenta te cuesta plata todos los meses, no solo el primero.
-            </p>
-          )}
+          {recurrente < 0 ? (
+            <Aviso tono="malo">
+              A este precio la cuenta te cuesta plata <b>todos los meses</b>, no solo el primero.
+            </Aviso>
+          ) : Math.round(pct) < MARGEN_FLOJO ? (
+            <Aviso tono="flojo">
+              Margen flojo: debajo del {MARGEN_FLOJO}%, cualquier mes con una pieza de más se lo
+              come entero.
+            </Aviso>
+          ) : Math.round(pct) < MARGEN_SANO ? (
+            <Aviso tono="flojo">
+              Aceptable, pero por debajo del {MARGEN_SANO}% que es lo sano para una cuenta de
+              gestión.
+            </Aviso>
+          ) : null}
         </div>
+
+        {/* La estructura: la vara que el aporte tiene que superar */}
+        <Estructura
+          fijosProrrateados={fijosProrrateados}
+          fijosMensuales={fijosMensuales}
+          cuentasActivas={cuentasActivas}
+          mes1={mes1}
+          recurrente={recurrente}
+          cubreDesde={cubreDesde}
+        />
 
         {/* Precio sugerido por margen objetivo */}
         <div className="rounded-xl border bg-card p-5">
           <h3 className="text-sm font-semibold">Qué precio poner</h3>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Para que la cuenta te deje esto <b>del mes 2 en adelante</b>, ya con su parte de todo
-            descontada.
+            Para que la cuenta te deje esto <b>del mes 2 en adelante</b>, ya con su parte de la
+            estructura cubierta.
           </p>
           <div className="mt-3 grid grid-cols-3 gap-3">
             {OBJETIVOS.map((obj) => {
-              const p = precioParaMargen(costo.recurrenteSinCoord, obj, rates, fijos);
+              const p = precioParaMargen(costo.recurrenteSinCoord, obj, rates, fijosProrrateados);
               return (
                 <button
                   key={obj}
@@ -357,95 +288,224 @@ export function CotizadorPanel({
   );
 }
 
-function Fila({
-  label,
-  mes1,
-  mes2,
-  nota,
+/** Una de las dos columnas de tiempo: mes 1 o mes 2 en adelante. */
+function Periodo({
+  etiqueta,
+  sub,
+  precio,
+  entrega,
+  arranque,
+  queda,
+  pct,
+  acento,
 }: {
-  label: string;
-  mes1: number;
-  mes2: number | null;
-  nota?: string;
+  etiqueta: string;
+  sub: string;
+  precio: number;
+  entrega: number;
+  arranque: number | null;
+  queda: number;
+  pct: number;
+  acento: "arranque" | "bien" | "flojo" | "malo";
 }) {
+  const estilo = {
+    arranque: "border-sky-300 bg-sky-50/70 dark:border-sky-500/30 dark:bg-sky-500/10",
+    bien: "border-emerald-300 bg-emerald-50/70 dark:border-emerald-500/30 dark:bg-emerald-500/10",
+    flojo: "border-amber-300 bg-amber-50/70 dark:border-amber-500/30 dark:bg-amber-500/10",
+    malo: "border-rose-300 bg-rose-50/70 dark:border-rose-500/30 dark:bg-rose-500/10",
+  }[acento];
+
   return (
-    <tr>
-      <td className="py-0.5">
-        {label}
-        {nota && <span className="ml-1 text-xs text-muted-foreground">{nota}</span>}
-      </td>
-      <td className="py-0.5 text-right">{ars(mes1)}</td>
-      <td className="py-0.5 text-right">
-        {mes2 === null ? <span className="text-muted-foreground">—</span> : ars(mes2)}
-      </td>
-    </tr>
+    <div className={cn("rounded-lg border p-4", estilo)}>
+      <p className="text-xs font-semibold uppercase tracking-wide">{etiqueta}</p>
+      <p className="text-[11px] text-muted-foreground">{sub}</p>
+
+      <p
+        className={cn(
+          "mt-2 text-2xl font-bold tabular-nums",
+          queda < 0 && "text-rose-600 dark:text-rose-400"
+        )}
+      >
+        {ars(queda)}
+      </p>
+      <p className="text-xs font-medium text-muted-foreground">
+        {Math.round(pct)}% del precio
+      </p>
+
+      <dl className="mt-3 space-y-0.5 border-t pt-2 text-xs tabular-nums">
+        <Dato label="Precio" valor={ars(precio)} />
+        <Dato label="Costo del mes" valor={`− ${ars(entrega)}`} />
+        {arranque !== null && <Dato label="Costo del arranque" valor={`− ${ars(arranque)}`} />}
+      </dl>
+    </div>
+  );
+}
+
+function Dato({ label, valor }: { label: string; valor: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd>{valor}</dd>
+    </div>
   );
 }
 
 /**
- * Qué son los gastos fijos y por qué aparecen dentro de UNA cotización.
+ * Qué son los gastos fijos y qué tienen que ver con esta cuenta.
  *
- * Es la parte que más confunde: el monotributo o Canva no son de ningún cliente
- * en particular, pero se pagan igual. Si no se reparten, cada cuenta parece
- * dejar más de lo que deja y la suma no cierra con la plata que queda en la
- * cuenta a fin de mes.
+ * Es la parte que más confunde, y restarlos del margen de la cuenta era peor
+ * que no mostrarlos: hacía parecer que un cliente rentable daba pérdida. Acá se
+ * muestran como lo que son — la vara que el aporte de la cuenta tiene que
+ * superar para que la agencia gane plata.
  */
-function ExplicacionFijos({
-  conFijos,
-  setConFijos,
+function Estructura({
   fijosProrrateados,
   fijosMensuales,
   cuentasActivas,
+  mes1,
+  recurrente,
+  cubreDesde,
 }: {
-  conFijos: boolean;
-  setConFijos: (v: boolean) => void;
   fijosProrrateados: number;
   fijosMensuales: number;
   cuentasActivas: number;
+  mes1: number;
+  recurrente: number;
+  cubreDesde: number | null;
 }) {
+  const cubreRecurrente = recurrente >= fijosProrrateados;
+  const cubreMes1 = mes1 >= fijosProrrateados;
+  const siguiente = cuentasActivas + 1;
+
   return (
-    <div className="mt-3 rounded-lg border bg-muted/40 p-3">
-      <label className="flex cursor-pointer items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={conFijos}
-          onChange={(e) => setConFijos(e.target.checked)}
-          className="h-4 w-4 accent-primary"
-        />
-        Cobrarle a esta cuenta su parte de los gastos fijos ({ars(fijosProrrateados)})
-      </label>
-      <details className="group mt-1">
+    <div className="rounded-xl border bg-card p-5">
+      <h3 className="text-sm font-semibold">Su parte de la estructura</h3>
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        Lo de arriba es lo que la cuenta te <b>aporta</b>. Con ese aporte se paga la estructura
+        que existe igual: hoy le tocan <b>{ars(fijosProrrateados)} por mes</b>.
+      </p>
+
+      <ul className="mt-3 space-y-1.5 text-sm">
+        <Tilde ok={cubreMes1}>
+          Mes 1: aporta {ars(mes1)} de los {ars(fijosProrrateados)} que le tocan
+        </Tilde>
+        <Tilde ok={cubreRecurrente}>
+          Mes 2 en adelante: aporta {ars(recurrente)}
+          {cubreRecurrente
+            ? ` — ${ars(recurrente - fijosProrrateados)} limpios para vos`
+            : " — no le alcanza para pagar su parte"}
+        </Tilde>
+      </ul>
+
+      {!cubreMes1 && cubreDesde && cubreDesde > 1 && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Recién en el <b className="text-foreground">mes {cubreDesde}</b> lo aportado alcanza
+          para cubrir toda la estructura que le tocó desde que arrancó.{" "}
+          <b className="text-foreground">Si se va antes, la pagaste vos.</b>
+        </p>
+      )}
+
+      <details className="group mt-3 border-t pt-3">
         <summary className="flex cursor-pointer list-none items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
           <ChevronDown className="h-3 w-3 transition-transform group-open:rotate-180" />
-          ¿Qué son y por qué se los cargo a un cliente?
+          ¿De dónde sale ese número?
         </summary>
         <div className="mt-2 space-y-2 text-xs leading-relaxed text-muted-foreground">
           <p>
             Son los gastos que pagás <b>tengas 1 cliente o 20</b>: monotributo, Canva, las
             licencias de IA, la cuenta propia de JD Media. Hoy suman{" "}
-            <b className="text-foreground">{ars(fijosMensuales)} por mes</b> y no son de ningún
-            cliente en particular.
-          </p>
-          <p>
-            Pero alguien los tiene que pagar, y los pagan los clientes. Así que se reparten en
-            partes iguales entre las{" "}
-            <b className="text-foreground">{cuentasActivas} cuentas activas</b>:{" "}
+            <b className="text-foreground">{ars(fijosMensuales)} por mes</b> y se reparten entre
+            las <b className="text-foreground">{cuentasActivas} cuentas activas</b>:{" "}
             {ars(fijosMensuales)} ÷ {cuentasActivas} ={" "}
             <b className="text-foreground">{ars(fijosProrrateados)} a cada una</b>.
           </p>
           <p>
-            <b className="text-foreground">Para qué sirve:</b> si mirás el margen sin esto, una
-            cuenta puede parecer que te deja $60.000 cuando en realidad te deja $5.000. Con el
-            tilde puesto, la suma de lo que dejan todas las cuentas es la plata que te queda de
-            verdad a fin de mes.
+            <b className="text-foreground">Por qué no se los resto a la cuenta:</b> estos gastos
+            los pagás con este cliente o sin él. Si se los restara, una cuenta que te deja plata
+            aparecería en rojo y podrías rechazar trabajo que te conviene tomar. Lo que la cuenta
+            deja es su aporte; la estructura es la vara.
           </p>
           <p>
-            Ojo con una trampa: si sumás una cuenta más, esta cifra <b>baja para todas</b> (los
-            mismos fijos entre más cuentas). Por eso crecer mejora el margen de las que ya tenés.
+            <b className="text-foreground">Y hay una ventaja escondida:</b> con {siguiente}{" "}
+            cuentas esta cifra baja a {ars(Math.round(fijosMensuales / siguiente))} para{" "}
+            <b>todas</b>. Cada cliente nuevo mejora el resultado de los que ya tenés.
           </p>
         </div>
       </details>
     </div>
+  );
+}
+
+function Tilde({ ok, children }: { ok: boolean; children: React.ReactNode }) {
+  return (
+    <li className="flex items-start gap-2">
+      {ok ? (
+        <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+      ) : (
+        <X className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+      )}
+      <span className="tabular-nums">{children}</span>
+    </li>
+  );
+}
+
+function Aviso({ tono, children }: { tono: "malo" | "flojo"; children: React.ReactNode }) {
+  return (
+    <p
+      className={cn(
+        "mt-3 flex items-start gap-2 text-sm font-medium",
+        tono === "malo"
+          ? "text-rose-700 dark:text-rose-300"
+          : "text-amber-800 dark:text-amber-300"
+      )}
+    >
+      <Info className="mt-0.5 h-4 w-4 shrink-0" />
+      <span>{children}</span>
+    </p>
+  );
+}
+
+function Bloque({
+  titulo,
+  total,
+  children,
+}: {
+  titulo: string;
+  total: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mt-5 border-t pt-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {titulo}
+      </p>
+      <ul className="mt-2 space-y-1.5">
+        {children}
+        <li className="flex items-baseline justify-between gap-3 border-t pt-2 text-sm font-bold">
+          <span>Total</span>
+          <span className="tabular-nums">{ars(total)}</span>
+        </li>
+      </ul>
+    </div>
+  );
+}
+
+function Linea({
+  concepto,
+  detalle,
+  monto,
+}: {
+  concepto: string;
+  detalle: string;
+  monto: number;
+}) {
+  return (
+    <li className="flex items-baseline justify-between gap-3 text-sm">
+      <span>
+        {concepto} <span className="text-xs text-muted-foreground">{detalle}</span>
+      </span>
+      <span className="shrink-0 tabular-nums">{ars(monto)}</span>
+    </li>
   );
 }
 

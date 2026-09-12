@@ -23,10 +23,14 @@ import {
 
 const MESES = 12;
 
-export async function generarInforme(
-  db: SupabaseClient,
-  periodo: string
-): Promise<{ buffer: Buffer; periodo: string }> {
+/**
+ * Junta los datos del informe, sin formato.
+ *
+ * Se separó del armado del .xlsx para que la misma información alimente el
+ * Excel Y el endpoint JSON que consume el script de Google Sheets. Si hubiera
+ * dos armados, las dos salidas podrían discrepar.
+ */
+export async function armarDatos(db: SupabaseClient, periodo: string): Promise<DatosInforme> {
   const periodos = ultimosPeriodos(periodo, MESES);
   const desde = `${periodos[0]}-01`;
 
@@ -257,6 +261,15 @@ export async function generarInforme(
     }),
   };
 
+  return datos;
+}
+
+/** El informe en Excel. */
+export async function generarInforme(
+  db: SupabaseClient,
+  periodo: string
+): Promise<{ buffer: Buffer; periodo: string }> {
+  const datos = await armarDatos(db, periodo);
   return { buffer: await construirInforme(datos), periodo };
 }
 

@@ -8,6 +8,7 @@ import { NextResponse, type NextRequest } from "next/server";
  *  - /c/<token> y /api/c/<token>/* → portal magico del cliente (token propio)
  *  - /contrato/cliente, /diagnostico/cliente, /plan/cliente → PDFs publicos por id
  *  - /api/cron/* → endpoints de Vercel Cron, autenticados via Bearer CRON_SECRET
+ *  - /api/finanzas/informe/datos → lo lee el script de Google Sheets, con INFORME_TOKEN
  */
 const PUBLIC_PATHS = [
   "/login",
@@ -35,6 +36,9 @@ const PUBLIC_PATHS = [
   // la seguridad está en el `state` firmado.
   "/api/tiktok/callback",
   "/api/cron/",
+  // El informe en JSON lo consume el script de Google Sheets del dueño, que no
+  // tiene sesión de navegador: se autentica con INFORME_TOKEN en la propia ruta.
+  "/api/finanzas/informe/datos",
   // Páginas legales públicas (requeridas por TikTok/Meta para el alta de la app).
   "/privacidad",
   "/terminos",

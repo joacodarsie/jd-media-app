@@ -1,6 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import {
+  campoParaLink,
+  chequearLinkParaPublicar,
+  type LinksDePieza,
+} from "@/lib/contenidos/link-publicado";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { requireUser, isStaffUser, userInRoles } from "@/lib/auth";
@@ -168,7 +173,13 @@ export async function updatePublication(id: string, input: PublicationInput) {
   return { ok: true };
 }
 
-export async function changePublicationStatus(id: string, estado: string, notas?: string) {
+export async function changePublicationStatus(
+  id: string,
+  estado: string,
+  notas?: string,
+  /** Link del posteo. Obligatorio al pasar a "publicado" (ver link-publicado). */
+  linkPosteo?: string | null
+) {
   const admin = writeDb();
   // Traemos la cuenta de la pieza para verificar que quien cambia el estado sea
   // del EQUIPO de esa cuenta (o staff). Antes lo hacía la RLS, pero como un CM
@@ -185,7 +196,28 @@ export async function changePublicationStatus(id: string, estado: string, notas?
         "No tenés permiso para cambiar el estado de esta pieza. Solo el equipo de esa cuenta (CM, diseño, edición, coordinación) puede.",
     };
   }
+  // "Publicado" sin link es una afirmación que nadie puede comprobar: no se
+  // puede abrir el posteo, ni medir qué repercusión tuvo, ni ponerlo en el
+  // informe. Al 13/9 había 438 piezas publicadas y CERO con link.
+  const piezaLinks = pub as unknown as {
+    red: string | null;
+    created_at: string | null;
+  } & LinksDePieza;
+  const chequeo = chequearLinkParaPublicar({
+    estadoNuevo: estado,
+    estadoAnterior: pub.estado as string,
+    pieza: piezaLinks,
+    creadaEn: piezaLinks.created_at,
+    linkNuevo: linkPosteo,
+  });
+  if (chequeo.motivo) return { error: chequeo.motivo, faltaLink: true };
+
   const patch: Record<string, unknown> = { estado, ...selloDeRevision(estado, pub.estado) };
+  // El link nuevo va a la columna de la red de la pieza, para no sumar una
+  // séptima columna de link a las seis que ya hay.
+  if (linkPosteo && linkPosteo.trim()) {
+    patch[campoParaLink(piezaLinks.red)] = linkPosteo.trim();
+  }
   if (notas !== undefined) patch.notas_revision = notas?.trim() || null;
   const { error } = await updateTolerandoSello(
     (p) => admin.from("publications").update(p).eq("id", id),
@@ -436,6 +468,45 @@ export async function bulkChangePublicationStatus(ids: string[], estado: string)
   if (!ids.length) return { ok: true };
   const gate = await ensureCalendarEditor();
   if (gate) return { error: gate };
+
+  // Marcar "publicado" en bloque no puede ser la puerta de atrás del link: si
+  // el candado solo viviera en el cambio de a una, bastaría con seleccionar
+  // todo para saltearlo, y eso es justo lo que termina pasando.
+  if (estado === "publicado") {
+    const { data: piezas } = await writeDb()
+      .from("publications")
+      .select(
+        "id, titulo, estado, created_at, link_instagram, link_tiktok, link_facebook, link_publicacion, publicacion_url, ig_permalink"
+      )
+      .in("id", ids);
+    const filas = (piezas ?? []) as unknown as (LinksDePieza & {
+      titulo: string | null;
+      estado: string;
+      created_at: string | null;
+    })[];
+    const sinLink = filas.filter(
+      (x) =>
+        chequearLinkParaPublicar({
+          estadoNuevo: "publicado",
+          estadoAnterior: x.estado,
+          pieza: x,
+          creadaEn: x.created_at,
+        }).motivo !== null
+    );
+    if (sinLink.length > 0) {
+      const nombres = sinLink.slice(0, 3).map((x) => x.titulo ?? "sin título").join(", ");
+      return {
+        error:
+          sinLink.length +
+          " pieza(s) no tienen el link del posteo: " +
+          nombres +
+          (sinLink.length > 3 ? "…" : "") +
+          ". Marcalas de a una para cargarlo.",
+        faltaLink: true,
+      };
+    }
+  }
+
   const { error } = await updateTolerandoSello(
     (p) => writeDb().from("publications").update(p).in("id", ids),
     { estado, ...selloDeRevision(estado) }

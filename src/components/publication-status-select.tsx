@@ -43,6 +43,7 @@ export function PublicationStatusSelect({
   const [pending, start] = useTransition();
   const [pendingNote, setPendingNote] = useState<PublicationStatus | null>(null);
   const [notes, setNotes] = useState("");
+  const [linkPosteo, setLinkPosteo] = useState("");
   const [inlineError, setInlineError] = useState<string | null>(null);
   // Estado local optimista: refleja el estado mostrado en el SelectTrigger
   // sin esperar a que el padre rerenderice tras router.refresh().
@@ -56,14 +57,15 @@ export function PublicationStatusSelect({
     setLocalEstado(publication.estado);
   }, [publication.estado]);
 
-  function apply(target: PublicationStatus, finalNote?: string) {
+  function apply(target: PublicationStatus, finalNote?: string, link?: string) {
     setInlineError(null);
     start(async () => {
       try {
         const res = await changePublicationStatus(
           publication.id,
           target,
-          finalNote
+          finalNote,
+          link ?? null
         );
         if (res?.error) {
           const msg = "No se pudo cambiar: " + res.error;
@@ -77,6 +79,7 @@ export function PublicationStatusSelect({
         toast.success("Estado: " + PUBLICATION_STATUS_LABEL[target]);
         setPendingNote(null);
         setNotes("");
+        setLinkPosteo("");
         router.refresh();
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Error desconocido";
@@ -89,6 +92,13 @@ export function PublicationStatusSelect({
   function onChange(target: string) {
     const t = target as PublicationStatus;
     if (t === localEstado) return;
+    // "Publicado" pide el link del posteo. Es el mismo gesto que ya existe
+    // para "pedir cambios": se abre un campito abajo en vez de un diálogo.
+    if (t === "publicado") {
+      setPendingNote(t);
+      setInlineError(null);
+      return;
+    }
     if (t === "rechazado") {
       setPendingNote(t);
       setInlineError(null);
@@ -130,6 +140,58 @@ export function PublicationStatusSelect({
           ))}
         </SelectContent>
       </Select>
+
+      {pendingNote === "publicado" && (
+        <div className="space-y-2 rounded-md border bg-muted/30 p-2">
+          <p className="text-xs font-medium">
+            Pegá el link del posteo para marcarla publicada:
+          </p>
+          <input
+            autoFocus
+            value={linkPosteo}
+            onChange={(e) => setLinkPosteo(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && linkPosteo.trim() && !pending) {
+                apply("publicado", undefined, linkPosteo);
+              }
+            }}
+            placeholder="https://www.instagram.com/p/…"
+            className="w-full rounded-md border bg-background p-2 text-xs"
+            disabled={pending}
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Sirve para abrir el posteo de una y para medir qué repercusión tuvo en el
+            informe del cliente.
+          </p>
+          {inlineError && (
+            <p className="rounded bg-red-100 px-2 py-1 text-[11px] text-red-700 dark:bg-red-950/40 dark:text-red-300">
+              {inlineError}
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setPendingNote(null);
+                setLinkPosteo("");
+                setInlineError(null);
+              }}
+              disabled={pending}
+              className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={() => apply("publicado", undefined, linkPosteo)}
+              disabled={pending || !linkPosteo.trim()}
+              className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50"
+            >
+              Marcar publicada
+            </button>
+          </div>
+        </div>
+      )}
 
       {pendingNote === "rechazado" && (
         <div className="space-y-2 rounded-md border bg-muted/30 p-2">

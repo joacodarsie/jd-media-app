@@ -257,3 +257,59 @@ describe("desgloseEquipo", () => {
     expect(desgloseEquipo(lineas, estados).map((x) => x.persona)).toEqual(["Luz", "Darío"]);
   });
 });
+
+describe("los acuerdos fijos y la coordinación", () => {
+  it("🔴 un acuerdo fijo le gana al modelo de tarifas", () => {
+    // Dr Dionisi: $200.000 acordados con la coordinadora. El informe le
+    // calculaba $236.800 por piezas y mostraba un margen que no existía.
+    const [f] = filasClientes(
+      [svc({ monto_mensual: 300_000, pack: "Personalizado", costo_override: 200_000 })],
+      settings,
+      "2026-09"
+    );
+    // acuerdo 200.000 + media buyer 50.000
+    expect(f.costoEntrega).toBe(250_000);
+    expect(f.coordinacion).toBe(30_000); // 10% del abono
+    expect(f.margen).toBe(20_000);
+  });
+
+  it("el acuerdo fijo cubre la producción, pero la pauta se paga igual", () => {
+    const conPauta = filasClientes(
+      [svc({ costo_override: 140_000, media_buyer_aplica: true })],
+      settings,
+      "2026-09"
+    )[0];
+    const sinPauta = filasClientes(
+      [svc({ costo_override: 140_000, media_buyer_aplica: false })],
+      settings,
+      "2026-09"
+    )[0];
+    expect(conPauta.costoEntrega - sinPauta.costoEntrega).toBe(settings.rates.media_buyer.Presencia);
+  });
+
+  it("🔴 la coordinación se cobra SOLO sobre gestión de redes", () => {
+    // Se pagaba sobre todo servicio, e inventaba un costo en las ediciones
+    // sueltas y en la pauta: el dueño cobra $60.000 de edición, paga $45.000 y
+    // le quedan $15.000 — no $9.000.
+    const [edicion] = filasClientes(
+      [svc({ tipo: "edicion_audiovisual", pack: null, monto_mensual: 60_000, costo_override: 45_000 })],
+      settings,
+      "2026-09"
+    );
+    expect(edicion.coordinacion).toBe(0);
+    expect(edicion.margen).toBe(15_000);
+
+    const [pauta] = filasClientes(
+      [svc({ tipo: "paid_media", pack: null, monto_mensual: 150_000, costo_override: 100_000 })],
+      settings,
+      "2026-09"
+    );
+    expect(pauta.coordinacion).toBe(0);
+    expect(pauta.margen).toBe(50_000);
+  });
+
+  it("sin acuerdo cargado sigue valiendo el modelo de tarifas", () => {
+    const [f] = filasClientes([svc({ monto_mensual: 400_000 })], settings, "2026-09");
+    expect(f.costoEntrega).toBe(202_000);
+  });
+});

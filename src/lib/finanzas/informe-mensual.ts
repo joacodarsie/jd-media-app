@@ -126,17 +126,27 @@ export function filasClientes(
   const filas = servicios.map((svc) => {
     const abono = Number(svc.monto_mensual) || 0;
     const pack = asPack(svc.pack);
+    // Un acuerdo fijo cargado le gana SIEMPRE al modelo de tarifas: es lo que
+    // se paga de verdad. Es lo que hace la nómina, y el informe decía otra cosa
+    // —Dr Dionisi tiene $200.000 acordados con la coordinadora y el informe le
+    // calculaba $236.800 por piezas—.
+    const acuerdoFijo = svc.costo_override != null ? Number(svc.costo_override) : null;
     let costoEntrega = 0;
 
     if (svc.tipo === "gestion_redes") {
-      const { posts, reels, portadas } = piezasDelServicio(svc, settings.packs);
-      costoEntrega = productionBase(pack, posts, reels, r, portadas);
+      if (acuerdoFijo != null) {
+        // El acuerdo cubre la producción; la pauta se paga aparte igual.
+        costoEntrega = acuerdoFijo;
+      } else {
+        const { posts, reels, portadas } = piezasDelServicio(svc, settings.packs);
+        costoEntrega = productionBase(pack, posts, reels, r, portadas);
+        // La coordinación de diseño cobra sobre el diseño del mes.
+        const diseno = posts * r.diseno_pieza + portadas * (r.portada_reel ?? 0);
+        costoEntrega += Math.round(diseno * (r.comision_coord_diseno ?? 0));
+      }
       if (svc.media_buyer_aplica !== false) costoEntrega += mbCost(pack, r);
-      // La coordinación de diseño cobra sobre el diseño del mes.
-      const diseno = posts * r.diseno_pieza + portadas * (r.portada_reel ?? 0);
-      costoEntrega += Math.round(diseno * (r.comision_coord_diseno ?? 0));
     } else if (svc.tipo === "paid_media") {
-      costoEntrega = mbCost(pack, r);
+      costoEntrega = acuerdoFijo != null ? acuerdoFijo : mbCost(pack, r);
     } else if (svc.tipo === "diseno_grafico") {
       costoEntrega = standaloneDesignCost(
         { monto_mensual: svc.monto_mensual, costo_override: svc.costo_override },
@@ -146,7 +156,11 @@ export function filasClientes(
       costoEntrega = serviceDeliveryCost(svc)?.monto ?? 0;
     }
 
-    const coordinacion = Math.round(abono * (r.comision_coordinacion ?? 0));
+    // La coordinación se paga SOLO sobre gestión de redes: es lo que hace la
+    // nómina (ver el armado de gdrByClient en payroll-period). Cargársela a una
+    // edición suelta o a la pauta inventaba un costo que nadie cobra.
+    const coordinacion =
+      svc.tipo === "gestion_redes" ? Math.round(abono * (r.comision_coordinacion ?? 0)) : 0;
     const margen = abono - costoEntrega - coordinacion;
     return {
       cliente: svc.cliente,

@@ -1,7 +1,6 @@
+import Link from "next/link";
 import { hoyYmd } from "@/lib/dates";
 
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveUsers, getActiveClients } from "@/lib/cache";
@@ -109,12 +108,6 @@ export default async function PagosPage({
 
   return (
     <div className="space-y-5">
-      <Link
-        href="/finanzas"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" /> Finanzas
-      </Link>
 
       <div>
         <h1 className="text-2xl font-bold">Pagos al equipo</h1>

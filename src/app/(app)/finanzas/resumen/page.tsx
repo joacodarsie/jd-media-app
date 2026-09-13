@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, AlertTriangle, FileSpreadsheet } from "lucide-react";
+import { AlertTriangle, FileSpreadsheet } from "lucide-react";
 import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -205,12 +205,6 @@ export default async function ResumenPage({
     <div className="mx-auto max-w-5xl space-y-6 print:max-w-none">
       {/* Cabecera: no se imprime */}
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <Link
-          href="/finanzas"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" /> Finanzas
-        </Link>
         <div className="flex items-center gap-3">
           <MonthPicker value={periodo} />
           <a

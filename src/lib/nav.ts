@@ -110,29 +110,48 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       // Métricas agrupa: Objetivos y Productividad (pestañas).
       { href: "/objetivos", label: "Métricas", icon: "Goal", match: ["/global"] },
-      // Cobros vive afuera de Finanzas a propósito: estaba escondido como un
-      // botón más entre cinco y el dueño no sabía "de dónde se marca" un cobro.
-      // Septiembre cerró con las 12 facturas del mes sin marcar.
-      {
-        href: "/cobros",
-        label: "Cobros",
-        icon: "HandCoins",
-        feature: "finanzas",
-      },
-      // El resumen va afuera de Finanzas por lo mismo que Cobros: es la hoja
-      // que el dueño mira para saber cómo viene (y la que le muestra a su
-      // familia), y adentro de un menú de doce pantallas no la iba a encontrar.
+      // ── Finanzas, en tres destinos ──
+      //
+      // Eran trece pantallas colgando de un hub, y el dueño dijo tres veces que
+      // se mareaba y no sabía a cuál entrar. Cada uno de estos tres contesta UNA
+      // pregunta y lleva adentro sus pestañas (ver `finanzasGrupos`). El orden
+      // es el de la pregunta que se hace más seguido.
       {
         href: "/finanzas/resumen",
         label: "El resumen",
         icon: "FileText",
         feature: "finanzas",
+        match: ["/finanzas/panorama", "/finanzas/mes", "/finanzas/proyeccion"],
       },
       {
-        href: "/finanzas",
-        label: "Finanzas",
+        href: "/cobros",
+        label: "Cobros y pagos",
+        icon: "HandCoins",
+        feature: "finanzas",
+        match: [
+          "/finanzas/cobros",
+          "/finanzas/pagos",
+          "/finanzas/gastos",
+          "/finanzas/vencimientos",
+          "/finanzas/cierre",
+          "/finanzas/suscripciones",
+          "/finanzas/recordatorios",
+        ],
+      },
+      {
+        href: "/finanzas/rentabilidad",
+        label: "Análisis",
         icon: "Wallet",
         feature: "finanzas",
+        // `/finanzas` queda como comodín: cualquier ruta vieja de finanzas que
+        // no esté en los otros dos marca esta. Gana el prefijo más largo, así
+        // que no le roba el activo a `/finanzas/cobros` ni a `/finanzas/resumen`.
+        match: [
+          "/finanzas",
+          "/finanzas/movimientos",
+          "/finanzas/deudas",
+          "/finanzas/ia",
+        ],
       },
       // Coordinación agrupa: Panel, Equipos, Riesgo, Comercial, Sueldos,
       // Jornadas, Mes 1 y Director IA (pestañas).

@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { ArrowLeft, Wallet } from "lucide-react";
+import { Wallet } from "lucide-react";
 import { requireFeature } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { currentPeriod, periodLabel } from "@/lib/finanzas";
@@ -155,12 +154,6 @@ export default async function MesPage({
 
   return (
     <div className="space-y-5">
-      <Link
-        href="/finanzas"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" /> Volver a Finanzas
-      </Link>
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>

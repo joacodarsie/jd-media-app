@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { currentPeriod, periodLabel, prevPeriod, nextPeriod, toARS, toARSFijos } from "@/lib/finanzas";
@@ -158,12 +158,6 @@ export default async function PanoramaPage({
   return (
     <div className="space-y-5">
       <div>
-        <Link
-          href="/finanzas"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" /> Finanzas
-        </Link>
         <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold">Panorama de la agencia</h1>
           <div className="flex items-center gap-2">

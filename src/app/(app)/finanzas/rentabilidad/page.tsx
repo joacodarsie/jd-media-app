@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, TrendingUp, TrendingDown, Wallet, AlertCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, AlertCircle } from "lucide-react";
 import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -265,12 +265,6 @@ export default async function RentabilidadPage({
 
   return (
     <div className="space-y-5">
-      <Link
-        href="/finanzas"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" /> Finanzas
-      </Link>
 
       <div>
         <h1 className="text-2xl font-bold">Rentabilidad por cliente</h1>

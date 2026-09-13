@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, CalendarClock, Repeat, Users, Receipt, TrendingUp } from "lucide-react";
+import { CalendarClock, Repeat, Users, Receipt, TrendingUp } from "lucide-react";
 import { requireFeature } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { getExchangeRates } from "@/lib/exchange";
@@ -120,12 +120,6 @@ export default async function VencimientosPage() {
 
   return (
     <div className="space-y-5">
-      <Link
-        href="/finanzas"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" /> Finanzas
-      </Link>
 
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold">

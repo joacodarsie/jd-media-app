@@ -1,8 +1,7 @@
+import Link from "next/link";
 import { hoyYmd } from "@/lib/dates";
 
-import Link from "next/link";
 import {
-  ArrowLeft,
   TrendingUp,
   TrendingDown,
   Users,
@@ -317,12 +316,6 @@ export default async function ProyeccionPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link
-          href="/finanzas"
-          className="mb-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-3 w-3" /> Finanzas
-        </Link>
         <h1 className="text-2xl font-bold">Proyección financiera</h1>
         <p className="max-w-2xl text-muted-foreground">
           Tu ingreso recurrente (MRR), cómo creció, cuánto vale una cuenta en el tiempo

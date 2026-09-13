@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveUsers } from "@/lib/cache";
@@ -83,12 +82,6 @@ export default async function GastosPage({
 
     return (
       <div className="space-y-5">
-        <Link
-          href="/finanzas"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" /> Finanzas
-        </Link>
 
         <div>
           <h1 className="text-2xl font-bold">Suscripciones y plataformas</h1>
@@ -157,12 +150,6 @@ export default async function GastosPage({
 
   return (
     <div className="space-y-5">
-      <Link
-        href="/finanzas"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" /> Finanzas
-      </Link>
 
       <div>
         <h1 className="text-2xl font-bold">Gastos</h1>

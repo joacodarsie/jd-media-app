@@ -63,8 +63,8 @@ const STEPS_BY_ROLE: Record<string, TourStep[]> = {
     },
     {
       title: "Finanzas",
-      body: "Cobros, pagos al equipo, gastos y balance neto. Pregúntaselo a JDmedIA si querés un resumen rápido del mes.",
-      route: "/finanzas",
+      body: "Finanzas son tres lugares: El resumen (cómo viene), Cobros y pagos (lo que entra y sale) y Análisis (por qué). Adentro de cada uno están las pestañas.",
+      route: "/finanzas/resumen",
     },
   ],
   coordinador: [

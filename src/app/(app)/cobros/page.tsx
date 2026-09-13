@@ -4,6 +4,7 @@ import { currentPeriod, periodLabel } from "@/lib/finanzas";
 import { MonthPicker } from "@/components/month-picker";
 import { CobrosSimple } from "@/components/cobros-simple";
 import { FacturasColgadas } from "@/components/facturas-colgadas";
+import { FinanzasAlertas } from "@/components/finanzas-alertas";
 import { totalCobrado, totalPendiente } from "@/lib/finanzas/cobro-gestion";
 import { cargarCobrosDelMes } from "@/lib/finanzas/cobros-mes";
 
@@ -53,6 +54,12 @@ export default async function CobrosSimplePage({
         </div>
         <MonthPicker value={periodo} />
       </div>
+
+      {/* Lo que está atrasado. Vivía en el hub de Finanzas, que se sacó; va acá
+          porque es la pantalla operativa y las tres alertas linkean a esta
+          misma sección. En el Resumen no puede ir: esa hoja se imprime y se
+          muestra afuera. */}
+      <FinanzasAlertas />
 
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-500/40 dark:bg-emerald-500/10">

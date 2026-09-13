@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  ArrowLeft,
   ArrowRight,
   Check,
   FileText,
@@ -122,12 +121,6 @@ export default async function CierreMesPage({
 
   return (
     <div className="space-y-5">
-      <Link
-        href="/finanzas"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" /> Finanzas
-      </Link>
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>

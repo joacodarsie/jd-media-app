@@ -155,7 +155,7 @@ export async function ensureFinanceNotifications(admin: SupabaseClient) {
       .select("id")
       .eq("user_id", uid)
       .eq("tipo", "recordatorio")
-      .eq("link", "/finanzas")
+      .eq("link", "/cobros")
       .gte("created_at", inicioHoyCordoba.toISOString())
       .limit(1);
     if (existing && existing.length > 0) continue;
@@ -163,7 +163,7 @@ export async function ensureFinanceNotifications(admin: SupabaseClient) {
       user_id: uid,
       tipo: "recordatorio",
       mensaje,
-      link: "/finanzas",
+      link: "/cobros",
       task_id: null,
     });
   }

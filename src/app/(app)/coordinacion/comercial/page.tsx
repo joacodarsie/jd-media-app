@@ -210,8 +210,24 @@ export default async function ComercialPage() {
   // Las cuentas activas que no dicen quién las cerró. El formulario ya lo
   // exige para las nuevas; estas son las que quedaron de antes, y de acá sale
   // la comisión del comercial.
+  // Solo las de los últimos 3 meses. Una cuenta vieja sin cerrador ya no puede
+  // generar comisión —se calcula sobre el primer mes— así que pedirla es ruido
+  // que nadie va a completar, y una alerta permanente se vuelve invisible. El
+  // dueño lo dijo derecho: de las viejas no le interesa quién las agarró.
+  const limiteCerrador = (() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 3);
+    return d.toISOString().slice(0, 10);
+  })();
   const sinCerrador: CuentaSinCerrador[] = clients
-    .filter((c) => c.estado === "activo" && !c.cerrado_por_id && !leadAttribution.has(c.id))
+    .filter(
+      (c) =>
+        c.estado === "activo" &&
+        !c.cerrado_por_id &&
+        !leadAttribution.has(c.id) &&
+        !!c.fecha_inicio &&
+        c.fecha_inicio >= limiteCerrador
+    )
     .map((c) => ({
       id: c.id,
       nombre: c.nombre,

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import type { TaskLink } from "@/lib/types";
 import { motivoParaNoCerrarTareas } from "@/lib/contenidos/archivo-final-db";
+import { avisosDeCambio, type EstadoTarea } from "@/lib/tareas/avisos";
 import { validarFechaLimite } from "@/lib/tareas/fecha-limite";
 
 async function uid() {
@@ -201,6 +202,12 @@ export async function updateTask(
   }
 ) {
   const { supabase } = await uid();
+  // Cómo estaba la tarea, para saber QUÉ cambió y a quién avisarle.
+  const { data: antesRaw } = await supabase
+    .from("tasks")
+    .select("asignado_a_id, fecha_limite, estado, prioridad, titulo")
+    .eq("id", id)
+    .maybeSingle();
   const bloqueo = await motivoParaNoCerrarTareas(createAdmin(), [id], input.estado);
   if (bloqueo) return { error: bloqueo };
   // Editar una tarea tampoco puede dejarla sin fecha.
@@ -225,6 +232,18 @@ export async function updateTask(
   revalidatePath("/tareas");
   revalidatePath("/dashboard");
   revalidatePath(`/tareas/${id}`);
+
+  // Los avisos van DESPUÉS de guardar y sin await: que falle una notificación
+  // no puede hacer fracasar la edición de la tarea.
+  if (antesRaw) {
+    void avisarCambios(id, antesRaw as EstadoTarea, {
+      asignado_a_id: input.asignado_a_id || null,
+      fecha_limite: fecha.fecha ?? null,
+      estado: input.estado,
+      prioridad: input.prioridad,
+      titulo: input.titulo,
+    }).catch((e) => console.error("avisarCambios:", e));
+  }
   return { ok: true };
 }
 
@@ -396,4 +415,63 @@ export async function deleteComment(id: string, taskId: string) {
   if (error) return { error: error.message };
   revalidatePath(`/tareas/${taskId}`);
   return { ok: true };
+}
+
+/**
+ * Manda los avisos de un cambio de tarea.
+ *
+ * La RLS de `notifications` restringe el INSERT a `auth.uid()`, así que para
+ * escribirle a OTRA persona hay que ir por service role — igual que hace
+ * `addComment` con las menciones.
+ */
+async function avisarCambios(taskId: string, antes: EstadoTarea, despues: EstadoTarea) {
+  const { userId } = await uid();
+  const admin = createAdmin();
+
+  // Los seguidores explícitos. Si la migración 0168 no está aplicada la
+  // consulta falla y se sigue sin ellos: los avisos de asignación y de fecha
+  // no dependen de esta tabla.
+  let seguidores: string[] = [];
+  try {
+    const { data } = await admin
+      .from("task_watchers")
+      .select("user_id")
+      .eq("task_id", taskId);
+    seguidores = ((data ?? []) as { user_id: string }[]).map((w) => w.user_id);
+  } catch {
+    /* sin la tabla, no hay seguidores */
+  }
+
+  const avisos = avisosDeCambio(antes, despues, userId, seguidores);
+  if (avisos.length === 0) return;
+
+  await admin.from("notifications").insert(
+    avisos.map((a) => ({
+      user_id: a.userId,
+      task_id: taskId,
+      tipo: a.tipo === "asignacion" ? "asignacion" : "comentario",
+      mensaje: a.mensaje,
+      link: `/tareas/${taskId}`,
+    }))
+  );
+}
+
+/** ¿Esta persona sigue el ticket? */
+export async function toggleSeguirTarea(taskId: string, seguir: boolean) {
+  const { supabase, userId } = await uid();
+  if (seguir) {
+    const { error } = await supabase
+      .from("task_watchers")
+      .upsert({ task_id: taskId, user_id: userId }, { onConflict: "task_id,user_id" });
+    if (error) return { error: error.message };
+  } else {
+    const { error } = await supabase
+      .from("task_watchers")
+      .delete()
+      .eq("task_id", taskId)
+      .eq("user_id", userId);
+    if (error) return { error: error.message };
+  }
+  revalidatePath(`/tareas/${taskId}`);
+  return { ok: true, siguiendo: seguir };
 }

@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { formatTicket } from "@/lib/tareas/tickets";
 import { SubtareasPanel, type SubtareaFila } from "@/components/subtareas-panel";
 import { TicketDriveButton } from "@/components/ticket-drive-button";
+import { SeguirTareaButton } from "@/components/seguir-tarea-button";
 import type { Comment, TaskLink, TaskWithRels } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -136,6 +137,21 @@ export default async function TaskDetail({
   // Si la migración 0165 no está aplicada, la columna no existe y la consulta
   // vuelve con error: se esconde el panel en vez de mostrar uno que no guarda.
   const ticketsActivos = !errSubs;
+
+  // ¿Sigo este ticket? Solo tiene sentido preguntarlo si NO soy el responsable:
+  // a quien la tiene asignada le llegan los avisos igual.
+  let siguiendo = false;
+  let seguirDisponible = false;
+  if (t.asignado_a_id !== me.id) {
+    const { data: w, error: errW } = await supabase
+      .from("task_watchers")
+      .select("user_id")
+      .eq("task_id", params.id)
+      .eq("user_id", me.id)
+      .maybeSingle();
+    seguirDisponible = !errW;
+    siguiendo = !!w;
+  }
   // El select trae `*`: si la 0166 no está aplicada la clave ni siquiera
   // existe en la fila, y así se distingue de "existe pero está en null".
   const driveActivo = "drive_url" in (t as unknown as Record<string, unknown>);
@@ -300,6 +316,14 @@ export default async function TaskDetail({
           subtarea no puede tener subtareas (trigger de la 0165). */}
       {/* La carpeta del ticket: donde el diseñador sube las placas. Solo en
           tickets de una cuenta — sin cliente no hay Drive donde colgarla. */}
+      {/* Seguir va aparte del botón de Drive: se puede seguir cualquier tarea,
+          tenga cuenta o no, sea ticket madre o subtarea. */}
+      {seguirDisponible && (
+        <div className="flex justify-end">
+          <SeguirTareaButton taskId={t.id} siguiendoInicial={siguiendo} />
+        </div>
+      )}
+
       {ticketsActivos && driveActivo && !t.parent_id && t.cliente && (
         <div className="flex justify-end">
           <TicketDriveButton taskId={t.id} driveUrl={t.drive_url ?? null} />

@@ -920,7 +920,11 @@ function TemaCard({
               “{tema.hook}”
             </p>
           )}
-          <p className="mt-1 text-muted-foreground">{tema.descripcion}</p>
+          {/* whitespace-pre-line: el desglose de un carrusel viene placa por
+              placa, con saltos de línea. Sin esto se mostraba todo pegado en un
+              solo párrafo y el diseñador no podía leer dónde terminaba una placa
+              y empezaba la otra. */}
+          <p className="mt-1 whitespace-pre-line text-muted-foreground">{tema.descripcion}</p>
           {(tema.cta || tema.publico_objetivo) && (
             <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
               {tema.cta && (

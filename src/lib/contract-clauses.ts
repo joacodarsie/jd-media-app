@@ -45,7 +45,7 @@ export const EDITABLE_CLAUSES: EditableClause[] = [
     key: "canales",
     titulo: "Canales de comunicación oficiales",
     default:
-      "La coordinación oficial del proyecto se realizará por el grupo de WhatsApp creado por La Agencia y/o el correo electrónico de contacto. Mensajes recibidos por otras vías (DM de redes sociales, llamadas no agendadas) podrán no ser atendidos en tiempo y forma.",
+      "La coordinación oficial del proyecto se realizará por el grupo de WhatsApp creado por La Agencia y/o el correo electrónico de contacto. Mensajes recibidos por otras vías (DM de redes sociales, llamadas no agendadas) podrán no ser atendidos en tiempo y forma.\n\n**Tiempo de respuesta:** ambas partes se comprometen a responder las consultas, aprobaciones y pedidos de material por los canales oficiales dentro de las **24 horas hábiles**. Se consideran horas hábiles las de lunes a viernes de 9 a 18 h. Las demoras del Cliente en aprobar contenido o entregar material pueden correr las fechas de publicación del calendario.",
   },
   {
     key: "confidencialidad",

@@ -53,7 +53,17 @@ NO propongas hashtags ni bloques de hashtags en ningún campo. Hoy no mueven alc
 
 # Detalle de diseño en cada tema (campo descripcion)
 La \`descripcion\` de cada tema es el brief que ejecuta el equipo de diseño/edición: tiene que ser concreta y accionable, no quedarse en el título.
-- **Carrusel** → desglosá PLACA POR PLACA: qué TEXTO/dato va escrito en cada placa + una idea de diseño de esa placa (qué se ve, jerarquía visual, ícono/foto/dato, por qué retiene). Placa 1 = gancho que frena el scroll; última = CTA.
+- **Carrusel** → desglosá PLACA POR PLACA, con **una placa por línea y un renglón vacío entre placa y placa**. Nunca en un solo párrafo corrido: el diseñador tiene que poder ver de un vistazo dónde termina una placa y empieza la otra. Formato exacto:
+
+\`\`\`
+Placa 1: <el texto/dato que va ESCRITO en la placa>
+   Diseño: <qué se ve, jerarquía visual, ícono/foto/dato, por qué retiene>
+
+Placa 2: <texto>
+   Diseño: <...>
+\`\`\`
+
+  Placa 1 = gancho que frena el scroll; última = CTA.
 - **Post** → el texto que va sobre la placa + una idea visual concreta (composición, foco, elemento de marca).
 - **Reel/video** → la idea y guion en líneas generales + concepto visual (gancho de los primeros segundos, planos, texto en pantalla).
 - **Historia** → qué muestra y el mecanismo de interacción (encuesta, pregunta, link, recordatorio).
@@ -148,7 +158,7 @@ export const SAVE_CONTENT_PLAN_TOOL = {
             descripcion: {
               type: "string",
               description:
-                "Brief de diseño/producción DETALLADO y accionable (no solo el título). CARRUSEL: desglose placa por placa con el texto/dato de cada placa + idea de diseño (placa 1 = gancho, última = CTA). POST: texto sobre la placa + idea visual. REEL/VIDEO: idea + concepto visual con el gancho de los primeros segundos. HISTORIA: qué muestra + mecanismo de interacción. Pensado para que la pieza tenga potencial de viralizar.",
+                "Brief de diseño/producción DETALLADO y accionable (no solo el título). CARRUSEL: desglose placa por placa, UNA PLACA POR LÍNEA y un renglón vacío entre placas — nunca un párrafo corrido. Formato: \"Placa 1: <texto de la placa>\n   Diseño: <idea visual>\n\nPlaca 2: ...\". Placa 1 = gancho, última = CTA. POST: texto sobre la placa + idea visual. REEL/VIDEO: idea + concepto visual con el gancho de los primeros segundos. HISTORIA: qué muestra + mecanismo de interacción. Pensado para que la pieza tenga potencial de viralizar.",
             },
             hook: {
               type: "string",

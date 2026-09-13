@@ -10,7 +10,7 @@ import { pedidosPendientes } from "./pedidos-actions";
 export const dynamic = "force-dynamic";
 
 const TASK_SELECT =
-  "id,titulo,estado,prioridad,area,fecha_limite,asignado_a_id,cliente_id,created_at,descripcion,creado_por_id,fecha_completada,links,updated_at,cliente:clients(id,nombre),asignado:users!tasks_asignado_a_id_fkey(id,nombre,avatar_url)";
+  "id,titulo,numero,parent_id,estado,prioridad,area,fecha_limite,asignado_a_id,cliente_id,created_at,descripcion,creado_por_id,fecha_completada,links,updated_at,cliente:clients(id,nombre),asignado:users!tasks_asignado_a_id_fkey(id,nombre,avatar_url)";
 
 // Cuántas tareas archivadas (completadas hace +30 días) traer. Crecen sin
 // techo con el tiempo y están ocultas por defecto, así que sólo cargamos las

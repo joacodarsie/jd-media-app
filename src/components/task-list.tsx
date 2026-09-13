@@ -1,3 +1,4 @@
+import { formatTicket } from "@/lib/tareas/tickets";
 import Link from "next/link";
 import type { TaskWithRels } from "@/lib/types";
 import {
@@ -35,7 +36,16 @@ export function TaskList({
               className="flex flex-col gap-2 p-4 hover:bg-accent/50 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0">
-                <div className="truncate font-medium">{t.titulo}</div>
+                <div className="flex min-w-0 items-baseline gap-2">
+                  {/* El número adelante, para poder nombrar el ticket. Las
+                      subtareas van con sangría: se ve que cuelgan de otro. */}
+                  {formatTicket(t.numero) && (
+                    <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+                      {formatTicket(t.numero)}
+                    </span>
+                  )}
+                  <div className="truncate font-medium">{t.titulo}</div>
+                </div>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
                   <span
                     className={cn(

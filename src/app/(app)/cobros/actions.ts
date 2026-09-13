@@ -436,3 +436,41 @@ export async function borrarFactura(facturaId: string) {
   invalidate();
   return { ok: true as const };
 }
+
+/**
+ * "¿Salió con factura?" — el sí/no de ARCA, desde la pantalla simple.
+ *
+ * Crea la factura si todavía no existía, igual que `marcarCobrado`: acá la fila
+ * puede existir sin registro en la base, y frenar para pedir "generá el mes
+ * primero" es exactamente lo que hacía que no se cargara nada.
+ */
+export async function marcarFacturado(input: {
+  clienteId: string;
+  periodo: string;
+  monto: number;
+  facturado: boolean;
+  concepto?: string;
+}) {
+  const { admin, userId } = await ctx();
+  const res = await asegurarFactura(admin, {
+    clienteId: input.clienteId,
+    periodo: input.periodo,
+    monto: input.monto,
+    concepto: input.concepto || `Abono ${input.periodo}`,
+    userId,
+  });
+  if ("error" in res) return { error: res.error };
+
+  const { error } = await admin
+    .from("client_invoices")
+    .update({
+      facturado: input.facturado,
+      // Sin factura no hay cuándo: al desmarcar se limpia la fecha.
+      facturado_at: input.facturado ? hoyYmd() : null,
+    })
+    .eq("id", res.id);
+  if (error) return { error: error.message };
+
+  invalidate();
+  return { ok: true };
+}

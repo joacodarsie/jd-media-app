@@ -1,6 +1,7 @@
 import { createAdmin } from "@/lib/supabase/admin";
 import { isClientPausedFor } from "@/lib/client-pause";
 import { estadoDeCobro } from "@/lib/finanzas/cobro-gestion";
+import { fetchFacturacion } from "@/lib/finanzas/facturacion";
 
 /**
  * De dónde salen los cobros de un mes — un solo lugar.
@@ -35,6 +36,10 @@ export interface FilaCobro {
   esperandoPago: boolean;
   etapa: string | null;
   pagos: PagoEntrega[];
+  /** null cuando la factura todavía no existe: la fila aparece igual. */
+  facturaId: string | null;
+  /** ¿Salió con factura? (ARCA). false también si falta la migración 0164. */
+  facturado: boolean;
 }
 
 export interface FacturaColgada {
@@ -62,6 +67,8 @@ export function clasificarColgada(estado: string, periodo: string, periodoActual
 export async function cargarCobrosDelMes(periodo: string): Promise<{
   filas: FilaCobro[];
   viejas: FacturaColgada[];
+  /** false mientras la migración 0164 no esté aplicada. */
+  facturacionActiva: boolean;
 }> {
   const admin = createAdmin();
 
@@ -123,6 +130,10 @@ export async function cargarCobrosDelMes(periodo: string): Promise<{
     }
   }
 
+  // El sí/no de ARCA, en consulta aparte: si la migración 0164 no está
+  // aplicada, la pantalla anda igual y el chip no aparece.
+  const facturacion = await fetchFacturacion(admin, periodo);
+
   const filas: FilaCobro[] = ((clientesRaw ?? []) as {
     id: string;
     nombre: string;
@@ -150,6 +161,8 @@ export async function cargarCobrosDelMes(periodo: string): Promise<{
         esperandoPago: c.estado === "esperando_pago",
         etapa: inv?.gestion_estado ?? null,
         pagos: inv ? (pagosPorFactura.get(inv.id) ?? []) : [],
+        facturaId: inv?.id ?? null,
+        facturado: inv ? (facturacion.byId.get(inv.id)?.facturado ?? false) : false,
       };
     });
 
@@ -177,7 +190,7 @@ export async function cargarCobrosDelMes(periodo: string): Promise<{
     .filter((x): x is FacturaColgada => x !== null)
     .sort((a, b) => a.periodo.localeCompare(b.periodo) || a.nombre.localeCompare(b.nombre));
 
-  return { filas, viejas };
+  return { filas, viejas, facturacionActiva: facturacion.disponible };
 }
 
 /** Cuántas cuentas del mes siguen sin saldar. Es el número del sidebar. */

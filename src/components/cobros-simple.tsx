@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, Undo2, Pencil, Plus, X, CheckCheck } from "lucide-react";
+import { Check, Undo2, Pencil, Plus, X, CheckCheck, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,14 +15,25 @@ import {
   guardarEtapaCobro,
   registrarPagoParcial,
   borrarPagoParcial,
+  marcarFacturado,
 } from "@/app/(app)/cobros/actions";
 import { ETAPAS, estadoDeCobro } from "@/lib/finanzas/cobro-gestion";
+import { cn } from "@/lib/utils";
 import type { FilaCobro } from "@/lib/finanzas/cobros-mes";
 
 /** La fila la arma `lib/finanzas/cobros-mes`: un solo lugar define qué se cobra. */
 export type FilaCliente = FilaCobro;
 
-export function CobrosSimple({ filas, periodo }: { filas: FilaCliente[]; periodo: string }) {
+export function CobrosSimple({
+  filas,
+  periodo,
+  facturacionActiva = false,
+}: {
+  filas: FilaCliente[];
+  periodo: string;
+  /** false mientras la migración 0164 no esté aplicada: no se muestra el chip. */
+  facturacionActiva?: boolean;
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [editando, setEditando] = useState<string | null>(null);
@@ -220,6 +231,10 @@ export function CobrosSimple({ filas, periodo }: { filas: FilaCliente[]; periodo
                   <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                     Pagó el {f.cobradoEl?.slice(8, 10)}/{f.cobradoEl?.slice(5, 7)}
                   </span>
+                  {/* Al lado del "pagó" porque es la pregunta que sigue: esto
+                      que entró, ¿lo facturaste? Solo en las cobradas — un
+                      "sin factura" en las once que no pagaron es ruido. */}
+                  {facturacionActiva && <FacturaChip fila={f} periodo={periodo} />}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -406,6 +421,65 @@ function MontoEditor({
         Cancelar
       </button>
     </div>
+  );
+}
+
+/**
+ * "¿Salió con factura?" en un clic, al lado del "pagó".
+ *
+ * Optimista: pinta el estado nuevo antes de que conteste el servidor. Marcar
+ * doce cobros esperando un refresh entero por cada uno se abandona a los tres.
+ */
+function FacturaChip({ fila, periodo }: { fila: FilaCliente; periodo: string }) {
+  const router = useRouter();
+  const [, startTr] = useTransition();
+  const [optimista, setOptimista] = useState<boolean | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  const facturado = optimista ?? fila.facturado;
+
+  async function toggle() {
+    const nuevo = !facturado;
+    setOptimista(nuevo);
+    setGuardando(true);
+    const res = await marcarFacturado({
+      clienteId: fila.clienteId,
+      periodo,
+      monto: fila.monto,
+      facturado: nuevo,
+    });
+    setGuardando(false);
+    if (res && "error" in res && res.error) {
+      setOptimista(null);
+      toast.error(res.error);
+      return;
+    }
+    startTr(() => router.refresh());
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      disabled={guardando}
+      title={
+        facturado
+          ? "Facturado. Clic para desmarcar."
+          : "Sin factura. Clic para marcar que ya la hiciste."
+      }
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-medium transition-colors disabled:opacity-50",
+        facturado
+          ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300"
+          : "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300"
+      )}
+    >
+      {guardando ? (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      ) : (
+        <FileText className="h-3 w-3" />
+      )}
+      {facturado ? "Facturado" : "Sin factura"}
+    </button>
   );
 }
 

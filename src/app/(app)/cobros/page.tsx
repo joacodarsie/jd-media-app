@@ -30,12 +30,21 @@ export default async function CobrosSimplePage({
   const periodo =
     searchParams.m && /^\d{4}-\d{2}$/.test(searchParams.m) ? searchParams.m : currentPeriod();
 
-  const { filas, viejas } = await cargarCobrosDelMes(periodo);
+  const { filas, viejas, facturacionActiva } = await cargarCobrosDelMes(periodo);
 
   // Los totales cuentan las entregas a cuenta: "falta cobrar" tiene que ser lo
   // que falta DE VERDAD, no el abono entero de alguien que ya dejó la mitad.
   const cobrado = totalCobrado(filas);
   const falta = totalPendiente(filas);
+
+  // Lo cobrado que todavía no se facturó. Se mide en plata, no en cantidad:
+  // diez facturitas hechas y una grande sin hacer no es "casi todo facturado".
+  const sinFacturar = filas
+    .filter((f) => f.cobradoEl && !f.facturado)
+    .reduce((acc, f) => ({ monto: acc.monto + f.monto, cuenta: acc.cuenta + 1 }), {
+      monto: 0,
+      cuenta: 0,
+    });
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
@@ -74,7 +83,17 @@ export default async function CobrosSimplePage({
         </div>
       </div>
 
-      <CobrosSimple filas={filas} periodo={periodo} />
+      {/* El pendiente de ARCA, en plata. Solo aparece si hay algo sin facturar:
+          una línea permanente en cero se vuelve invisible a la semana. */}
+      {facturacionActiva && sinFacturar.monto > 0 && (
+        <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
+          De lo que entró, falta facturar{" "}
+          <b className="tabular-nums">${sinFacturar.monto.toLocaleString("es-AR")}</b> en{" "}
+          {sinFacturar.cuenta} cobro{sinFacturar.cuenta === 1 ? "" : "s"}.
+        </p>
+      )}
+
+      <CobrosSimple filas={filas} periodo={periodo} facturacionActiva={facturacionActiva} />
 
       <FacturasColgadas facturas={viejas} />
 

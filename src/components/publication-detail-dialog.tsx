@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { Markdown } from "@/components/markdown";
 import { PublicationStatusSelect } from "@/components/publication-status-select";
+import { PublicationAprobacion } from "@/components/publication-aprobacion";
 import { PublicationFrenadoToggle } from "@/components/publication-frenado-toggle";
 import { PublicationFinalFields } from "@/components/publication-final-fields";
 import { PublicationTiktokToggle } from "@/components/publication-tiktok-toggle";
@@ -225,6 +226,10 @@ export function PublicationDetailDialog({
 
           {/* Comentarios del cliente desde el portal público */}
           <ClientPubComments publicationId={p.id} />
+
+          {/* La decisión primero y a la vista. El select con los nueve estados
+              queda abajo para el resto de los movimientos. */}
+          <PublicationAprobacion publicationId={p.id} estado={p.estado} />
 
           <div className="border-t pt-3">
             <h4 className="mb-2 text-sm font-semibold">Estado</h4>

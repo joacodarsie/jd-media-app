@@ -52,7 +52,7 @@ describe("resolverOrganigrama", () => {
 
   it("no repite a quien coordina dentro del área que coordina", () => {
     // Brisa tiene "Diseño" como área secundaria, pero ya figura arriba en
-    // Estrategia y calidad: si apareciera también como diseñadora, el
+    // Dirección Creativa: si apareciera también como diseñadora, el
     // organigrama mentiría sobre quién ejecuta.
     const raiz = resolver();
     const diseno = aplanar(raiz).find((n) => n.id === "diseno")!;

@@ -134,6 +134,15 @@ const CSS = `
   padding-top: 5px;
   line-height: 1.35;
 }
+/* La segunda coordinación: diseño, community y edición responden a la Project
+   Manager por los tiempos y a la Dirección Creativa por las aprobaciones. */
+.org-co {
+  font-size: 10px;
+  color: hsl(var(--muted-foreground));
+  font-style: italic;
+  line-height: 1.3;
+  margin-top: 2px;
+}
 .org-root > .org-card { border-color: #FFD400; border-width: 2px; }
 .org-fila { display: flex; flex-wrap: wrap; gap: 10px; }
 `;
@@ -181,6 +190,9 @@ function Caja({
         <span className="org-vacante">Sin asignar</span>
       )}
       <span className="org-responde">{nodo.respondePor}</span>
+      {nodo.tambienCoordinadoPor && (
+        <span className="org-co">también responde a {nodo.tambienCoordinadoPor}</span>
+      )}
     </button>
   );
 }

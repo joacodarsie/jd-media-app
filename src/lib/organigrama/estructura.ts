@@ -48,6 +48,15 @@ export interface NodoOrg {
    * lugar de una responsabilidad permanente es el puesto.
    */
   responsabilidades?: string[];
+  /**
+   * Quién MÁS coordina este puesto, sobre otro eje.
+   *
+   * Desde el 13/9/2026 diseño, community y edición responden a dos personas:
+   * la Project Manager por los TIEMPOS y la Dirección Creativa por las
+   * APROBACIONES. Un árbol no puede dibujar dos padres, así que el segundo se
+   * dice acá en vez de fingir que no existe o duplicar la caja.
+   */
+  tambienCoordinadoPor?: string;
   /** Marca los puestos que NO cuelgan de operaciones (van en paralelo). */
   paralelo?: boolean;
   /**
@@ -63,11 +72,11 @@ export interface NodoOrg {
 
 export const ORGANIGRAMA: NodoOrg = {
   id: "direccion",
-  titulo: "Dirección General",
+  titulo: "Dirección de Cuentas",
   area: "Estrategia/Dirección",
-  respondePor: "Que la agencia crezca y sea rentable.",
+  respondePor: "Que la agencia crezca, sea rentable y las cuentas se queden.",
   resumen:
-    "Decide el rumbo, banca las decisiones difíciles y sostiene la relación con los clientes grandes. No debería estar en la operación del día a día.",
+    "Decide el rumbo, banca las decisiones difíciles y sostiene la relación con los clientes. Responde por la cuenta como resultado: que entre plata, que el cliente esté conforme y que no se vaya. No debería estar en la operación del día a día.",
   tareas: [
     { label: "Panorama financiero", href: "/finanzas/panorama", detalle: "Cuánto entra y cuánto sale este mes." },
     { label: "Objetivos", href: "/objetivos", detalle: "Las metas del año y cómo vienen." },
@@ -104,14 +113,21 @@ export const ORGANIGRAMA: NodoOrg = {
     },
     {
       id: "operaciones",
-      titulo: "Operaciones y entregas",
+      titulo: "Project Manager",
       area: "Coordinación",
       respondePor: "Que nada llegue tarde. Ni una pieza.",
       resumen:
-        "Dueña del calendario de todas las cuentas activas. Ve la carga de cada persona y reasigna cuando alguien se satura. Da la reunión semanal de entregas y la reunión mensual con el cliente.",
+        "Dueña de los TIEMPOS. Lleva el calendario de todas las cuentas activas, ve la carga de cada persona y reasigna cuando alguien se satura. Da la reunión semanal de entregas y la reunión mensual con el cliente, y es quien habla con el equipo cuando algo se atrasa.",
+      responsabilidades: [
+        "Que cada uno entregue en tiempo y forma",
+        "Agendar y dar las reuniones del equipo",
+        "Hablar con quien se atrasa, antes de que sea un problema",
+        "Repartir la carga cuando alguien se satura",
+      ],
       notas: [
         "Quien coordina no ejecuta: el puesto se rompe si además produce contenido.",
-        "La reunión mensual con el cliente la da este puesto, con Paid Media presente cuando hay pauta que mostrar y Estrategia presente para escuchar qué busca el cliente.",
+        "Comparte equipo con la Dirección Creativa: acá se define CUÁNDO, allá se define SI ESTÁ BIEN. Si las dos frenan una pieza por motivos distintos, manda la fecha y la observación creativa se resuelve en la siguiente.",
+        "La reunión mensual con el cliente la da este puesto, con Paid Media presente cuando hay pauta que mostrar y la Dirección de Cuentas presente para escuchar qué busca el cliente.",
       ],
       tareas: [
         { label: "Contenidos", href: "/contenidos", detalle: "El calendario de todas las cuentas, pieza por pieza." },
@@ -125,6 +141,7 @@ export const ORGANIGRAMA: NodoOrg = {
       hijos: [
         {
           id: "community",
+          tambienCoordinadoPor: "Dirección Creativa (aprobaciones)",
           titulo: "Community Management",
           area: "Community Manager",
           respondePor: "La cuenta día a día: el copy, el contacto con el cliente y que la idea sea hacible.",
@@ -142,6 +159,7 @@ export const ORGANIGRAMA: NodoOrg = {
         },
         {
           id: "diseno",
+          tambienCoordinadoPor: "Dirección Creativa (aprobaciones)",
           titulo: "Diseño gráfico",
           area: "Diseño",
           respondePor: "Que la pieza gráfica salga a tiempo y con la identidad de la cuenta.",
@@ -154,6 +172,7 @@ export const ORGANIGRAMA: NodoOrg = {
         },
         {
           id: "edicion",
+          tambienCoordinadoPor: "Dirección Creativa (aprobaciones)",
           titulo: "Edición audiovisual",
           area: "Edición Audiovisual",
           respondePor: "Que el video salga a tiempo y con el material que hay.",
@@ -168,13 +187,20 @@ export const ORGANIGRAMA: NodoOrg = {
     },
     {
       id: "estrategia",
-      titulo: "Estrategia y calidad",
+      titulo: "Dirección Creativa",
       area: "Coordinación de Diseño",
       respondePor: "Que lo que sale sea bueno y tenga una estrategia detrás.",
       resumen:
-        "Arma el plan mensual de cada cuenta y da el visto bueno creativo: ninguna pieza pasa al cliente sin su ok. También lleva la identidad visual y el diagnóstico mensual.",
+        "Dueña de las APROBACIONES. Arma el plan mensual de cada cuenta, aprueba el calendario de contenidos y da el visto bueno de cada diseño y cada edición: ninguna pieza pasa al cliente sin su ok. También lleva la identidad visual y el diagnóstico mensual.",
+      responsabilidades: [
+        "Aprobar el calendario de contenidos de cada cuenta",
+        "Aprobar los diseños gráficos y las ediciones audiovisuales",
+        "Sostener la identidad visual de cada marca",
+        "La estrategia de contenidos del mes",
+      ],
       notas: [
-        "Prepara la reunión mensual con el cliente, pero la da Operaciones.",
+        "Comparte equipo con la Project Manager: allá se define CUÁNDO, acá se define SI ESTÁ BIEN.",
+        "Prepara la reunión mensual con el cliente, pero la da la Project Manager.",
         "El visto bueno es sobre la pieza, no sobre el gusto: una observación de estilo personal no es un motivo para frenar un trabajo.",
       ],
       tareas: [

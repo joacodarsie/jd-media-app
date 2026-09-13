@@ -99,11 +99,20 @@ export default async function OrganigramaPage() {
           <h2 className="mb-1 text-sm font-semibold">Las líneas punteadas</h2>
           <p className="text-sm text-muted-foreground">
             Paid Media, Comercial, Botly y Desarrollo Web corren en paralelo: no
-            cuelgan de Operaciones. Operaciones les pide el servicio cuando una
+            cuelgan de la Project Manager. Ella les pide el servicio cuando una
             cuenta lo tiene contratado.
           </p>
         </div>
       </div>
+        <div className="rounded-xl border bg-card p-4">
+          <h2 className="mb-1 text-sm font-semibold">Dos jefas, dos ejes</h2>
+          <p className="text-sm text-muted-foreground">
+            Diseño, community y edición responden a la <b>Project Manager</b> por los
+            <b> tiempos</b> y a la <b>Dirección Creativa</b> por las <b>aprobaciones</b>.
+            Si las dos frenan una pieza por motivos distintos, manda la fecha y la
+            observación creativa se resuelve en la siguiente.
+          </p>
+        </div>
 
       {sinPuesto.length > 0 && (
         <div className="rounded-xl border border-dashed bg-card p-4">

@@ -5,6 +5,8 @@ import { requireUser, isStaffUser, userInRoles, getAccessibleClientIds } from "@
 import { runConciliacionDiaria } from "@/lib/social/conciliar-run";
 import { metaConfigured } from "@/lib/meta/instagram";
 import { ConciliacionPanel } from "@/components/conciliacion-panel";
+import { CoberturaConciliacion } from "@/components/cobertura-conciliacion";
+import { createAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +34,18 @@ export default async function SalioPage() {
     ? cuentas.filter((c) => misClientes.includes(c.clienteId))
     : cuentas;
 
+
+  // Qué parte de la cartera queda afuera. `runConciliacionDiaria` solo
+  // devuelve las conectadas, así que sin esto la pantalla habla de la mitad
+  // de las cuentas sin aclararlo, y el número engaña.
+  const { data: sinIgRaw } = await createAdmin()
+    .from("clients")
+    .select("nombre")
+    .eq("estado", "activo")
+    .eq("es_interno", false)
+    .is("ig_user_id", null)
+    .order("nombre");
+  const sinConectar = ((sinIgRaw ?? []) as { nombre: string }[]).map((c) => c.nombre);
   const totalAplicables = visibles.reduce((a, c) => a + c.aplicados.length, 0);
   const totalDudosos = visibles.reduce((a, c) => a + c.dudosos.length, 0);
   const totalFantasmas = visibles.reduce((a, c) => a + c.conciliacion.fantasmas.length, 0);
@@ -66,6 +80,8 @@ export default async function SalioPage() {
           Meta no está configurado en la app: sin eso no hay feed con qué comparar.
         </div>
       )}
+
+      <CoberturaConciliacion conectadas={visibles.length} sinConectar={sinConectar} />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <Stat label="Salió este mes" valor={salieron} tono="neutral" />

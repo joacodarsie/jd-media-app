@@ -190,6 +190,14 @@ export interface Task {
   links: TaskLink[];
   aprobador_id: string | null;
   requiere_aprobacion: boolean;
+  /**
+   * Número de ticket, correlativo global (migración 0165). Se muestra como
+   * "JD-123". Opcional porque el código tiene que tolerar que la migración
+   * todavía no esté aplicada.
+   */
+  numero?: number | null;
+  /** null = ticket madre. Con valor = subtarea de ese ticket. */
+  parent_id?: string | null;
   created_at: string;
   updated_at: string;
 }

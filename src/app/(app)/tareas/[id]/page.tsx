@@ -11,6 +11,8 @@ import {
 } from "@/lib/constants";
 import { fmtDate, dueState } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { formatTicket } from "@/lib/tareas/tickets";
+import { SubtareasPanel, type SubtareaFila } from "@/components/subtareas-panel";
 import type { Comment, TaskLink, TaskWithRels } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -114,6 +116,27 @@ export default async function TaskDetail({
     cliente: { id: string; nombre: string } | null;
   } | null) ?? null;
 
+
+  // El desglose del ticket, y —si esta tarea es una subtarea— de qué ticket
+  // cuelga, para poder volver.
+  const [{ data: subsRaw, error: errSubs }, { data: madreRaw }] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select(
+        "id, numero, titulo, estado, fecha_limite, asignado:users!tasks_asignado_a_id_fkey(id,nombre)"
+      )
+      .eq("parent_id", params.id)
+      .order("created_at"),
+    t.parent_id
+      ? supabase.from("tasks").select("id, numero, titulo").eq("id", t.parent_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const subtareas = (subsRaw ?? []) as unknown as SubtareaFila[];
+  // Si la migración 0165 no está aplicada, la columna no existe y la consulta
+  // vuelve con error: se esconde el panel en vez de mostrar uno que no guarda.
+  const ticketsActivos = !errSubs;
+  const madre = madreRaw as { id: string; numero: number | null; titulo: string } | null;
+
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <Link
@@ -154,7 +177,26 @@ export default async function TaskDetail({
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold">{t.titulo}</h1>
+          {madre && (
+            <Link
+              href={`/tareas/${madre.id}`}
+              className="mb-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-3 w-3" />
+              <span className="font-mono">{formatTicket(madre.numero)}</span>
+              <span className="truncate">{madre.titulo}</span>
+            </Link>
+          )}
+          <div className="flex flex-wrap items-baseline gap-2">
+            {/* El número adelante: con eso se nombra el ticket en una charla
+                y así se va a llamar la carpeta de Drive. */}
+            {formatTicket(t.numero) && (
+              <span className="font-mono text-sm text-muted-foreground">
+                {formatTicket(t.numero)}
+              </span>
+            )}
+            <h1 className="text-2xl font-bold">{t.titulo}</h1>
+          </div>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
             <span
               className={cn(
@@ -248,6 +290,13 @@ export default async function TaskDetail({
           )}
         </CardContent>
       </Card>
+
+      {/* El desglose va antes de Links y Comentarios: es lo que se mira al
+          entrar a un ticket madre. Solo tiene sentido en las madres — una
+          subtarea no puede tener subtareas (trigger de la 0165). */}
+      {ticketsActivos && !t.parent_id && (
+        <SubtareasPanel parentId={t.id} subtareas={subtareas} usuarios={users ?? []} />
+      )}
 
       <Card>
         <CardHeader>

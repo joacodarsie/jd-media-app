@@ -51,6 +51,71 @@ export async function createTask(input: {
   return { ok: true };
 }
 
+
+/**
+ * Agrega una subtarea a un ticket madre.
+ *
+ * Hereda cliente, área y prioridad de la madre en vez de pedirlos de nuevo: son
+ * los mismos por definición —el desglose de un ticket pertenece a la misma
+ * cuenta y al mismo trabajo— y cada campo extra en el formulario es una excusa
+ * más para no cargar el desglose.
+ *
+ * El responsable y la fecha SÍ se piden: es justo lo que cambia entre una
+ * subtarea y otra (la CM arma el ticket, Luz reparte a diseño y a edición con
+ * fechas de entrega distintas). Si no se eligen, arrancan como los de la madre.
+ */
+export async function addSubtarea(input: {
+  parentId: string;
+  titulo: string;
+  descripcion?: string | null;
+  asignado_a_id?: string | null;
+  fecha_limite?: string | null;
+}) {
+  const { supabase, userId } = await uid();
+  if (!input.titulo.trim()) return { error: "Falta el título de la subtarea." };
+
+  const { data: madre, error: errMadre } = await supabase
+    .from("tasks")
+    .select("id, cliente_id, area, prioridad, asignado_a_id, fecha_limite, parent_id")
+    .eq("id", input.parentId)
+    .maybeSingle();
+  if (errMadre) return { error: errMadre.message };
+  if (!madre) return { error: "No encontré el ticket." };
+  // La base también lo impide (trigger de la 0165); acá damos el mensaje bueno.
+  if ((madre as { parent_id: string | null }).parent_id) {
+    return { error: "Esto ya es una subtarea: no se puede anidar otra adentro." };
+  }
+
+  const m = madre as {
+    cliente_id: string | null;
+    area: string;
+    prioridad: string;
+    asignado_a_id: string | null;
+    fecha_limite: string | null;
+  };
+
+  const fecha = validarFechaLimite(input.fecha_limite ?? m.fecha_limite);
+  if (!fecha.ok) return { error: fecha.error! };
+
+  const { error } = await supabase.from("tasks").insert({
+    titulo: input.titulo.trim(),
+    descripcion: input.descripcion?.trim() || null,
+    asignado_a_id: input.asignado_a_id || m.asignado_a_id || null,
+    creado_por_id: userId,
+    cliente_id: m.cliente_id,
+    area: m.area,
+    prioridad: m.prioridad,
+    fecha_limite: fecha.fecha,
+    parent_id: input.parentId,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/tareas");
+  revalidatePath(`/tareas/${input.parentId}`);
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
 export async function updateTaskStatus(id: string, estado: string) {
   const { supabase } = await uid();
   const bloqueo = await motivoParaNoCerrarTareas(createAdmin(), [id], estado);

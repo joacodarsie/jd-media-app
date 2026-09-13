@@ -22,6 +22,7 @@ import { generateFixedExpensesForPeriod } from "@/lib/finanzas/fixed-expenses";
 import { guardarSnapshotDirector } from "@/lib/director/snapshots";
 import { requireUser } from "@/lib/auth";
 import { runRefillContactos } from "@/lib/prospecting/refill";
+import { runReunionesMensuales } from "@/lib/retencion/reunion-mensual-run";
 import { hoyYmd } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
@@ -116,6 +117,16 @@ export async function GET(req: NextRequest) {
     revisionCreativa = await ensureRevisionCreativaNudges(admin);
   } catch (e) {
     revisionCreativa = { error: e instanceof Error ? e.message : "falló" };
+  }
+
+  // La reunión mensual con cada cliente: crea el ticket del mes y, pasado el
+  // 15, le avisa al dueño cuáles siguen sin darse. Al 13/9 había 12 cuentas
+  // activas y 9 que NUNCA tuvieron una reunión registrada.
+  let reuniones: unknown = null;
+  try {
+    reuniones = await runReunionesMensuales(admin, hoyYmd());
+  } catch (e) {
+    reuniones = { error: e instanceof Error ? e.message : "falló" };
   }
 
   // Reabastecimiento de contactos: si a una campaña activa le quedan pocos sin
@@ -327,6 +338,7 @@ export async function GET(req: NextRequest) {
     processed_failed: failed,
     finance_notified: financeNotified,
     prospeccion,
+    reuniones,
     revision_creativa: revisionCreativa,
     refill,
     tasks_archived: archivedRows?.length ?? 0,

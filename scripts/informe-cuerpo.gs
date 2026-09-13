@@ -369,14 +369,32 @@ function hojaGuia(ss, d, meses) {
   }
   f = aire(sh, f);
 
+  f = seccion(sh, f, "CUÁNDO ENTRA Y CUÁNDO SALE LA PLATA", ANCHO);
+  f = aire(sh, f);
+  f = parrafo(
+    sh,
+    f,
+    "Los clientes pagan POR ADELANTADO, del 1 al 5 de cada mes. Al equipo se le paga A MES VENCIDO, el 7 del mes siguiente: el trabajo de septiembre se transfiere en octubre.",
+    ANCHO,
+    { alto: 56 }
+  );
+  f = parrafo(
+    sh,
+    f,
+    "Por eso cada mes de este informe muestra SU economía: lo que se cobró de ese mes y lo que ese mes costó, aunque la plata se mueva antes o después. Si el costo del equipo se contara el día que sale la transferencia, un mes parecería buenísimo y el siguiente un desastre, siendo el mismo trabajo.",
+    ANCHO,
+    { alto: 72 }
+  );
+  f = aire(sh, f);
+
   f = seccion(sh, f, "DE DÓNDE SALEN LOS NÚMEROS", ANCHO);
   f = aire(sh, f);
   f = parrafo(
     sh,
     f,
-    "Todo lo que aparece acá es plata que se movió de verdad: facturas con fecha de cobro y pagos con fecha de pago. Lo facturado y todavía no cobrado NO cuenta como ingreso — está aparte, en la hoja Cobros.",
+    "Los ingresos son lo efectivamente COBRADO. Lo facturado y todavía no cobrado NO cuenta como ingreso — está aparte, en la hoja Cobros.",
     ANCHO,
-    { alto: 56 }
+    { alto: 40 }
   );
   f = parrafo(
     sh,

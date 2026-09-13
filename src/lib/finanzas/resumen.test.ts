@@ -9,14 +9,14 @@ import {
 } from "./resumen";
 
 const movs: MovimientoARS[] = [
-  { fecha: "2026-09-05", montoARS: 350_000, tipo: "cobro" },
-  { fecha: "2026-09-10", montoARS: 650_000, tipo: "cobro" },
-  { fecha: "2026-09-15", montoARS: 400_000, tipo: "equipo" },
-  { fecha: "2026-09-20", montoARS: 100_000, tipo: "gasto" },
-  { fecha: "2026-08-05", montoARS: 800_000, tipo: "cobro" },
-  { fecha: "2026-08-15", montoARS: 500_000, tipo: "equipo" },
+  { periodo: "2026-09", montoARS: 350_000, tipo: "cobro" },
+  { periodo: "2026-09", montoARS: 650_000, tipo: "cobro" },
+  { periodo: "2026-09", montoARS: 400_000, tipo: "equipo" },
+  { periodo: "2026-09", montoARS: 100_000, tipo: "gasto" },
+  { periodo: "2026-08", montoARS: 800_000, tipo: "cobro" },
+  { periodo: "2026-08", montoARS: 500_000, tipo: "equipo" },
   // Fuera de la ventana: no tiene que sumar en ningún lado.
-  { fecha: "2025-01-05", montoARS: 9_999_999, tipo: "cobro" },
+  { periodo: "2025-01", montoARS: 9_999_999, tipo: "cobro" },
 ];
 
 describe("ultimosPeriodos", () => {
@@ -99,7 +99,7 @@ describe("cascada", () => {
 
   it("un mes sin ingresos no divide por cero", () => {
     const vacio = armarSerie(["2026-09"], [
-      { fecha: "2026-09-01", montoARS: 50_000, tipo: "equipo" as const },
+      { periodo: "2026-09", montoARS: 50_000, tipo: "equipo" as const },
     ]);
     const c = cascada(vacio[0]);
     expect(c.margenPct).toBe(0);

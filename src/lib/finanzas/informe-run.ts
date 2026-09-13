@@ -59,13 +59,11 @@ export async function armarDatos(db: SupabaseClient, periodo: string): Promise<D
     db
       .from("team_payments")
       .select("monto, moneda, periodo, concepto, fecha_pago, usuario:users!team_payments_user_id_fkey(nombre)")
-      .not("fecha_pago", "is", null)
-      .gte("fecha_pago", desde),
+      .gte("periodo", periodos[0]),
     db
       .from("expenses")
       .select("monto, moneda, periodo, concepto, proveedor, categoria, recurrente, fecha_pago")
-      .not("fecha_pago", "is", null)
-      .gte("fecha_pago", desde),
+      .gte("periodo", periodos[0]),
     db
       .from("client_services")
       .select(
@@ -108,7 +106,7 @@ export async function armarDatos(db: SupabaseClient, periodo: string): Promise<D
     proveedor: string | null;
     categoria: string;
     recurrente: boolean;
-    fecha_pago: string;
+    fecha_pago: string | null;
   }
   interface SvcRow {
     tipo: string;
@@ -136,11 +134,16 @@ export async function armarDatos(db: SupabaseClient, periodo: string): Promise<D
 
   // ── La serie mensual: exactamente la misma que usa /finanzas/resumen ──
   const movs: MovimientoARS[] = [
+    // Los ingresos van por lo COBRADO: lo facturado y no cobrado todavía no es
+    // plata, y como los clientes pagan del 1 al 5 del mes que usan, el mes de
+    // cobro y el período coinciden casi siempre.
     ...invoices
-      .filter((i) => i.fecha_cobro && i.fecha_cobro >= desde)
-      .map((i) => ({ fecha: i.fecha_cobro!, montoARS: ars(i.monto, i.moneda), tipo: "cobro" as const })),
-    ...pagos.map((p) => ({ fecha: p.fecha_pago, montoARS: ars(p.monto, p.moneda), tipo: "equipo" as const })),
-    ...gastos.map((e) => ({ fecha: e.fecha_pago, montoARS: ars(e.monto, e.moneda), tipo: "gasto" as const })),
+      .filter((i) => i.fecha_cobro)
+      .map((i) => ({ periodo: i.fecha_cobro!.slice(0, 7), montoARS: ars(i.monto, i.moneda), tipo: "cobro" as const })),
+    // Los costos van por su PERÍODO aunque no se hayan pagado: el equipo cobra
+    // a mes vencido, y el trabajo de septiembre es un costo de septiembre.
+    ...pagos.map((p) => ({ periodo: p.periodo, montoARS: ars(p.monto, p.moneda), tipo: "equipo" as const })),
+    ...gastos.map((e) => ({ periodo: e.periodo, montoARS: ars(e.monto, e.moneda), tipo: "gasto" as const })),
   ];
   const serie = armarSerie(periodos, movs);
   const mes = serie.find((m) => m.periodo === periodo)!;
@@ -190,7 +193,7 @@ export async function armarDatos(db: SupabaseClient, periodo: string): Promise<D
   // publicó tarde) y eso es justo lo que hay que ver.
   const pagadoPorPersona = new Map<string, number>();
   for (const p of pagos) {
-    if (p.periodo !== periodo) continue;
+    if (p.periodo !== periodo || !p.fecha_pago) continue;
     const nombre = p.usuario?.nombre ?? "Sin asignar";
     pagadoPorPersona.set(nombre, (pagadoPorPersona.get(nombre) ?? 0) + ars(p.monto, p.moneda));
   }
@@ -252,15 +255,15 @@ export async function armarDatos(db: SupabaseClient, periodo: string): Promise<D
         concepto: i.concepto,
         montoARS: ars(i.monto, i.moneda),
       })),
-    ...pagos.map((p) => ({
-      fecha: p.fecha_pago,
+    ...pagos.filter((p) => p.fecha_pago).map((p) => ({
+      fecha: p.fecha_pago!,
       tipo: "Equipo" as const,
       contraparte: p.usuario?.nombre ?? "—",
       concepto: p.concepto,
       montoARS: -ars(p.monto, p.moneda),
     })),
-    ...gastos.map((e) => ({
-      fecha: e.fecha_pago,
+    ...gastos.filter((e) => e.fecha_pago).map((e) => ({
+      fecha: e.fecha_pago!,
       tipo: "Gasto" as const,
       contraparte: e.proveedor ?? e.categoria,
       concepto: e.concepto,

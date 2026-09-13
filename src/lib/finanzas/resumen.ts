@@ -12,10 +12,19 @@
  * apareció una vez entre Finanzas y Cobros.
  */
 
-/** Un movimiento ya convertido a pesos, listo para sumar. */
+/**
+ * Un movimiento ya convertido a pesos, listo para sumar.
+ *
+ * Va con el PERÍODO al que pertenece, no con la fecha en que se movió la plata.
+ * Los dos no coinciden y el que importa es el período: los clientes pagan por
+ * adelantado del 1 al 5, y al equipo se le paga a mes vencido el 7 del mes
+ * siguiente. Si el costo del equipo se contara cuando sale la transferencia,
+ * septiembre parecería un mes buenísimo y octubre un desastre, cuando en
+ * realidad es el mismo trabajo.
+ */
 export interface MovimientoARS {
-  /** YYYY-MM-DD. */
-  fecha: string;
+  /** YYYY-MM: el mes al que pertenece, no cuándo se movió la plata. */
+  periodo: string;
   montoARS: number;
   /** De dónde sale: lo que cobrás, lo que le pagás al equipo, o el resto. */
   tipo: "cobro" | "equipo" | "gasto";
@@ -59,7 +68,7 @@ export function armarSerie(periodos: string[], movs: MovimientoARS[]): MesResume
     base.set(p, { periodo: p, entro: 0, equipo: 0, gastos: 0, salio: 0, quedo: 0, pctQuedo: 0 });
   }
   for (const mv of movs) {
-    const row = base.get(mv.fecha.slice(0, 7));
+    const row = base.get(mv.periodo);
     if (!row) continue;
     if (mv.tipo === "cobro") row.entro += mv.montoARS;
     else if (mv.tipo === "equipo") row.equipo += mv.montoARS;

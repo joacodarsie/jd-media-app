@@ -66,14 +66,12 @@ export default async function ResumenPage({
         .gte("fecha_cobro", desde),
       supabase
         .from("team_payments")
-        .select("monto, moneda, fecha_pago, usuario:users!team_payments_user_id_fkey(nombre)")
-        .not("fecha_pago", "is", null)
-        .gte("fecha_pago", desde),
+        .select("monto, moneda, periodo, fecha_pago, usuario:users!team_payments_user_id_fkey(nombre)")
+        .gte("periodo", periodos[0]),
       supabase
         .from("expenses")
-        .select("monto, moneda, fecha_pago, concepto, proveedor, categoria")
-        .not("fecha_pago", "is", null)
-        .gte("fecha_pago", desde),
+        .select("monto, moneda, periodo, fecha_pago, concepto, proveedor, categoria")
+        .gte("periodo", periodos[0]),
       supabase.from("subscriptions").select("costo, moneda, ciclo").eq("activa", true),
       // Los gastos fijos del mes que la app ya generó pero nadie marcó pagados.
       supabase
@@ -98,13 +96,15 @@ export default async function ResumenPage({
   interface Pay {
     monto: number;
     moneda: string;
-    fecha_pago: string;
+    periodo: string;
+    fecha_pago: string | null;
     usuario: { nombre: string } | null;
   }
   interface Exp {
     monto: number;
     moneda: string;
-    fecha_pago: string;
+    periodo: string;
+    fecha_pago: string | null;
     concepto: string;
     proveedor: string | null;
     categoria: string;
@@ -115,19 +115,22 @@ export default async function ResumenPage({
   const gastos = (exps ?? []) as unknown as Exp[];
   const ars = (m: number, mon: string) => toARS(Number(m), mon, rates);
 
+  // Cada movimiento va al mes al que PERTENECE, no a aquel en que se movió la
+  // plata: al equipo se le paga a mes vencido, y el trabajo de septiembre es un
+  // costo de septiembre aunque se transfiera el 7 de octubre.
   const movimientos: MovimientoARS[] = [
     ...cobros.map((i) => ({
-      fecha: i.fecha_cobro,
+      periodo: i.fecha_cobro.slice(0, 7),
       montoARS: ars(i.monto, i.moneda),
       tipo: "cobro" as const,
     })),
     ...pagos.map((p) => ({
-      fecha: p.fecha_pago,
+      periodo: p.periodo,
       montoARS: ars(p.monto, p.moneda),
       tipo: "equipo" as const,
     })),
     ...gastos.map((e) => ({
-      fecha: e.fecha_pago,
+      periodo: e.periodo,
       montoARS: ars(e.monto, e.moneda),
       tipo: "gasto" as const,
     })),
@@ -151,12 +154,12 @@ export default async function ResumenPage({
     (i) => ars(i.monto, i.moneda)
   );
   const alEquipo = agrupar(
-    pagos.filter((p) => p.fecha_pago.startsWith(periodo)),
+    pagos.filter((p) => p.periodo === periodo),
     (p) => p.usuario?.nombre ?? "Sin asignar",
     (p) => ars(p.monto, p.moneda)
   );
   const enGastos = agrupar(
-    gastos.filter((e) => e.fecha_pago.startsWith(periodo)),
+    gastos.filter((e) => e.periodo === periodo),
     (e) => e.categoria,
     (e) => ars(e.monto, e.moneda)
   );
@@ -232,18 +235,18 @@ export default async function ResumenPage({
       {hayAgujero && (
         <div className="rounded-xl border-2 border-amber-400 bg-amber-50 p-5 dark:border-amber-500/50 dark:bg-amber-500/10">
           <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-amber-900 dark:text-amber-200">
-            <AlertTriangle className="h-4 w-4" /> Esta hoja todavía no es real
+            <AlertTriangle className="h-4 w-4" /> Falta actualizar el costo del mes
           </p>
           <p className="mt-2 text-sm leading-relaxed">
-            Faltan cargar <b>{fmtARS(faltante)}</b> de gastos de este mes. El resultado de abajo
-            ya los tiene en cuenta —por eso dice {fmtARS(quedoReal)} y no {fmtARS(mes.quedo)}—,
-            pero es una <b>estimación</b> hasta que estén registrados de verdad.
+            La nómina calculada de este mes es <b>{fmtARS(faltante)}</b> mayor que la registrada
+            —se publicó contenido después de cerrar el mes—. El resultado de abajo ya lo tiene en
+            cuenta, por eso dice {fmtARS(quedoReal)} y no {fmtARS(mes.quedo)}.
           </p>
           <ul className="mt-3 space-y-1 text-sm">
             {faltaEquipo > 0 && (
               <li className="flex items-baseline justify-between gap-3">
                 <span>
-                  Pagos al equipo sin marcar{" "}
+                  Costo del equipo desactualizado{" "}
                   <span className="text-xs text-muted-foreground">
                     la nómina del mes da {fmtARS(nominaCalculada)} y hay {fmtARS(mes.equipo)}{" "}
                     registrados
@@ -275,8 +278,9 @@ export default async function ResumenPage({
             )}
           </ul>
           <p className="mt-3 text-xs text-muted-foreground">
-            Si ya les transferiste y la estructura se debitó, dejalo registrado de una. Recién ahí
-            esta hoja deja de ser una estimación y se puede mostrar afuera.
+            El botón actualiza el costo registrado con la nómina del mes. Ojo: también sella los
+            pagos como hechos, así que usalo recién cuando hayas transferido —al equipo se le paga
+            a mes vencido, el 7 del mes siguiente—.
           </p>
           <CerrarPagosBoton
             periodo={periodo}
@@ -398,8 +402,10 @@ export default async function ResumenPage({
       )}
 
       <p className="text-xs text-muted-foreground">
-        Todo lo de esta hoja es plata que se movió de verdad: facturas con fecha de cobro y pagos
-        con fecha de pago. Lo facturado pero no cobrado no aparece acá —eso está en{" "}
+        Cada mes muestra <b>su</b> economía: lo que cobraste de ese mes y lo que ese mes costó,
+        aunque la plata se mueva antes o después. Los clientes pagan por adelantado del 1 al 5; al
+        equipo se le paga a mes vencido, el 7 del mes siguiente. Lo facturado pero no cobrado no
+        aparece acá —eso está en{" "}
         <Link href="/cobros" className="underline print:no-underline">
           Cobros
         </Link>

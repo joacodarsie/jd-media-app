@@ -374,22 +374,36 @@ export default async function CobrosPage({
 
       {facturacion.disponible && resumen.total > 0 && (
         <Card>
-          <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-1 p-3 text-sm">
-            <span className="text-muted-foreground">
-              Facturado {monthFilter ? `en ${periodLabel(monthFilter)}` : "en total"}:
-            </span>
-            <span>
-              <b className="tabular-nums">{fmtARS(resumen.facturado)}</b>{" "}
-              <span className="text-muted-foreground">
-                de {fmtARS(resumen.total)} cobrados ({Math.round(resumen.pct * 100)}%)
-              </span>
-            </span>
-            {resumen.cuentaSinFactura > 0 && (
-              <span className="text-amber-700 dark:text-amber-400">
-                Falta facturar <b className="tabular-nums">{fmtARS(resumen.sinFactura)}</b> en{" "}
-                {resumen.cuentaSinFactura} cobro{resumen.cuentaSinFactura === 1 ? "" : "s"}
-              </span>
-            )}
+          {/* El monto adelante y grande. El porcentaje queda de contexto: al
+              contador se le lleva una cifra en pesos, no una proporción. */}
+          <CardContent className="flex flex-wrap items-end gap-x-8 gap-y-3 p-4">
+            <div>
+              <p className="text-xs text-muted-foreground">
+                Facturado {monthFilter ? `en ${periodLabel(monthFilter)}` : "en total"}
+              </p>
+              <p className="text-2xl font-bold tabular-nums">{fmtARS(resumen.facturado)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Sin factura</p>
+              <p
+                className={cn(
+                  "text-2xl font-bold tabular-nums",
+                  resumen.sinFactura > 0 && "text-amber-700 dark:text-amber-400"
+                )}
+              >
+                {fmtARS(resumen.sinFactura)}
+              </p>
+            </div>
+            <p className="pb-1 text-xs text-muted-foreground">
+              sobre {fmtARS(resumen.total)} cobrados
+              {resumen.cuentaSinFactura > 0 && (
+                <>
+                  {" · "}
+                  {resumen.cuentaSinFactura} cobro
+                  {resumen.cuentaSinFactura === 1 ? "" : "s"} sin facturar
+                </>
+              )}
+            </p>
           </CardContent>
         </Card>
       )}

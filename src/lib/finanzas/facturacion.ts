@@ -60,6 +60,45 @@ export async function fetchFacturacion(
 }
 
 /**
+ * Cuánto se facturó en los últimos 12 meses, en pesos.
+ *
+ * Es EL número de ARCA: el monotributo se mide por lo facturado en los doce
+ * meses corridos hacia atrás, no por el año calendario ni por el mes suelto.
+ * Va por `facturado_at` y no por el período del cobro, porque lo que cuenta
+ * para el fisco es cuándo se emitió la factura.
+ *
+ * Devuelve null si la migración 0164 no está aplicada (no hay dato que dar) o
+ * si la consulta falla: mejor no mostrar nada que mostrar un número inventado.
+ */
+export async function fetchFacturadoUltimos12Meses(
+  db: DbLike,
+  hoy: string
+): Promise<{ monto: number; desde: string } | null> {
+  // Doce meses corridos: del mismo día del año pasado hasta hoy.
+  const d = new Date(hoy + "T00:00:00");
+  d.setFullYear(d.getFullYear() - 1);
+  const desde = d.toISOString().slice(0, 10);
+  try {
+    const { data, error } = await db
+      .from("client_invoices")
+      .select("monto, moneda, facturado_at")
+      .eq("facturado", true)
+      .gte("facturado_at", desde)
+      .lte("facturado_at", hoy);
+    if (error) return null;
+    // Solo pesos: lo que va a ARCA se factura en pesos. Un cobro en dólares
+    // facturado se emite igual en pesos, así que el monto ya viene convertido.
+    const monto = ((data ?? []) as Array<{ monto: number }>).reduce(
+      (a, r) => a + Number(r.monto),
+      0
+    );
+    return { monto, desde };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Cuánto de lo que entró está facturado. Es la pregunta de ARCA y la respuesta
  * tiene que ser en plata, no en cantidad de cobros: diez facturas chicas hechas
  * y una grande sin hacer no es "91% facturado".

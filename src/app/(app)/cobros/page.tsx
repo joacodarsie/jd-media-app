@@ -5,6 +5,10 @@ import { MonthPicker } from "@/components/month-picker";
 import { CobrosSimple } from "@/components/cobros-simple";
 import { FacturasColgadas } from "@/components/facturas-colgadas";
 import { FinanzasAlertas } from "@/components/finanzas-alertas";
+import { fetchFacturadoUltimos12Meses } from "@/lib/finanzas/facturacion";
+import { createAdmin } from "@/lib/supabase/admin";
+import { hoyYmd } from "@/lib/dates";
+import { cn } from "@/lib/utils";
 import { totalCobrado, totalPendiente } from "@/lib/finanzas/cobro-gestion";
 import { cargarCobrosDelMes } from "@/lib/finanzas/cobros-mes";
 
@@ -37,14 +41,21 @@ export default async function CobrosSimplePage({
   const cobrado = totalCobrado(filas);
   const falta = totalPendiente(filas);
 
-  // Lo cobrado que todavía no se facturó. Se mide en plata, no en cantidad:
-  // diez facturitas hechas y una grande sin hacer no es "casi todo facturado".
+  // Facturado y sin facturar del mes, EN PESOS. El porcentaje no sirve para lo
+  // que el dueño necesita: para ARCA lo que importa es cuánta plata se facturó,
+  // no qué proporción.
+  const facturado = filas
+    .filter((f) => f.cobradoEl && f.facturado)
+    .reduce((a, f) => a + f.monto, 0);
   const sinFacturar = filas
     .filter((f) => f.cobradoEl && !f.facturado)
     .reduce((acc, f) => ({ monto: acc.monto + f.monto, cuenta: acc.cuenta + 1 }), {
       monto: 0,
       cuenta: 0,
     });
+
+  // El número de ARCA: lo facturado en los doce meses corridos hacia atrás.
+  const anual = facturacionActiva ? await fetchFacturadoUltimos12Meses(createAdmin(), hoyYmd()) : null;
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
@@ -70,7 +81,7 @@ export default async function CobrosSimplePage({
           muestra afuera. */}
       <FinanzasAlertas />
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className={cn("grid gap-3", facturacionActiva ? "sm:grid-cols-3" : "grid-cols-2")}>
         <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-500/40 dark:bg-emerald-500/10">
           <p className="text-xs text-emerald-800 dark:text-emerald-300">Ya entró</p>
           <p className="text-2xl font-bold tabular-nums text-emerald-900 dark:text-emerald-200">
@@ -81,15 +92,33 @@ export default async function CobrosSimplePage({
           <p className="text-xs text-muted-foreground">Falta cobrar este mes</p>
           <p className="text-2xl font-bold tabular-nums">${falta.toLocaleString("es-AR")}</p>
         </div>
+        {/* Tercer número, del mismo tamaño que los otros dos: para ARCA lo que
+            importa es cuánta plata se facturó, no qué proporción. Un porcentaje
+            no se puede llevar al contador. */}
+        {facturacionActiva && (
+          <div className="rounded-xl border bg-card p-4">
+            <p className="text-xs text-muted-foreground">Facturado este mes</p>
+            <p className="text-2xl font-bold tabular-nums">${facturado.toLocaleString("es-AR")}</p>
+            {sinFacturar.monto > 0 && (
+              <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
+                en negro ${sinFacturar.monto.toLocaleString("es-AR")} · {sinFacturar.cuenta} cobro
+                {sinFacturar.cuenta === 1 ? "" : "s"}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* El pendiente de ARCA, en plata. Solo aparece si hay algo sin facturar:
-          una línea permanente en cero se vuelve invisible a la semana. */}
-      {facturacionActiva && sinFacturar.monto > 0 && (
-        <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
-          De lo que entró, falta facturar{" "}
-          <b className="tabular-nums">${sinFacturar.monto.toLocaleString("es-AR")}</b> en{" "}
-          {sinFacturar.cuenta} cobro{sinFacturar.cuenta === 1 ? "" : "s"}.
+      {/* El número con el que se mide el monotributo: los doce meses corridos
+          hacia atrás, no el año calendario. */}
+      {anual && (
+        <p className="text-xs text-muted-foreground">
+          Facturado en los últimos 12 meses (lo que mira ARCA):{" "}
+          <b className="tabular-nums text-foreground">${anual.monto.toLocaleString("es-AR")}</b>{" "}
+          <span className="opacity-70">
+            — desde el {anual.desde.slice(8, 10)}/{anual.desde.slice(5, 7)}/
+            {anual.desde.slice(2, 4)}
+          </span>
         </p>
       )}
 

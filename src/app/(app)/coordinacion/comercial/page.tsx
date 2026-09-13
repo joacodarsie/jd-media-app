@@ -5,6 +5,10 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { getExchangeRates } from "@/lib/exchange";
 import { toARS, fmtARS } from "@/lib/finanzas";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  CuentasSinCerrador,
+  type CuentaSinCerrador,
+} from "@/components/cuentas-sin-cerrador";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -43,7 +47,7 @@ export default async function ComercialPage() {
         .not("ganado_cliente_id", "is", null),
       admin
         .from("clients")
-        .select("id, nombre, estado, cerrado_por_id")
+        .select("id, nombre, estado, cerrado_por_id, fecha_inicio")
         .eq("es_interno", false),
     ]);
 
@@ -57,6 +61,7 @@ export default async function ComercialPage() {
     nombre: string;
     estado: string;
     cerrado_por_id: string | null;
+    fecha_inicio: string | null;
   }[];
 
   // Atribución por lead ganado (fallback): cliente → comercial.
@@ -201,6 +206,17 @@ export default async function ComercialPage() {
     })
     .sort((a, b) => b.mrrActivo - a.mrrActivo);
 
+
+  // Las cuentas activas que no dicen quién las cerró. El formulario ya lo
+  // exige para las nuevas; estas son las que quedaron de antes, y de acá sale
+  // la comisión del comercial.
+  const sinCerrador: CuentaSinCerrador[] = clients
+    .filter((c) => c.estado === "activo" && !c.cerrado_por_id && !leadAttribution.has(c.id))
+    .map((c) => ({
+      id: c.id,
+      nombre: c.nombre,
+      fechaInicio: c.fecha_inicio,
+    }));
   return (
     <div className="space-y-6">
       <div>
@@ -213,6 +229,8 @@ export default async function ComercialPage() {
           <b>recurrente mensual</b> que trae hoy y el <b>acumulado histórico</b>.
         </p>
       </div>
+
+      <CuentasSinCerrador cuentas={sinCerrador} comerciales={comerciales} />
 
       {rows.length === 0 ? (
         <Card>

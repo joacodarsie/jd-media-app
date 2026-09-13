@@ -96,11 +96,31 @@ function clean(input: ClientInput) {
   };
 }
 
+
+/**
+ * Una cuenta ACTIVA tiene que decir quién la cerró.
+ *
+ * No es burocracia: la liquidación calcula la comisión del comercial a partir
+ * de `cerrado_por_id` (ver `selectFirstMonthCommissions`). Si queda vacío, el
+ * contrato del comercial no se ejecuta y nadie se entera hasta que reclama.
+ * Al 12/9/2026 había 32 de 38 cuentas sin este dato.
+ *
+ * Una propuesta NO lo necesita: la venta se cierra cuando entra el primer pago,
+ * así que recién ahí hay un cerrador.
+ */
+function faltaCerrador(input: ClientInput): string | null {
+  if (input.estado !== "activo") return null;
+  if (input.cerrado_por_id) return null;
+  return "Falta quién cerró la cuenta. De ese dato sale la comisión del comercial: sin él no se le paga.";
+}
+
 export async function createClientRow(
   input: ClientInput,
   services?: NewClientServiceInput[]
 ) {
   const { supabase, userId } = await ctx();
+  const falta = faltaCerrador(input);
+  if (falta) return { error: falta };
   const cleaned = clean(input);
   const { data, error } = await supabase
     .from("clients")
@@ -241,6 +261,8 @@ export async function updateClientRow(
   if (me.rol !== "admin") {
     return { error: "Solo un administrador puede editar la ficha del cliente." };
   }
+  const falta = faltaCerrador(input);
+  if (falta) return { error: falta };
   const { supabase } = await ctx();
 
   // Quién la llevaba ANTES, para poder anotar el pase. Sin esto, cambiar la CM

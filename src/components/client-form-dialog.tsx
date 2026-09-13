@@ -21,6 +21,7 @@ import {
 } from "@/lib/constants";
 import type { Client } from "@/lib/types";
 import { hoyYmd } from "@/lib/dates";
+import { cn } from "@/lib/utils";
 import { usersForPuesto, type TeamUserOpt } from "@/lib/role-options";
 import {
   Dialog,
@@ -155,6 +156,14 @@ export function ClientFormDialog({
   function submit() {
     if (!nombre.trim()) {
       toast.error("Falta el nombre.");
+      return;
+    }
+    // Quién cerró la cuenta es obligatorio en las ACTIVAS. Sin este dato la
+    // liquidación no le paga la comisión a nadie: el contrato del comercial
+    // queda en papel. Una propuesta todavía no tiene cerrador —se cierra
+    // cuando paga—, así que solo se exige al pasar a activo.
+    if (estado === "activo" && cerradoPorId === NONE) {
+      toast.error("Falta quién cerró la cuenta: sin eso no se le paga la comisión.");
       return;
     }
     // En alta, el pack y el monto del cliente se DERIVAN de los servicios
@@ -308,13 +317,22 @@ export function ClientFormDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label>Cerrado por (comercial)</Label>
+              <Label>
+                Cerrado por (comercial)
+                {estado === "activo" && <span className="ml-1 text-red-600">*</span>}
+              </Label>
               <Select value={cerradoPorId} onValueChange={setCerradoPorId}>
-                <SelectTrigger>
+                <SelectTrigger
+                  className={cn(
+                    estado === "activo" && cerradoPorId === NONE && "border-red-400"
+                  )}
+                >
                   <SelectValue placeholder="—" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NONE}>Sin asignar</SelectItem>
+                  {/* "Sin asignar" solo existe mientras la cuenta no esté activa.
+                      En una activa es justamente lo que no puede pasar. */}
+                  {estado !== "activo" && <SelectItem value={NONE}>Sin asignar</SelectItem>}
                   {opciones("comercial", cerradoPorId).map((u) => (
                     <SelectItem key={u.id} value={u.id}>
                       {u.nombre}
@@ -322,6 +340,11 @@ export function ClientFormDialog({
                   ))}
                 </SelectContent>
               </Select>
+              {estado === "activo" && cerradoPorId === NONE && (
+                <p className="text-xs text-red-600">
+                  De acá sale la comisión del comercial. Si queda vacío, no se le paga.
+                </p>
+              )}
             </div>
             {mode === "edit" && (
               <div className="space-y-2">

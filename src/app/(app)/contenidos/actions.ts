@@ -5,6 +5,7 @@ import {
   chequearLinkParaPublicar,
   type LinksDePieza,
 } from "@/lib/contenidos/link-publicado";
+import { publicarPiezaEnDrive } from "@/lib/google-drive";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { requireUser, isStaffUser, userInRoles } from "@/lib/auth";
@@ -185,7 +186,9 @@ export async function changePublicationStatus(
   // no es "staff" el update le fallaba en silencio.
   const { data: pub } = await admin
     .from("publications")
-    .select("cliente_id, estado")
+    .select(
+      "cliente_id, estado, titulo, asset_url, fecha_publicacion, created_at, link_instagram"
+    )
     .eq("id", id)
     .maybeSingle();
   if (!pub) return { error: "No se encontró la publicación." };
@@ -221,6 +224,19 @@ export async function changePublicationStatus(
     patch
   );
   if (error) return { error: error.message };
+
+  // Una pieza APROBADA va al Drive del cliente, que es de donde él la baja.
+  // Best-effort y sin esperar: si Drive falla o tarda, la aprobación ya quedó
+  // guardada. Lo que no puede pasar es que se caiga Google y nadie pueda aprobar.
+  if (estado === "aprobado") {
+    void dejarPiezaAprobadaEnDrive({
+      clienteId: pub.cliente_id as string,
+      titulo: (pub as { titulo?: string }).titulo ?? "Pieza",
+      assetUrl: (pub as { asset_url?: string | null }).asset_url ?? null,
+      fecha: (pub as { fecha_publicacion?: string | null }).fecha_publicacion ?? null,
+    }).catch((e) => console.error("aprobar → Drive del cliente:", e));
+  }
+
   invalidate(pub.cliente_id);
   return { ok: true };
 }
@@ -571,4 +587,33 @@ export async function retryAutoPublish(id: string) {
   if (error) return { error: error.message };
   invalidate(pub.cliente_id);
   return { ok: true };
+}
+
+/**
+ * Deja una pieza aprobada en el Drive del cliente.
+ *
+ * Separado y sin `await` en el llamador: la aprobación es lo que importa y no
+ * puede depender de que Google conteste. Si falla queda en el log y el equipo
+ * lo puede reintentar aprobando de nuevo — es idempotente del otro lado.
+ */
+async function dejarPiezaAprobadaEnDrive(input: {
+  clienteId: string;
+  titulo: string;
+  assetUrl: string | null;
+  fecha: string | null;
+}) {
+  if (!input.assetUrl) return; // sin archivo no hay nada que dejarle
+  const admin = createAdmin();
+  const { data: cli } = await admin
+    .from("clients")
+    .select("drive_url")
+    .eq("id", input.clienteId)
+    .maybeSingle();
+  const res = await publicarPiezaEnDrive({
+    clienteDriveUrl: (cli as { drive_url?: string | null } | null)?.drive_url ?? null,
+    assetUrl: input.assetUrl,
+    nombre: input.titulo,
+    periodo: (input.fecha ?? "").slice(0, 7) || "sin-fecha",
+  });
+  if ("error" in res) console.error("dejarPiezaAprobadaEnDrive:", res.error);
 }

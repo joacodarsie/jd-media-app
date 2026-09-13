@@ -252,6 +252,111 @@ export async function ensureTicketDriveFolder(input: {
   }
 }
 
+
+/**
+ * Saca el id de un archivo O carpeta de Drive desde cualquier forma de link.
+ *
+ * El equipo pega links de las tres formas que da Drive según desde dónde lo
+ * copien, así que hay que aguantar las tres o la mitad de las piezas quedan
+ * afuera por un detalle de formato.
+ */
+export function extractDriveItemId(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const s = url.trim();
+  const m =
+    s.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) ??
+    s.match(/\/folders\/([a-zA-Z0-9_-]+)/) ??
+    s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  return m?.[1] ?? null;
+}
+
+/** Subcarpeta del cliente donde ve el contenido aprobado del mes. */
+export const DRIVE_APROBADO_NAME = "Calendario de contenidos";
+
+export type PublicarEnDriveResult =
+  | { ok: true; url: string; yaEstaba: boolean }
+  | { error: string; noConnection?: boolean };
+
+/**
+ * Deja una pieza APROBADA en el Drive del cliente, para que se la baje cuando
+ * quiera: "<Cliente> › Calendario de contenidos › 2026-09 › <pieza>".
+ *
+ * Crea un ACCESO DIRECTO y no una copia. Tres razones: el archivo ya está en
+ * Drive (el equipo sube ahí y pega el link, por eso `asset_url` es un link de
+ * Drive), copiar duplicaría gigas de video, y un acceso directo funciona igual
+ * para un archivo suelto que para una carpeta — y el equipo pega las dos cosas.
+ *
+ * Idempotente: si el acceso directo ya está, no crea otro.
+ */
+export async function publicarPiezaEnDrive(input: {
+  clienteDriveUrl: string | null;
+  assetUrl: string | null;
+  /** Nombre que va a ver el cliente. */
+  nombre: string;
+  /** "YYYY-MM" del mes de la pieza, para no amontonar todo junto. */
+  periodo: string;
+}): Promise<PublicarEnDriveResult> {
+  const parentId = extractDriveFolderId(input.clienteDriveUrl);
+  if (!parentId) {
+    return {
+      error:
+        "La cuenta todavía no tiene carpeta en Drive. Se crea desde el onboarding del cliente.",
+    };
+  }
+  const targetId = extractDriveItemId(input.assetUrl);
+  if (!targetId) {
+    return {
+      error:
+        "La pieza no tiene archivo cargado en Drive. Sin archivo no hay nada para dejarle al cliente.",
+    };
+  }
+
+  const conn = await findDriveConnection();
+  if (!conn) {
+    return {
+      error: "Todavía no hay una cuenta de Google con Drive conectada.",
+      noConnection: true,
+    };
+  }
+
+  try {
+    const token = await getValidAccessToken(conn);
+    const aprobado = await ensureFolder(token, DRIVE_APROBADO_NAME, parentId);
+    const delMes = await ensureFolder(token, input.periodo, aprobado.id);
+
+    const nombre = input.nombre.replace(/[/\\]/g, "-").trim().slice(0, 80) || "Pieza";
+    const yaEsta = await listFolders(token, nombre, delMes.id);
+    if (yaEsta.length > 0) {
+      const f = yaEsta[0];
+      return {
+        ok: true,
+        url: f.webViewLink ?? `https://drive.google.com/drive/folders/${f.id}`,
+        yaEstaba: true,
+      };
+    }
+
+    const creado = (await driveFetch(token, "/files?fields=id,webViewLink", {
+      method: "POST",
+      body: JSON.stringify({
+        name: nombre,
+        mimeType: "application/vnd.google-apps.shortcut",
+        parents: [delMes.id],
+        shortcutDetails: { targetId },
+      }),
+    })) as unknown as DriveFolder;
+
+    return {
+      ok: true,
+      url: creado.webViewLink ?? `https://drive.google.com/file/d/${creado.id}/view`,
+      yaEstaba: false,
+    };
+  } catch (e) {
+    console.error("publicarPiezaEnDrive:", e);
+    const msg = e instanceof Error ? e.message : "Error desconocido";
+    return { error: `No se pudo dejar la pieza en el Drive del cliente. ${msg}` };
+  }
+}
+
 export type CreateClientDriveResult =
   | { ok: true; url: string; email: string; enCarpetaReal: boolean }
   | { error: string; noConnection?: boolean };

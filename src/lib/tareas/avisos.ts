@@ -8,7 +8,7 @@
  * leerlos. Un aviso que se ignora es peor que no tenerlo, porque además tapa
  * al que sí importaba. Así que acá se avisa poco y bien:
  *
- *  - Te asignaron algo → te enterás, es trabajo nuevo tuyo.
+ *  - Te asignaron algo → ya lo avisa un trigger de la base; NO se duplica acá.
  *  - Cambió la fecha de algo tuyo → te cambia el día.
  *  - Cambió el estado → solo a los que siguen el ticket, no al que lo tocó.
  *
@@ -26,7 +26,7 @@ export interface EstadoTarea {
   titulo: string;
 }
 
-export type TipoAviso = "asignacion" | "fecha" | "estado";
+export type TipoAviso = "fecha" | "estado";
 
 export interface Aviso {
   userId: string;
@@ -57,15 +57,13 @@ export function avisosDeCambio(
   const out: Aviso[] = [];
   const titulo = despues.titulo || antes.titulo || "una tarea";
 
-  // ── Te asignaron ──
+  // ── La ASIGNACIÓN no se avisa desde acá ──
+  //
+  // Ya la avisa un trigger de la base (`notify_assignment`, migración 0001) que
+  // cubre TODOS los caminos: el alta, la edición, la reasignación en bloque y
+  // cualquier escritura directa. Mandar otro aviso desde el código le llegaba a
+  // la persona duplicado — verificado el 13/9 con una tarea de prueba.
   const cambioAsignado = antes.asignado_a_id !== despues.asignado_a_id;
-  if (cambioAsignado && despues.asignado_a_id && despues.asignado_a_id !== autorId) {
-    out.push({
-      userId: despues.asignado_a_id,
-      tipo: "asignacion",
-      mensaje: `Te asignaron "${titulo}" · entrega ${dm(despues.fecha_limite)}`,
-    });
-  }
 
   // ── Te cambiaron la fecha ──
   //

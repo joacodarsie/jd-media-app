@@ -11,18 +11,10 @@ const base: EstadoTarea = {
 const t = (x: Partial<EstadoTarea> = {}): EstadoTarea => ({ ...base, ...x });
 
 describe("avisosDeCambio", () => {
-  it("avisa a quien le asignaron la tarea", () => {
+  it("NO avisa la asignación: ya la avisa un trigger de la base", () => {
+    // Verificado el 13/9 con una tarea de prueba: el trigger notify_assignment
+    // ya manda el aviso, así que hacerlo también acá le llegaba duplicado.
     const a = avisosDeCambio(t({ asignado_a_id: null }), t(), "luz");
-    expect(a).toHaveLength(1);
-    expect(a[0].userId).toBe("ana");
-    expect(a[0].tipo).toBe("asignacion");
-    expect(a[0].mensaje).toContain("Portada destacada");
-    expect(a[0].mensaje).toContain("18/09");
-  });
-
-  it("NUNCA le avisa a quien hizo el cambio", () => {
-    // Es el aviso inútil que entrena a ignorar la campanita.
-    const a = avisosDeCambio(t({ asignado_a_id: null }), t({ asignado_a_id: "luz" }), "luz");
     expect(a).toEqual([]);
   });
 
@@ -33,15 +25,15 @@ describe("avisosDeCambio", () => {
     expect(a[0].mensaje).toContain("18/09 → 25/09");
   });
 
-  it("no manda dos avisos si te asignan y ponen fecha a la vez", () => {
-    // El aviso de asignación ya trae la fecha: el segundo sería ruido.
+  it("si te asignan y ponen fecha a la vez, no manda el de fecha", () => {
+    // El aviso de asignación (del trigger) ya trae la tarea: el de fecha sería
+    // un segundo aviso por el mismo movimiento.
     const a = avisosDeCambio(
       t({ asignado_a_id: null, fecha_limite: "2026-09-10" }),
       t({ asignado_a_id: "ana", fecha_limite: "2026-09-25" }),
       "luz"
     );
-    expect(a).toHaveLength(1);
-    expect(a[0].tipo).toBe("asignacion");
+    expect(a).toEqual([]);
   });
 
   it("el cambio de estado va solo a los que siguen el ticket", () => {
@@ -66,9 +58,10 @@ describe("avisosDeCambio", () => {
   });
 
   it("una persona recibe un solo aviso aunque le toquen dos cosas", () => {
+    // Le cambian la fecha Y el estado: va uno solo.
     const a = avisosDeCambio(
-      t({ asignado_a_id: null }),
-      t({ asignado_a_id: "ana", estado: "en_progreso" }),
+      t(),
+      t({ fecha_limite: "2026-09-25", estado: "en_progreso" }),
       "luz",
       ["ana"]
     );
@@ -82,11 +75,7 @@ describe("avisosDeCambio", () => {
   });
 
   it("una tarea sin fecha se dice así, no 'undefined'", () => {
-    const a = avisosDeCambio(
-      t({ asignado_a_id: null }),
-      t({ asignado_a_id: "ana", fecha_limite: null }),
-      "luz"
-    );
+    const a = avisosDeCambio(t(), t({ fecha_limite: null }), "luz");
     expect(a[0].mensaje).toContain("sin fecha");
   });
 });

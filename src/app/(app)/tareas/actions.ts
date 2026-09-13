@@ -449,7 +449,9 @@ async function avisarCambios(taskId: string, antes: EstadoTarea, despues: Estado
     avisos.map((a) => ({
       user_id: a.userId,
       task_id: taskId,
-      tipo: a.tipo === "asignacion" ? "asignacion" : "comentario",
+      // No hay tipo propio para "cambió la fecha": va como comentario, que es
+      // el tipo genérico de "algo pasó en esta tarea".
+      tipo: "comentario",
       mensaje: a.mensaje,
       link: `/tareas/${taskId}`,
     }))

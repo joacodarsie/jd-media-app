@@ -9,6 +9,7 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { requireUser } from "@/lib/auth";
 import { SERVICE_TYPE_LABEL } from "@/lib/constants";
 import { reasignarTareasDeCuenta } from "@/lib/tareas/reasignar-run";
+import { runOnboarding15 } from "@/lib/retencion/onboarding-15-run";
 import {
   anotarPaseDeCuenta,
   ROLES_CON_HISTORIAL,
@@ -445,6 +446,17 @@ export async function activateClient(id: string) {
 
   // Marcar como ganado el lead vinculado (si vino de una propuesta del pipeline).
   await admin.from("leads").update({ stage: "ganado" }).eq("ganado_cliente_id", id);
+
+  // El onboarding de 15 días, solo. Antes esto era un botón adentro de la
+  // pantalla de onboarding y se apretó UNA vez en toda la historia de la app:
+  // las 12 cuentas activas arrancaron sin una sola tarea. Y el mes 1 es donde
+  // se mueren (ninguna baja pasó de 3,2 meses). Best-effort: si falla, la
+  // cuenta queda activa igual y el botón lo vuelve a intentar.
+  try {
+    await runOnboarding15(admin, id, { creadoPorId: me.id, fechaInicio: today });
+  } catch {
+    // el botón de /clientes/[id]/onboarding lo reintenta
+  }
 
   revalidatePath("/clientes");
   revalidatePath(`/clientes/${id}`);

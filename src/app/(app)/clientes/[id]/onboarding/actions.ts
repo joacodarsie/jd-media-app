@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
+import { runOnboarding15 } from "@/lib/retencion/onboarding-15-run";
 import { SERVICE_TYPE_LABEL } from "@/lib/constants";
 import { AGENCY } from "@/lib/agency";
 import { applyContractDiscount } from "@/lib/payment-reminder";
@@ -278,156 +279,29 @@ export async function assignContractNumber(clientId: string) {
 }
 
 /** Crea tareas iniciales según los servicios contratados del cliente. */
+/**
+ * Arma el onboarding de 15 días de la cuenta (ticket madre + desglose).
+ *
+ * Desde el 13/9/2026 el plan vive en `lib/retencion/onboarding-15.ts` y es el
+ * MISMO que dispara la activación del cliente: antes había dos listas de tareas
+ * de arranque distintas —una acá, plana y sin jerarquía— y ninguna seguía el
+ * orden que dictó el dueño. Este botón quedó como reintento manual.
+ */
 export async function generateInitialTasks(clientId: string) {
   const me = await requireUser();
-  const supabase = createClient();
   const admin = createAdmin();
 
-  const { data: client } = await supabase
-    .from("clients")
-    .select("id, nombre, cm_id, disenador_id, audiovisual_id")
-    .eq("id", clientId)
-    .maybeSingle();
+  const r = await runOnboarding15(admin, clientId, { creadoPorId: me.id });
 
-  if (!client) return { error: "Cliente no encontrado" };
-
-  const { data: services } = await supabase
-    .from("client_services")
-    .select("tipo, monto_mensual")
-    .eq("cliente_id", clientId)
-    .eq("activo", true);
-
-  const c = client as {
-    id: string;
-    nombre: string;
-    cm_id: string | null;
-    disenador_id: string | null;
-    audiovisual_id: string | null;
-  };
-  const svcTypes = new Set(((services ?? []) as ClientService[]).map((s) => s.tipo));
-
-  type TemplateTask = {
-    titulo: string;
-    descripcion: string;
-    area: string;
-    asignado_a_id: string | null;
-    diasPlazo: number;
-  };
-  const tasks: TemplateTask[] = [];
-
-  function add(
-    when: number,
-    titulo: string,
-    descripcion: string,
-    area: string,
-    asignado: string | null
-  ) {
-    tasks.push({
-      titulo,
-      descripcion,
-      area,
-      asignado_a_id: asignado ?? c.cm_id ?? null,
-      diasPlazo: when,
-    });
+  if (!r.creado) {
+    if (r.motivo === "ya_existe")
+      return { error: "Esta cuenta ya tiene su onboarding de 15 días armado." };
+    if (r.motivo === "sin_cliente") return { error: "Cliente no encontrado." };
+    if (r.motivo === "sin_responsable")
+      return { error: "No hay a quién asignarle las tareas: falta la coordinación." };
+    return { error: r.error ?? "No se pudo armar el onboarding." };
   }
 
-  if (svcTypes.has("gestion_redes" as ServiceType)) {
-    add(2, "Auditoría inicial de redes",
-      "Revisar perfiles actuales del cliente, performance histórica, contenido publicado y oportunidades.",
-      "Community Manager", c.cm_id);
-    add(5, "Manual de marca",
-      "Definir paleta, tipografías, tono de voz, do/don'ts y guidelines visuales.",
-      "Diseño", c.disenador_id);
-    add(7, "Diagnóstico inicial (PDF)",
-      "Estrategia, plan de acción, pilares de contenido y lineamientos. Compartir con el cliente.",
-      "Community Manager", c.cm_id);
-    add(10, "Moodboard",
-      "Armar moodboard visual para definir estética del feed.",
-      "Diseño", c.disenador_id);
-    add(10, "Primer calendario de contenidos",
-      "Calendario mensual con copys, formatos y referencias. Pasar a aprobación del cliente.",
-      "Community Manager", c.cm_id);
-    add(14, "Optimización de perfiles",
-      "Bio, foto, historias destacadas, links, portadas.",
-      "Diseño", c.disenador_id);
-  }
-
-  if (svcTypes.has("paid_media" as ServiceType)) {
-    add(3, "Setup Business Manager + accesos",
-      "Verificar accesos a Meta Business Manager / Google Ads. Configurar permisos.",
-      "Paid Media", null);
-    add(5, "Píxel / conversiones",
-      "Implementar/verificar píxel de Meta y conversiones en GA4.",
-      "Paid Media", null);
-    add(7, "Definición de objetivos y KPIs",
-      "Acordar con el cliente objetivos (leads, ventas, ROAS) y KPIs medibles.",
-      "Paid Media", null);
-    add(10, "Primera campaña configurada",
-      "Estructura de campañas, segmentaciones, presupuestos y creatividades.",
-      "Paid Media", null);
-  }
-
-  if (svcTypes.has("edicion_audiovisual" as ServiceType)) {
-    add(7, "Coordinar primera jornada de producción",
-      "Definir fecha, locación, listado de tomas y briefing.",
-      "Edición Audiovisual", c.audiovisual_id);
-  }
-
-  if (svcTypes.has("diseno_grafico" as ServiceType)) {
-    add(3, "Brief de diseño",
-      "Recibir brief detallado del cliente: necesidades, referencias, plazos.",
-      "Diseño", c.disenador_id);
-    add(7, "Manual de marca visual",
-      "Si no existe, armar guidelines visuales mínimos para asegurar consistencia.",
-      "Diseño", c.disenador_id);
-  }
-
-  if (svcTypes.has("desarrollo_web" as ServiceType)) {
-    add(5, "Análisis de requerimientos",
-      "Relevar funcionalidades, integraciones, contenidos y plazos.",
-      "Desarrollo Web", null);
-    add(10, "Wireframes iniciales",
-      "Diseñar wireframes de las páginas principales para aprobación.",
-      "Desarrollo Web", null);
-  }
-
-  if (svcTypes.has("botly" as ServiceType)) {
-    add(5, "Definir flow del bot",
-      "Mapear flujos de conversación, intenciones, integraciones necesarias.",
-      "Botly", null);
-  }
-
-  // Tareas comunes a TODOS los clientes
-  add(1, "Reunión de kickoff",
-    `Primera reunión con el cliente. Presentar equipo asignado, cronograma y siguientes pasos.`,
-    "Community Manager", c.cm_id);
-  add(2, "Pedir accesos y material",
-    "Solicitar al cliente: accesos a redes, fotos/videos existentes, logos, brand assets.",
-    "Community Manager", c.cm_id);
-
-  if (tasks.length === 0) {
-    return { error: "No hay servicios contratados activos para generar tareas." };
-  }
-
-  const today = new Date();
-  const rows = tasks.map((t) => ({
-    titulo: t.titulo,
-    descripcion: t.descripcion,
-    cliente_id: clientId,
-    asignado_a_id: t.asignado_a_id,
-    creado_por_id: me.id,
-    area: t.area,
-    prioridad: "media",
-    estado: "pendiente",
-    fecha_limite: new Date(today.getTime() + t.diasPlazo * 86400000)
-      .toISOString()
-      .slice(0, 10),
-  }));
-
-  const { error } = await admin.from("tasks").insert(rows);
-  if (error) return { error: error.message };
-
-  // Marcar el paso como hecho
   await admin
     .from("client_onboarding")
     .upsert(
@@ -437,7 +311,8 @@ export async function generateInitialTasks(clientId: string) {
 
   revalidatePath(`/clientes/${clientId}/onboarding`);
   revalidatePath(`/clientes/${clientId}`);
-  return { ok: true, count: rows.length };
+  revalidatePath("/tareas");
+  return { ok: true, count: r.subtareas ?? 0, numero: r.numero };
 }
 
 /** Devuelve los textos de bienvenida (cadena de mensajes) personalizados según servicios. */

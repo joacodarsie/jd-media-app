@@ -6,6 +6,7 @@ import type { TaskWithRels } from "@/lib/types";
 import { TaskViews } from "@/components/task-views";
 import { TaskRequestsPanel } from "@/components/task-requests-panel";
 import { pedidosPendientes } from "./pedidos-actions";
+import { madresQueFaltan, type RefMadre } from "@/lib/tareas/agrupar";
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +95,22 @@ export default async function TareasPage({
     ...(archivedTasks ?? []),
   ] as unknown as TaskWithRels[];
 
+  // Las subtareas cuya madre NO entró en la lista (pasa siempre en "Mis
+  // tareas": te tocan tres piezas de un ticket que lleva otro). Se traen solo
+  // para poder nombrar el ticket al lado de la fila, así la subtarea no queda
+  // huérfana en el medio de la lista sin decir de dónde sale.
+  const faltan = madresQueFaltan(tasks);
+  let madres: Record<string, RefMadre> = {};
+  if (faltan.length > 0) {
+    const { data: madresRaw } = await supabase
+      .from("tasks")
+      .select("id, numero, titulo")
+      .in("id", faltan);
+    madres = Object.fromEntries(
+      ((madresRaw ?? []) as RefMadre[]).map((m) => [m.id, m])
+    );
+  }
+
   // Los problemas que reportó el equipo. Van arriba de todo y solo los ve
   // quien puede resolverlos: la action devuelve vacío para el resto.
   const pedidos = await pedidosPendientes();
@@ -136,6 +153,7 @@ export default async function TareasPage({
         clients={clients ?? []}
         currentUserId={me.id}
         esCoordinacion={isStaffUser(me)}
+        madres={madres}
       />
     </div>
   );

@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { STATUS_LABEL, STATUS_BADGE } from "@/lib/constants";
 
 export interface SubtareaFila {
   id: string;
@@ -122,6 +123,16 @@ export function SubtareasPanel({
                 >
                   {s.titulo}
                 </Link>
+                {/* El estado de cada subtarea: sin esto el desglose no dice
+                    en qué anda cada paso, solo si terminó o no. */}
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium",
+                    STATUS_BADGE[s.estado as keyof typeof STATUS_BADGE]
+                  )}
+                >
+                  {STATUS_LABEL[s.estado as keyof typeof STATUS_LABEL] ?? s.estado}
+                </span>
                 {s.asignado && (
                   <span className="shrink-0 text-xs text-muted-foreground">
                     {s.asignado.nombre}

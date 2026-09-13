@@ -28,6 +28,8 @@ export async function createTask(input: {
   fecha_limite: string | null;
   aprobador_id?: string | null;
   requiere_aprobacion?: boolean;
+  /** Si viene, la tarea nace como subtarea de ese ticket. */
+  parent_id?: string | null;
 }) {
   const { supabase, userId } = await uid();
   // Toda tarea lleva fecha límite: sin ella no aparece en el aviso diario y
@@ -46,6 +48,9 @@ export async function createTask(input: {
     fecha_limite: fecha.fecha,
     aprobador_id: input.aprobador_id || null,
     requiere_aprobacion: input.requiere_aprobacion ?? !!input.aprobador_id,
+    // El trigger de la 0165 rechaza anidar una subtarea dentro de otra; acá
+    // solo se pasa lo que eligieron.
+    parent_id: input.parent_id || null,
   });
   if (error) return { error: error.message };
   revalidatePath("/tareas");

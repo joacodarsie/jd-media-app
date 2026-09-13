@@ -11,6 +11,9 @@ import {
   CalendarOff,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  CornerDownRight,
+  ListTree,
   Filter,
   Kanban,
   List,
@@ -97,6 +100,13 @@ const QUICK_LABELS: Record<QuickFilter, string> = {
   semana: "Esta semana",
 };
 
+import {
+  agruparPorTicket,
+  contarAgrupadas,
+  type RefMadre,
+} from "@/lib/tareas/agrupar";
+import { formatTicket, progresoTicket } from "@/lib/tareas/tickets";
+
 function ymd(d: Date) {
   return d.toISOString().slice(0, 10);
 }
@@ -107,6 +117,7 @@ export function TaskViews({
   clients,
   currentUserId,
   esCoordinacion = false,
+  madres = {},
 }: {
   tasks: TaskWithRels[];
   users: Pick<AppUser, "id" | "nombre">[];
@@ -114,6 +125,8 @@ export function TaskViews({
   currentUserId: string;
   /** Coordinación/admin ve el chip "Vencidas del equipo" para hacer la limpieza. */
   esCoordinacion?: boolean;
+  /** Tickets madre que no entraron en la lista, para nombrar las subtareas sueltas. */
+  madres?: Record<string, RefMadre | undefined>;
 }) {
   const router = useRouter();
   const [view, setView] = useState<ViewMode>("lista");
@@ -220,6 +233,29 @@ export function TaskViews({
     return r;
   }, [tasks, q, estado, prioridad, asignado, cliente, area, orden, quick, currentUserId, monthApplies, monthCursor]);
 
+  // La lista se agrupa por ticket: las subtareas van adentro de su madre en vez
+  // de sueltas al mismo nivel. Sin esto un onboarding de 15 días metía catorce
+  // filas seguidas en el medio de las demás y nada decía que trece colgaban de
+  // la primera.
+  const agrupadas = useMemo(() => agruparPorTicket(filtered, madres), [filtered, madres]);
+  const resumenGrupos = useMemo(() => contarAgrupadas(agrupadas), [agrupadas]);
+
+  // Tickets a los que se le puede colgar una tarea nueva: los que YA tienen
+  // desglose y siguen abiertos. No se ofrecen las 180 tareas sueltas — una
+  // tarea se vuelve ticket agregándole la primera subtarea desde su ficha.
+  const ticketsAbiertos = useMemo(() => {
+    const conHijas = new Set(tasks.map((t) => t.parent_id).filter(Boolean) as string[]);
+    return tasks
+      .filter(
+        (t) =>
+          conHijas.has(t.id) &&
+          t.estado !== "completada" &&
+          t.estado !== "archivada"
+      )
+      .sort((a, b) => (b.numero ?? 0) - (a.numero ?? 0))
+      .map((t) => ({ id: t.id, numero: t.numero ?? null, titulo: t.titulo }));
+  }, [tasks]);
+
   // Conteos para los chips
   const counts = useMemo(() => {
     const today = ymd(new Date());
@@ -292,12 +328,23 @@ export function TaskViews({
             {filtered.length} {filtered.length === 1 ? "tarea" : "tareas"} ·{" "}
             {QUICK_LABELS[quick]}
             {activeAdv > 0 && ` · ${activeAdv} filtro${activeAdv > 1 ? "s" : ""}`}
+            {/* Explica por qué la lista muestra menos filas que tareas: las
+                subtareas están adentro de su ticket, no perdidas. */}
+            {view === "lista" && resumenGrupos.subtareas > 0 && (
+              <>
+                {" · "}
+                {resumenGrupos.subtareas} en el desglose de{" "}
+                {resumenGrupos.tickets}{" "}
+                {resumenGrupos.tickets === 1 ? "ticket" : "tickets"}
+              </>
+            )}
           </p>
         </div>
         <TaskFormDialog
           mode="create"
           users={users}
           clients={clients}
+          tickets={ticketsAbiertos}
           trigger={
             <Button>
               <Plus className="mr-1.5 h-4 w-4" /> Nueva
@@ -508,16 +555,29 @@ export function TaskViews({
           {filtered.length === 0 ? (
             <EmptyState filter={quick} />
           ) : (
-            filtered.map((t) => (
-              <TaskRow
-                key={t.id}
-                task={t}
-                users={users}
-                clients={clients}
-                selected={selectedIds.has(t.id)}
-                onToggleSelect={() => toggleSelect(t.id)}
-              />
-            ))
+            agrupadas.map((f) =>
+              f.tipo === "ticket" ? (
+                <TicketGroup
+                  key={f.tarea.id}
+                  ticket={f.tarea}
+                  subtareas={f.subtareas}
+                  users={users}
+                  clients={clients}
+                  selectedIds={selectedIds}
+                  onToggleSelect={toggleSelect}
+                />
+              ) : (
+                <TaskRow
+                  key={f.tarea.id}
+                  task={f.tarea}
+                  madre={f.madre}
+                  users={users}
+                  clients={clients}
+                  selected={selectedIds.has(f.tarea.id)}
+                  onToggleSelect={() => toggleSelect(f.tarea.id)}
+                />
+              )
+            )
           )}
         </div>
       )}
@@ -858,19 +918,26 @@ function TaskRow({
   clients,
   selected,
   onToggleSelect,
+  madre = null,
+  anidada = false,
 }: {
   task: TaskWithRels;
   users: Pick<AppUser, "id" | "nombre">[];
   clients: Pick<Client, "id" | "nombre">[];
   selected: boolean;
   onToggleSelect: () => void;
+  /** Ticket al que pertenece, cuando la madre no está en la lista. */
+  madre?: RefMadre | null;
+  /** Va adentro del desglose de un ticket: se dibuja más chica y con sangría. */
+  anidada?: boolean;
 }) {
   const due = dueState(t.fecha_limite, t.estado);
   return (
     <div
       className={cn(
         "flex flex-col gap-3 rounded-lg border bg-card p-3 transition-colors hover:border-primary/40 sm:flex-row sm:items-center",
-        selected && "border-primary/60 bg-primary/5 hover:border-primary"
+        selected && "border-primary/60 bg-primary/5 hover:border-primary",
+        anidada && "border-0 border-l-2 border-l-muted bg-transparent py-2 pl-3 pr-1 hover:bg-muted/30"
       )}
     >
       <label
@@ -886,9 +953,31 @@ function TaskRow({
         />
       </label>
       <div className="min-w-0 flex-1">
-        <Link href={`/tareas/${t.id}`} className="font-medium hover:underline">
-          {t.titulo}
-        </Link>
+        <div className="flex min-w-0 items-baseline gap-2">
+          {/* El número adelante: es como se nombra un ticket al hablarlo. */}
+          {formatTicket(t.numero) && (
+            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+              {formatTicket(t.numero)}
+            </span>
+          )}
+          <Link
+            href={`/tareas/${t.id}`}
+            className={cn("truncate font-medium hover:underline", anidada && "text-sm")}
+          >
+            {t.titulo}
+          </Link>
+        </div>
+        {/* Subtarea cuya madre quedó fuera del filtro: se dice de dónde sale. */}
+        {madre && (
+          <Link
+            href={`/tareas/${madre.id}`}
+            className="mt-0.5 inline-flex max-w-full items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground hover:underline"
+          >
+            <CornerDownRight className="h-3 w-3 shrink-0" />
+            <span className="font-mono">{formatTicket(madre.numero)}</span>
+            <span className="truncate">{madre.titulo}</span>
+          </Link>
+        )}
         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span className={cn("rounded-full px-2 py-0.5 font-medium", PRIORITY_BADGE[t.prioridad])}>
             {PRIORITY_LABEL[t.prioridad]}
@@ -924,6 +1013,85 @@ function TaskRow({
         />
         <DeleteTaskButton id={t.id} />
       </div>
+    </div>
+  );
+}
+
+/**
+ * Un ticket madre con su desglose adentro, como el backlog de Jira.
+ *
+ * Arranca PLEGADO a propósito: el ticket es una línea con su avance, y el
+ * desglose se abre cuando lo querés ver. Desplegado por defecto, un onboarding
+ * de 15 días vuelve a tapar la lista, que es justo lo que se vino a arreglar.
+ */
+function TicketGroup({
+  ticket,
+  subtareas,
+  users,
+  clients,
+  selectedIds,
+  onToggleSelect,
+}: {
+  ticket: TaskWithRels;
+  subtareas: TaskWithRels[];
+  users: Pick<AppUser, "id" | "nombre">[];
+  clients: Pick<Client, "id" | "nombre">[];
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const prog = progresoTicket(subtareas);
+  const pct = Math.round(prog.pct * 100);
+
+  return (
+    <div className="rounded-lg border bg-card">
+      <TaskRow
+        task={ticket}
+        users={users}
+        clients={clients}
+        selected={selectedIds.has(ticket.id)}
+        onToggleSelect={() => onToggleSelect(ticket.id)}
+      />
+      <button
+        type="button"
+        onClick={() => setAbierto((v) => !v)}
+        className="flex w-full items-center gap-2 border-t px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/40"
+      >
+        {abierto ? (
+          <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+        ) : (
+          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+        )}
+        <ListTree className="h-3.5 w-3.5 shrink-0" />
+        <span className="font-medium text-foreground">
+          {prog.hechas} de {prog.total}
+        </span>
+        <span>subtareas listas</span>
+        <span className="ml-auto flex items-center gap-2">
+          <span className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
+            <span
+              className="block h-full rounded-full bg-emerald-500 transition-all"
+              style={{ width: `${pct}%` }}
+            />
+          </span>
+          <span className="tabular-nums">{pct}%</span>
+        </span>
+      </button>
+      {abierto && (
+        <div className="space-y-1 border-t bg-muted/20 p-2 pl-5">
+          {subtareas.map((s) => (
+            <TaskRow
+              key={s.id}
+              task={s}
+              anidada
+              users={users}
+              clients={clients}
+              selected={selectedIds.has(s.id)}
+              onToggleSelect={() => onToggleSelect(s.id)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

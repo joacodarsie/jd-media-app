@@ -35,12 +35,15 @@ export function TaskFormDialog({
   users,
   clients,
   trigger,
+  tickets = [],
 }: {
   mode: "create" | "edit";
   task?: TaskWithRels;
   users: Pick<AppUser, "id" | "nombre">[];
   clients: Pick<Client, "id" | "nombre">[];
   trigger: React.ReactNode;
+  /** Tickets madre abiertos, para poder crear la tarea ya colgada de uno. */
+  tickets?: { id: string; numero: number | null; titulo: string }[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -63,6 +66,9 @@ export function TaskFormDialog({
     task?.fecha_limite?.slice(0, 10) ?? ""
   );
   const [aprobador, setAprobador] = useState<string>(task?.aprobador_id ?? NONE);
+  // Colgar la tarea de un ticket al crearla. Solo al crear: mover una tarea de
+  // ticket después es otra cosa (arrastra el desglose) y no se resuelve acá.
+  const [madre, setMadre] = useState<string>(NONE);
 
   function submit() {
     if (!titulo.trim()) {
@@ -87,6 +93,7 @@ export function TaskFormDialog({
         fecha_limite: chequeo.fecha!,
         aprobador_id: aprobador === NONE ? null : aprobador,
         requiere_aprobacion: aprobador !== NONE,
+        ...(mode === "create" && madre !== NONE ? { parent_id: madre } : {}),
       };
       const res =
         mode === "create"
@@ -104,6 +111,7 @@ export function TaskFormDialog({
         setAsignado(NONE);
         setCliente(NONE);
         setFecha("");
+        setMadre(NONE);
       }
       router.refresh();
     });
@@ -119,6 +127,33 @@ export function TaskFormDialog({
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          {/* Colgar la tarea de un ticket, como el "parent" de Jira. Va PRIMERO
+              porque cambia qué estás creando: una tarea suelta o un paso de un
+              trabajo más grande. */}
+          {mode === "create" && tickets.length > 0 && (
+            <div className="space-y-2">
+              <Label>Parte de un ticket</Label>
+              <Select value={madre} onValueChange={setMadre}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Tarea suelta</SelectItem>
+                  {tickets.map((tk) => (
+                    <SelectItem key={tk.id} value={tk.id}>
+                      {tk.numero ? `JD-${tk.numero} · ` : ""}
+                      {tk.titulo}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {madre !== NONE && (
+                <p className="text-[11px] text-muted-foreground">
+                  Va a quedar adentro de ese ticket, en su desglose.
+                </p>
+              )}
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="titulo">Título</Label>
             <Input

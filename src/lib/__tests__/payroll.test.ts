@@ -500,14 +500,33 @@ describe("computeCoordinationPayroll", () => {
 });
 
 describe("closerVolumeBonusPct", () => {
-  it("suma 2% cada 2 cierres, con tope del 6%", () => {
+  it("un mes normal (1 o 2 cierres) paga la comisión base, sin extra", () => {
     expect(closerVolumeBonusPct(0)).toBe(0);
     expect(closerVolumeBonusPct(1)).toBe(0);
-    expect(closerVolumeBonusPct(2)).toBe(0.02);
-    expect(closerVolumeBonusPct(3)).toBe(0.02);
-    expect(closerVolumeBonusPct(4)).toBe(0.04);
-    expect(closerVolumeBonusPct(6)).toBe(0.06);
-    expect(closerVolumeBonusPct(20)).toBe(0.06); // tope
+    expect(closerVolumeBonusPct(2)).toBe(0);
+  });
+
+  it("de 3 cierres suma 3 puntos; de 5, cinco", () => {
+    expect(closerVolumeBonusPct(3)).toBe(0.03);
+    expect(closerVolumeBonusPct(4)).toBe(0.03);
+    expect(closerVolumeBonusPct(5)).toBe(0.05);
+    expect(closerVolumeBonusPct(12)).toBe(0.05);
+  });
+
+  it("sobre el 15% base da los 18% y 20% del contrato de Santi", () => {
+    // Es el número que se le promete por escrito: conviene que el test lo diga.
+    expect(0.15 + closerVolumeBonusPct(2)).toBeCloseTo(0.15);
+    expect(0.15 + closerVolumeBonusPct(3)).toBeCloseTo(0.18);
+    expect(0.15 + closerVolumeBonusPct(5)).toBeCloseTo(0.2);
+  });
+
+  it("una cuenta promedio deja margen de sobra para el escalón más alto", () => {
+    // $298.750 de abono, ~28% de margen = ~$83.650 por mes. Aun al 20% por
+    // única vez, la comisión se recupera en menos de un mes.
+    const abono = 298_750;
+    const comision = abono * (0.15 + closerVolumeBonusPct(5));
+    const margenMensual = abono * 0.28;
+    expect(comision / margenMensual).toBeLessThan(1);
   });
 });
 

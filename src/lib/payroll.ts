@@ -762,14 +762,28 @@ export function selectFirstMonthCommissions(
 }
 
 /**
- * Bonus por volumen de cierres del mes: por cada 2 clientes cerrados se suma
- * un 2% extra de comisión, con tope del 6%. Se aplica sobre la misma base que
- * la comisión (el abono del primer mes de cada cliente que cerró).
- * Devuelve la fracción a aplicar: 0, 0.02, 0.04 o 0.06.
+ * Bonus por volumen de cierres DEL MES para el closer.
+ *
+ * Escala acordada con el dueño el 12/9/2026 para el contrato de Santi Reinaldi:
+ * 1-2 cierres es el mes normal y paga la comisión base; de 3 en adelante se
+ * premia. Premia el MES, no el acumulado histórico: un mes bueno se paga
+ * cuando pasa.
+ *
+ *   1-2 cierres → 0        (base sola: 15%)
+ *   3-4 cierres → +3 pts   (18%)
+ *   5 o más     → +5 pts   (20%)
+ *
+ * Se puede ser generoso porque el repago es corto: una cuenta promedio
+ * ($298.750) deja ~$84.000 de margen por mes, así que una comisión del 20% por
+ * única vez ($59.750) se recupera en menos de un mes.
+ *
+ * Devuelve la fracción a aplicar sobre la misma base que la comisión (el abono
+ * del primer mes de cada cliente cerrado): 0, 0.03 o 0.05.
  */
 export function closerVolumeBonusPct(clientesCerrados: number): number {
-  const pct = Math.min(Math.floor(clientesCerrados / 2) * 2, 6);
-  return pct / 100;
+  if (clientesCerrados >= 5) return 0.05;
+  if (clientesCerrados >= 3) return 0.03;
+  return 0;
 }
 
 /** Codifica/decodifica el detalle de una comisión en payroll_items.notas: "rol:base". */

@@ -29,6 +29,49 @@ export interface ExchangeRates {
   fetchedAt: string;
 }
 
+/**
+ * La cotización de UNA FECHA PASADA.
+ *
+ * Hace falta porque los gastos en dólares de un mes cerrado se tienen que
+ * valuar al dólar de ESE mes. Mientras se convertían al dólar de hoy, julio
+ * cambiaba de valor todos los días y la serie histórica no paraba de moverse
+ * — que es una de las razones por las que el dueño no le creía a los números.
+ *
+ * Fuente: api.argentinadatos.com (mismo origen que dolarapi, con histórico).
+ * Si el día pedido no tiene cotización (fin de semana, feriado) retrocede hasta
+ * cinco días. Si no consigue nada, devuelve null y el que llama decide.
+ */
+export async function getExchangeRatesForDate(
+  fecha: string
+): Promise<{ USD: number; USDC: number; fecha: string } | null> {
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(fecha + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() - i);
+    const ymd = d.toISOString().slice(0, 10);
+    const [y, m, day] = ymd.split("-");
+    try {
+      const [blueRes, criptoRes] = await Promise.all([
+        fetch(`https://api.argentinadatos.com/v1/cotizaciones/dolares/blue/${y}/${m}/${day}`),
+        fetch(`https://api.argentinadatos.com/v1/cotizaciones/dolares/cripto/${y}/${m}/${day}`),
+      ]);
+      if (!blueRes.ok && !criptoRes.ok) continue;
+      const blue = blueRes.ok ? ((await blueRes.json()) as DolarApiItem) : null;
+      const cripto = criptoRes.ok ? ((await criptoRes.json()) as DolarApiItem) : null;
+      const mid = (x: DolarApiItem | null) =>
+        x && Number.isFinite(x.compra) && Number.isFinite(x.venta)
+          ? Math.round((x.compra + x.venta) / 2)
+          : null;
+      const usd = mid(blue);
+      const usdc = mid(cripto);
+      if (usd == null && usdc == null) continue;
+      return { USD: usd ?? usdc!, USDC: usdc ?? usd!, fecha: ymd };
+    } catch {
+      // Red caída o respuesta rara: probamos el día anterior.
+    }
+  }
+  return null;
+}
+
 export async function getExchangeRates(): Promise<ExchangeRates> {
   try {
     const [usdRes, eurRes, criptoRes] = await Promise.all([

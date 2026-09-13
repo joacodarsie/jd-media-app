@@ -5,6 +5,7 @@ import { toARS } from "@/lib/finanzas";
 import { buildPeriodPayroll } from "@/lib/payroll-period";
 import { generateFixedExpensesForPeriod } from "./fixed-expenses";
 import { planDeCierre, fechaDeCierre, type GastoFijoPendiente } from "./cierre-mes";
+import { congelarGastosDelPeriodo } from "./congelar-mes";
 
 /**
  * El que escribe en la base lo que `cierre-mes.ts` decidió.
@@ -29,6 +30,8 @@ export interface ResultadoCierre {
   gastosGenerados: number;
   /** Cuántos quedaron marcados como pagados, y por cuánto en pesos. */
   gastosMarcados: number;
+  /** Cuántos gastos en dólares quedaron fijados en pesos al dólar de su fecha. */
+  gastosCongelados: number;
   montoGastos: number;
   nadaQueHacer: boolean;
   errores: string[];
@@ -123,6 +126,19 @@ export async function cerrarMes(
     else gastosMarcados = plan.gastosIds.length;
   }
 
+  // 4. Congelar en pesos lo que esté en dólares. Sellar la fecha no alcanzaba:
+  //    el monto quedaba en USD y se re-valuaba al dólar de hoy cada vez que se
+  //    miraba, así que un mes cerrado seguía cambiando de valor. Va después de
+  //    sellar para que agarre también los que se acaban de marcar.
+  let gastosCongelados = 0;
+  try {
+    const fz = await congelarGastosDelPeriodo(admin, periodo, rates);
+    gastosCongelados = fz.congelados;
+    errores.push(...fz.errores);
+  } catch (e) {
+    errores.push(`congelar dólares: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
   return {
     periodo,
     fecha,
@@ -130,8 +146,9 @@ export async function cerrarMes(
     montoEquipo: personas > 0 ? plan.totalEquipo : 0,
     gastosGenerados,
     gastosMarcados,
+    gastosCongelados,
     montoGastos: gastosMarcados > 0 ? plan.totalGastos : 0,
-    nadaQueHacer: personas === 0 && gastosMarcados === 0,
+    nadaQueHacer: personas === 0 && gastosMarcados === 0 && gastosCongelados === 0,
     errores,
   };
 }

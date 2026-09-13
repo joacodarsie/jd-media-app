@@ -2,7 +2,16 @@ import Link from "next/link";
 import { requireUser, userInRoles } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { armarPlan, ritmoNecesario, type ClienteParaPedir } from "@/lib/captacion/plan";
+import { colaDelDia, diasDeCola, type ContactoFrio } from "@/lib/captacion/cola-fria";
+import { metaDe } from "@/lib/prospecting/actividad";
+import { mensajeElegido, type CampaignMessages } from "@/lib/prospecting/shared";
+import { META_CLIENTES, META_DEADLINE } from "@/lib/comercial/machine-kpis";
+import { hoyYmd } from "@/lib/dates";
 import { CaptacionLista } from "@/components/captacion-lista";
+import {
+  ColaFriaDespacho,
+  type MensajesPorCampana,
+} from "@/components/cola-fria-despacho";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +29,29 @@ function diasHabilesHasta(hoy: Date, hasta: Date): number {
   return n;
 }
 
+/**
+ * Altas NETAS por mes de los últimos 90 días: el ritmo real, no el de memoria.
+ *
+ * Netas y no brutas a propósito, igual que el tablero de la Máquina de clientes.
+ * Contando solo altas, septiembre daba 2,2 por mes y la pantalla decía "llegás";
+ * con las bajas del mismo período el ritmo real es menos de 1. Un número que
+ * ignora las bajas siempre miente para el lado lindo.
+ */
+function altasNetasPorMes(
+  altasFechas: (string | null)[],
+  bajasFechas: (string | null)[],
+  ahora: Date
+): number {
+  const desde = new Date(ahora.getTime() - 90 * 86400_000);
+  const enVentana = (f: string | null) => {
+    if (!f) return false;
+    const t = new Date(f).getTime();
+    return !Number.isNaN(t) && t >= desde.getTime() && t <= ahora.getTime();
+  };
+  const netas = altasFechas.filter(enVentana).length - bajasFechas.filter(enVentana).length;
+  return Math.round((netas / 3) * 10) / 10;
+}
+
 export default async function CaptacionPage() {
   const me = await requireUser();
   if (!userInRoles(me, ROLES_OK)) {
@@ -27,14 +59,30 @@ export default async function CaptacionPage() {
   }
 
   const admin = createAdmin();
-  const [{ data: clientes }, logRes, contactosRes] = await Promise.all([
+  const [{ data: clientes }, logRes, contactosRes, campsRes, miRes, sinTocarRes] = await Promise.all([
     admin
       .from("clients")
       .select(
         "id, nombre, estado, contacto_nombre, contacto_telefono, rubro, monto_mensual, fecha_activado, fecha_inactivado, es_interno"
       ),
     admin.from("outreach_log").select("tipo, target_id, resultado"),
-    admin.from("prospecting_contacts").select("id, estado, contactado_at, telefono"),
+    // Solo los MÍOS, no los 1.090 de la tabla: PostgREST corta en 1.000 filas y
+    // sin filtro la cola aparecía incompleta (592 de 682) sin avisar nada.
+    admin
+      .from("prospecting_contacts")
+      .select(
+        "id, campaign_id, empresa, contacto_nombre, contacto_rol, telefono, instagram, sitio_web, estado, asignado_a, contactado_at, contactable"
+      )
+      .eq("asignado_a", me.id),
+    admin.from("prospecting_campaigns").select("id, mensajes_plantilla"),
+    admin.from("users").select("meta_prospeccion").eq("id", me.id).maybeSingle(),
+    // El total sin tocar de TODA la agencia va por count, no trayendo las filas:
+    // es un número, no una lista, y así no lo corta el tope de 1.000.
+    admin
+      .from("prospecting_contacts")
+      .select("id", { count: "exact", head: true })
+      .eq("estado", "nuevo")
+      .is("contactado_at", null),
   ]);
 
   const faltaMigracion = (logRes.error as { code?: string } | null)?.code === "42P01";
@@ -62,21 +110,44 @@ export default async function CaptacionPage() {
 
   const plan = armarPlan({ activos, perdidos, yaHechos, hoy });
 
-  // Contactos de prospección que nadie tocó todavía: no se listan acá uno por
-  // uno (para eso está el modo despacho), pero sí cuentan como trabajo pendiente.
-  const contactos = (contactosRes.data ?? []) as {
-    estado: string | null;
-    contactado_at: string | null;
-    telefono: string | null;
-  }[];
-  const sinContactar = contactos.filter((c) => !c.contactado_at && c.estado === "nuevo").length;
+  // Contactos de prospección. Los propios se despachan acá abajo; el total sin
+  // tocar es el trabajo que hay cargado y nadie está haciendo.
+  const contactos = (contactosRes.data ?? []) as ContactoFrio[];
+  const sinContactar = sinTocarRes.count ?? 0;
 
-  // Ritmo: la meta del user es 10 clientes antes del 9/8.
+  // La cola propia: la de esta persona, cruzando todas las campañas.
+  const mia = colaDelDia({
+    contactos,
+    userId: me.id,
+    meta: metaDe(me.email, (miRes.data as { meta_prospeccion?: number | null } | null)?.meta_prospeccion),
+    hoy: hoyYmd(),
+  });
+  const diasQueQuedan = diasDeCola(mia.pendientesTotal, mia.meta);
+
+  // El mensaje elegido de cada campaña, para no resolverlo en el cliente.
+  const mensajes: MensajesPorCampana = {};
+  for (const c of (campsRes.data ?? []) as {
+    id: string;
+    mensajes_plantilla: CampaignMessages | null;
+  }[]) {
+    const el = mensajeElegido(c.mensajes_plantilla);
+    if (el) mensajes[c.id] = { texto: el.texto, label: el.label };
+  }
+
+  // Ritmo contra la meta de cuentas, que es la MISMA que la del tablero de la
+  // Máquina de clientes (una sola meta en toda la app) y con el ritmo real de
+  // los últimos 90 días, no un número escrito a mano que envejece.
+  const deadline = new Date(`${META_DEADLINE}T23:59:59`);
+  const diasHabiles = diasHabilesHasta(hoyDate, deadline);
   const ritmo = ritmoNecesario({
-    meta: 10,
-    yaConseguidos: 0,
-    diasHabilesRestantes: diasHabilesHasta(hoyDate, new Date("2026-08-09")),
-    altasPorMesHistorico: 5.7,
+    meta: META_CLIENTES,
+    yaConseguidos: activos.length,
+    diasHabilesRestantes: diasHabiles,
+    altasPorMesHistorico: altasNetasPorMes(
+      todos.map((c) => c.fecha_activado),
+      todos.map((c) => c.fecha_inactivado),
+      hoyDate
+    ),
   });
 
   const hechos = (logRes.data ?? []).length;
@@ -103,33 +174,66 @@ export default async function CaptacionPage() {
       <div className="rounded-xl border bg-card p-4">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div>
-            <p className="text-xs text-muted-foreground">Meta al 9/8</p>
-            <p className="text-xl font-semibold">10 clientes</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Días hábiles que quedan</p>
+            <p className="text-xs text-muted-foreground">Meta al 31/12</p>
             <p className="text-xl font-semibold tabular-nums">
-              {diasHabilesHasta(hoyDate, new Date("2026-08-09"))}
+              {activos.length}{" "}
+              <span className="text-sm font-normal text-muted-foreground">
+                de {META_CLIENTES}
+              </span>
             </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Hacen falta por día</p>
-            <p className="text-xl font-semibold tabular-nums">{ritmo.porDia}</p>
+            <p className="text-xs text-muted-foreground">Días hábiles que quedan</p>
+            <p className="text-xl font-semibold tabular-nums">{diasHabiles}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Tu ritmo histórico</p>
-            <p className="text-xl font-semibold tabular-nums text-amber-600 dark:text-amber-400">
-              {ritmo.ritmoHistoricoPorDia} / día
+            <p className="text-xs text-muted-foreground">Cuentas nuevas por mes</p>
+            <p className="text-xl font-semibold tabular-nums">
+              {Math.round(ritmo.porDia * 22 * 10) / 10}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Tu ritmo neto (90 días)</p>
+            <p
+              className={
+                "text-xl font-semibold tabular-nums " +
+                (ritmo.alcanza
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-amber-600 dark:text-amber-400")
+              }
+            >
+              {Math.round(ritmo.ritmoHistoricoPorDia * 22 * 10) / 10} / mes
             </p>
           </div>
         </div>
         <p className="mt-3 border-t pt-3 text-xs text-muted-foreground">
-          Cerrás 5,7 clientes por mes. Diez en {diasHabilesHasta(hoyDate, new Date("2026-08-09"))}{" "}
-          días hábiles es <b>{Math.round((ritmo.porDia / ritmo.ritmoHistoricoPorDia) * 10) / 10}×</b>{" "}
-          tu ritmo. No es para desanimarte: es para que sepas que sale de hacer
-          TODAS las filas de abajo, no de esperar que entre solo.
+          Faltan <b>{ritmo.faltan}</b> cuentas en {diasHabiles} días hábiles, o sea{" "}
+          <b>{Math.round(ritmo.porDia * 22 * 10) / 10} altas netas por mes</b>.{" "}
+          {ritmo.alcanza
+            ? "Al ritmo de los últimos 90 días llegás: sostenerlo es todo el trabajo."
+            : "Tu ritmo de los últimos 90 días no alcanza. Sale de hacer TODAS las filas de abajo, no de esperar que entre solo."}
         </p>
       </div>
+
+      {/* La cola propia de contactos fríos: la pieza que faltaba para que la
+          lista cargada se trabaje. Va arriba de referidos porque es el volumen. */}
+      <ColaFriaDespacho
+        cola={mia.cola}
+        seguimientos={mia.seguimientos}
+        mensajes={mensajes}
+        hechosHoy={mia.hechosHoy}
+        faltanHoy={mia.faltanHoy}
+        meta={mia.meta}
+        pendientesTotal={mia.pendientesTotal}
+        conWhatsapp={mia.conWhatsapp}
+      />
+
+      {diasQueQuedan != null && diasQueQuedan <= 3 && mia.pendientesTotal > 0 && (
+        <p className="text-xs text-amber-600 dark:text-amber-400">
+          A tu ritmo te quedan <b>{diasQueQuedan}</b> días de cola. Conviene cargar
+          contactos nuevos antes de que se vacíe.
+        </p>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Bloque

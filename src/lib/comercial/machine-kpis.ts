@@ -7,11 +7,20 @@
  *
  * El modelo de negocio que estamos midiendo (reunión con Leo, julio 2026):
  *   contactos fríos → % que agenda reunión → % de reuniones que cierran
- * Con meta de 50 clientes fijos antes de fin de año.
  */
 
-/** Meta de clientes fijos y fecha límite. Se cambian acá si el norte cambia. */
-export const META_CLIENTES = 50;
+/**
+ * Meta de clientes fijos y fecha límite. **Es la ÚNICA meta de cuentas de la
+ * app**: la usan el tablero de la Máquina de clientes y la pantalla de
+ * Conseguir clientes. Se cambia acá si el norte cambia.
+ *
+ * Bajó de 50 a 18 el 13/9/2026. El 50 se fijó en julio con seis meses por
+ * delante; a septiembre quedaban 15 semanas con 12 cuentas activas y 0 leads
+ * nuevos en 30 días. Una barra en 24% que no se puede mover deja de ser una
+ * meta y pasa a ser ruido: 18 son dos cuentas nuevas por mes, que es lo que el
+ * embudo real puede dar si se trabaja todos los días.
+ */
+export const META_CLIENTES = 18;
 export const META_DEADLINE = "2026-12-31";
 
 /** Referencia del modelo charlado con Leo, para contrastar contra lo real. */

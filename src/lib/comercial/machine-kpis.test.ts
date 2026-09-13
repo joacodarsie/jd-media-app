@@ -1,6 +1,6 @@
 /**
  * Tests del tablero "Máquina de clientes". Lo que importa que no mienta:
- * el ritmo necesario vs el real (define si llegamos a 50), las tasas del embudo
+ * el ritmo necesario vs el real (define si llegamos a la meta), las tasas del embudo
  * (que descuentan los datos malos) y los avisos de datos sucios.
  */
 import { describe, it, expect } from "vitest";
@@ -73,19 +73,23 @@ describe("fechaAlta", () => {
   });
 });
 
-describe("meta de 50 clientes", () => {
+describe("meta de cuentas fijas", () => {
   it("calcula cuántas faltan y el ritmo necesario por semana", () => {
+    const activos = 12;
     const k = computeMachineKpis({
       ...base,
-      clientes: Array.from({ length: 17 }, () => cliente({ fecha_inicio: "2026-03-01" })),
+      clientes: Array.from({ length: activos }, () => cliente({ fecha_inicio: "2026-03-01" })),
     });
     expect(k.meta.objetivo).toBe(META_CLIENTES);
-    expect(k.meta.activos).toBe(17);
-    expect(k.meta.faltan).toBe(33);
-    // Del 26/07 al 31/12 hay ~22,7 semanas → ~1,45 altas netas por semana.
+    expect(k.meta.activos).toBe(activos);
+    expect(k.meta.faltan).toBe(META_CLIENTES - activos);
+    // Del 26/07 al 31/12 hay ~22,7 semanas.
     expect(k.meta.semanasRestantes).toBeGreaterThan(22);
-    expect(k.meta.ritmoNecesario).toBeGreaterThan(1.4);
-    expect(k.meta.ritmoNecesario).toBeLessThan(1.6);
+    // El ritmo necesario es lo que falta repartido en las semanas que quedan.
+    expect(k.meta.ritmoNecesario).toBeCloseTo(
+      (META_CLIENTES - activos) / k.meta.semanasRestantes,
+      1
+    );
   });
 
   it("las bajas descuentan del ritmo real (ritmo NETO)", () => {
@@ -199,7 +203,7 @@ describe("plata", () => {
     });
     expect(k.plata.mrr).toBe(800000);
     expect(k.plata.ticketPromedio).toBe(400000);
-    expect(k.plata.mrrObjetivo).toBe(400000 * 50);
+    expect(k.plata.mrrObjetivo).toBe(400000 * META_CLIENTES);
   });
 });
 

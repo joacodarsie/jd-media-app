@@ -209,12 +209,6 @@ export function PublicationDetailDialog({
               initialLinkInstagram={
                 (p as unknown as { link_instagram?: string | null }).link_instagram ?? null
               }
-              initialLinkTiktok={
-                (p as unknown as { link_tiktok?: string | null }).link_tiktok ?? null
-              }
-              initialLinkFacebook={
-                (p as unknown as { link_facebook?: string | null }).link_facebook ?? null
-              }
             />
           )}
 

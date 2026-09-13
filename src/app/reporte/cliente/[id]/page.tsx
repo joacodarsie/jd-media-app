@@ -40,26 +40,13 @@ interface RawPub {
   tipo: string;
   estado: PublicationStatus;
   asset_url: string | null;
-  link_publicacion: string | null;
   link_instagram: string | null;
-  link_tiktok: string | null;
-  link_facebook: string | null;
   notas_revision: string | null;
 }
 
+/** El link del posteo. Una sola columna desde la 0167: solo Instagram. */
 function preferredLink(p: RawPub): string | null {
-  // 1) Si está la red específica con su link, usar esa
-  if (p.red === "instagram" && p.link_instagram) return p.link_instagram;
-  if (p.red === "tiktok" && p.link_tiktok) return p.link_tiktok;
-  if (p.red === "facebook" && p.link_facebook) return p.link_facebook;
-  // 2) Cualquier link cargado en orden de prioridad
-  return (
-    p.link_instagram ||
-    p.link_tiktok ||
-    p.link_facebook ||
-    p.link_publicacion ||
-    null
-  );
+  return p.link_instagram?.trim() || null;
 }
 
 interface RawTask {
@@ -198,7 +185,7 @@ export default async function ReporteClientePage({
     supabase
       .from("publications")
       .select(
-        "id, titulo, copy, fecha_publicacion, red, tipo, estado, asset_url, link_publicacion, link_instagram, link_tiktok, link_facebook, notas_revision"
+        "id, titulo, copy, fecha_publicacion, red, tipo, estado, asset_url, link_instagram, notas_revision"
       )
       .eq("cliente_id", params.id)
       .gte("fecha_publicacion", start)

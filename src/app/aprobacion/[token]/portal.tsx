@@ -35,7 +35,7 @@ interface PublicPub {
   referencia_url: string | null;
   estado: string;
   notas_revision: string | null;
-  publicacion_url: string | null;
+  link_instagram: string | null;
   resubido_tiktok: boolean;
 }
 
@@ -550,9 +550,9 @@ function PubCard({
             {pub.hashtags}
           </p>
         )}
-        {pub.publicacion_url && (
+        {pub.link_instagram && (
           <a
-            href={pub.publicacion_url}
+            href={pub.link_instagram}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs text-emerald-800 hover:bg-emerald-100"

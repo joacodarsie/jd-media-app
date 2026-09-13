@@ -170,7 +170,6 @@ export async function aplicarMatches(
       .update({
         estado: "publicado",
         ig_media_id: m.mediaId,
-        ig_permalink: m.permalink,
         link_instagram: m.permalink,
       })
       .eq("id", m.piezaId);

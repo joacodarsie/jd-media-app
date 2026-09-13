@@ -121,7 +121,6 @@ export async function crearPiezaDesdePosteo(
     estado: "publicado",
     fecha_publicacion: media.timestamp,
     ig_media_id: media.id,
-    ig_permalink: media.permalink,
     link_instagram: media.permalink,
     creado_por_id: g.me.id,
   });
@@ -137,7 +136,7 @@ export async function marcarNoPublicada(piezaId: string, clienteId: string) {
   const admin = createAdmin();
   const { error } = await admin
     .from("publications")
-    .update({ estado: "aprobado", ig_media_id: null, ig_permalink: null })
+    .update({ estado: "aprobado", ig_media_id: null, link_instagram: null })
     .eq("id", piezaId);
   if (error) return { error: error.message };
   invalidate(clienteId);

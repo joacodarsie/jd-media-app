@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import {
-  campoParaLink,
   chequearLinkParaPublicar,
   esLinkValido,
   linkDePieza,
@@ -10,19 +9,19 @@ import {
 const HOY = "2026-09-20"; // posterior al candado
 
 describe("linkDePieza", () => {
-  it("devuelve el primero que haya, priorizando Instagram", () => {
-    expect(
-      linkDePieza({ link_facebook: "https://fb.com/1", link_instagram: "https://ig.com/2" })
-    ).toBe("https://ig.com/2");
+  it("devuelve el link del posteo", () => {
+    expect(linkDePieza({ link_instagram: "https://instagram.com/p/A/" })).toBe(
+      "https://instagram.com/p/A/"
+    );
   });
 
-  it("cae a los campos viejos si no hay links por red", () => {
-    expect(linkDePieza({ publicacion_url: "https://x.com/1" })).toBe("https://x.com/1");
-    expect(linkDePieza({ link_publicacion: "https://y.com/1" })).toBe("https://y.com/1");
+  it("recorta los espacios", () => {
+    expect(linkDePieza({ link_instagram: "  https://ig.com/1  " })).toBe("https://ig.com/1");
   });
 
   it("ignora los vacíos y los de solo espacios", () => {
-    expect(linkDePieza({ link_instagram: "   ", link_tiktok: null })).toBeNull();
+    expect(linkDePieza({ link_instagram: "   " })).toBeNull();
+    expect(linkDePieza({ link_instagram: null })).toBeNull();
     expect(linkDePieza({})).toBeNull();
   });
 });
@@ -51,8 +50,7 @@ describe("chequearLinkParaPublicar", () => {
   };
 
   it("frena publicar sin link", () => {
-    const r = chequearLinkParaPublicar(base);
-    expect(r.motivo).toContain("Falta el link");
+    expect(chequearLinkParaPublicar(base).motivo).toContain("Falta el link");
   });
 
   it("deja publicar si la pieza ya tiene link cargado", () => {
@@ -69,8 +67,9 @@ describe("chequearLinkParaPublicar", () => {
   });
 
   it("rechaza un link nuevo que no es una dirección", () => {
-    const r = chequearLinkParaPublicar({ ...base, linkNuevo: "ig.com/p/A" });
-    expect(r.motivo).toContain("https://");
+    expect(chequearLinkParaPublicar({ ...base, linkNuevo: "ig.com/p/A" }).motivo).toContain(
+      "https://"
+    );
   });
 
   it("no pide nada en los otros cambios de estado", () => {
@@ -80,15 +79,13 @@ describe("chequearLinkParaPublicar", () => {
   });
 
   it("no molesta al editar una pieza que ya estaba publicada", () => {
-    const r = chequearLinkParaPublicar({ ...base, estadoAnterior: "publicado" });
-    expect(r.motivo).toBeNull();
+    expect(chequearLinkParaPublicar({ ...base, estadoAnterior: "publicado" }).motivo).toBeNull();
   });
 
   it("las piezas viejas se publican como siempre", () => {
     // Las 438 ya publicadas sin link no se tocan: pedir el dato hacia atrás
     // traba el trabajo de hoy por algo que nadie va a completar.
-    const r = chequearLinkParaPublicar({ ...base, creadaEn: "2026-08-01" });
-    expect(r.motivo).toBeNull();
+    expect(chequearLinkParaPublicar({ ...base, creadaEn: "2026-08-01" }).motivo).toBeNull();
   });
 
   it("sin fecha de creación se asume vieja y no se exige", () => {
@@ -100,41 +97,19 @@ describe("chequearLinkParaPublicar", () => {
       chequearLinkParaPublicar({ ...base, creadaEn: LINK_OBLIGATORIO_DESDE }).motivo
     ).toContain("Falta el link");
   });
-});
 
-describe("campoParaLink", () => {
-  it("manda el link a la columna de su red", () => {
-    expect(campoParaLink("instagram")).toBe("link_instagram");
-    expect(campoParaLink("TikTok")).toBe("link_tiktok");
-    expect(campoParaLink("facebook")).toBe("link_facebook");
-  });
-
-  it("lo que no reconoce cae en Instagram, que es la red principal", () => {
-    expect(campoParaLink(null)).toBe("link_instagram");
-    expect(campoParaLink("linkedin")).toBe("link_instagram");
-  });
-});
-
-describe("un link inválido se rechaza aunque la pieza esté exenta", () => {
-  it("la exención es para no exigir el dato, no para aceptar uno roto", () => {
+  it("un link inválido se rechaza aunque la pieza esté exenta", () => {
+    // La exención es para no exigir el dato, no para aceptar uno roto.
     const r = chequearLinkParaPublicar({
-      estadoNuevo: "publicado",
-      estadoAnterior: "aprobado",
-      pieza: {},
-      creadaEn: "2026-08-01", // vieja: exenta de tener link
+      ...base,
+      creadaEn: "2026-08-01",
       linkNuevo: "esto no es un link",
     });
     expect(r.motivo).toContain("https://");
   });
 
   it("un link vacío en una pieza vieja no molesta", () => {
-    const r = chequearLinkParaPublicar({
-      estadoNuevo: "publicado",
-      estadoAnterior: "aprobado",
-      pieza: {},
-      creadaEn: "2026-08-01",
-      linkNuevo: "   ",
-    });
+    const r = chequearLinkParaPublicar({ ...base, creadaEn: "2026-08-01", linkNuevo: "   " });
     expect(r.motivo).toBeNull();
   });
 });

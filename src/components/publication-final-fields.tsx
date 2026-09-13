@@ -3,45 +3,39 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Camera, Check, ExternalLink, Globe, Loader2, Music } from "lucide-react";
+import { Camera, Check, ExternalLink, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { updatePublicationFinalFields } from "@/app/(app)/contenidos/actions";
 
+/**
+ * El link del posteo publicado.
+ *
+ * Antes eran tres campos, uno por red. Quedó solo Instagram: las columnas de
+ * TikTok y Facebook estaban vacías en las 678 piezas, Instagram es la red
+ * principal de planificación, y es la única que se mira para analizar
+ * repercusión en el informe del cliente (migración 0167).
+ */
 export function PublicationFinalFields({
   id,
   initialLinkInstagram,
-  initialLinkTiktok,
-  initialLinkFacebook,
 }: {
   id: string;
   initialLinkInstagram: string | null;
-  initialLinkTiktok: string | null;
-  initialLinkFacebook: string | null;
 }) {
   const router = useRouter();
   const [ig, setIg] = useState(initialLinkInstagram ?? "");
-  const [tt, setTt] = useState(initialLinkTiktok ?? "");
-  const [fb, setFb] = useState(initialLinkFacebook ?? "");
   const [pending, start] = useTransition();
-  const dirty =
-    ig !== (initialLinkInstagram ?? "") ||
-    tt !== (initialLinkTiktok ?? "") ||
-    fb !== (initialLinkFacebook ?? "");
+  const dirty = ig !== (initialLinkInstagram ?? "");
 
   function save() {
     start(async () => {
-      const res = await updatePublicationFinalFields(
-        id,
-        ig.trim() || null,
-        tt.trim() || null,
-        fb.trim() || null
-      );
+      const res = await updatePublicationFinalFields(id, ig.trim() || null);
       if (res?.error) {
         toast.error(res.error);
         return;
       }
-      toast.success("Links guardados");
+      toast.success("Link guardado");
       router.refresh();
     });
   }
@@ -50,34 +44,38 @@ export function PublicationFinalFields({
     <div className="space-y-3 rounded-md border bg-muted/30 p-3">
       <div>
         <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Links de la publicación
+          Link de la publicación
         </div>
         <p className="mt-0.5 text-[10px] text-muted-foreground">
-          Pegá el link de cada red donde se publicó. Aparece en el reporte
-          mensual del cliente.
+          El posteo en Instagram. Aparece en el reporte mensual del cliente y es con lo
+          que se mide qué repercusión tuvo.
         </p>
       </div>
-      <NetworkLinkInput
-        icon={<Camera className="h-3.5 w-3.5 text-pink-600" />}
-        label="Instagram"
-        value={ig}
-        onChange={setIg}
-        placeholder="https://instagram.com/p/…"
-      />
-      <NetworkLinkInput
-        icon={<Music className="h-3.5 w-3.5 text-zinc-900" />}
-        label="TikTok"
-        value={tt}
-        onChange={setTt}
-        placeholder="https://tiktok.com/@…/video/…"
-      />
-      <NetworkLinkInput
-        icon={<Globe className="h-3.5 w-3.5 text-blue-600" />}
-        label="Facebook"
-        value={fb}
-        onChange={setFb}
-        placeholder="https://facebook.com/…/posts/…"
-      />
+      <div className="space-y-1">
+        <div className="flex items-center gap-1.5 text-xs font-medium">
+          <Camera className="h-3.5 w-3.5 text-pink-600" />
+          Instagram
+        </div>
+        <div className="flex gap-2">
+          <Input
+            value={ig}
+            onChange={(e) => setIg(e.target.value)}
+            placeholder="https://instagram.com/p/…"
+            className="h-8 text-xs"
+          />
+          {ig && (
+            <a
+              href={ig.startsWith("http") ? ig : `https://${ig}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center rounded-md border bg-background px-2 hover:bg-muted"
+              title="Abrir"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          )}
+        </div>
+      </div>
       {dirty && (
         <Button size="sm" onClick={save} disabled={pending} className="gap-1">
           {pending ? (
@@ -85,51 +83,9 @@ export function PublicationFinalFields({
           ) : (
             <Check className="h-3.5 w-3.5" />
           )}
-          Guardar links
+          Guardar link
         </Button>
       )}
-    </div>
-  );
-}
-
-function NetworkLinkInput({
-  icon,
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-}) {
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-1.5 text-xs font-medium">
-        {icon}
-        {label}
-      </div>
-      <div className="flex gap-2">
-        <Input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="h-8 text-xs"
-        />
-        {value && (
-          <a
-            href={value.startsWith("http") ? value : `https://${value}`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center rounded-md border bg-background px-2 hover:bg-muted"
-            title="Abrir"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-          </a>
-        )}
-      </div>
     </div>
   );
 }

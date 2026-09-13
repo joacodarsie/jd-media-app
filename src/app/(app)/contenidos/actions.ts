@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import {
-  campoParaLink,
   chequearLinkParaPublicar,
   type LinksDePieza,
 } from "@/lib/contenidos/link-publicado";
@@ -92,7 +91,7 @@ export interface PublicationInput {
   task_id: string | null;
   notas_revision?: string | null;
   estado?: string;
-  publicacion_url?: string | null;
+
   resubido_tiktok?: boolean;
 }
 
@@ -113,7 +112,7 @@ function clean(input: PublicationInput) {
     disenador_id: input.disenador_id || null,
     task_id: input.task_id || null,
     notas_revision: input.notas_revision?.trim() || null,
-    publicacion_url: input.publicacion_url?.trim() || null,
+
     resubido_tiktok: input.resubido_tiktok ?? false,
   };
 }
@@ -213,10 +212,8 @@ export async function changePublicationStatus(
   if (chequeo.motivo) return { error: chequeo.motivo, faltaLink: true };
 
   const patch: Record<string, unknown> = { estado, ...selloDeRevision(estado, pub.estado) };
-  // El link nuevo va a la columna de la red de la pieza, para no sumar una
-  // séptima columna de link a las seis que ya hay.
   if (linkPosteo && linkPosteo.trim()) {
-    patch[campoParaLink(piezaLinks.red)] = linkPosteo.trim();
+    patch.link_instagram = linkPosteo.trim();
   }
   if (notas !== undefined) patch.notas_revision = notas?.trim() || null;
   const { error } = await updateTolerandoSello(
@@ -320,17 +317,18 @@ export async function updatePublicationDate(id: string, date: string | null) {
   return { ok: true };
 }
 
-/** Update parcial de los links por red de la publicación (cuando ya se publicó). */
-export async function updatePublicationFinalFields(
-  id: string,
-  link_instagram: string | null,
-  link_tiktok: string | null,
-  link_facebook: string | null
-) {
+/**
+ * El link del posteo, cuando ya se publicó.
+ *
+ * Antes recibía uno por red. Quedó solo Instagram: las columnas de TikTok y
+ * Facebook estaban vacías, y seis lugares para el mismo dato hacían que
+ * ninguno fuera confiable (migración 0167).
+ */
+export async function updatePublicationFinalFields(id: string, link_instagram: string | null) {
   const { supabase } = await ctx();
   const { data, error } = await supabase
     .from("publications")
-    .update({ link_instagram, link_tiktok, link_facebook })
+    .update({ link_instagram })
     .eq("id", id)
     .select("cliente_id")
     .single();
@@ -476,7 +474,7 @@ export async function bulkChangePublicationStatus(ids: string[], estado: string)
     const { data: piezas } = await writeDb()
       .from("publications")
       .select(
-        "id, titulo, estado, created_at, link_instagram, link_tiktok, link_facebook, link_publicacion, publicacion_url, ig_permalink"
+        "id, titulo, estado, created_at, link_instagram"
       )
       .in("id", ids);
     const filas = (piezas ?? []) as unknown as (LinksDePieza & {

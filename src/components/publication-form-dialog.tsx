@@ -466,7 +466,7 @@ export function PublicationFormDialog({
               initialMedia={publication.publish_media ?? []}
               publishedAt={publication.published_at ?? null}
               publishError={publication.publish_error ?? null}
-              igPermalink={publication.ig_permalink ?? null}
+              igPermalink={publication.link_instagram ?? null}
               fbPermalink={publication.fb_permalink ?? null}
               fbError={publication.fb_error ?? null}
             />

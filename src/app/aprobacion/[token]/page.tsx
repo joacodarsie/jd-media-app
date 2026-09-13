@@ -20,7 +20,7 @@ interface PublicPub {
   estado: string;
   notas_revision: string | null;
   cliente_revision_iniciada_at: string | null;
-  publicacion_url: string | null;
+  link_instagram: string | null;
   resubido_tiktok: boolean;
 }
 

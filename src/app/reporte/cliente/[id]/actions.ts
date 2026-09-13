@@ -316,7 +316,7 @@ export async function setPublicationLink(publicationId: string, link: string | n
   const clean = link?.trim() || null;
   const { data, error } = await createAdmin()
     .from("publications")
-    .update({ link_publicacion: clean })
+    .update({ link_instagram: clean })
     .eq("id", publicationId)
     .select("cliente_id")
     .single();

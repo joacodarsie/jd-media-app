@@ -275,7 +275,8 @@ export interface Publication {
   published_at?: string | null;
   publish_error?: string | null;
   ig_media_id?: string | null;
-  ig_permalink?: string | null;
+  /** El link del posteo. Única columna de link desde la 0167. */
+  link_instagram?: string | null;
   fb_post_id?: string | null;
   fb_permalink?: string | null;
   fb_error?: string | null;

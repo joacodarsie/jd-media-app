@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { ensureTicketDriveFolder } from "@/lib/google-drive";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import type { TaskLink } from "@/lib/types";
@@ -110,10 +111,63 @@ export async function addSubtarea(input: {
   });
   if (error) return { error: error.message };
 
+  // La carpeta de Drive del ticket, al agregar la PRIMERA subtarea: es cuando
+  // el ticket pasa a tener piezas que subir. Best-effort a propósito — si Drive
+  // falla, el desglose se cargó igual y el botón del ticket la crea después.
+  try {
+    await ensureDriveFolder(input.parentId);
+  } catch (e) {
+    console.error("addSubtarea → carpeta de Drive:", e);
+  }
+
   revalidatePath("/tareas");
   revalidatePath(`/tareas/${input.parentId}`);
   revalidatePath("/dashboard");
   return { ok: true };
+}
+
+
+/**
+ * La carpeta de Drive del ticket: la crea si falta, devuelve el link si ya está.
+ *
+ * Se llama sola al agregar la primera subtarea —que es cuando el ticket pasa a
+ * tener piezas que subir— y también desde el botón del ticket, para los casos
+ * en que Drive falló o el ticket no tiene desglose.
+ *
+ * Guarda el link en la tarea para no tener que volver a preguntarle a Drive.
+ */
+export async function ensureDriveFolder(taskId: string) {
+  const { supabase } = await uid();
+
+  const { data: t, error } = await supabase
+    .from("tasks")
+    .select("id, numero, titulo, drive_url, cliente:clients(nombre, drive_url)")
+    .eq("id", taskId)
+    .maybeSingle();
+  if (error) return { error: error.message };
+  if (!t) return { error: "No encontré el ticket." };
+
+  const row = t as unknown as {
+    numero: number | null;
+    titulo: string;
+    drive_url: string | null;
+    cliente: { nombre: string; drive_url: string | null } | null;
+  };
+  if (row.drive_url) return { ok: true, url: row.drive_url, creada: false };
+  if (!row.cliente) {
+    return { error: "El ticket no tiene cuenta asignada: no hay Drive donde crearla." };
+  }
+
+  const res = await ensureTicketDriveFolder({
+    clienteDriveUrl: row.cliente.drive_url,
+    numero: row.numero,
+    titulo: row.titulo,
+  });
+  if ("error" in res) return { error: res.error };
+
+  await supabase.from("tasks").update({ drive_url: res.url }).eq("id", taskId);
+  revalidatePath(`/tareas/${taskId}`);
+  return { ok: true, url: res.url, creada: res.creada };
 }
 
 export async function updateTaskStatus(id: string, estado: string) {

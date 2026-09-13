@@ -20,6 +20,7 @@ import {
   getValidAccessToken,
   type GoogleCalendarConnection,
 } from "./google-calendar";
+import { nombreCarpetaDrive } from "./tareas/tickets";
 
 const DRIVE_API = "https://www.googleapis.com/drive/v3";
 const FOLDER_MIME = "application/vnd.google-apps.folder";
@@ -31,6 +32,13 @@ export const DRIVE_CLIENTES_NAME = "Clientes";
 export const DRIVE_PAUSADOS_NAME = "Clientes pausados";
 /** Carpeta legacy (creada por la app) usada si la conexión es drive.file. */
 export const DRIVE_PARENT_FOLDER = "Clientes JD Media";
+/**
+ * Subcarpeta del cliente donde cuelgan las carpetas de cada ticket. Van todas
+ * juntas y no sueltas en la raíz del cliente para no ensuciar la carpeta que
+ * también ve el cliente.
+ */
+export const DRIVE_TICKETS_NAME = "Tickets";
+
 export const DRIVE_SUBFOLDERS = [
   "Identidad visual",
   "Calendario de contenidos",
@@ -186,6 +194,62 @@ async function resolveAgencyFolders(
 
   const pausados = await ensureFolder(token, DRIVE_PAUSADOS_NAME, rootId);
   return { clientes, pausadosId: pausados.id };
+}
+
+
+export type TicketFolderResult =
+  | { ok: true; url: string; creada: boolean }
+  | { error: string; noConnection?: boolean };
+
+/**
+ * La carpeta de Drive de un ticket, dentro de la del cliente:
+ * "<Cliente> › Tickets › JD-14 - Destacadas".
+ *
+ * Idempotente: si ya existe la devuelve en vez de crear una repetida, así que
+ * se puede llamar cada vez que alguien toca el ticket sin llenar el Drive de
+ * carpetas iguales.
+ *
+ * Necesita que el cliente ya tenga su carpeta (`clients.drive_url`, que arma
+ * el onboarding). Sin eso no hay dónde colgarla y devuelve un error explicando
+ * justamente eso, que es accionable.
+ */
+export async function ensureTicketDriveFolder(input: {
+  clienteDriveUrl: string | null;
+  numero: number | null;
+  titulo: string;
+}): Promise<TicketFolderResult> {
+  const parentId = extractDriveFolderId(input.clienteDriveUrl);
+  if (!parentId) {
+    return {
+      error:
+        "La cuenta todavía no tiene carpeta en Drive. Se crea desde el onboarding del cliente.",
+    };
+  }
+
+  const conn = await findDriveConnection();
+  if (!conn) {
+    return {
+      error: "Todavía no hay una cuenta de Google con Drive conectada.",
+      noConnection: true,
+    };
+  }
+
+  try {
+    const token = await getValidAccessToken(conn);
+    const nombre = nombreCarpetaDrive(input.numero, input.titulo);
+
+    const ticketsFolder = await ensureFolder(token, DRIVE_TICKETS_NAME, parentId);
+    const existentes = await listFolders(token, nombre, ticketsFolder.id);
+    const folder = existentes[0] ?? (await createFolder(token, nombre, ticketsFolder.id));
+
+    const url =
+      folder.webViewLink ?? `https://drive.google.com/drive/folders/${folder.id}`;
+    return { ok: true, url, creada: existentes.length === 0 };
+  } catch (e) {
+    console.error("ensureTicketDriveFolder:", e);
+    const msg = e instanceof Error ? e.message : "Error desconocido";
+    return { error: `No se pudo crear la carpeta del ticket. ${msg}` };
+  }
 }
 
 export type CreateClientDriveResult =

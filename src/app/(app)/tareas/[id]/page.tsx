@@ -13,6 +13,7 @@ import { fmtDate, dueState } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { formatTicket } from "@/lib/tareas/tickets";
 import { SubtareasPanel, type SubtareaFila } from "@/components/subtareas-panel";
+import { TicketDriveButton } from "@/components/ticket-drive-button";
 import type { Comment, TaskLink, TaskWithRels } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -135,6 +136,9 @@ export default async function TaskDetail({
   // Si la migración 0165 no está aplicada, la columna no existe y la consulta
   // vuelve con error: se esconde el panel en vez de mostrar uno que no guarda.
   const ticketsActivos = !errSubs;
+  // El select trae `*`: si la 0166 no está aplicada la clave ni siquiera
+  // existe en la fila, y así se distingue de "existe pero está en null".
+  const driveActivo = "drive_url" in (t as unknown as Record<string, unknown>);
   const madre = madreRaw as { id: string; numero: number | null; titulo: string } | null;
 
   return (
@@ -294,6 +298,14 @@ export default async function TaskDetail({
       {/* El desglose va antes de Links y Comentarios: es lo que se mira al
           entrar a un ticket madre. Solo tiene sentido en las madres — una
           subtarea no puede tener subtareas (trigger de la 0165). */}
+      {/* La carpeta del ticket: donde el diseñador sube las placas. Solo en
+          tickets de una cuenta — sin cliente no hay Drive donde colgarla. */}
+      {ticketsActivos && driveActivo && !t.parent_id && t.cliente && (
+        <div className="flex justify-end">
+          <TicketDriveButton taskId={t.id} driveUrl={t.drive_url ?? null} />
+        </div>
+      )}
+
       {ticketsActivos && !t.parent_id && (
         <SubtareasPanel parentId={t.id} subtareas={subtareas} usuarios={users ?? []} />
       )}

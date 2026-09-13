@@ -198,6 +198,8 @@ export interface Task {
   numero?: number | null;
   /** null = ticket madre. Con valor = subtarea de ese ticket. */
   parent_id?: string | null;
+  /** Carpeta de Drive del ticket, donde se suben las piezas (migración 0166). */
+  drive_url?: string | null;
   created_at: string;
   updated_at: string;
 }

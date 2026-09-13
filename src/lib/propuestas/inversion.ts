@@ -8,9 +8,10 @@
  *  - Un prospecto puede tener MÁS DE UNA cuenta (Catch: @barcatch en Crecimiento
  *    y @fyna.club en Presencia). Hay que mostrar el precio de cada una y el
  *    total con el descuento, no un pack suelto.
- *  - El primer mes NO entrega el pack completo: la primera semana es de armado
- *    y no se publica, así que sale el equivalente a 3 de 4 semanas. Decirlo
- *    antes evita el reclamo del día 30 (regla de /coordinacion/mes-uno).
+ *  - El primer mes NO entrega el pack completo: las DOS primeras semanas son de
+ *    preparación y no se publica, así que sale la mitad del pack. Decirlo antes
+ *    evita el reclamo del día 30 (regla de /coordinacion/mes-uno). Cambió el
+ *    13/9/2026: era una semana, y el equipo concluyó que con una no alcanza.
  *  - Si entra un día distinto al 1º se cobra proporcional a los días que
  *    quedan, porque el abono siempre se paga el 1º.
  *
@@ -143,23 +144,27 @@ export interface VolumenMes1 {
 }
 
 /**
- * Lo que se publica el PRIMER mes: tres cuartos del pack, porque la primera
- * semana se usa para armar las bases y no sale contenido.
+ * Lo que se publica el PRIMER mes: la MITAD del pack, porque las dos primeras
+ * semanas se usan para armar las bases y no sale contenido.
+ *
+ * El abono igual se cobra entero: esas dos semanas tienen su propio entregable
+ * —diagnóstico, manual de marca, perfiles y destacadas, calendario aprobado—,
+ * así que el cliente recibe valor desde el día 1 aunque todavía no publique.
  *
  * Se redondea para abajo para no prometer de más, pero nunca por debajo de 1
  * cuando el pack tiene ese formato: entregar cero reels sonaría a error.
  */
 export function volumenPrimerMes(lineas: LineaInversion[]): VolumenMes1[] {
-  const tresCuartos = (n: number | null): number => {
+  const mitad = (n: number | null): number => {
     if (!n) return 0;
-    return Math.max(1, Math.floor((n * 3) / 4));
+    return Math.max(1, Math.floor(n / 2));
   };
   return lineas
     .map((l) => {
       const partes: string[] = [];
-      const r = tresCuartos(l.pack.reels);
-      const c = tresCuartos(l.pack.posts);
-      const h = tresCuartos(l.pack.dias_historias);
+      const r = mitad(l.pack.reels);
+      const c = mitad(l.pack.posts);
+      const h = mitad(l.pack.dias_historias);
       if (r) partes.push(`${r} reels`);
       if (c) partes.push(`${c} carruseles`);
       if (h) partes.push(`${h} días de historias`);

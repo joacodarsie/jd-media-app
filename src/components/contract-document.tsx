@@ -776,18 +776,22 @@ export function ContractDocument({ model }: { model: ContractModel }) {
 
           {tieneGestionRedes && (
             <p>
-              <strong>Primer mes y semana de puesta en marcha:</strong> si el
-              servicio comienza un día distinto al primero del mes, el primer
-              abono se calcula <strong>proporcional</strong> a los días restantes
-              del mes calendario. Asimismo, la <strong>primera semana</strong> de
-              trabajo se destina íntegramente al armado de la cuenta — manual de
-              marca, calendario de contenidos, portadas y optimización de
-              biografías — y <strong>no incluye publicación de contenido</strong>.
-              A tal efecto, el contenido del plan contratado se divide en cuatro
+              <strong>Primer mes y puesta en marcha:</strong> si el servicio
+              comienza un día distinto al primero del mes, el primer abono se
+              calcula <strong>proporcional</strong> a los días restantes del mes
+              calendario. Asimismo, las <strong>dos (2) primeras semanas</strong>{" "}
+              de trabajo se destinan íntegramente a la puesta en marcha de la
+              cuenta y <strong>no incluyen publicación de contenido</strong>. Ese
+              tramo tiene entregables propios:{" "}
+              <strong>
+                diagnóstico de la cuenta, manual de marca, optimización de
+                perfiles y destacadas, y el calendario de contenidos del mes para
+                aprobación del Cliente
+              </strong>
+              . A tal efecto, el contenido del plan contratado se divide en cuatro
               (4) semanas: durante el primer mes se produce y publica el
-              equivalente a <strong>tres (3) semanas</strong> de contenido,
-              descontándose la semana inicial de puesta en marcha. A partir del
-              segundo mes se publica el volumen completo del plan.
+              equivalente a <strong>dos (2) semanas</strong> de contenido. A
+              partir del segundo mes se publica el volumen completo del plan.
             </p>
           )}
 

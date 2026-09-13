@@ -475,9 +475,10 @@ export default async function PropuestaPage({
           <div className="cierre">
             <h2>Próximos pasos</h2>
             <p>
-              Con tu confirmación arrancamos: la primera semana es de{" "}
-              <b>onboarding, diagnóstico y calendario</b>, y el contenido empieza a salir la semana
-              siguiente. Quedamos a disposición para cualquier consulta o ajuste.
+              Con tu confirmación arrancamos: las dos primeras semanas son de{" "}
+              <b>diagnóstico, manual de marca, optimización de perfiles y el calendario</b> para que
+              lo apruebes, y el contenido empieza a salir después. Quedamos a disposición para
+              cualquier consulta o ajuste.
             </p>
             <div className="datos">
               {AGENCIA.whatsappLabel} · {AGENCIA.webLabel} · @{AGENCIA.instagram}

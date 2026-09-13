@@ -1,11 +1,15 @@
 /**
  * Cobro del PRIMER MES de un cliente nuevo.
  *
- * Política vigente (2026-08): se cobra proporcional a los días que quedan del
- * mes desde la fecha de arranque, contando el día de inicio. Además la primera
- * semana no lleva contenido publicado — es la semana de organización
- * (diagnóstico, manual de marca, perfiles y calendario), tal como figura en la
- * carta acuerdo.
+ * Política vigente (2026-09): se cobra proporcional a los días que quedan del
+ * mes desde la fecha de arranque, contando el día de inicio. Además las DOS
+ * primeras semanas no llevan contenido publicado — son las semanas de
+ * preparación (diagnóstico, manual de marca, perfiles y destacadas, calendario
+ * aprobado), tal como figura en la carta acuerdo.
+ *
+ * El abono NO se descuenta por esas dos semanas: la preparación es el
+ * entregable de ese tramo, no un hueco. Antes era una sola semana; el equipo
+ * concluyó el 13/9/2026 que con una no alcanzaba.
  *
  * Reemplaza a la política de 2026-06, que cobraba el mes completo sin
  * prorratear. Si vuelve a cambiar, se cambia acá y en el texto del mensaje de

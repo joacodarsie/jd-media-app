@@ -91,7 +91,7 @@ describe("armarInversion", () => {
 });
 
 describe("volumenPrimerMes", () => {
-  it("el primer mes entrega tres cuartos: la primera semana es de armado", () => {
+  it("el primer mes entrega la mitad: las dos primeras semanas son de armado", () => {
     const inv = armarInversion(
       [
         { handle: "@barcatch", packSlug: "crecimiento" },
@@ -101,8 +101,10 @@ describe("volumenPrimerMes", () => {
       0
     );
     expect(volumenPrimerMes(inv.lineas)).toEqual([
-      { handle: "@barcatch", texto: "6 reels, 6 carruseles, 9 días de historias" },
-      { handle: "@fyna.club", texto: "3 reels, 3 carruseles, 6 días de historias" },
+      // Crecimiento: 8 reels · 8 carruseles · 12 días de historias → la mitad.
+      { handle: "@barcatch", texto: "4 reels, 4 carruseles, 6 días de historias" },
+      // Presencia: 4 · 4 · 8 → la mitad.
+      { handle: "@fyna.club", texto: "2 reels, 2 carruseles, 4 días de historias" },
     ]);
   });
 

@@ -629,12 +629,14 @@ export async function buildPaymentMessage(clientId: string): Promise<
     ? applyContractDiscount(totalMensual, c)
     : totalMensual;
 
-  // Política vigente (2026-08): el primer mes se cobra PROPORCIONAL a los días
-  // que quedan desde el arranque. Además, la primera semana no lleva contenido
-  // publicado: es la semana de organización (diagnóstico, manual de marca,
-  // perfiles y calendario), tal como figura en la carta acuerdo.
+  // Política vigente (2026-09): el primer mes se cobra PROPORCIONAL a los días
+  // que quedan desde el arranque. Además, las DOS primeras semanas no llevan
+  // contenido publicado: son las de puesta en marcha (diagnóstico, manual de
+  // marca, perfiles y destacadas, calendario aprobado), tal como figura en la
+  // carta acuerdo. El abono NO se descuenta por eso: la preparación es el
+  // entregable de ese tramo.
   //
-  // Reemplaza a la política de 2026-06 (mes completo sin prorrateo).
+  // Era una sola semana hasta el 13/9/2026; el equipo concluyó que no alcanzaba.
   const inicio = c.contrato_fecha_inicio
     ? new Date(c.contrato_fecha_inicio + "T00:00:00")
     : null;
@@ -683,7 +685,7 @@ export async function buildPaymentMessage(clientId: string): Promise<
   }
 
   lines.push(
-    `Te cuento cómo arrancamos: la primera semana no publicamos contenido, la usamos para dejar todo en orden — diagnóstico de la cuenta, manual de marca, rediseño de perfiles y el calendario del mes, tal como está en la carta acuerdo. Esa semana reemplaza a la primera semana de contenido y es la que hace que todo lo que salga después tenga sentido.`
+    `Te cuento cómo arrancamos: las dos primeras semanas no publicamos contenido, las usamos para dejar todo en orden — diagnóstico de la cuenta, manual de marca, rediseño de perfiles y destacadas, y el calendario del mes para que lo apruebes. Es lo que hace que todo lo que salga después tenga sentido, y lo vas a ir viendo a medida que avanza.`
   );
 
   if (hayDescuento) {

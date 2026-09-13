@@ -69,7 +69,7 @@ export interface AgencyRates {
 
   /**
    * Puesta en marcha: pago único inicial de arranque. DESACTIVADA (0) desde
-   * 2026-07: se reemplazó por el modelo de "semana 1 sin publicación" (el primer
+   * 2026-07: se reemplazó por el modelo de puesta en marcha sin publicación (el primer
    * mes se descuenta una semana de contenido en vez de cobrar un cargo aparte).
    * Se deja el parámetro por si se reactiva; en 0 no se factura.
    */

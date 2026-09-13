@@ -97,11 +97,12 @@ export default async function MesUnoPage() {
             </li>
           )}
           <li>
-            <b>Semana 1 sin publicación</b> — la primera semana es de armado
-            (manual, calendario, portadas, biografías). El contenido del pack se
-            divide en 4 semanas y el mes 1 se publica el equivalente a{" "}
-            <b>3 semanas</b>. Reemplaza al viejo cargo de puesta en marcha. Está
-            en la carta acuerdo.
+            <b>Dos semanas de puesta en marcha</b> — las dos primeras semanas
+            son de armado, con entregables propios: diagnóstico, manual de marca,
+            perfiles y destacadas, y el calendario aprobado por el cliente. El
+            contenido del pack se divide en 4 semanas y el mes 1 publica el
+            equivalente a <b>2 semanas</b>. El abono se cobra entero: la
+            preparación es el entregable, no un hueco. Está en la carta acuerdo.
           </li>
         </ul>
       </div>
@@ -146,7 +147,7 @@ export default async function MesUnoPage() {
               {pctTxt(r.comision_lead_propio ?? 0)}).
               {(r.puesta_en_marcha ?? 0) > 0
                 ? ` La puesta en marcha (${ars(r.puesta_en_marcha ?? 0)}) mejora el bruto del mes 1.`
-                : " El mes 1 arranca con una semana de onboarding sin publicación (se descuenta del contenido, no se cobra aparte)."}
+                : " El mes 1 arranca con dos semanas de puesta en marcha sin publicación: se descuentan del contenido, no del abono."}
             </p>
 
             <h3 className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">

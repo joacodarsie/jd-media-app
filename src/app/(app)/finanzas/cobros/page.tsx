@@ -4,7 +4,16 @@ import { requireFeature } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveClients } from "@/lib/cache";
 import { getExchangeRates } from "@/lib/exchange";
-import { isOverdue, currentPeriod, nextPeriod, periodLabel, fmtCurrency } from "@/lib/finanzas";
+import {
+  isOverdue,
+  currentPeriod,
+  nextPeriod,
+  periodLabel,
+  fmtCurrency,
+  fmtARS,
+  toARS,
+} from "@/lib/finanzas";
+import { fetchFacturacion, resumenFacturacion } from "@/lib/finanzas/facturacion";
 import {
   buildPaymentReminder,
   buildGroupedPaymentReminder,
@@ -27,7 +36,7 @@ import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-type Filter = "todas" | "pendientes" | "vencidas" | "cobradas";
+type Filter = "todas" | "pendientes" | "vencidas" | "cobradas" | "sin-factura";
 type Vista = "facturas" | "recordatorios";
 
 interface ReminderClientRow extends ReminderClient {
@@ -268,12 +277,14 @@ export default async function CobrosPage({
   const rates = await getExchangeRates();
 
   const filterParam = (searchParams.f ?? "pendientes") as Filter;
-  const filter: Filter = ["todas", "pendientes", "vencidas", "cobradas"].includes(filterParam)
+  const filter: Filter = ["todas", "pendientes", "vencidas", "cobradas", "sin-factura"].includes(
+    filterParam
+  )
     ? filterParam
     : "pendientes";
   const monthFilter = mParam;
 
-  const [{ data: invoicesData }, clients] = await Promise.all([
+  const [{ data: invoicesData }, clients, facturacion] = await Promise.all([
     supabase
       .from("client_invoices")
       .select(
@@ -282,14 +293,28 @@ export default async function CobrosPage({
       .order("fecha_vencimiento", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false }),
     getActiveClients(),
+    // Consulta aparte: si la migración 0164 no está aplicada, vuelve vacía y la
+    // pantalla sigue funcionando sin la columna de factura.
+    fetchFacturacion(supabase),
   ]);
 
-  const all = (invoicesData ?? []) as unknown as InvoiceTableRow[];
+  const all = ((invoicesData ?? []) as unknown as InvoiceTableRow[]).map((i) => {
+    const f = facturacion.byId.get(i.id);
+    return {
+      ...i,
+      facturado: f?.facturado ?? false,
+      factura_nro: f?.factura_nro ?? null,
+      facturado_at: f?.facturado_at ?? null,
+    };
+  });
 
   let rows = all.filter((i) => {
     if (filter === "pendientes") return !i.fecha_cobro;
     if (filter === "cobradas") return !!i.fecha_cobro;
     if (filter === "vencidas") return isOverdue(i.fecha_vencimiento, i.fecha_cobro);
+    // "Sin factura" solo mira lo YA cobrado: lo que todavía no te pagaron no
+    // tiene por qué estar facturado y ensuciaría la lista.
+    if (filter === "sin-factura") return !!i.fecha_cobro && !i.facturado;
     return true;
   });
   if (monthFilter) rows = rows.filter((i) => i.periodo === monthFilter);
@@ -299,7 +324,14 @@ export default async function CobrosPage({
     pendientes: all.filter((i) => !i.fecha_cobro).length,
     vencidas: all.filter((i) => isOverdue(i.fecha_vencimiento, i.fecha_cobro)).length,
     cobradas: all.filter((i) => !!i.fecha_cobro).length,
+    "sin-factura": all.filter((i) => !!i.fecha_cobro && !i.facturado).length,
   };
+
+  // El resumen de facturación se calcula sobre el mes elegido (o sobre todo si
+  // no hay ninguno), no sobre el filtro: si no, mirar "pendientes" diría que no
+  // facturaste nada.
+  const deFacturacion = monthFilter ? all.filter((i) => i.periodo === monthFilter) : all;
+  const resumen = resumenFacturacion(deFacturacion, (m, mon) => toARS(m, mon, rates));
 
   return (
     <div className="space-y-5">
@@ -322,7 +354,15 @@ export default async function CobrosPage({
       {toggle}
 
       <div className="flex flex-wrap items-center gap-2">
-        {(["pendientes", "vencidas", "cobradas", "todas"] as const).map((k) => (
+        {(
+          [
+            "pendientes",
+            "vencidas",
+            "cobradas",
+            ...(facturacion.disponible ? (["sin-factura"] as const) : []),
+            "todas",
+          ] as const
+        ).map((k) => (
           <Link
             key={k}
             href={`/finanzas/cobros?f=${k}${monthFilter ? `&m=${monthFilter}` : ""}`}
@@ -331,7 +371,11 @@ export default async function CobrosPage({
               filter === k
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-border bg-card hover:bg-muted",
-              k === "vencidas" && filter !== k && counts.vencidas > 0 && "border-red-300 text-red-700"
+              k === "vencidas" && filter !== k && counts.vencidas > 0 && "border-red-300 text-red-700",
+              k === "sin-factura" &&
+                filter !== k &&
+                counts["sin-factura"] > 0 &&
+                "border-amber-300 text-amber-700"
             )}
           >
             {labelFor(k)} ({counts[k]})
@@ -340,7 +384,34 @@ export default async function CobrosPage({
         <MonthPicker value={monthFilter} />
       </div>
 
-      <InvoicesTable rows={rows} rates={rates} clients={clients} />
+      {facturacion.disponible && resumen.total > 0 && (
+        <Card>
+          <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-1 p-3 text-sm">
+            <span className="text-muted-foreground">
+              Facturado {monthFilter ? `en ${periodLabel(monthFilter)}` : "en total"}:
+            </span>
+            <span>
+              <b className="tabular-nums">{fmtARS(resumen.facturado)}</b>{" "}
+              <span className="text-muted-foreground">
+                de {fmtARS(resumen.total)} cobrados ({Math.round(resumen.pct * 100)}%)
+              </span>
+            </span>
+            {resumen.cuentaSinFactura > 0 && (
+              <span className="text-amber-700 dark:text-amber-400">
+                Falta facturar <b className="tabular-nums">{fmtARS(resumen.sinFactura)}</b> en{" "}
+                {resumen.cuentaSinFactura} cobro{resumen.cuentaSinFactura === 1 ? "" : "s"}
+              </span>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <InvoicesTable
+        rows={rows}
+        rates={rates}
+        clients={clients}
+        facturacionActiva={facturacion.disponible}
+      />
 
       <Card>
         <CardContent className="space-y-2 p-4">
@@ -360,11 +431,12 @@ export default async function CobrosPage({
   );
 }
 
-function labelFor(k: "pendientes" | "vencidas" | "cobradas" | "todas") {
-  const m: Record<string, string> = {
+function labelFor(k: Filter) {
+  const m: Record<Filter, string> = {
     pendientes: "Pendientes",
     vencidas: "Vencidas",
     cobradas: "Cobradas",
+    "sin-factura": "Sin factura",
     todas: "Todas",
   };
   return m[k];

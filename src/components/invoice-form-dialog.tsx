@@ -37,6 +37,8 @@ export interface ClientForInvoice {
 interface BaseProps {
   clients: ClientForInvoice[];
   trigger: React.ReactNode;
+  /** false mientras la migración 0164 no esté aplicada: se esconde el N° de factura. */
+  facturacionActiva?: boolean;
 }
 
 interface CreateProps extends BaseProps {
@@ -55,6 +57,7 @@ interface EditProps extends BaseProps {
     periodo: string;
     fecha_vencimiento: string | null;
     notas: string | null;
+    factura_nro?: string | null;
   };
 }
 
@@ -74,6 +77,7 @@ export function InvoiceFormDialog(props: CreateProps | EditProps) {
           periodo: currentPeriod(),
           fecha_vencimiento: null as string | null,
           notas: null as string | null,
+          factura_nro: null as string | null,
         };
 
   const [clienteId, setClienteId] = useState(initial.cliente_id);
@@ -83,6 +87,7 @@ export function InvoiceFormDialog(props: CreateProps | EditProps) {
   const [periodo, setPeriodo] = useState(initial.periodo);
   const [venc, setVenc] = useState(initial.fecha_vencimiento ?? "");
   const [notas, setNotas] = useState(initial.notas ?? "");
+  const [facturaNro, setFacturaNro] = useState(initial.factura_nro ?? "");
 
   function submit() {
     if (!clienteId) {
@@ -116,6 +121,7 @@ export function InvoiceFormDialog(props: CreateProps | EditProps) {
               moneda,
               fecha_vencimiento: venc || null,
               notas: notas || null,
+              ...(props.facturacionActiva ? { factura_nro: facturaNro || null } : {}),
             });
       if (res?.error) {
         toast.error(res.error);
@@ -226,6 +232,21 @@ export function InvoiceFormDialog(props: CreateProps | EditProps) {
               />
             </div>
           </div>
+          {props.mode === "edit" && props.facturacionActiva && (
+            <div>
+              <Label className="text-xs">N° de factura (opcional)</Label>
+              <Input
+                value={facturaNro}
+                onChange={(e) => setFacturaNro(e.target.value)}
+                placeholder="Ej: 0001-00000123"
+                className="h-9"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Para cruzarlo con el talonario de ARCA. El sí/no se marca con el chip
+                de la fila.
+              </p>
+            </div>
+          )}
           <div>
             <Label className="text-xs">Notas (opcional)</Label>
             <Input

@@ -5,8 +5,8 @@ import { hoyYmd } from "@/lib/dates";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, Loader2, Pencil, Plus, Search } from "lucide-react";
-import { markInvoicesPaidBulk } from "@/app/(app)/finanzas/actions";
+import { Check, FileText, Loader2, Pencil, Plus, Search } from "lucide-react";
+import { markInvoicesPaidBulk, setInvoicesFacturado } from "@/app/(app)/finanzas/actions";
 import { SortTh } from "@/components/ui/sort-th";
 import { cn } from "@/lib/utils";
 import {
@@ -37,6 +37,11 @@ export interface InvoiceTableRow {
   fecha_cobro: string | null;
   metodo_pago: string | null;
   notas: string | null;
+  // El sí/no de ARCA. Puede venir sin definir si la migración 0164 todavía no
+  // está aplicada; en ese caso se trata como "sin factura".
+  facturado?: boolean | null;
+  factura_nro?: string | null;
+  facturado_at?: string | null;
   cliente: { id: string; nombre: string } | null;
 }
 
@@ -46,10 +51,13 @@ export function InvoicesTable({
   rows,
   rates,
   clients,
+  facturacionActiva = false,
 }: {
   rows: InvoiceTableRow[];
   rates: ExchangeRates;
   clients: ClientForInvoice[];
+  /** false mientras la migración 0164 no esté aplicada: se esconde la columna. */
+  facturacionActiva?: boolean;
 }) {
   const [q, setQ] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("vence");
@@ -60,6 +68,7 @@ export function InvoicesTable({
   const [, startTransition] = useTransition();
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [cobrando, setCobrando] = useState(false);
+  const [facturando, setFacturando] = useState(false);
 
   function toggleSort(k: SortKey) {
     if (k === sortBy) setSortDir(sortDir === "asc" ? "desc" : "asc");
@@ -103,14 +112,18 @@ export function InvoicesTable({
     0
   );
 
-  // Solo se pueden marcar las que todavía no están cobradas.
-  const pendientes = filtered.filter((i) => !i.fecha_cobro);
-  const seleccionadas = pendientes.filter((i) => sel.has(i.id));
+  // La selección abarca todas las filas: cobrar aplica a las pendientes, pero
+  // facturar aplica sobre todo a las YA cobradas, que son las que se llevan al
+  // contador. Si el check solo apareciera en las pendientes, facturar en bloque
+  // — que es como se hace, las 12 de una sentada — sería imposible.
+  const seleccionadas = filtered.filter((i) => sel.has(i.id));
   const montoSel = seleccionadas.reduce(
     (acc, i) => acc + toARS(Number(i.monto), i.moneda, rates),
     0
   );
-  const todasSel = pendientes.length > 0 && seleccionadas.length === pendientes.length;
+  const todasSel = filtered.length > 0 && seleccionadas.length === filtered.length;
+  const selPorCobrar = seleccionadas.filter((i) => !i.fecha_cobro);
+  const selSinFactura = facturacionActiva ? seleccionadas.filter((i) => !i.facturado) : [];
 
   function toggleFila(id: string) {
     setSel((prev) => {
@@ -122,15 +135,15 @@ export function InvoicesTable({
   }
 
   function toggleTodas() {
-    setSel(todasSel ? new Set() : new Set(pendientes.map((i) => i.id)));
+    setSel(todasSel ? new Set() : new Set(filtered.map((i) => i.id)));
   }
 
   async function cobrarSeleccionadas() {
-    if (seleccionadas.length === 0) return;
+    if (selPorCobrar.length === 0) return;
     setCobrando(true);
     const hoy = hoyYmd();
     const res = await markInvoicesPaidBulk(
-      seleccionadas.map((i) => i.id),
+      selPorCobrar.map((i) => i.id),
       hoy
     );
     setCobrando(false);
@@ -138,7 +151,24 @@ export function InvoicesTable({
       toast.error(res.error);
       return;
     }
-    toast.success(`${seleccionadas.length} cobro(s) marcados con fecha de hoy.`);
+    toast.success(`${selPorCobrar.length} cobro(s) marcados con fecha de hoy.`);
+    setSel(new Set());
+    startTransition(() => router.refresh());
+  }
+
+  async function facturarSeleccionadas() {
+    if (selSinFactura.length === 0) return;
+    setFacturando(true);
+    const res = await setInvoicesFacturado(
+      selSinFactura.map((i) => i.id),
+      true
+    );
+    setFacturando(false);
+    if (res?.error) {
+      toast.error(res.error);
+      return;
+    }
+    toast.success(`${selSinFactura.length} cobro(s) marcados como facturados.`);
     setSel(new Set());
     startTransition(() => router.refresh());
   }
@@ -177,14 +207,32 @@ export function InvoicesTable({
             <b>{seleccionadas.length}</b> seleccionada(s) ·{" "}
             <b className="tabular-nums">{fmtARS(montoSel)}</b>
           </span>
-          <Button size="sm" onClick={cobrarSeleccionadas} disabled={cobrando} className="gap-1">
-            {cobrando ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Check className="h-3.5 w-3.5" />
-            )}
-            Marcar cobradas hoy
-          </Button>
+          {selPorCobrar.length > 0 && (
+            <Button size="sm" onClick={cobrarSeleccionadas} disabled={cobrando} className="gap-1">
+              {cobrando ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Check className="h-3.5 w-3.5" />
+              )}
+              Marcar {selPorCobrar.length} cobrada{selPorCobrar.length === 1 ? "" : "s"} hoy
+            </Button>
+          )}
+          {selSinFactura.length > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={facturarSeleccionadas}
+              disabled={facturando}
+              className="gap-1"
+            >
+              {facturando ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <FileText className="h-3.5 w-3.5" />
+              )}
+              Marcar {selSinFactura.length} facturada{selSinFactura.length === 1 ? "" : "s"}
+            </Button>
+          )}
           <button
             type="button"
             onClick={() => setSel(new Set())}
@@ -215,14 +263,12 @@ export function InvoicesTable({
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      {!i.fecha_cobro && (
-                        <input
-                          type="checkbox"
-                          checked={sel.has(i.id)}
-                          onChange={() => toggleFila(i.id)}
-                          className="h-3.5 w-3.5 shrink-0 cursor-pointer accent-emerald-600"
-                        />
-                      )}
+                      <input
+                        type="checkbox"
+                        checked={sel.has(i.id)}
+                        onChange={() => toggleFila(i.id)}
+                        className="h-3.5 w-3.5 shrink-0 cursor-pointer accent-emerald-600"
+                      />
                       <span className="font-medium">{i.cliente?.nombre ?? "—"}</span>
                     </div>
                     <p className="truncate text-xs text-muted-foreground" title={i.concepto}>
@@ -259,10 +305,12 @@ export function InvoicesTable({
                     />
                   </div>
                   <div className="flex items-center gap-1">
+                    {facturacionActiva && <FacturaChip row={i} />}
                     <MarkPaidButton id={i.id} kind="invoice" paidAt={i.fecha_cobro} />
                     <InvoiceFormDialog
                       mode="edit"
                       clients={clients}
+                      facturacionActiva={facturacionActiva}
                       invoice={{
                         id: i.id,
                         cliente_id: i.cliente_id,
@@ -272,6 +320,7 @@ export function InvoicesTable({
                         periodo: i.periodo,
                         fecha_vencimiento: i.fecha_vencimiento,
                         notas: i.notas,
+                        factura_nro: i.factura_nro ?? null,
                       }}
                       trigger={
                         <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -298,9 +347,9 @@ export function InvoicesTable({
                     type="checkbox"
                     checked={todasSel}
                     onChange={toggleTodas}
-                    disabled={pendientes.length === 0}
+                    disabled={filtered.length === 0}
                     className="h-3.5 w-3.5 cursor-pointer align-middle accent-emerald-600"
-                    title="Seleccionar todas las pendientes"
+                    title="Seleccionar todas"
                   />
                 </th>
                 <SortTh onClick={() => toggleSort("cliente")} active={sortBy === "cliente"} dir={sortDir}>
@@ -317,13 +366,14 @@ export function InvoicesTable({
                   Monto
                 </SortTh>
                 <th className="px-3 py-2">Estado</th>
+                {facturacionActiva && <th className="px-3 py-2">Factura</th>}
                 <th className="px-2 py-2" />
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-3 py-6 text-center text-sm text-muted-foreground">
+                  <td colSpan={facturacionActiva ? 9 : 8} className="px-3 py-6 text-center text-sm text-muted-foreground">
                     Sin resultados.
                   </td>
                 </tr>
@@ -339,14 +389,12 @@ export function InvoicesTable({
                       )}
                     >
                       <td className="px-2 py-2">
-                        {!i.fecha_cobro && (
-                          <input
-                            type="checkbox"
-                            checked={sel.has(i.id)}
-                            onChange={() => toggleFila(i.id)}
-                            className="h-3.5 w-3.5 cursor-pointer align-middle accent-emerald-600"
-                          />
-                        )}
+                        <input
+                          type="checkbox"
+                          checked={sel.has(i.id)}
+                          onChange={() => toggleFila(i.id)}
+                          className="h-3.5 w-3.5 cursor-pointer align-middle accent-emerald-600"
+                        />
                       </td>
                       <td className="px-3 py-2 font-medium">{i.cliente?.nombre ?? "—"}</td>
                       <td className="max-w-xs truncate px-3 py-2 text-xs text-muted-foreground" title={i.concepto}>
@@ -380,10 +428,16 @@ export function InvoicesTable({
                       <td className="px-3 py-2">
                         <MarkPaidButton id={i.id} kind="invoice" paidAt={i.fecha_cobro} />
                       </td>
+                      {facturacionActiva && (
+                        <td className="px-3 py-2">
+                          <FacturaChip row={i} />
+                        </td>
+                      )}
                       <td className="px-1 py-2">
                         <InvoiceFormDialog
                           mode="edit"
                           clients={clients}
+                          facturacionActiva={facturacionActiva}
                           invoice={{
                             id: i.id,
                             cliente_id: i.cliente_id,
@@ -393,6 +447,7 @@ export function InvoicesTable({
                             periodo: i.periodo,
                             fecha_vencimiento: i.fecha_vencimiento,
                             notas: i.notas,
+                            factura_nro: i.factura_nro ?? null,
                           }}
                           trigger={
                             <Button
@@ -415,6 +470,62 @@ export function InvoicesTable({
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * El sí/no de ARCA, en un clic. Es un botón y no un menú a propósito: son dos
+ * estados y la diferencia entre "un clic" y "abrir algo y elegir" es la
+ * diferencia entre que se cargue el dato y que no se cargue nunca.
+ *
+ * Es optimista: pinta el estado nuevo antes de que vuelva el servidor. Marcar
+ * doce cobros esperando un refresh entero por cada uno se abandona a los tres.
+ */
+function FacturaChip({ row }: { row: InvoiceTableRow }) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  const [optimista, setOptimista] = useState<boolean | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  const facturado = optimista ?? !!row.facturado;
+
+  async function toggle() {
+    const nuevo = !facturado;
+    setOptimista(nuevo);
+    setGuardando(true);
+    const res = await setInvoicesFacturado([row.id], nuevo);
+    setGuardando(false);
+    if (res?.error) {
+      setOptimista(null);
+      toast.error(res.error);
+      return;
+    }
+    startTransition(() => router.refresh());
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      disabled={guardando}
+      title={
+        facturado
+          ? `Facturado${row.factura_nro ? ` · N° ${row.factura_nro}` : ""}. Clic para desmarcar.`
+          : "Sin factura. Clic para marcarlo como facturado."
+      }
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors disabled:opacity-50",
+        facturado
+          ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300"
+          : "border-border bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground"
+      )}
+    >
+      {guardando ? (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      ) : (
+        <FileText className="h-3 w-3" />
+      )}
+      {facturado ? "Facturado" : "Sin factura"}
+    </button>
   );
 }
 

@@ -42,6 +42,9 @@ export interface InvoiceInput {
   fecha_emision?: string | null;
   fecha_vencimiento?: string | null;
   notas?: string | null;
+  facturado?: boolean;
+  factura_nro?: string | null;
+  facturado_at?: string | null;
 }
 
 export async function createInvoice(input: InvoiceInput) {
@@ -72,10 +75,41 @@ export async function updateInvoice(id: string, input: Partial<InvoiceInput>) {
   if (input.fecha_emision !== undefined) patch.fecha_emision = input.fecha_emision;
   if (input.fecha_vencimiento !== undefined) patch.fecha_vencimiento = input.fecha_vencimiento;
   if (input.notas !== undefined) patch.notas = input.notas?.trim() || null;
+  if (input.facturado !== undefined) patch.facturado = input.facturado;
+  if (input.factura_nro !== undefined) patch.factura_nro = input.factura_nro?.trim() || null;
+  if (input.facturado_at !== undefined) patch.facturado_at = input.facturado_at || null;
   const { error } = await supabase.from("client_invoices").update(patch).eq("id", id);
   if (error) return { error: error.message };
   invalidate();
   return { ok: true };
+}
+
+/**
+ * Marca (o desmarca) cobros como facturados. Es el dato que falta para ARCA:
+ * cuánto de lo que entra está en blanco.
+ *
+ * Va en bloque a propósito. A fin de mes se hacen las 12 facturas de una
+ * sentada, y marcar de a una era garantía de que no se marcara ninguna — lo
+ * mismo que pasaba con "cobrado" antes de la selección múltiple.
+ *
+ * La fecha de facturación no la pide: usa hoy. Si hace falta corregirla (se
+ * facturó ayer, o se factura en otro mes), se edita en el cobro.
+ */
+export async function setInvoicesFacturado(ids: string[], facturado: boolean) {
+  const { supabase } = await ctx();
+  if (!Array.isArray(ids) || ids.length === 0) return { ok: true, n: 0 };
+  const clean = ids.slice(0, 200);
+  const { error } = await supabase
+    .from("client_invoices")
+    .update({
+      facturado,
+      // Al desmarcar se limpia la fecha: si no está facturado, no hay cuándo.
+      facturado_at: facturado ? hoyYmd() : null,
+    })
+    .in("id", clean);
+  if (error) return { error: error.message };
+  invalidate();
+  return { ok: true, n: clean.length };
 }
 
 export async function markInvoicePaid(

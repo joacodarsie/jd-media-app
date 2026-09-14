@@ -1,22 +1,28 @@
 #!/usr/bin/env node
 /**
- * Arma el PAQUETE DE CONTEXTO de JD Media para llevarlo a otra IA.
+ * Arma el CONTEXTO de JD Media para llevarlo a otra IA, y cierra el círculo.
  *
  * Por qué existe: el dueño paga cuatro suscripciones de IA y el contexto del
- * negocio vive en una sola (la memoria de Claude Code, 86 archivos). Cuando se
- * queda sin tokens ahí, las otras arrancan de cero y no sirven para nada. Esto
- * exporta todo a archivos que se suben una vez como base de conocimiento.
+ * negocio vive en una sola (la memoria de Claude Code). Cuando se queda sin
+ * tokens ahí, las otras arrancan de cero y no le sirven para nada.
  *
- * Genera tres cosas, de menor a mayor:
- *   1. BRIEF        — lo esencial + los números de HOY sacados de la base.
- *                     Entra en la caja de "instrucciones del proyecto".
- *   2. CONTEXTO     — todo lo vigente. Se sube como archivo de conocimiento.
- *   3. HISTORICO    — las sesiones viejas, por si hace falta rastrear algo.
+ * **La sincronización tiene dos sentidos y solo uno se puede automatizar.**
  *
- * Uso:  node scripts/contexto-ia.mjs
+ *   IDA (automática)    la memoria de este proyecto + los números de la base
+ *                       → `JD MEDIA - CONTEXTO COMPLETO.md`
+ *
+ *   VUELTA (un pegado)  lo que pasa en ChatGPT o en Claude web no puede
+ *                       escribir en este disco. Por eso existe `BITACORA.md`:
+ *                       el dueño pega ahí lo que decidió afuera, y desde la
+ *                       próxima corrida eso viaja adentro del contexto y lo
+ *                       ven las tres. Es el único paso manual que queda.
+ *
+ * La bitácora NUNCA se pisa: si ya existe, se lee y se respeta.
+ *
+ * Uso:  node scripts/contexto-ia.mjs   (o doble clic en Actualizar contexto.bat)
  * Sale en:  <Escritorio>/JD Media - Contexto IA/
  *
- * ⚠️ El paquete lleva sueldos del equipo, facturación por cliente y datos de
+ * ⚠️ El archivo lleva sueldos del equipo, facturación por cliente y datos de
  * contacto. Subirlo a un servicio es una decisión del dueño, no del script.
  */
 import fs from "node:fs";
@@ -224,6 +230,56 @@ Esta copia del contexto **no tiene acceso a la base de datos ni al repositorio**
 
 Si en esta conversación se toma una decisión importante, conviene anotarla y pasársela a esa sesión para que quede en la memoria del proyecto. Si no, se pierde.`;
 
+const BITACORA = "BITACORA.md";
+
+const PLANTILLA_BITACORA = `# Bitácora de JD Media
+
+Acá va lo que se decide o se avanza **fuera de Claude Code**: en ChatGPT, en la
+otra cuenta de Claude, o en una reunión.
+
+**Cómo se usa:** pegás abajo de todo, sin formato especial. La entrada más nueva
+arriba de las viejas o abajo, da igual. Lo importante es que quede escrito.
+
+Cada vez que se actualiza el contexto, lo que esté acá viaja adentro del archivo
+que suben las otras IAs. Así las tres se enteran de lo mismo.
+
+**Este archivo no se pisa nunca.** Podés escribir tranquilo.
+
+---
+
+## Entradas
+
+<!-- Pegá acá. Ejemplo de cómo queda una entrada:
+
+### 2026-09-15 · ChatGPT
+Definimos que a Brisa se le paga un fijo de $150.000 por dirección creativa,
+aparte de lo que diseñe. Falta ver de dónde sale la plata.
+
+-->
+`;
+
+/**
+ * Lee la bitácora del dueño y la crea si no existe.
+ *
+ * Es la mitad de vuelta del círculo: lo que pasa en las IAs web no puede
+ * escribir en este disco, así que el único puente posible es que él pegue.
+ * El trabajo del script es que ese pegado alcance.
+ */
+function leerBitacora() {
+  const p = path.join(SALIDA, BITACORA);
+  if (!fs.existsSync(p)) {
+    fs.writeFileSync(p, PLANTILLA_BITACORA, "utf8");
+    return null;
+  }
+  const t = fs.readFileSync(p, "utf8");
+  // Lo que hay debajo de "## Entradas" es lo que escribió él.
+  const i = t.indexOf("## Entradas");
+  const cuerpoBit = (i === -1 ? t : t.slice(i + "## Entradas".length))
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .trim();
+  return cuerpoBit.length > 0 ? cuerpoBit : null;
+}
+
 /** Lo que está abierto hoy: sale de la base, no de lo que uno se acuerde. */
 async function queEstaAbierto() {
   const users = await consultar("users?select=id,nombre&activo=eq.true");
@@ -281,6 +337,7 @@ async function main() {
   const { vigentes, historicos } = clasificar();
   const foto = await fotoDelNegocio();
   const abierto = await queEstaAbierto();
+  const bitacora = leerBitacora();
 
   const norte = cuerpo("project_jd_media_objetivos_2026_q4.md");
 
@@ -301,8 +358,43 @@ está todo acá abajo.**
 Tu trabajo no es esperar órdenes. Es mirar los números, decirle qué sigue, y
 marcarle lo que no está pasando aunque no lo pregunte.
 
+## Antes de terminar, dejale la entrada para la bitácora
+
+Joaquín trabaja el mismo proyecto en tres IAs a la vez. Vos no ves lo que pasa
+en las otras, y las otras no ven esto. El único puente es él.
+
+Por eso: **cada vez que en esta conversación se decida algo, se cambie un número
+o quede algo pendiente, cerrá tu respuesta con un bloque así**, listo para que lo
+copie de una:
+
+\`\`\`
+### ${hoy} · [dónde estás: ChatGPT / Claude]
+- Qué se decidió:
+- Qué cambió:
+- Qué queda pendiente:
+\`\`\`
+
+Corto, tres o cuatro líneas. Él lo pega en \`BITACORA.md\` y desde la próxima
+actualización lo ven las tres. **Si no lo hacés, ese avance se pierde.**
+
+No lo pongas en cada respuesta: solo cuando pasó algo que vale la pena guardar.
+
 ${foto}
-${abierto}
+${abierto}${
+    bitacora
+      ? `---
+
+## Lo que se avanzó en otras IAs y en reuniones
+
+Esto lo fue anotando Joaquín fuera de la plataforma. Es tan válido como el resto
+del contexto, y suele ser **lo más nuevo de todo**: ante una contradicción con lo
+de más abajo, manda esto.
+
+${bitacora}
+
+`
+      : ""
+}
 ---
 
 ${norte ? `## El norte\n\n${norte.texto}\n\n---\n` : ""}
@@ -358,23 +450,46 @@ archivos y sigue donde quedaste.
 
 ---
 
-## Para mantenerlo al día
+# Que las tres estén siempre al día
 
-Hacé doble clic en **\`Actualizar contexto.bat\`**, en esta misma carpeta. Tarda
-unos segundos y vuelve a leer los números de la base.
+## El círculo, en dos movimientos
 
-Conviene hacerlo cuando entra o se va un cliente, cambia el equipo, o se toma una
-decisión importante.
+**Lo que sale de acá (automático).** Todo lo que se decide en Claude Code, más los
+números de la base, entran solos en el archivo de contexto cada vez que lo
+actualizás.
 
-## Dos cosas que conviene saber
+**Lo que vuelve de afuera (un pegado).** ChatGPT y Claude web no pueden escribir
+en tu computadora. Nadie puede hacer que eso sea automático. Lo que sí se puede es
+que te cueste diez segundos:
 
-**La sincronización va en un solo sentido.** Lo que decidas en otra IA no vuelve
-solo. Si ahí sale algo importante, pegáselo a la sesión de Claude Code para que
-quede en la memoria del proyecto.
+1. Cuando en ChatGPT o en Claude decidan algo, la IA te va a cerrar con un bloque
+   **"entrada para la bitácora"**. Está pedido dentro del archivo de contexto.
+2. Copiás ese bloque y lo pegás al final de **\`BITACORA.md\`**, en esta carpeta.
+3. Doble clic en **\`Actualizar contexto.bat\`**.
 
-**Las otras IAs no pueden leer la base ni tocar el código.** Sirven para pensar,
-redactar, analizar y discutir decisiones. Para construir, medir y aplicar cambios,
-Claude Code.
+Listo: desde ese momento las tres saben lo mismo. La bitácora viaja adentro del
+archivo de contexto, arriba de todo, marcada como lo más nuevo.
+
+\`BITACORA.md\` **nunca se pisa**. Escribí tranquilo.
+
+## Tus dos cuentas de Claude Code ya están sincronizadas
+
+No hace falta bitácora entre ellas. La memoria del proyecto vive en una carpeta
+del disco de esta computadora, así que las dos leen y escriben lo mismo.
+
+## Si avanzás con código en ChatGPT
+
+Que lo escriba, pero **aplicalo desde Claude Code**. Es el único que ve el
+repositorio de verdad y que corre las pruebas antes de publicar. Pegá lo que te
+dio y pedile que lo revise contra el código real: casi siempre hay algo que
+ajustar, porque ChatGPT no ve los archivos.
+
+## Qué conviene hacer en cada lado
+
+| Dónde | Para qué |
+|---|---|
+| **Claude Code** | Todo lo que toca la plataforma, la base y los números reales: construir, medir, aplicar, publicar. |
+| **Las otras** | Pensar, redactar, analizar, propuestas, guiones, discutir decisiones. |
 
 ## Y un archivo más, que casi nunca vas a necesitar
 

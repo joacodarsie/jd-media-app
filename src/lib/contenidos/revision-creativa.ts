@@ -7,8 +7,10 @@
  * desaparece del radar de todos. El 10/9/2026 había dos piezas de Ana Monjes
  * esperando revisión hacía 19 y 20 días sin que nadie supiera que existían.
  *
- * Quién revisa: el CM de la cuenta, que es el que después se la muestra al
- * cliente. Si la pieza lleva demasiado esperando, se le avisa TAMBIÉN a
+ * Quién revisa: desde el 15/9/2026 la Directora Creativa (antes, el CM de la
+ * cuenta, que sigue de respaldo si no hay directora cargada). Las piezas cuya
+ * tarea ya espera aprobación las avisa el ticket, no esto.
+ * Si la pieza lleva demasiado esperando, se le avisa TAMBIÉN a
  * coordinación y a los dueños: si el CM no la miró en tres días, avisarle una
  * cuarta vez no va a cambiar nada.
  *
@@ -99,7 +101,12 @@ export function avisosDeRevisionCreativa(
   piezas: PiezaEnRevision[],
   cuentas: CuentaParaRevision[],
   adminIds: string[],
-  hoy: string
+  hoy: string,
+  /**
+   * Desde el 15/9/2026 la revisión creativa es de la Directora Creativa, no
+   * del CM de la cuenta. Si no hay directora cargada, vuelve al CM.
+   */
+  directoraId: string | null = null
 ): AvisoRevision[] {
   const porCuenta = new Map<string, PiezaEnRevision[]>();
   for (const p of piezasTrabadas(piezas, cuentas)) {
@@ -128,7 +135,7 @@ export function avisosDeRevisionCreativa(
 
     // 1) El CM, que es quien la tiene que mirar. Si la cuenta no tiene CM
     //    cargado, el aviso va derecho a coordinación en vez de perderse.
-    const revisor = cuenta.cm_id ?? cuenta.coordinador_id;
+    const revisor = directoraId ?? cuenta.cm_id ?? cuenta.coordinador_id;
     if (revisor) {
       avisos.push({
         userId: revisor,

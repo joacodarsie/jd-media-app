@@ -28,6 +28,15 @@ import { TaskLinks } from "@/components/task-links";
 import { TaskComments } from "@/components/task-comments";
 import { TaskTimer, type TimeEntry } from "@/components/task-timer";
 import { Pencil } from "lucide-react";
+import { TicketGuia } from "@/components/ticket-guia";
+import { personasClave } from "@/lib/tareas/personas-clave";
+import {
+  estadoAprobacion,
+  papelEnTicket,
+  pasosDelTicket,
+  puedeRepartir,
+  vaPorLaPm,
+} from "@/lib/tareas/puerta";
 
 export const dynamic = "force-dynamic";
 
@@ -157,6 +166,48 @@ export default async function TaskDetail({
   const driveActivo = "drive_url" in (t as unknown as Record<string, unknown>);
   const madre = madreRaw as { id: string; numero: number | null; titulo: string } | null;
 
+  // "Qué te toca": la plataforma sabe quién mira y le muestra sus pasos.
+  const clave = await personasClave();
+  const aprobadorId = t.aprobador_id ?? null;
+  const revisionDesde = (t as unknown as { revision_desde?: string | null }).revision_desde ?? null;
+  const papel = papelEnTicket(
+    {
+      area: t.area,
+      estado: t.estado,
+      asignado_a_id: t.asignado_a_id,
+      creado_por_id: t.creado_por_id,
+      aprobador_id: aprobadorId,
+      parent_id: t.parent_id ?? null,
+    },
+    me.id,
+    clave.pmId,
+    clave.directoraId
+  );
+  const guia = pasosDelTicket(
+    {
+      area: t.area,
+      estado: t.estado,
+      asignado_a_id: t.asignado_a_id,
+      creado_por_id: t.creado_por_id,
+      aprobador_id: aprobadorId,
+      parent_id: t.parent_id ?? null,
+    },
+    papel,
+    {
+      pm: clave.pmNombre?.split(" ")[0] ?? "la Project Manager",
+      directora: clave.directoraNombre?.split(" ")[0] ?? "la Directora Creativa",
+    }
+  );
+  const aprobadoraNombre = t.aprobador?.nombre ?? clave.directoraNombre;
+  const reloj =
+    t.estado === "en_revision" && revisionDesde
+      ? { ...estadoAprobacion(revisionDesde), aprobadora: aprobadoraNombre }
+      : null;
+  // La PM (o la dirección) reparte las subtareas desde el desglose.
+  const reparte = vaPorLaPm(t.area) && puedeRepartir({ id: me.id, rol: me.rol }, clave.pmId);
+  const puertaSubtareas =
+    vaPorLaPm(t.area) && !reparte && clave.pmNombre ? { pmNombre: clave.pmNombre } : null;
+
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <Link
@@ -189,8 +240,9 @@ export default async function TaskDetail({
             </span>
           </div>
           <p className="mt-2 text-[10px] text-muted-foreground">
-            El estado de esta tarea está sincronizado con el de la pieza. Cuando la marcás
-            <b> completada</b>, la pieza pasa a <b>revisión creativa</b> automáticamente.
+            El estado de esta tarea está sincronizado con el de la pieza. Cuando la pasás a
+            <b> En revisión</b>, le llega a la Directora Creativa; cuando la aprueba, la pieza
+            queda lista para mandarle al cliente.
           </p>
         </Link>
       )}
@@ -266,11 +318,31 @@ export default async function TaskDetail({
         </div>
       </div>
 
+      {guia && (
+        <TicketGuia
+          taskId={t.id}
+          titulo={guia.titulo}
+          pasos={guia.pasos}
+          reloj={reloj}
+          aprobar={papel === "directora" && t.estado === "en_revision"}
+          repartir={papel === "pm"}
+          usuarios={users ?? []}
+          asignadoId={t.asignado_a_id}
+        />
+      )}
+
       <div className="grid gap-4 sm:grid-cols-3">
         <Info label="Asignada a" value={t.asignado?.nombre ?? "Sin asignar"} />
         <Info label="Creada por" value={t.creador?.nombre ?? "—"} />
-        {t.aprobador && (
-          <Info label="Aprobador" value={t.aprobador.nombre} />
+        {/* Quien no tiene la guía igual ve en qué anda la aprobación. */}
+        {reloj && !guia ? (
+          <Info
+            label={`Aprobación de ${aprobadoraNombre?.split(" ")[0] ?? "la directora"}`}
+            value={reloj.texto}
+            highlight={reloj.vencida ? "text-red-600" : "text-amber-700"}
+          />
+        ) : (
+          t.aprobador && <Info label="Aprueba" value={t.aprobador.nombre} />
         )}
         <Info
           label="Fecha límite"
@@ -331,7 +403,13 @@ export default async function TaskDetail({
       )}
 
       {ticketsActivos && !t.parent_id && (
-        <SubtareasPanel parentId={t.id} subtareas={subtareas} usuarios={users ?? []} />
+        <SubtareasPanel
+          parentId={t.id}
+          subtareas={subtareas}
+          usuarios={users ?? []}
+          reparte={reparte}
+          puerta={puertaSubtareas}
+        />
       )}
 
       <Card>

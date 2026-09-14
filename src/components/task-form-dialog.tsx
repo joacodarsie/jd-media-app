@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { obtenerPuerta } from "@/app/(app)/tareas/aprobacion-actions";
+import { requiereAprobacion, vaPorLaPm } from "@/lib/tareas/puerta";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ChevronDown, ChevronRight, ListTree, Plus, X } from "lucide-react";
@@ -95,8 +97,19 @@ export function TaskFormDialog({
   const [links, setLinks] = useState<LinkBorrador[]>([]);
   const [subtareas, setSubtareas] = useState<SubtareaBorrador[]>([]);
 
+  // A quién le llega el pedido y quién lo aprueba. Se pregunta al abrir: la
+  // ventana se usa desde varias pantallas y así ninguna tiene que pasarlo.
+  const [puerta, setPuerta] = useState<Awaited<ReturnType<typeof obtenerPuerta>> | null>(null);
+  useEffect(() => {
+    if (!open || puerta) return;
+    obtenerPuerta()
+      .then(setPuerta)
+      .catch(() => setPuerta(null));
+  }, [open, puerta]);
+
   const esCreacion = mode === "create";
-  // Una subtarea no puede tener su propio desglose (trigger de la 0165).
+  const pasaPorPm = !!puerta && puerta.hayPm && !puerta.libre && vaPorLaPm(area);
+  const pmCorto = puerta?.pmNombre?.split(" ")[0] ?? "la Project Manager";  // Una subtarea no puede tener su propio desglose (trigger de la 0165).
   const puedeDesglosar = esCreacion && madre === NONE;
 
   const setSub = (i: number, cambio: Partial<SubtareaBorrador>) =>
@@ -179,12 +192,15 @@ export function TaskFormDialog({
         toast.error("No se pudo guardar: " + res.error);
         return;
       }
+      const aviso = res && "aviso" in res ? (res.aviso as string | undefined) : undefined;
       toast.success(
         esCreacion
-          ? subsPayload.length
-            ? `Ticket creado con ${subsPayload.length} ${subsPayload.length === 1 ? "subtarea" : "subtareas"}`
-            : "Tarea creada"
-          : "Tarea actualizada"
+          ? `${
+              subsPayload.length
+                ? `Ticket creado con ${subsPayload.length} ${subsPayload.length === 1 ? "subtarea" : "subtareas"}`
+                : "Tarea creada"
+            }${pasaPorPm ? ` · le llegó a ${pmCorto}` : ""}`
+          : aviso ?? "Tarea actualizada"
       );
       setOpen(false);
       if (esCreacion) reset();
@@ -300,7 +316,8 @@ export function TaskFormDialog({
                             placeholder={`Subtarea ${i + 1} (ej: Carrusel «5 señales»)`}
                             className="h-8 min-w-[10rem] flex-1 text-sm"
                           />
-                          {selectUsuarios(s.asignado, (v) => setSub(i, { asignado: v }), "Como el ticket", "h-8 w-40 text-xs")}
+                          {!pasaPorPm &&
+                            selectUsuarios(s.asignado, (v) => setSub(i, { asignado: v }), "Como el ticket", "h-8 w-40 text-xs")}
                           <Input
                             type="date"
                             value={s.fecha}
@@ -337,8 +354,9 @@ export function TaskFormDialog({
                 )}
                 {subtareas.length > 0 && (
                   <p className="border-t px-3 py-2 text-[11px] text-muted-foreground">
-                    Heredan cliente, área y prioridad del ticket. Sin responsable o fecha, usan
-                    los del ticket.
+                    {pasaPorPm
+                      ? `Heredan cliente, área y prioridad del ticket. Las reparte ${pmCorto}.`
+                      : "Heredan cliente, área y prioridad del ticket. Sin responsable o fecha, usan los del ticket."}
                   </p>
                 )}
               </div>
@@ -390,7 +408,13 @@ export function TaskFormDialog({
             )}
             <div className="space-y-2">
               <Label>Responsable</Label>
-              {selectUsuarios(asignado, setAsignado, "Sin asignar")}
+              {pasaPorPm && esCreacion ? (
+                <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+                  Le llega a <b>{puerta?.pmNombre}</b>, Project Manager, que lo reparte a quien lo va a hacer.
+                </p>
+              ) : (
+                selectUsuarios(asignado, setAsignado, "Sin asignar")
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="fecha">
@@ -445,12 +469,20 @@ export function TaskFormDialog({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Requiere aprobación de</Label>
-              {selectUsuarios(aprobador, setAprobador, "No requiere aprobación")}
-              <p className="text-[10px] text-muted-foreground">
-                Le llega aviso cuando se crea la tarea y cuando pasa a &quot;en revisión&quot; o
-                &quot;completada&quot;.
-              </p>
+              <Label>Aprobación</Label>
+              {requiereAprobacion(area) ? (
+                <p className="rounded-md border border-amber-400/50 bg-amber-50/60 px-3 py-2 text-xs dark:bg-amber-950/20">
+                  Lo aprueba <b>{puerta?.directoraNombre ?? "la Directora Creativa"}</b> antes de ir al cliente. Le
+                  llega cuando pasa a En revisión y tiene 24 h hábiles.
+                </p>
+              ) : (
+                <>
+                  {selectUsuarios(aprobador, setAprobador, "No requiere aprobación")}
+                  <p className="text-[10px] text-muted-foreground">
+                    Le llega el aviso cuando pasa a &quot;En revisión&quot;.
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>

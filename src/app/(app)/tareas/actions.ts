@@ -8,6 +8,14 @@ import type { TaskLink } from "@/lib/types";
 import { motivoParaNoCerrarTareas } from "@/lib/contenidos/archivo-final-db";
 import { avisosDeCambio, type EstadoTarea } from "@/lib/tareas/avisos";
 import { validarFechaLimite } from "@/lib/tareas/fecha-limite";
+import {
+  motivoParaNoReasignar,
+  puedeRepartir,
+  requiereAprobacion,
+  responsableAlCrear,
+  type Actor,
+} from "@/lib/tareas/puerta";
+import { personasClave } from "@/lib/tareas/personas-clave";
 
 async function uid() {
   const supabase = createClient();
@@ -16,6 +24,41 @@ async function uid() {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("No autenticado");
   return { supabase, userId: user.id };
+}
+
+/** Quién está haciendo el cambio, con su rol: lo piden las reglas de la puerta. */
+async function actorDe(userId: string): Promise<Actor> {
+  const { data } = await createAdmin().from("users").select("rol").eq("id", userId).maybeSingle();
+  return { id: userId, rol: (data as { rol: string } | null)?.rol ?? null };
+}
+
+/**
+ * Lo de antes de septiembre se cierra como siempre (mismo corte que la 0173):
+ * son tareas viejas que no van a ir a ningún cliente.
+ */
+const APROBACION_DESDE = "2026-09-01";
+
+/**
+ * Si quien produce marca "Completada" algo que tiene que aprobar la directora,
+ * se manda a revisión en vez de cerrarse. La base hace lo mismo (0173); acá se
+ * resuelve antes para poder decírselo a la persona en vez de que vea un estado
+ * distinto al que eligió sin explicación.
+ */
+function estadoConAprobacion(
+  estado: string,
+  t: { area: string | null; fecha_limite: string | null; estado: string; aprobador_id: string | null },
+  actor: Actor,
+  directoraId: string | null
+): { estado: string; aviso?: string } {
+  if (estado !== "completada" || t.estado === "completada") return { estado };
+  if (!requiereAprobacion(t.area)) return { estado };
+  if ((t.fecha_limite ?? "9999") < APROBACION_DESDE) return { estado };
+  const aprobadora = t.aprobador_id ?? directoraId;
+  if (actor.rol === "admin" || actor.id === aprobadora || actor.id === directoraId) return { estado };
+  return {
+    estado: "en_revision",
+    aviso: "Quedó En revisión: los diseños los aprueba la Directora Creativa antes de ir al cliente.",
+  };
 }
 
 export async function createTask(input: {
@@ -52,7 +95,25 @@ export async function createTask(input: {
   const fecha = validarFechaLimite(input.fecha_limite);
   if (!fecha.ok) return { error: fecha.error! };
 
-  const subtareas = (input.subtareas ?? []).filter((s) => s.titulo.trim());
+  // Una sola puerta: community, diseño y edición le llegan a la PM, que reparte.
+  // Si la tarea nace adentro de un ticket, manda el área del ticket.
+  const [actor, clave] = await Promise.all([actorDe(userId), personasClave()]);
+  let areaEfectiva = input.area;
+  if (input.parent_id) {
+    const { data: m } = await createAdmin().from("tasks").select("area").eq("id", input.parent_id).maybeSingle();
+    areaEfectiva = (m as { area: string } | null)?.area ?? input.area;
+  }
+  const alCrear = (elegido: string | null) =>
+    responsableAlCrear({ area: areaEfectiva, elegido, actor, pmId: clave.pmId });
+  input = { ...input, asignado_a_id: alCrear(input.asignado_a_id || null) };
+  // Diseño y edición los aprueba la directora: no se elige a mano.
+  if (requiereAprobacion(areaEfectiva)) {
+    input = { ...input, aprobador_id: null, requiere_aprobacion: false };
+  }
+
+  const subtareas = (input.subtareas ?? [])
+    .filter((s) => s.titulo.trim())
+    .map((s) => ({ ...s, asignado_a_id: alCrear(s.asignado_a_id || null) }));
   if (subtareas.length && input.parent_id) {
     return { error: "Una subtarea no puede tener su propio desglose: cargá las subtareas en el ticket." };
   }
@@ -168,10 +229,18 @@ export async function addSubtarea(input: {
   const fecha = validarFechaLimite(input.fecha_limite ?? m.fecha_limite);
   if (!fecha.ok) return { error: fecha.error! };
 
+  const [actor, clave] = await Promise.all([actorDe(userId), personasClave()]);
+  const responsable = responsableAlCrear({
+    area: m.area,
+    elegido: input.asignado_a_id || m.asignado_a_id || null,
+    actor,
+    pmId: clave.pmId,
+  });
+
   const { error } = await supabase.from("tasks").insert({
     titulo: input.titulo.trim(),
     descripcion: input.descripcion?.trim() || null,
-    asignado_a_id: input.asignado_a_id || m.asignado_a_id || null,
+    asignado_a_id: responsable,
     creado_por_id: userId,
     cliente_id: m.cliente_id,
     area: m.area,
@@ -241,8 +310,16 @@ export async function ensureDriveFolder(taskId: string) {
   return { ok: true, url: res.url, creada: res.creada };
 }
 
-export async function updateTaskStatus(id: string, estado: string) {
-  const { supabase } = await uid();
+export async function updateTaskStatus(id: string, estadoPedido: string) {
+  const { supabase, userId } = await uid();
+  const [actor, clave, { data: actual }] = await Promise.all([
+    actorDe(userId),
+    personasClave(),
+    createAdmin().from("tasks").select("area, fecha_limite, estado, aprobador_id").eq("id", id).maybeSingle(),
+  ]);
+  const { estado, aviso } = actual
+    ? estadoConAprobacion(estadoPedido, actual as Parameters<typeof estadoConAprobacion>[1], actor, clave.directoraId)
+    : { estado: estadoPedido, aviso: undefined };
   const bloqueo = await motivoParaNoCerrarTareas(createAdmin(), [id], estado);
   if (bloqueo) return { error: bloqueo };
   const { error } = await supabase
@@ -253,7 +330,7 @@ export async function updateTaskStatus(id: string, estado: string) {
   revalidatePath("/tareas");
   revalidatePath("/dashboard");
   revalidatePath(`/tareas/${id}`);
-  return { ok: true };
+  return { ok: true, estado, aviso };
 }
 
 export async function updateTask(
@@ -271,14 +348,33 @@ export async function updateTask(
     requiere_aprobacion?: boolean;
   }
 ) {
-  const { supabase } = await uid();
+  const { supabase, userId } = await uid();
   // Cómo estaba la tarea, para saber QUÉ cambió y a quién avisarle.
   const { data: antesRaw } = await supabase
     .from("tasks")
-    .select("asignado_a_id, fecha_limite, estado, prioridad, titulo")
+    .select("asignado_a_id, fecha_limite, estado, prioridad, titulo, area, aprobador_id")
     .eq("id", id)
     .maybeSingle();
-  const bloqueo = await motivoParaNoCerrarTareas(createAdmin(), [id], input.estado);
+  const antesT = antesRaw as
+    | (EstadoTarea & { area: string | null; aprobador_id: string | null })
+    | null;
+
+  const [actor, clave] = await Promise.all([actorDe(userId), personasClave()]);
+  const noReasignar = motivoParaNoReasignar({
+    area: input.area,
+    antes: antesT?.asignado_a_id ?? null,
+    despues: input.asignado_a_id || null,
+    actor,
+    pmId: clave.pmId,
+    pmNombre: clave.pmNombre,
+  });
+  if (noReasignar) return { error: noReasignar };
+
+  const { estado, aviso } = antesT
+    ? estadoConAprobacion(input.estado, { ...antesT, area: input.area }, actor, clave.directoraId)
+    : { estado: input.estado, aviso: undefined };
+
+  const bloqueo = await motivoParaNoCerrarTareas(createAdmin(), [id], estado);
   if (bloqueo) return { error: bloqueo };
   // Editar una tarea tampoco puede dejarla sin fecha.
   const fecha = validarFechaLimite(input.fecha_limite);
@@ -292,10 +388,16 @@ export async function updateTask(
       cliente_id: input.cliente_id || null,
       area: input.area,
       prioridad: input.prioridad,
-      estado: input.estado,
+      estado,
       fecha_limite: fecha.fecha,
-      aprobador_id: input.aprobador_id || null,
-      requiere_aprobacion: input.requiere_aprobacion ?? !!input.aprobador_id,
+      // En diseño y edición la aprobadora la pone la base al pasar a revisión:
+      // el formulario no la ofrece, y mandar null acá la borraría.
+      ...(requiereAprobacion(input.area)
+        ? {}
+        : {
+            aprobador_id: input.aprobador_id || null,
+            requiere_aprobacion: input.requiere_aprobacion ?? !!input.aprobador_id,
+          }),
     })
     .eq("id", id);
   if (error) return { error: error.message };
@@ -309,12 +411,12 @@ export async function updateTask(
     void avisarCambios(id, antesRaw as EstadoTarea, {
       asignado_a_id: input.asignado_a_id || null,
       fecha_limite: fecha.fecha ?? null,
-      estado: input.estado,
+      estado,
       prioridad: input.prioridad,
       titulo: input.titulo,
     }).catch((e) => console.error("avisarCambios:", e));
   }
-  return { ok: true };
+  return { ok: true, estado, aviso };
 }
 
 export async function deleteTask(id: string) {
@@ -378,8 +480,26 @@ export async function bulkSetDueDate(ids: string[], fechaLimite: string) {
 
 /** Reasigna varias tareas al mismo usuario (bulk action). */
 export async function bulkReassignTasks(ids: string[], newUserId: string) {
-  const { supabase } = await uid();
+  const { supabase, userId } = await uid();
   if (!ids.length) return { error: "Sin selección." };
+  const [actor, clave, { data: filas }] = await Promise.all([
+    actorDe(userId),
+    personasClave(),
+    createAdmin().from("tasks").select("area, asignado_a_id").in("id", ids),
+  ]);
+  if (!puedeRepartir(actor, clave.pmId)) {
+    for (const f of (filas ?? []) as { area: string | null; asignado_a_id: string | null }[]) {
+      const motivo = motivoParaNoReasignar({
+        area: f.area,
+        antes: f.asignado_a_id,
+        despues: newUserId,
+        actor,
+        pmId: clave.pmId,
+        pmNombre: clave.pmNombre,
+      });
+      if (motivo) return { error: motivo };
+    }
+  }
   const { error } = await supabase
     .from("tasks")
     .update({ asignado_a_id: newUserId })

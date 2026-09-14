@@ -4,10 +4,17 @@ description: Cómo crear, asignar y gestionar tareas.
 category: Día a día
 order: 10
 roles: [all]
-updated: 2026-05-25
+updated: 2026-09-15
 ---
 
 Las tareas son la unidad de trabajo en JD Media. Todo lo que alguien tiene que hacer debería ser una tarea.
+
+## Las dos reglas (desde el 15/9/2026)
+
+1. **Community, diseño y edición se le piden a la Project Manager.** El ticket le llega a ella y lo reparte. Si lo creás vos, no elegís responsable.
+2. **Ningún diseño va al cliente sin la Directora Creativa.** Al terminar una pieza de diseño o edición, pasala a **En revisión** con el archivo final cargado. La directora tiene **24 horas hábiles** para aprobar o pedir cambios, desde los botones del ticket.
+
+Arriba de cada ticket, el recuadro **"Qué te toca"** te muestra tus pasos según quién sos en ese ticket.
 
 ## Crear una tarea
 
@@ -27,7 +34,7 @@ Click en **Nueva tarea** desde la vista de Tareas, o pedíselo directamente a JD
 
 - `pendiente` — todavía no se empezó.
 - `en_progreso` — alguien está trabajando en eso.
-- `en_revision` — está listo pero falta aprobación.
+- `en_revision` — está listo y espera aprobación. En diseño y edición la aprueba la Directora Creativa.
 - `bloqueada` — está trabada por algo externo (esperando al cliente, accesos, etc).
 - `completada` — terminada. Se archiva.
 

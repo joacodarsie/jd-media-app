@@ -42,7 +42,7 @@ Cuando hay un shooting:
 2. Mirá la ficha del cliente → manual de marca + diagnóstico (pilares, tono).
 3. Editá → exportá → subí.
 4. Pegá el link en `asset_url` de la pub.
-5. Cambiá estado a `revision_creativa`.
+5. Subí el archivo final y pasá la tarea a **En revisión**: la aprueba la Directora Creativa en 24 horas hábiles.
 
 ## Atajos
 

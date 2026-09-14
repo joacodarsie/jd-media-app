@@ -12,6 +12,8 @@ import {
   type CuentaParaRevision,
   type PiezaEnRevision,
 } from "./contenidos/revision-creativa";
+import { personasClave } from "./tareas/personas-clave";
+import { avisosDeAprobacionVencida, type TareaEsperando } from "./tareas/puerta";
 
 /** Roles de los que se espera que prospecten (los que reciben el aviso). */
 const ROLES_PROSPECTAN = ["comercial", "prospecting", "coordinador", "admin"];
@@ -334,7 +336,7 @@ export async function ensureRevisionCreativaNudges(admin: SupabaseClient) {
       admin
         .from("publications")
         .select(
-          "id, cliente_id, titulo, estado, fecha_publicacion, frenado_cliente, revision_creativa_at"
+          "id, task_id, cliente_id, titulo, estado, fecha_publicacion, frenado_cliente, revision_creativa_at"
         )
         .eq("estado", "revision_creativa"),
       admin.from("clients").select("id, nombre, estado, cm_id, coordinador_id"),
@@ -344,21 +346,32 @@ export async function ensureRevisionCreativaNudges(admin: SupabaseClient) {
   // La 0161 puede no estar aplicada: sin la marca se mide desde la fecha en que
   // la pieza debía salir, que para una trabada ya pasó. Peor que nada no es.
   let piezas = (pubsRaw ?? []) as PiezaEnRevision[];
+  // Las piezas cuya tarea ya está esperando a la directora las avisa
+  // `ensureAprobacionNudges`, con el link al ticket: acá serían un aviso doble.
+  const { data: tareasEsperando } = await admin
+    .from("tasks")
+    .select("id")
+    .eq("estado", "en_revision")
+    .not("aprobador_id", "is", null);
+  const conTicket = new Set(((tareasEsperando ?? []) as { id: string }[]).map((t) => t.id));
   if (pubsErr) {
     if ((pubsErr as { code?: string }).code !== "42703") return { avisados: 0 };
     const { data } = await admin
       .from("publications")
-      .select("id, cliente_id, titulo, estado, fecha_publicacion, frenado_cliente")
+      .select("id, task_id, cliente_id, titulo, estado, fecha_publicacion, frenado_cliente")
       .eq("estado", "revision_creativa");
     piezas = (data ?? []) as PiezaEnRevision[];
   }
+  piezas = piezas.filter((p) => !(p as { task_id?: string | null }).task_id || !conTicket.has((p as { task_id?: string }).task_id!));
   if (!piezas.length) return { avisados: 0 };
 
+  const { directoraId } = await personasClave();
   const avisos = avisosDeRevisionCreativa(
     piezas,
     (cuentasRaw ?? []) as CuentaParaRevision[],
     ((adminsRaw ?? []) as { id: string }[]).map((u) => u.id),
-    hoy
+    hoy,
+    directoraId
   );
 
   let avisados = 0;
@@ -383,4 +396,55 @@ export async function ensureRevisionCreativaNudges(admin: SupabaseClient) {
   }
 
   return { avisados, piezas: piezas.length };
+}
+
+/**
+ * Las aprobaciones que se pasaron de las 24 horas hábiles: recordatorio a quien
+ * aprueba y aviso a la PM y a la dirección. Una vez por día por persona.
+ */
+export async function ensureAprobacionNudges(admin: SupabaseClient) {
+  const hoy = formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM-dd");
+  const inicioHoyCordoba = toZonedTime(new Date(hoy + "T00:00:00"), TIMEZONE);
+
+  const [{ data: tareasRaw, error }, { data: adminsRaw }, { data: gente }, clave] = await Promise.all([
+    admin
+      .from("tasks")
+      .select("id, titulo, aprobador_id, revision_desde")
+      .eq("estado", "en_revision")
+      .not("aprobador_id", "is", null),
+    admin.from("users").select("id").eq("rol", "admin").eq("activo", true),
+    admin.from("users").select("id, nombre"),
+    personasClave(),
+  ]);
+  // Sin la 0173 no existe revision_desde: no hay reloj que mirar.
+  if (error) return { avisados: 0 };
+
+  const nombres = new Map(((gente ?? []) as { id: string; nombre: string }[]).map((u) => [u.id, u.nombre]));
+  const avisos = avisosDeAprobacionVencida(
+    (tareasRaw ?? []) as TareaEsperando[],
+    { pmId: clave.pmId, adminIds: ((adminsRaw ?? []) as { id: string }[]).map((u) => u.id) },
+    (id) => nombres.get(id) ?? "La directora"
+  );
+
+  let avisados = 0;
+  for (const a of avisos) {
+    const { data: yaHay } = await admin
+      .from("notifications")
+      .select("id")
+      .eq("user_id", a.userId)
+      .eq("tipo", "recordatorio")
+      .like("mensaje", "⏳%aprob%")
+      .gte("created_at", inicioHoyCordoba.toISOString())
+      .limit(1);
+    if (yaHay?.length) continue;
+    await admin.from("notifications").insert({
+      user_id: a.userId,
+      tipo: "recordatorio",
+      mensaje: a.mensaje,
+      link: a.link,
+      task_id: null,
+    });
+    avisados++;
+  }
+  return { avisados, vencidas: avisos.length };
 }

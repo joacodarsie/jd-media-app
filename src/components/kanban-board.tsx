@@ -131,7 +131,12 @@ export function KanbanBoard({ tasks }: { tasks: TaskWithRels[] }) {
         toast.error("No se pudo mover: " + res.error);
         setItems(tasks);
       } else {
-        toast.success(`Movida a "${STATUS_LABEL[overId]}"`);
+        const final = ("estado" in res && res.estado ? res.estado : overId) as TaskStatus;
+        if (final !== overId) {
+          setItems((prev) => prev.map((t) => (t.id === id ? { ...t, estado: final } : t)));
+        }
+        if ("aviso" in res && res.aviso) toast.info(res.aviso);
+        else toast.success(`Movida a "${STATUS_LABEL[overId]}"`);
         router.refresh();
       }
     });

@@ -5,6 +5,7 @@ import { getActiveUsers, getActiveClients } from "@/lib/cache";
 import type { TaskWithRels } from "@/lib/types";
 import { TaskViews } from "@/components/task-views";
 import { TaskRequestsPanel } from "@/components/task-requests-panel";
+import { BandejaCoordinacion } from "@/components/bandeja-coordinacion";
 import { pedidosPendientes } from "./pedidos-actions";
 import { madresQueFaltan, type RefMadre } from "@/lib/tareas/agrupar";
 
@@ -121,6 +122,8 @@ export default async function TareasPage({
         pedidos={pedidos}
         usuarios={(users ?? []).map((u) => ({ id: u.id, nombre: u.nombre }))}
       />
+
+      <BandejaCoordinacion me={{ id: me.id, rol: me.rol }} />
 
       {/* Solo para quien lleva cuentas: mirar el resto es opcional. */}
       {!esStaff && myClientIds.length > 0 && (

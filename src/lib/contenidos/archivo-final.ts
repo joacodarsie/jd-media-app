@@ -19,11 +19,12 @@
 export const AREAS_QUE_ENTREGAN_ARCHIVO = ["Diseño", "Edición Audiovisual"];
 
 /**
- * Solo "completada" pide archivo. Archivar es abandonar la pieza (se canceló,
- * el cliente la frenó, se duplicó): exigir un entregable para eso dejaría
- * tareas muertas imposibles de sacar del medio.
+ * "Completada" y "En revisión" piden archivo: desde el 15/9 la pieza terminada
+ * va primero a la Directora Creativa, y no puede aprobar lo que no ve.
+ * Archivar es abandonar la pieza (se canceló, el cliente la frenó, se duplicó):
+ * exigir un entregable para eso dejaría tareas muertas imposibles de sacar.
  */
-const ESTADOS_DE_CIERRE = ["completada"];
+const ESTADOS_DE_CIERRE = ["completada", "en_revision"];
 
 /**
  * Desde cuándo se pide el archivo.
@@ -82,6 +83,9 @@ export function motivoParaNoCerrar(
 
   const conLink = !!pieza?.asset_url?.trim();
   const cual = pieza?.titulo?.trim() ? `"${pieza.titulo.trim()}"` : "la pieza";
+  if (estadoNuevo === "en_revision") {
+    return `Para mandar a aprobar falta subir el archivo final de ${cual}: la Directora Creativa necesita verlo. Abrí la pieza en el calendario y tocá "Subir archivo final".`;
+  }
   return conLink
     ? `Para cerrar esta tarea falta subir el archivo final de ${cual}. El link que dejaste sirve para verla, pero la app necesita el archivo adentro para publicarla sola. Abrí la pieza en el calendario y tocá "Subir archivo final".`
     : `Para cerrar esta tarea falta subir el archivo final de ${cual}. Abrí la pieza en el calendario y tocá "Subir archivo final": subí lo que va a salir publicado.`;

@@ -6,6 +6,7 @@ import {
   ensureCobroReminders,
   ensureProspectingNudges,
   ensureRevisionCreativaNudges,
+  ensureAprobacionNudges,
 } from "@/lib/notifications";
 import {
   runMonthEndCompliance,
@@ -117,6 +118,14 @@ export async function GET(req: NextRequest) {
     revisionCreativa = await ensureRevisionCreativaNudges(admin);
   } catch (e) {
     revisionCreativa = { error: e instanceof Error ? e.message : "falló" };
+  }
+
+  // Tickets de diseño y edición que la directora no respondió en 24 h hábiles.
+  let aprobaciones: unknown = null;
+  try {
+    aprobaciones = await ensureAprobacionNudges(admin);
+  } catch (e) {
+    aprobaciones = { error: e instanceof Error ? e.message : "falló" };
   }
 
   // La reunión mensual con cada cliente: crea el ticket del mes y, pasado el
@@ -340,6 +349,7 @@ export async function GET(req: NextRequest) {
     prospeccion,
     reuniones,
     revision_creativa: revisionCreativa,
+    aprobaciones,
     refill,
     tasks_archived: archivedRows?.length ?? 0,
     notifications_purged: purgedNotifs?.length ?? 0,

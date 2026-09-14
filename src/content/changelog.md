@@ -2,6 +2,13 @@
 title: Novedades
 ---
 
+## 2026-09-15 — Todo por tickets: Luz reparte y Brisa aprueba
+
+- 🚪 **Community, diseño y edición se le piden a Luz.** Cuando creás un ticket de esas áreas, le llega a Luz (Project Manager) y ella lo reparte a quien lo va a hacer. En la ventana del ticket ya no se elige responsable: dice a quién le llega.
+- ✅ **Ningún diseño va al cliente sin la aprobación de Brisa.** Cuando terminás una pieza de diseño o edición, pasala a **En revisión**: le llega a Brisa, que tiene **24 horas hábiles** para aprobarla o pedir cambios. Si la marcás Completada, queda En revisión igual. Para mandarla a aprobar tiene que estar el archivo final cargado.
+- 👉 **"Qué te toca", arriba de cada ticket.** La plataforma sabe quién lo abre y le muestra sus pasos: a quien produce, qué hacer; a Luz, el botón para repartir; a Brisa, **Aprobar** o **Pedir cambios**, con el reloj de las 24 horas.
+- 📥 **Bandejas en /tareas**: "Para repartir" (Luz) y "Para aprobar" (Brisa). Si una aprobación se pasa del plazo, avisa a Luz y a la dirección.
+
 ## 2026-09-11 — Toda tarea con fecha, el organigrama en vivo y las piezas que se trababan
 
 - 📆 **Toda tarea lleva fecha límite.** En los tres lugares donde nace una tarea ahora es obligatoria. Había 57 tareas sin fecha y por eso eran invisibles: no aparecían en "Mi día" ni en los avisos de vencimiento, así que nadie las veía hasta que alguien preguntaba. En /tareas hay un chip **"Sin fecha"** para encontrar las viejas y ponerles fecha en lote.

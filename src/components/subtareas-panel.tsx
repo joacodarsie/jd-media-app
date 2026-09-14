@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ChevronDown, ChevronRight, Loader2, Plus } from "lucide-react";
 import { addSubtarea } from "@/app/(app)/tareas/actions";
+import { reasignarTarea } from "@/app/(app)/tareas/aprobacion-actions";
 import { formatTicket, progresoTicket } from "@/lib/tareas/tickets";
 import { normalizarLinks, type LinkBorrador } from "@/lib/tareas/links";
 import { LinksEditor } from "@/components/links-editor";
@@ -47,10 +48,16 @@ export function SubtareasPanel({
   parentId,
   subtareas,
   usuarios,
+  reparte = false,
+  puerta = null,
 }: {
   parentId: string;
   subtareas: SubtareaFila[];
   usuarios: { id: string; nombre: string }[];
+  /** La PM (o la dirección): el responsable de cada fila se cambia ahí mismo. */
+  reparte?: boolean;
+  /** Si viene, el pedido le llega a la PM: no se elige responsable. */
+  puerta?: { pmNombre: string } | null;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -150,10 +157,36 @@ export function SubtareasPanel({
                 >
                   {STATUS_LABEL[s.estado as keyof typeof STATUS_LABEL] ?? s.estado}
                 </span>
-                {s.asignado && (
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {s.asignado.nombre}
-                  </span>
+                {reparte && !hecha ? (
+                  <Select
+                    value={s.asignado?.id}
+                    onValueChange={async (v) => {
+                      const res = await reasignarTarea(s.id, v);
+                      if (res?.error) {
+                        toast.error(res.error);
+                        return;
+                      }
+                      toast.success("Asignada");
+                      startTransition(() => router.refresh());
+                    }}
+                  >
+                    <SelectTrigger className="h-7 w-40 shrink-0 text-xs">
+                      <SelectValue placeholder="Asignar a…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {usuarios.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.nombre}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  s.asignado && (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {s.asignado.nombre}
+                    </span>
+                  )
                 )}
                 {s.fecha_limite && (
                   <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
@@ -180,21 +213,27 @@ export function SubtareasPanel({
               className="h-8 text-xs"
             />
           </div>
-          <div>
-            <Label className="text-[11px] text-muted-foreground">Responsable</Label>
-            <Select value={asignado} onValueChange={setAsignado}>
-              <SelectTrigger className="h-8 w-44 text-xs">
-                <SelectValue placeholder="Como el ticket" />
-              </SelectTrigger>
-              <SelectContent>
-                {usuarios.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.nombre}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {puerta ? (
+            <p className="pb-2 text-[11px] text-muted-foreground">
+              Le llega a {puerta.pmNombre.split(" ")[0]}, que la reparte.
+            </p>
+          ) : (
+            <div>
+              <Label className="text-[11px] text-muted-foreground">Responsable</Label>
+              <Select value={asignado} onValueChange={setAsignado}>
+                <SelectTrigger className="h-8 w-44 text-xs">
+                  <SelectValue placeholder="Como el ticket" />
+                </SelectTrigger>
+                <SelectContent>
+                  {usuarios.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div>
             <Label className="text-[11px] text-muted-foreground">Entrega</Label>
             <Input

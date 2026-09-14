@@ -73,9 +73,12 @@ describe("motivoParaNoCerrar", () => {
     expect(motivo).toContain("El link que dejaste sirve para verla");
   });
 
-  it("no molesta al mover la tarea a en_progreso o en_revision", () => {
+  it("no molesta al mover la tarea a en_progreso", () => {
     expect(motivoParaNoCerrar(tarea, pieza(), "en_progreso")).toBeNull();
-    expect(motivoParaNoCerrar(tarea, pieza(), "en_revision")).toBeNull();
+  });
+
+  it("para mandar a aprobar también pide el archivo: la directora tiene que verlo", () => {
+    expect(motivoParaNoCerrar(tarea, pieza(), "en_revision")).toContain("Para mandar a aprobar");
   });
 
   it("archivar NO pide archivo: archivar es abandonar la pieza", () => {

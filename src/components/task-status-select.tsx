@@ -43,7 +43,11 @@ export function TaskStatusSelect({
             setCurrent(previous);
             toast.error("Error: " + res.error);
           } else {
-            toast.success("Estado actualizado");
+            // Diseño y edición no se cierran sin aprobación: el server puede
+            // haberla dejado En revisión en vez de Completada.
+            if (res && "estado" in res && res.estado) setCurrent(res.estado as TaskStatus);
+            if (res && "aviso" in res && res.aviso) toast.info(res.aviso);
+            else toast.success("Estado actualizado");
             router.refresh();
           }
         });

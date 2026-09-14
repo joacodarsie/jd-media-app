@@ -506,18 +506,25 @@ describe("closerVolumeBonusPct", () => {
     expect(closerVolumeBonusPct(2)).toBe(0);
   });
 
-  it("de 3 cierres suma 3 puntos; de 5, cinco", () => {
-    expect(closerVolumeBonusPct(3)).toBe(0.03);
-    expect(closerVolumeBonusPct(4)).toBe(0.03);
-    expect(closerVolumeBonusPct(5)).toBe(0.05);
+  it("sube de a poco: 2 puntos a los 3 cierres, 3 a los 5 y 5 recién a los 7", () => {
+    expect(closerVolumeBonusPct(3)).toBe(0.02);
+    expect(closerVolumeBonusPct(4)).toBe(0.02);
+    expect(closerVolumeBonusPct(5)).toBe(0.03);
+    expect(closerVolumeBonusPct(6)).toBe(0.03);
+    expect(closerVolumeBonusPct(7)).toBe(0.05);
     expect(closerVolumeBonusPct(12)).toBe(0.05);
   });
 
-  it("sobre el 15% base da los 18% y 20% del contrato de Santi", () => {
-    // Es el número que se le promete por escrito: conviene que el test lo diga.
+  it("sobre el 15% base da el 17, el 18 y el 20 del contrato de Santi", () => {
+    // Son los números que se le prometen por escrito: conviene que el test los diga.
     expect(0.15 + closerVolumeBonusPct(2)).toBeCloseTo(0.15);
-    expect(0.15 + closerVolumeBonusPct(3)).toBeCloseTo(0.18);
-    expect(0.15 + closerVolumeBonusPct(5)).toBeCloseTo(0.2);
+    expect(0.15 + closerVolumeBonusPct(3)).toBeCloseTo(0.17);
+    expect(0.15 + closerVolumeBonusPct(5)).toBeCloseTo(0.18);
+    expect(0.15 + closerVolumeBonusPct(7)).toBeCloseTo(0.2);
+  });
+
+  it("el 20% no se alcanza con 6 cierres: el techo se endureció a propósito", () => {
+    expect(0.15 + closerVolumeBonusPct(6)).toBeCloseTo(0.18);
   });
 
   it("una cuenta promedio deja margen de sobra para el escalón más alto", () => {

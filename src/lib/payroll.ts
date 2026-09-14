@@ -764,25 +764,28 @@ export function selectFirstMonthCommissions(
 /**
  * Bonus por volumen de cierres DEL MES para el closer.
  *
- * Escala acordada con el dueño el 12/9/2026 para el contrato de Santi Reinaldi:
- * 1-2 cierres es el mes normal y paga la comisión base; de 3 en adelante se
- * premia. Premia el MES, no el acumulado histórico: un mes bueno se paga
- * cuando pasa.
+ * Premia el MES, no el acumulado histórico: un mes bueno se paga cuando pasa.
  *
  *   1-2 cierres → 0        (base sola: 15%)
- *   3-4 cierres → +3 pts   (18%)
- *   5 o más     → +5 pts   (20%)
+ *   3-4 cierres → +2 pts   (17%)
+ *   5-6 cierres → +3 pts   (18%)
+ *   7 o más     → +5 pts   (20%)
  *
- * Se puede ser generoso porque el repago es corto: una cuenta promedio
- * ($298.750) deja ~$84.000 de margen por mes, así que una comisión del 20% por
- * única vez ($59.750) se recupera en menos de un mes.
+ * ⚠️ **Escala endurecida el 14/9/2026.** La primera versión daba el 20% a
+ * partir de 5 cierres. El dueño la corrigió: *"quiero ser un poco más exigente
+ * con él, bastante más dicho"*, y puso el techo recién en 7. El 20% tiene que
+ * ser un mes excepcional, no el mes bueno.
+ *
+ * El repago sigue siendo corto —una cuenta promedio ($298.750) deja ~$84.000 de
+ * margen por mes y la comisión es por única vez— pero el 20% se gana.
  *
  * Devuelve la fracción a aplicar sobre la misma base que la comisión (el abono
- * del primer mes de cada cliente cerrado): 0, 0.03 o 0.05.
+ * del primer mes de cada cliente cerrado).
  */
 export function closerVolumeBonusPct(clientesCerrados: number): number {
-  if (clientesCerrados >= 5) return 0.05;
-  if (clientesCerrados >= 3) return 0.03;
+  if (clientesCerrados >= 7) return 0.05;
+  if (clientesCerrados >= 5) return 0.03;
+  if (clientesCerrados >= 3) return 0.02;
   return 0;
 }
 

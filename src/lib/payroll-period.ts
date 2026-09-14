@@ -32,6 +32,10 @@ import {
   selectUpsellCommissions,
   selectCloserPrizes,
 } from "./payroll/comision-comercial";
+import {
+  computeDireccionCreativaLines,
+  DIRECCION_CREATIVA_DESDE,
+} from "./payroll/direccion-creativa";
 
 interface ServiceRow extends PayrollService {
   monto_mensual: number | null;
@@ -225,7 +229,9 @@ export async function buildPeriodPayroll(
   // Coordinación de DISEÑO: 5% del diseño publicado del mes + plus por manual de
   // marca aprobado, para quien tenga el rol coordinador_diseno (Bri). Usa la
   // misma base "por publicado" que los diseñadores → solo desde el corte.
-  if (periodo >= CONTENT_PAYROLL_FROM && coordDiseno) {
+  // Desde septiembre de 2026 la reemplaza la DIRECCIÓN CREATIVA (más abajo,
+  // junto a la coordinación de Luz, porque usa la misma base).
+  if (periodo >= CONTENT_PAYROLL_FROM && periodo < DIRECCION_CREATIVA_DESDE && coordDiseno) {
     const manualAprobados = ((dgApprovalsRaw ?? []) as { cliente_id: string }[])
       .filter((r) => clienteNombre.has(r.cliente_id)) // excluye internas/inactivas
       .map((r) => ({ clienteId: r.cliente_id, cliente: clienteNombre.get(r.cliente_id)! }));
@@ -336,6 +342,21 @@ export async function buildPeriodPayroll(
   for (const [uid, lines] of coordByUser) {
     if (!autoByUser.has(uid)) autoByUser.set(uid, []);
     autoByUser.get(uid)!.push(...lines);
+  }
+
+  // Dirección creativa (Brisa, acuerdo del 14/9/2026): % del mismo abono de
+  // gestión de redes que la coordinación, para quien tenga coordinador_diseno.
+  if (coordDiseno) {
+    const dcLines = computeDireccionCreativaLines(
+      clients,
+      gdrByClient,
+      settings.rates.comision_direccion_creativa ?? 0,
+      periodo
+    );
+    if (dcLines.length > 0) {
+      if (!autoByUser.has(coordDiseno.id)) autoByUser.set(coordDiseno.id, []);
+      autoByUser.get(coordDiseno.id)!.push(...dcLines);
+    }
   }
 
   // Comisión de COORDINACIÓN GENERAL (Leo): % de TODO lo que facturan los

@@ -404,6 +404,9 @@ export function CoordinacionPanel({
               <Field label="Comisión de coordinación · % del abono">
                 <NumInput prefix="%" value={Math.round((rates.comision_coordinacion ?? 0) * 100)} onChange={(n) => patchRate("comision_coordinacion", n / 100)} />
               </Field>
+              <Field label="Dirección creativa · % del abono">
+                <NumInput prefix="%" value={Math.round((rates.comision_direccion_creativa ?? 0) * 100)} onChange={(n) => patchRate("comision_direccion_creativa", n / 100)} />
+              </Field>
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">
               El comercial cobra el % del mes 1 cuando entra el primer pago y el % mensual

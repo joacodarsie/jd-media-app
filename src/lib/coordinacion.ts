@@ -75,6 +75,13 @@ export interface AgencyRates {
    */
   comision_coord_diseno: number;
   /**
+   * DIRECCIÓN CREATIVA (Brisa, desde el 15/9/2026): % del abono de gestión de
+   * redes de cada cuenta activa, como la coordinación. Reemplaza a
+   * `comision_coord_diseno` desde septiembre de 2026. Arranca en 5%; pasa al 10%
+   * cuando se cumplan las condiciones de su acuerdo (se cambia a mano).
+   */
+  comision_direccion_creativa: number;
+  /**
    * Servicio de DISEÑO GRÁFICO STANDALONE (contrato aparte, sin gestión de
    * redes): % del monto que se paga a quien diseña la cuenta (equipo de la
    * cuenta → `clients.disenador_id`). El resto lo cobra la coordinación de
@@ -139,6 +146,7 @@ export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
     comision_coordinacion: 0.1,
     comision_coord_general: 0.05,
     comision_coord_diseno: 0.05,
+    comision_direccion_creativa: 0.05,
     diseno_standalone_disenador_pct: 0.4,
     diseno_standalone_coord_pct: 0.1,
     puesta_en_marcha: 0,

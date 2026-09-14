@@ -54,7 +54,7 @@ export const PUESTO_LABEL: Record<PuestoKey, string> = {
   media_buyer: "Pauta (Media Buyer)",
   coordinacion: "Coordinación de redes",
   coord_general: "Coordinación general",
-  coord_diseno: "Coordinación de diseño",
+  coord_diseno: "Dirección creativa",
   comercial: "Comercial",
   jornada: "Jornadas de producción",
   onboarding: "Arranque de cuentas nuevas",
@@ -173,7 +173,6 @@ export function payModelRules(settings: AgencySettings): PayRule[] {
     packs.map((id) => `${id} ${ars(tabla[id] ?? 0)}`).join(" · ");
   const onbPlus = r.plus_primer_mes ?? 0;
   const onbPct = onbPlus > 0 ? 0 : r.onboarding_extra_pct ?? 0;
-  const manualBonus = Math.round((r.manual_marca ?? 0) * (r.comision_coord_diseno ?? 0));
   const comercialFijo = r.comercial_fijo ?? 0;
 
   const rules: PayRule[] = [
@@ -246,14 +245,14 @@ export function payModelRules(settings: AgencySettings): PayRule[] {
       key: "coord_diseno",
       label: PUESTO_LABEL.coord_diseno,
       regla: `${pct(
-        r.comision_coord_diseno ?? 0
-      )} de todo el diseño publicado del mes (piezas + portadas).`,
+        r.comision_direccion_creativa ?? 0
+      )} del abono de gestión de redes de cada cuenta activa, todos los meses (el mismo modelo que la coordinación).`,
       detalles: [
-        manualBonus > 0
-          ? `Además ${ars(manualBonus)} por cada manual de marca de una cuenta nueva que aprueba.`
-          : "",
+        "Arrancó el 15 de septiembre de 2026: septiembre se paga por la mitad.",
+        "Reemplaza al % sobre el diseño publicado y al plus por manual de marca, que hasta agosto de 2026 eran su pago de coordinación.",
+        "Pasa al 10% cuando cumpla tres meses los números del rol y la agencia tenga 20 cuentas activas.",
         `Del diseño gráfico standalone se lleva ${pct(r.diseno_standalone_coord_pct ?? 0)}.`,
-      ].filter(Boolean),
+      ],
     },
     {
       key: "comercial",

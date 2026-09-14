@@ -44,6 +44,13 @@ export interface ServiceInput {
    * como ganancia de la agencia. Default true.
    */
   media_buyer_aplica?: boolean | null;
+  /**
+   * Quién vendió este servicio como EXTRA a una cuenta que ya estaba activa.
+   * Dispara la comisión de servicio extra del comercial (acuerdo 14/9/2026).
+   * Los servicios que nacen con la cuenta no lo necesitan: esa venta la paga
+   * `clients.cerrado_por_id`.
+   */
+  vendido_por_id?: string | null;
 }
 
 function clean(input: ServiceInput) {
@@ -69,6 +76,7 @@ function clean(input: ServiceInput) {
       : [],
     // ¿Incluye paid media? Solo relevante en gestión de redes; default true.
     media_buyer_aplica: input.media_buyer_aplica ?? true,
+    vendido_por_id: input.vendido_por_id || null,
   };
 
   // Los campos de costo de entrega SOLO se tocan para servicios que no son de

@@ -102,7 +102,7 @@ function clean(input: ClientInput) {
  * Una cuenta ACTIVA tiene que decir quién la cerró.
  *
  * No es burocracia: la liquidación calcula la comisión del comercial a partir
- * de `cerrado_por_id` (ver `selectFirstMonthCommissions`). Si queda vacío, el
+ * de `cerrado_por_id` (ver `payroll/comision-comercial`). Si queda vacío, el
  * contrato del comercial no se ejecuta y nadie se entera hasta que reclama.
  * Al 12/9/2026 había 32 de 38 cuentas sin este dato.
  *

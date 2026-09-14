@@ -277,6 +277,12 @@ function ServiceDialog({
     svcCost?.costo_override != null ? String(svcCost.costo_override) : ""
   );
   const [costoUser, setCostoUser] = useState<string>(svcCost?.costo_override_user ?? "");
+  // Quién vendió este servicio como EXTRA a una cuenta ya activa: dispara la
+  // comisión de servicio extra del comercial. Los servicios que nacen con la
+  // cuenta no lo necesitan (esa venta la paga "Cerrado por" en la ficha).
+  const [vendidoPor, setVendidoPor] = useState<string>(
+    (service as { vendido_por_id?: string | null } | undefined)?.vendido_por_id ?? ""
+  );
 
   const initialDet = service?.pack_detalle as
     | { posts?: number; historias_dias?: number; reels?: number }
@@ -331,6 +337,7 @@ function ServiceDialog({
       costo_pct:
         !isRedes && costoModo === "pct" && costoPct !== "" ? Number(costoPct) / 100 : null,
       costo_override_user: !isRedes ? costoUser || null : null,
+      vendido_por_id: vendidoPor || null,
     };
     start(async () => {
       const res =
@@ -568,6 +575,27 @@ function ServiceDialog({
               </div>
             </div>
           )}
+
+          <div className="space-y-1">
+            <Label>Vendido por (si es un servicio extra)</Label>
+            <Select value={vendidoPor || "none"} onValueChange={(v) => setVendidoPor(v === "none" ? "" : v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Persona" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">— Nadie / vino con la cuenta —</SelectItem>
+                {users.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">
+              Solo si se lo sumó a una cuenta que ya estaba activa: a esa persona se le
+              paga la comisión de servicio extra en la nómina del mes en que arranca.
+            </p>
+          </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">

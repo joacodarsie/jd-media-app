@@ -1,5 +1,5 @@
 // Ensamblado de la nómina de un período: combina la nómina automática (modelo
-// de tarifas) con comisiones, bonus por volumen, jornadas de producción y los
+// de tarifas) con las comisiones del comercial, jornadas de producción y los
 // ítems manuales cargados, devolviendo la lista de personas con su total.
 //
 // Se extrajo de /coordinacion/sueldos para poder reutilizarlo en la vista
@@ -20,17 +20,18 @@ import {
   computeStandaloneDesignLines,
   computeOnboardingExtras,
   computeCoordinationPayroll,
-  closerVolumeBonusPct,
-  selectFirstMonthCommissions,
-  decodeCommissionNote,
   COMERCIAL_FIXED_MENSUAL,
   type PayrollClient,
   type PayrollService,
   type PayrollPublication,
-  type PayrollLine,
   type PersonPayroll,
   type CoordinationSplit,
 } from "./payroll";
+import {
+  selectCloserCommissions,
+  selectUpsellCommissions,
+  selectCloserPrizes,
+} from "./payroll/comision-comercial";
 
 interface ServiceRow extends PayrollService {
   monto_mensual: number | null;
@@ -38,6 +39,9 @@ interface ServiceRow extends PayrollService {
   activo: boolean;
   costo_pct: number | null;
   created_at: string | null;
+  fecha_inicio: string | null;
+  /** Quién vendió este servicio como EXTRA a una cuenta ya activa (migración 0170). */
+  vendido_por_id: string | null;
 }
 
 /**
@@ -62,7 +66,7 @@ export interface PeriodPayrollResult {
   salaryConcepto: string;
   clientOptions: { id: string; nombre: string; abono: number }[];
   teamOptions: { id: string; nombre: string; rol: string }[];
-  commission: { cierre: number; leadPropio: number };
+  commission: { cierre: number; residual: number; residualMeses: number; servicioExtra: number };
   /** Comisión base de coordinación (ej 0.10) y reparto excepcional del mes. */
   coordinacion: { pct: number; split: { userId: string; pct: number }[] };
   /** Tarifas y packs vigentes: alimentan el "cómo se paga cada puesto". */
@@ -101,7 +105,7 @@ export async function buildPeriodPayroll(
     admin
       .from("client_services")
       .select(
-        "cliente_id, tipo, pack, pack_detalle, monto_mensual, facturacion, activo, costo_override, costo_pct, costo_override_user, created_at, media_buyer_user_id, media_buyer_aplica"
+        "cliente_id, tipo, pack, pack_detalle, monto_mensual, facturacion, activo, costo_override, costo_pct, costo_override_user, created_at, fecha_inicio, vendido_por_id, media_buyer_user_id, media_buyer_aplica"
       )
       .eq("activo", true),
     admin
@@ -289,7 +293,7 @@ export async function buildPeriodPayroll(
     }
   }
 
-  // Fijo mensual del/los comercial(es) por gestión de mensajes y leads.
+  // Fijo mensual del/los comercial(es) por sostener la prospección, haya cierres o no.
   const comercialFijo = settings.rates.comercial_fijo ?? COMERCIAL_FIXED_MENSUAL;
   for (const u of users) {
     if (!isRole(u, "comercial")) continue;
@@ -298,7 +302,7 @@ export async function buildPeriodPayroll(
     autoByUser.get(u.id)!.push({
       clienteId: null,
       cliente: "—",
-      concepto: "Gestión de mensajes (fijo mensual)",
+      concepto: "Prospección (fijo mensual)",
       monto: comercialFijo,
       kind: "comercial_fijo",
     });
@@ -372,12 +376,12 @@ export async function buildPeriodPayroll(
     }
   }
 
-  // ── Comisión de cierre AUTOMÁTICA del primer mes ──
-  // Cada cliente cuya fecha de inicio cae en este período genera, una sola vez,
-  // la comisión del comercial que lo cerró (clients.cerrado_por_id), calculada
-  // sobre el abono mensual recurrente. Si ya se cargó una comisión manual para
-  // esa cuenta, no se duplica. El bonus por volumen (más abajo) también cuenta
-  // estos cierres automáticos.
+  // ── Comisión del comercial (acuerdo del 14/9/2026) ──
+  // Cliente nuevo: % del abono el mes 1 y un residual del mes 2 al 6 mientras
+  // la cuenta siga activa (si se fue, no está en `clients` y se corta sola).
+  // Servicio extra a una cuenta ya activa: % de una sola vez, para quien lo
+  // vendió. Premio del mes por cantidad de cuentas nuevas. Si ya se cargó una
+  // comisión manual para esa cuenta este mes, no se duplica.
   const recurringByClient = new Map<string, number>();
   for (const s of services) {
     if (s.facturacion === "unico") continue;
@@ -386,27 +390,36 @@ export async function buildPeriodPayroll(
       (recurringByClient.get(s.cliente_id) ?? 0) + (Number(s.monto_mensual) || 0)
     );
   }
-  const cierrePct = settings.rates.comision_cierre ?? 0.1;
-  const firstMonthCommissions = selectFirstMonthCommissions(
-    clients,
-    recurringByClient,
-    periodo,
-    cierrePct,
-    (clienteId) => items.some((i) => i.tipo === "comision" && i.cliente_id === clienteId)
-  );
-  const autoCierreBasesByUser = new Map<string, number[]>();
-  for (const fc of firstMonthCommissions) {
+  // Si la cuenta la cerró el dueño (admin), no hay comisión: se la pagaría a sí
+  // mismo y solo serviría para inflar la nómina y achicar el margen en falso.
+  // Al 14/9/2026 Magic, Amelia y Origen figuran cerradas por Joaquín.
+  const admins = new Set(users.filter((u) => u.rol === "admin").map((u) => u.id));
+  const comisiones = [
+    ...selectCloserCommissions(clients, recurringByClient, periodo, settings.rates, (clienteId) =>
+      items.some((i) => i.tipo === "comision" && i.cliente_id === clienteId)
+    ),
+    ...selectUpsellCommissions(clients, services, periodo, settings.rates),
+  ].filter((fc) => !admins.has(fc.closerId));
+  for (const fc of comisiones) {
     if (!autoByUser.has(fc.closerId)) autoByUser.set(fc.closerId, []);
     autoByUser.get(fc.closerId)!.push({
       clienteId: fc.clienteId,
       cliente: fc.cliente,
-      concepto: `Comisión cierre (${Math.round(cierrePct * 100)}%) · primer mes`,
+      concepto: fc.concepto,
       monto: fc.monto,
       kind: "comision",
     });
-    const arr = autoCierreBasesByUser.get(fc.closerId) ?? [];
-    arr.push(fc.base);
-    autoCierreBasesByUser.set(fc.closerId, arr);
+  }
+  for (const premio of selectCloserPrizes(clients, services, periodo, settings.rates)) {
+    if (admins.has(premio.closerId)) continue;
+    if (!autoByUser.has(premio.closerId)) autoByUser.set(premio.closerId, []);
+    autoByUser.get(premio.closerId)!.push({
+      clienteId: null,
+      cliente: "—",
+      concepto: premio.concepto,
+      monto: premio.monto,
+      kind: "comision",
+    });
   }
 
   // Jornadas de producción del mes. Reparto (ver lib/jornada): viáticos en partes
@@ -496,34 +509,7 @@ export async function buildPeriodPayroll(
   for (const uid of personIds) {
     const u = userById.get(uid);
     if (!u) continue; // persona inactiva con ítems viejos: la salteamos
-    const baseAutoLines = autoByUser.get(uid) ?? [];
-
-    // Bonus por volumen de cierres del mes (closer): +2% cada 2 clientes, tope 6%.
-    // Cuenta tanto las comisiones manuales como las automáticas del primer mes.
-    const cierresManual = items
-      .filter((i) => i.user_id === uid && i.tipo === "comision")
-      .map((i) => decodeCommissionNote(i.notas))
-      .filter(
-        (d): d is { role: "closer" | "both" | "ref"; base: number } =>
-          !!d && (d.role === "closer" || d.role === "both")
-      )
-      .map((d) => d.base);
-    const cierreBases = [...cierresManual, ...(autoCierreBasesByUser.get(uid) ?? [])];
-    const bonusPct = closerVolumeBonusPct(cierreBases.length);
-    const bonusLine: PayrollLine | null =
-      bonusPct > 0
-        ? {
-            clienteId: null,
-            cliente: "—",
-            concepto: `Bonus por volumen · ${cierreBases.length} cierres (${Math.round(
-              bonusPct * 100
-            )}%)`,
-            monto: Math.round(cierreBases.reduce((a, b) => a + b, 0) * bonusPct),
-            kind: "comision",
-          }
-        : null;
-
-    const autoLines = bonusLine ? [...baseAutoLines, bonusLine] : baseAutoLines;
+    const autoLines = autoByUser.get(uid) ?? [];
     const manualLines = items.filter((i) => i.user_id === uid);
 
     const auto = autoLines.reduce((a, l) => a + l.monto, 0);
@@ -576,7 +562,9 @@ export async function buildPeriodPayroll(
     teamOptions,
     commission: {
       cierre: settings.rates.comision_cierre ?? 0.1,
-      leadPropio: settings.rates.comision_lead_propio ?? 0.05,
+      residual: settings.rates.comision_residual ?? 0,
+      residualMeses: settings.rates.comision_residual_meses ?? 0,
+      servicioExtra: settings.rates.comision_servicio_extra ?? 0,
     },
     coordinacion: { pct: coordPct, split: coordSplit },
     settings,

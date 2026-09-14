@@ -7,8 +7,6 @@ import {
   computeStandaloneDesignLines,
   computeOnboardingExtras,
   computeCoordinationPayroll,
-  closerVolumeBonusPct,
-  selectFirstMonthCommissions,
   encodeCommissionNote,
   decodeCommissionNote,
   type PayrollClient,
@@ -499,44 +497,6 @@ describe("computeCoordinationPayroll", () => {
   });
 });
 
-describe("closerVolumeBonusPct", () => {
-  it("un mes normal (1 o 2 cierres) paga la comisión base, sin extra", () => {
-    expect(closerVolumeBonusPct(0)).toBe(0);
-    expect(closerVolumeBonusPct(1)).toBe(0);
-    expect(closerVolumeBonusPct(2)).toBe(0);
-  });
-
-  it("sube de a poco: 2 puntos a los 3 cierres, 3 a los 5 y 5 recién a los 7", () => {
-    expect(closerVolumeBonusPct(3)).toBe(0.02);
-    expect(closerVolumeBonusPct(4)).toBe(0.02);
-    expect(closerVolumeBonusPct(5)).toBe(0.03);
-    expect(closerVolumeBonusPct(6)).toBe(0.03);
-    expect(closerVolumeBonusPct(7)).toBe(0.05);
-    expect(closerVolumeBonusPct(12)).toBe(0.05);
-  });
-
-  it("sobre el 15% base da el 17, el 18 y el 20 del contrato de Santi", () => {
-    // Son los números que se le prometen por escrito: conviene que el test los diga.
-    expect(0.15 + closerVolumeBonusPct(2)).toBeCloseTo(0.15);
-    expect(0.15 + closerVolumeBonusPct(3)).toBeCloseTo(0.17);
-    expect(0.15 + closerVolumeBonusPct(5)).toBeCloseTo(0.18);
-    expect(0.15 + closerVolumeBonusPct(7)).toBeCloseTo(0.2);
-  });
-
-  it("el 20% no se alcanza con 6 cierres: el techo se endureció a propósito", () => {
-    expect(0.15 + closerVolumeBonusPct(6)).toBeCloseTo(0.18);
-  });
-
-  it("una cuenta promedio deja margen de sobra para el escalón más alto", () => {
-    // $298.750 de abono, ~28% de margen = ~$83.650 por mes. Aun al 20% por
-    // única vez, la comisión se recupera en menos de un mes.
-    const abono = 298_750;
-    const comision = abono * (0.15 + closerVolumeBonusPct(5));
-    const margenMensual = abono * 0.28;
-    expect(comision / margenMensual).toBeLessThan(1);
-  });
-});
-
 describe("encode/decode de comisión", () => {
   it("ida y vuelta", () => {
     expect(encodeCommissionNote("closer", 350_000.4)).toBe("closer:350000");
@@ -546,79 +506,6 @@ describe("encode/decode de comisión", () => {
     expect(decodeCommissionNote(null)).toBeNull();
     expect(decodeCommissionNote("cualquiercosa")).toBeNull();
     expect(decodeCommissionNote("closer:no-numero")).toBeNull();
-  });
-});
-
-describe("selectFirstMonthCommissions", () => {
-  const periodo = "2026-06";
-  const rec = new Map<string, number>([["c1", 350_000]]);
-  const noManual = () => false;
-
-  it("genera la comisión del closer en el primer mes (10% del abono)", () => {
-    const out = selectFirstMonthCommissions(
-      [cliente({ cerrado_por_id: "u1", fecha_inicio: "2026-06-10" })],
-      rec,
-      periodo,
-      0.1,
-      noManual
-    );
-    expect(out).toHaveLength(1);
-    expect(out[0]).toMatchObject({ closerId: "u1", clienteId: "c1", base: 350_000, monto: 35_000 });
-  });
-
-  it("ignora clientes cuyo primer mes no es el período", () => {
-    const out = selectFirstMonthCommissions(
-      [cliente({ cerrado_por_id: "u1", fecha_inicio: "2026-05-30" })],
-      rec,
-      periodo,
-      0.1,
-      noManual
-    );
-    expect(out).toHaveLength(0);
-  });
-
-  it("ignora clientes sin cerrado_por_id", () => {
-    const out = selectFirstMonthCommissions(
-      [cliente({ cerrado_por_id: null, fecha_inicio: "2026-06-01" })],
-      rec,
-      periodo,
-      0.1,
-      noManual
-    );
-    expect(out).toHaveLength(0);
-  });
-
-  it("no duplica si ya hay una comisión manual para esa cuenta", () => {
-    const out = selectFirstMonthCommissions(
-      [cliente({ cerrado_por_id: "u1", fecha_inicio: "2026-06-01" })],
-      rec,
-      periodo,
-      0.1,
-      (id) => id === "c1"
-    );
-    expect(out).toHaveLength(0);
-  });
-
-  it("ignora clientes sin abono recurrente (base 0)", () => {
-    const out = selectFirstMonthCommissions(
-      [cliente({ id: "cX", cerrado_por_id: "u1", fecha_inicio: "2026-06-01" })],
-      rec, // no tiene cX
-      periodo,
-      0.1,
-      noManual
-    );
-    expect(out).toHaveLength(0);
-  });
-
-  it("con cierrePct 0 no genera nada", () => {
-    const out = selectFirstMonthCommissions(
-      [cliente({ cerrado_por_id: "u1", fecha_inicio: "2026-06-01" })],
-      rec,
-      periodo,
-      0,
-      noManual
-    );
-    expect(out).toHaveLength(0);
   });
 });
 

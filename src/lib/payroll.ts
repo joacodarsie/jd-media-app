@@ -710,84 +710,16 @@ export function payrollKindLabel(kind: PayrollLineKind): string {
   }
 }
 
-/** Fijo mensual del comercial por la gestión de mensajes/leads (independiente de cierres). */
-export const COMERCIAL_FIXED_MENSUAL = 50000;
-
-/** Porcentaje de comisión del closer según su intervención en la venta. */
-export const COMMISSION_PCT = {
-  ambos: 0.15, // cerró Y refirió (lead propio): 10% + 5%
-  closer: 0.1, // solo cerró
-  referido: 0.05, // solo refirió (lead propio de otro)
-} as const;
-
-/** Comisión de cierre del primer mes atribuida a quien cerró la cuenta. */
-export interface FirstMonthCommission {
-  closerId: string;
-  clienteId: string;
-  cliente: string;
-  base: number;
-  monto: number;
-}
-
 /**
- * Selecciona las comisiones de cierre AUTOMÁTICAS del primer mes para un período.
- * Un cliente califica si: su `fecha_inicio` cae en el período, tiene
- * `cerrado_por_id`, tiene abono recurrente > 0, y NO se le cargó ya una comisión
- * a mano (dedup vía `hasManualCommission`). Función pura → testeable sin DB.
+ * Fijo mensual del comercial por sostener la prospección (haya cierres o no).
+ * Es el fallback si `rates.comercial_fijo` no está cargado; el acuerdo con
+ * Santi (14/9/2026) dice $25.000.
  */
-export function selectFirstMonthCommissions(
-  clients: PayrollClient[],
-  recurringByClient: Map<string, number>,
-  periodo: string,
-  cierrePct: number,
-  hasManualCommission: (clienteId: string) => boolean
-): FirstMonthCommission[] {
-  if (cierrePct <= 0) return [];
-  const out: FirstMonthCommission[] = [];
-  for (const c of clients) {
-    if ((c.fecha_inicio ?? "").slice(0, 7) !== periodo) continue;
-    if (!c.cerrado_por_id) continue;
-    if (hasManualCommission(c.id)) continue;
-    const base = recurringByClient.get(c.id) ?? 0;
-    if (base <= 0) continue;
-    out.push({
-      closerId: c.cerrado_por_id,
-      clienteId: c.id,
-      cliente: c.nombre,
-      base,
-      monto: Math.round(base * cierrePct),
-    });
-  }
-  return out;
-}
+export const COMERCIAL_FIXED_MENSUAL = 25000;
 
-/**
- * Bonus por volumen de cierres DEL MES para el closer.
- *
- * Premia el MES, no el acumulado histórico: un mes bueno se paga cuando pasa.
- *
- *   1-2 cierres → 0        (base sola: 15%)
- *   3-4 cierres → +2 pts   (17%)
- *   5-6 cierres → +3 pts   (18%)
- *   7 o más     → +5 pts   (20%)
- *
- * ⚠️ **Escala endurecida el 14/9/2026.** La primera versión daba el 20% a
- * partir de 5 cierres. El dueño la corrigió: *"quiero ser un poco más exigente
- * con él, bastante más dicho"*, y puso el techo recién en 7. El 20% tiene que
- * ser un mes excepcional, no el mes bueno.
- *
- * El repago sigue siendo corto —una cuenta promedio ($298.750) deja ~$84.000 de
- * margen por mes y la comisión es por única vez— pero el 20% se gana.
- *
- * Devuelve la fracción a aplicar sobre la misma base que la comisión (el abono
- * del primer mes de cada cliente cerrado).
- */
-export function closerVolumeBonusPct(clientesCerrados: number): number {
-  if (clientesCerrados >= 7) return 0.05;
-  if (clientesCerrados >= 5) return 0.03;
-  if (clientesCerrados >= 3) return 0.02;
-  return 0;
-}
+// Las comisiones del comercial (cliente nuevo mes 1 + residual, servicio extra
+// y premios) viven en `./payroll/comision-comercial.ts`. Los escalones por
+// cantidad de cierres se descartaron el 14/9/2026: no volver a agregarlos.
 
 /** Codifica/decodifica el detalle de una comisión en payroll_items.notas: "rol:base". */
 export type CommissionRole = "closer" | "both" | "ref";

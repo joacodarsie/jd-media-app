@@ -85,7 +85,6 @@ export function CoordinacionPanel({
   // Simulador
   const [simPack, setSimPack] = useState<PackName>("Crecimiento");
   const [simCloser, setSimCloser] = useState(true);
-  const [simReferido, setSimReferido] = useState(false);
   const [simManual, setSimManual] = useState(true);
 
   function patchPack(id: PackName, field: keyof PackParam, n: number) {
@@ -128,35 +127,36 @@ export function CoordinacionPanel({
   );
 
   // Simulador: primer mes vs. meses siguientes vs. año 1
-  // La comisión del closer/referido es % del precio del pack seleccionado.
+  // La comisión del comercial es % del precio del pack: una parte el mes 1 y un
+  // residual mensual los meses siguientes (acuerdo del 14/9/2026).
   const sim = useMemo(() => {
     const p = packs.find((x) => x.id === simPack) ?? packs[0];
     const costoRec = packCost(p, rates);
     const margenRec = p.precio - costoRec;
     const closerFull = Math.round(p.precio * (rates.comision_cierre ?? 0.1));
-    const referidoFull = Math.round(p.precio * (rates.comision_lead_propio ?? 0.05));
-    const ambosFull = Math.round(p.precio * ((rates.comision_cierre ?? 0.1) + (rates.comision_lead_propio ?? 0.05)));
+    const residualMes = Math.round(p.precio * (rates.comision_residual ?? 0));
+    const residualMeses = Math.max(0, Math.round(rates.comision_residual_meses ?? 0));
     const closerMonto = simCloser ? closerFull : 0;
-    const referidoMonto = simReferido ? referidoFull : 0;
+    const residualTotal = simCloser ? residualMes * Math.min(residualMeses, 11) : 0;
     const manualMonto = simManual ? rates.manual_marca : 0;
-    const oneTime = closerMonto + referidoMonto + manualMonto;
+    const oneTime = closerMonto + manualMonto;
     const margenMes1 = margenRec - oneTime;
-    const anio1 = margenMes1 + margenRec * 11;
+    const anio1 = margenMes1 + margenRec * 11 - residualTotal;
     return {
       p,
       costoRec,
       margenRec,
       closerFull,
-      referidoFull,
-      ambosFull,
+      residualMes,
+      residualMeses,
+      residualTotal,
       closerMonto,
-      referidoMonto,
       manualMonto,
       oneTime,
       margenMes1,
       anio1,
     };
-  }, [packs, rates, simPack, simCloser, simReferido, simManual]);
+  }, [packs, rates, simPack, simCloser, simManual]);
 
   // Panorama real (totales)
   const tot = useMemo(() => {
@@ -271,11 +271,10 @@ export function CoordinacionPanel({
           <div className="flex flex-wrap gap-x-5 gap-y-2">
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={simCloser} onChange={(e) => setSimCloser(e.target.checked)} className="h-4 w-4 accent-primary" />
-              Comisión closer · {Math.round((rates.comision_cierre ?? 0) * 100)}% (<span className="font-medium">{fmt(sim.closerFull)}</span>)
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={simReferido} onChange={(e) => setSimReferido(e.target.checked)} className="h-4 w-4 accent-primary" />
-              Lead referido por el equipo · {Math.round((rates.comision_lead_propio ?? 0) * 100)}% (<span className="font-medium">{fmt(sim.referidoFull)}</span>)
+              Comisión del comercial · {Math.round((rates.comision_cierre ?? 0) * 100)}% el mes 1 (<span className="font-medium">{fmt(sim.closerFull)}</span>)
+              {sim.residualMeses > 0 && sim.residualMes > 0 && (
+                <> + {Math.round((rates.comision_residual ?? 0) * 100)}% × {sim.residualMeses} meses (<span className="font-medium">{fmt(sim.residualMes)}</span>/mes)</>
+              )}
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={simManual} onChange={(e) => setSimManual(e.target.checked)} className="h-4 w-4 accent-primary" />
@@ -287,7 +286,7 @@ export function CoordinacionPanel({
             <StatCard label="Margen recurrente" value={fmt(sim.margenRec)} sub={`/mes · ${pctOf(sim.margenRec, sim.p.precio)}%`} tone="good" />
             <StatCard label="Costos 1er mes" value={fmt(sim.oneTime)} sub="una vez" muted />
             <StatCard label="Margen 1er mes" value={fmt(sim.margenMes1)} sub={`${pctOf(sim.margenMes1, sim.p.precio)}% del 1er mes`} tone={sim.margenMes1 >= 0 ? "good" : "bad"} />
-            <StatCard label="Ganancia año 1" value={fmt(sim.anio1)} sub="mes1 + 11 recurrentes" tone="good" />
+            <StatCard label="Ganancia año 1" value={fmt(sim.anio1)} sub={sim.residualTotal > 0 ? `mes1 + 11 recurrentes − ${fmt(sim.residualTotal)} de residual` : "mes1 + 11 recurrentes"} tone="good" />
           </div>
         </div>
       </section>
@@ -377,21 +376,41 @@ export function CoordinacionPanel({
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Comercial / comisiones
             </h3>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <Field label="Cierre · % del 1er mes">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Field label="Fijo mensual del comercial">
+                <NumInput prefix="$" value={rates.comercial_fijo ?? 0} onChange={(n) => patchRate("comercial_fijo", n)} />
+              </Field>
+              <Field label="Cliente nuevo · % del mes 1">
                 <NumInput prefix="%" value={Math.round((rates.comision_cierre ?? 0) * 100)} onChange={(n) => patchRate("comision_cierre", n / 100)} />
               </Field>
-              <Field label="Lead propio · % del 1er mes">
-                <NumInput prefix="%" value={Math.round((rates.comision_lead_propio ?? 0) * 100)} onChange={(n) => patchRate("comision_lead_propio", n / 100)} />
+              <Field label="Cliente nuevo · % por mes después">
+                <NumInput prefix="%" value={Math.round((rates.comision_residual ?? 0) * 100)} onChange={(n) => patchRate("comision_residual", n / 100)} />
+              </Field>
+              <Field label="Cuántos meses dura ese %">
+                <NumInput value={rates.comision_residual_meses ?? 0} onChange={(n) => patchRate("comision_residual_meses", n)} />
+              </Field>
+              <Field label="Servicio extra · % una vez">
+                <NumInput prefix="%" value={Math.round((rates.comision_servicio_extra ?? 0) * 100)} onChange={(n) => patchRate("comision_servicio_extra", n / 100)} />
+              </Field>
+              <Field label="Premio · 3 cuentas nuevas">
+                <NumInput prefix="$" value={rates.premio_3_cuentas ?? 0} onChange={(n) => patchRate("premio_3_cuentas", n)} />
+              </Field>
+              <Field label="Premio · 5 cuentas nuevas">
+                <NumInput prefix="$" value={rates.premio_5_cuentas ?? 0} onChange={(n) => patchRate("premio_5_cuentas", n)} />
+              </Field>
+              <Field label="Abono mínimo para el premio">
+                <NumInput prefix="$" value={rates.premio_abono_minimo ?? 0} onChange={(n) => patchRate("premio_abono_minimo", n)} />
               </Field>
               <Field label="Comisión de coordinación · % del abono">
                 <NumInput prefix="%" value={Math.round((rates.comision_coordinacion ?? 0) * 100)} onChange={(n) => patchRate("comision_coordinacion", n / 100)} />
               </Field>
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">
-              Comisión del comercial que cierra: <b>cierre + lead propio</b> sobre el
-              1er mes. La <b>coordinación</b> cobra su % del abono de cada cuenta que
-              coordina, todos los meses.
+              El comercial cobra el % del mes 1 cuando entra el primer pago y el % mensual
+              del mes 2 al {1 + Math.max(0, Math.round(rates.comision_residual_meses ?? 0))} mientras
+              el cliente siga. Un servicio extra a un cliente activo paga su % de una sola vez a
+              quien figura como &ldquo;Vendido por&rdquo;. La <b>coordinación</b> cobra su % del
+              abono de cada cuenta que coordina, todos los meses.
             </p>
           </div>
           <div>
@@ -489,7 +508,6 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
   // Costos posibles del primer mes (one-time)
   const [conManual, setConManual] = useState(false);
   const [conCloser, setConCloser] = useState(false);
-  const [conReferido, setConReferido] = useState(false);
   const [conOnboarding, setConOnboarding] = useState(false);
 
   // Costo fijo de producción (no depende del precio).
@@ -514,7 +532,6 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
   const oneTime =
     (conManual ? rates.manual_marca : 0) +
     (conCloser ? Math.round(precio * (rates.comision_cierre ?? 0.1)) : 0) +
-    (conReferido ? Math.round(precio * (rates.comision_lead_propio ?? 0.05)) : 0) +
     onboardingExtra;
   const margenMes1 = margenRec - oneTime;
   const hayOneTime = oneTime > 0;
@@ -541,8 +558,7 @@ function CustomPackEstimator({ rates }: { rates: AgencyRates }) {
         <div className="flex flex-wrap gap-x-5 gap-y-2">
           <Check label="Incluye pauta (media buyer)" checked={incluyePauta} onChange={setIncluyePauta} />
           <Check label={`Manual de marca 1er mes (${fmt(rates.manual_marca)})`} checked={conManual} onChange={setConManual} />
-          <Check label={`Comisión cierre ${Math.round((rates.comision_cierre ?? 0) * 100)}% (1er mes)`} checked={conCloser} onChange={setConCloser} />
-          <Check label={`Comisión lead propio ${Math.round((rates.comision_lead_propio ?? 0) * 100)}% (1er mes)`} checked={conReferido} onChange={setConReferido} />
+          <Check label={`Comisión del comercial ${Math.round((rates.comision_cierre ?? 0) * 100)}% (1er mes)`} checked={conCloser} onChange={setConCloser} />
           <Check label={`Extra onboarding equipo ${Math.round(onbPct * 100)}% (1er mes)`} checked={conOnboarding} onChange={setConOnboarding} />
         </div>
 

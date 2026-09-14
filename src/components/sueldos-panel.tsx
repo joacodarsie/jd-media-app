@@ -57,10 +57,14 @@ import { SueldosModelo } from "@/components/sueldos-modelo";
 export type { PersonPayroll } from "@/lib/payroll";
 
 export interface CommissionConfig {
-  /** Fracción por cierre (ej: 0.10). */
+  /** Cliente nuevo, mes 1: fracción del abono (ej: 0.10). */
   cierre: number;
-  /** Fracción extra si es lead propio (ej: 0.05). */
-  leadPropio: number;
+  /** Cliente nuevo, meses siguientes: fracción del abono por mes (ej: 0.05). */
+  residual: number;
+  /** Cuántos meses dura el residual después del primero (5 → hasta el mes 6). */
+  residualMeses: number;
+  /** Servicio extra a un cliente activo: fracción de una sola vez (ej: 0.15). */
+  servicioExtra: number;
 }
 
 export interface CoordinacionConfig {
@@ -528,8 +532,10 @@ function PersonCard({
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Diálogo: comisión de cierre (closer / referido)
+// Diálogo: comisión del comercial cargada a mano (casos especiales)
 // ─────────────────────────────────────────────────────────────────────────
+type TipoComisionManual = "mes1" | "residual" | "extra";
+
 function CommissionDialog({
   periodo,
   clientOptions,
@@ -547,74 +553,46 @@ function CommissionDialog({
   const [clienteId, setClienteId] = useState("");
   const [base, setBase] = useState(0);
   const [closerId, setCloserId] = useState("");
-  const [referidoId, setReferidoId] = useState("");
+  const [tipo, setTipo] = useState<TipoComisionManual>("mes1");
 
-  const pctCierre = commission.cierre;
-  const pctLead = commission.leadPropio;
-  const pctAmbos = pctCierre + pctLead;
-  const lblCierre = Math.round(pctCierre * 100);
-  const lblLead = Math.round(pctLead * 100);
-  const lblAmbos = Math.round(pctAmbos * 100);
+  const pctDe: Record<TipoComisionManual, number> = {
+    mes1: commission.cierre,
+    residual: commission.residual,
+    extra: commission.servicioExtra,
+  };
+  const labelDe: Record<TipoComisionManual, string> = {
+    mes1: "cliente nuevo · mes 1",
+    residual: `cliente nuevo · mes 2 a ${1 + commission.residualMeses}`,
+    extra: "servicio extra",
+  };
+  const pct = pctDe[tipo];
+  const lbl = Math.round(pct * 100);
 
   const cliente = clientOptions.find((c) => c.id === clienteId);
-  const sameSame = closerId && referidoId && closerId === referidoId;
-  const closerMonto = closerId ? Math.round(base * (sameSame ? pctAmbos : pctCierre)) : 0;
-  const referidoMonto = referidoId && !sameSame ? Math.round(base * pctLead) : 0;
+  const monto = closerId ? Math.round(base * pct) : 0;
 
   function reset() {
     setClienteId("");
     setBase(0);
     setCloserId("");
-    setReferidoId("");
+    setTipo("mes1");
   }
 
   function submit() {
-    if (!closerId && !referidoId) return void toast.error("Elegí al menos un beneficiario.");
-    if (base <= 0) return void toast.error("La base (primer mes de abono) debe ser mayor a cero.");
+    if (!closerId) return void toast.error("Elegí a quién se le paga.");
+    if (base <= 0) return void toast.error("La base debe ser mayor a cero.");
     const cName = cliente?.nombre ?? "cliente";
     start(async () => {
-      const calls: Promise<{ error?: string } | { ok: boolean }>[] = [];
-      if (sameSame) {
-        calls.push(
-          addPayrollItem({
-            userId: closerId,
-            periodo,
-            tipo: "comision",
-            concepto: `Comisión ${lblAmbos}% (cierre + lead propio) · ${cName}`,
-            monto: closerMonto,
-            clienteId: clienteId || null,
-            notas: encodeCommissionNote("both", base),
-          })
-        );
-      } else {
-        if (closerId)
-          calls.push(
-            addPayrollItem({
-              userId: closerId,
-              periodo,
-              tipo: "comision",
-              concepto: `Comisión ${lblCierre}% (cierre) · ${cName}`,
-              monto: closerMonto,
-              clienteId: clienteId || null,
-              notas: encodeCommissionNote("closer", base),
-            })
-          );
-        if (referidoId)
-          calls.push(
-            addPayrollItem({
-              userId: referidoId,
-              periodo,
-              tipo: "comision",
-              concepto: `Comisión ${lblLead}% (lead propio) · ${cName}`,
-              monto: referidoMonto,
-              clienteId: clienteId || null,
-              notas: encodeCommissionNote("ref", base),
-            })
-          );
-      }
-      const results = await Promise.all(calls);
-      const err = results.find((r) => "error" in r && r.error);
-      if (err && "error" in err) return void toast.error(err.error!);
+      const res = await addPayrollItem({
+        userId: closerId,
+        periodo,
+        tipo: "comision",
+        concepto: `Comisión ${lbl}% (${labelDe[tipo]}) · ${cName}`,
+        monto,
+        clienteId: clienteId || null,
+        notas: encodeCommissionNote("closer", base),
+      });
+      if (res && "error" in res && res.error) return void toast.error(res.error);
       toast.success("Comisión cargada.");
       reset();
       setOpen(false);
@@ -631,18 +609,36 @@ function CommissionDialog({
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Comisión de cierre</DialogTitle>
+          <DialogTitle>Comisión del comercial</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] text-muted-foreground">
-            Las comisiones del <strong className="text-foreground">primer mes</strong> se
-            cargan <strong className="text-foreground">solas</strong> según quién figura como{" "}
-            &ldquo;Cerrado por&rdquo; en la ficha de cada cliente nuevo. Usá esto solo para
-            casos especiales: comisión a quien <em>refirió</em> el lead, un cierre que no
-            quedó taggeado, o un ajuste manual.
+            Las comisiones se cargan <strong className="text-foreground">solas</strong>:
+            el {Math.round(commission.cierre * 100)}% del mes 1 y el{" "}
+            {Math.round(commission.residual * 100)}% del mes 2 al {1 + commission.residualMeses}{" "}
+            según quién figura como &ldquo;Cerrado por&rdquo; en la ficha del cliente, y el{" "}
+            {Math.round(commission.servicioExtra * 100)}% del servicio extra según
+            &ldquo;Vendido por&rdquo; en el servicio. Usá esto solo para un caso que quedó
+            sin taggear. Si cargás una a mano para una cuenta, ese mes la automática de esa
+            cuenta no se genera.
           </div>
           <div>
-            <Label>Cliente nuevo</Label>
+            <Label>Tipo</Label>
+            <Select value={tipo} onValueChange={(v) => setTipo(v as TipoComisionManual)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(labelDe) as TipoComisionManual[]).map((k) => (
+                  <SelectItem key={k} value={k}>
+                    {labelDe[k]} · {Math.round(pctDe[k] * 100)}%
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Cliente</Label>
             <Select
               value={clienteId}
               onValueChange={(v) => {
@@ -665,7 +661,7 @@ function CommissionDialog({
             </Select>
           </div>
           <div>
-            <Label>Base (primer mes de abono)</Label>
+            <Label>Base</Label>
             <Input
               type="number"
               value={base || ""}
@@ -673,50 +669,26 @@ function CommissionDialog({
               placeholder="$"
             />
             <p className="mt-1 text-[11px] text-muted-foreground">
-              El % se calcula sobre este monto. Se prellena con el abono mensual
-              del cliente.
+              El abono del cliente, o lo que paga el servicio extra. Se prellena con el
+              abono mensual.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Cerró ({lblCierre}%)</Label>
-              <PersonSelect value={closerId} onChange={setCloserId} options={teamOptions} />
-            </div>
-            <div>
-              <Label>Lead propio ({lblLead}%)</Label>
-              <PersonSelect value={referidoId} onChange={setReferidoId} options={teamOptions} />
-            </div>
+          <div>
+            <Label>Se le paga a ({lbl}%)</Label>
+            <PersonSelect value={closerId} onChange={setCloserId} options={teamOptions} />
           </div>
           <div className="rounded-md bg-muted/50 px-3 py-2 text-sm">
-            {!closerId && !referidoId ? (
-              <span className="text-muted-foreground">Elegí beneficiario(s).</span>
-            ) : sameSame ? (
-              <div className="flex items-center justify-between">
-                <span>{lblAmbos}% (cierre + lead propio)</span>
-                <span className="font-semibold tabular-nums">{fmt(closerMonto)}</span>
-              </div>
+            {!closerId ? (
+              <span className="text-muted-foreground">Elegí a quién se le paga.</span>
             ) : (
-              <div className="space-y-1">
-                {closerId && (
-                  <div className="flex items-center justify-between">
-                    <span>{lblCierre}% cierre · {nameOf(teamOptions, closerId)}</span>
-                    <span className="font-semibold tabular-nums">{fmt(closerMonto)}</span>
-                  </div>
-                )}
-                {referidoId && (
-                  <div className="flex items-center justify-between">
-                    <span>{lblLead}% lead propio · {nameOf(teamOptions, referidoId)}</span>
-                    <span className="font-semibold tabular-nums">{fmt(referidoMonto)}</span>
-                  </div>
-                )}
+              <div className="flex items-center justify-between">
+                <span>
+                  {lbl}% {labelDe[tipo]} · {nameOf(teamOptions, closerId)}
+                </span>
+                <span className="font-semibold tabular-nums">{fmt(monto)}</span>
               </div>
             )}
           </div>
-          <p className="text-[11px] text-muted-foreground">
-            El <strong>bonus por volumen</strong> (+2% cada 2 cierres del mes,
-            tope 6%) se calcula y suma solo al cerrar el mes, automáticamente,
-            según los cierres cargados acá.
-          </p>
         </div>
         <DialogFooter>
           <Button onClick={submit} disabled={pending}>

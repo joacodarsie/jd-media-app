@@ -7,7 +7,7 @@ import { createAdmin } from "@/lib/supabase/admin";
 /**
  * Completa "quién cerró la cuenta" en varias cuentas de una.
  *
- * De `cerrado_por_id` sale la comisión del comercial (`selectFirstMonthCommissions`).
+ * De `cerrado_por_id` sale la comisión del comercial (`payroll/comision-comercial`).
  * El formulario de cliente ya lo exige para las activas, pero las cuentas
  * anteriores quedaron sin el dato y arreglarlas de a una no iba a pasar nunca.
  *

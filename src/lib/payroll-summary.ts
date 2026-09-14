@@ -258,18 +258,22 @@ export function payModelRules(settings: AgencySettings): PayRule[] {
     {
       key: "comercial",
       label: PUESTO_LABEL.comercial,
-      regla: comercialFijo
-        ? `${ars(comercialFijo)} fijos por mes + ${pct(
-            r.comision_cierre ?? 0
-          )} del primer abono de cada cuenta que cierra.`
-        : `${pct(r.comision_cierre ?? 0)} del primer abono de cada cuenta que cierra.`,
+      regla: `${comercialFijo ? `${ars(comercialFijo)} fijos por mes + ` : ""}${pct(
+        r.comision_cierre ?? 0
+      )} del abono el mes 1 y ${pct(r.comision_residual ?? 0)} por mes del mes 2 al ${
+        1 + (r.comision_residual_meses ?? 0)
+      } de cada cliente que trae, mientras el cliente siga.`,
       detalles: [
         comercialFijo
-          ? ""
+          ? "El fijo es por sostener la prospección: se cobra haya cierres o no."
           : "Hoy no tiene fijo mensual: cobra solo por lo que cierra. Se activa en Coordinación.",
-        `Si además el lead era propio, suma ${pct(r.comision_lead_propio ?? 0)} más.`,
-        "Bonus por volumen: +2% cada 2 cierres del mes, con tope de 6%.",
-        "La comisión del cierre se carga sola el primer mes de la cuenta nueva.",
+        `Servicio extra a un cliente ya activo: ${pct(
+          r.comision_servicio_extra ?? 0
+        )} de una sola vez sobre lo que pague ese servicio.`,
+        `Premio del mes: ${ars(r.premio_3_cuentas ?? 0)} con 3 cuentas nuevas, ${ars(
+          r.premio_5_cuentas ?? 0
+        )} con 5 (gestión de redes de ${ars(r.premio_abono_minimo ?? 0)} o más; se cobra el más alto).`,
+        "Se carga sola según quién figura como \"Cerrado por\" en la ficha del cliente y \"Vendido por\" en el servicio.",
       ].filter(Boolean),
     },
     {

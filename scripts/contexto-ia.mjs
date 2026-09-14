@@ -224,22 +224,85 @@ Esta copia del contexto **no tiene acceso a la base de datos ni al repositorio**
 
 Si en esta conversación se toma una decisión importante, conviene anotarla y pasársela a esa sesión para que quede en la memoria del proyecto. Si no, se pierde.`;
 
+/** Lo que está abierto hoy: sale de la base, no de lo que uno se acuerde. */
+async function queEstaAbierto() {
+  const users = await consultar("users?select=id,nombre&activo=eq.true");
+  const tareas = await consultar(
+    "tasks?select=numero,titulo,fecha_limite,asignado_a_id,estado&estado=eq.pendiente&order=fecha_limite"
+  );
+  if (!users || !tareas) return "";
+  const nm = Object.fromEntries(users.map((u) => [u.id, u.nombre]));
+  const duenio = users.find((u) => /Joaqu/i.test(u.nombre));
+  const mias = duenio ? tareas.filter((t) => t.asignado_a_id === duenio.id) : [];
+  if (mias.length === 0 && tareas.length === 0) return "";
+
+  const lista = (arr, n = 10) =>
+    arr
+      .slice(0, n)
+      .map(
+        (t) =>
+          `- **JD-${t.numero}** · ${t.titulo}${t.fecha_limite ? ` _(${t.fecha_limite})_` : ""}${
+            !duenio || t.asignado_a_id === duenio.id ? "" : ` — ${nm[t.asignado_a_id] ?? "sin dueño"}`
+          }`
+      )
+      .join("\n");
+
+  // Vencidas y por vencer son dos cosas distintas: mezclarlas hace que una tarea
+  // de julio aparezca como "lo próximo", que fue justo lo que salió mal.
+  const delEquipo = tareas.filter((t) => !duenio || t.asignado_a_id !== duenio.id);
+  const vencidas = delEquipo.filter((t) => t.fecha_limite && t.fecha_limite < hoy);
+  const porVenir = delEquipo.filter((t) => !t.fecha_limite || t.fecha_limite >= hoy);
+
+  return `## Qué está abierto ahora mismo
+
+### Lo que tiene Joaquín en su lista
+${mias.length ? lista(mias, 12) : "_Nada pendiente a su nombre._"}
+
+### Lo próximo a vencer en el equipo
+${porVenir.length ? lista(porVenir) : "_Nada en los próximos días._"}
+
+### Atrasado
+${
+  vencidas.length
+    ? `**${vencidas.length} tareas vencidas.** Las más viejas:\n\n${lista(vencidas, 5)}`
+    : "_Nada vencido._"
+}
+
+_De ${tareas.length} tareas pendientes en total._
+
+> Estos son los tickets de la plataforma. Lo que se está **discutiendo** y todavía
+> no es una tarea está en los primeros temas del contexto de más abajo: son los
+> más recientes y arrancan con ⭐.
+`;
+}
+
 async function main() {
   fs.mkdirSync(SALIDA, { recursive: true });
-  const { indice, vigentes, historicos } = clasificar();
+  const { vigentes, historicos } = clasificar();
   const foto = await fotoDelNegocio();
+  const abierto = await queEstaAbierto();
 
   const norte = cuerpo("project_jd_media_objetivos_2026_q4.md");
 
-  const brief = `# JD Media — Brief del proyecto
-_Generado el ${hoy}. Regenerar con \`node scripts/contexto-ia.mjs\`._
+  const arranque = `# JD Media — Todo el contexto del proyecto
+_Generado el ${hoy}._
 
-JD Media es una agencia de marketing digital de Córdoba, Argentina. La dirige
-Joaquín Darsie. Tiene una plataforma propia (Next.js + Supabase) donde se
-gestionan clientes, contenidos, tareas, sueldos y finanzas.
+## Leé esto primero
+
+Sos el asesor y la mano derecha de **Joaquín Darsie**, dueño de **JD Media**, una
+agencia de marketing digital de Córdoba, Argentina. Este archivo tiene todo el
+contexto del negocio: los números, el equipo, las decisiones tomadas, lo que está
+abierto y cómo trabaja él.
+
+Con esto alcanza para seguir cualquier conversación sobre la agencia sin que
+Joaquín tenga que explicarte nada. **No le pidas que te ponga en contexto: ya
+está todo acá abajo.**
+
+Tu trabajo no es esperar órdenes. Es mirar los números, decirle qué sigue, y
+marcarle lo que no está pasando aunque no lo pregunte.
 
 ${foto}
-
+${abierto}
 ---
 
 ${norte ? `## El norte\n\n${norte.texto}\n\n---\n` : ""}
@@ -247,20 +310,14 @@ ${COMO_TRABAJAR}
 
 ---
 
-## Qué más hay en el paquete
+# El contexto completo
 
-- **CONTEXTO.md** — todo lo vigente: backlog, costeo, finanzas, retención, roles, decisiones tomadas. Subilo como archivo de conocimiento.
-- **HISTORICO.md** — sesiones viejas. Solo si hace falta rastrear por qué se decidió algo.
-- **INDICE.md** — el índice de la memoria, con una línea por tema.
-`;
+Lo que sigue son los ${vigentes.length} temas vigentes del proyecto, cada uno con
+su detalle: backlog, costeo, finanzas, retención, roles, decisiones y las cosas
+que costó descubrir. Es largo a propósito. No hace falta leerlo entero de una:
+buscá el tema cuando lo necesites.`;
 
-  const contexto = juntar(
-    vigentes,
-    `# JD Media — Contexto vigente
-_Generado el ${hoy}. Cada bloque es un tema de la memoria del proyecto._
-
-Esto es lo que está VIGENTE. Lo que quedó superado está en HISTORICO.md.`
-  );
+  const contexto = juntar(vigentes, arranque);
 
   const historico = juntar(
     historicos,
@@ -272,79 +329,90 @@ decidió algo. **Pueden estar superadas: ante una contradicción, mandan el BRIE
 y el CONTEXTO.**`
   );
 
-  const instrucciones = `# Cómo cargar esto en cada IA
+  const instrucciones = `# Cómo seguir la conversación en otra IA
 _Generado el ${hoy}._
 
-La idea es simple: **el BRIEF va en la caja de instrucciones** (se lee siempre) y
-**el CONTEXTO se sube como archivo** (se consulta cuando hace falta). Se hace una
-vez por herramienta.
+## Son dos pasos
 
-## Claude — la segunda cuenta
+1. Abrí un chat nuevo en **Claude** o en **ChatGPT**.
+2. Adjuntá el archivo **\`JD MEDIA - CONTEXTO COMPLETO.md\`** y escribí:
 
-1. Proyectos → **Crear proyecto**, llamalo "JD Media".
-2. En **Instrucciones del proyecto**, pegá el contenido de \`BRIEF.md\`.
-3. En **Conocimiento**, subí \`CONTEXTO.md\`. Si querés el rastro completo, sumá \`HISTORICO.md\`.
+> Seguimos con JD Media.
 
-## ChatGPT
+Listo. El archivo arranca diciéndole qué es, quién sos y qué tiene que hacer.
 
-1. Proyectos → **Nuevo proyecto**, "JD Media".
-2. En las **instrucciones del proyecto**, pegá \`BRIEF.md\`.
-3. Subí \`CONTEXTO.md\` a los archivos del proyecto.
+## Si vas a usarlo seguido, conviene un proyecto
 
-## Gemini
+Así no subís el archivo cada vez:
 
-Gems → **Nuevo Gem** → pegá \`BRIEF.md\` en las instrucciones y subí \`CONTEXTO.md\`.
+- **Claude** → Proyectos → Crear proyecto "JD Media" → en **Conocimiento**, subí el archivo.
+- **ChatGPT** → Proyectos → Nuevo proyecto "JD Media" → subilo a los archivos del proyecto.
 
-## La segunda cuenta de Claude Code, en esta misma máquina
+Después, cada chat dentro de ese proyecto ya lo tiene.
 
-No hace falta hacer nada. La memoria del proyecto vive en una carpeta del disco
-(\`~/.claude/projects/…/memory\`), no dentro de la cuenta: otra cuenta que abra
-Claude Code en esta misma computadora lee los mismos archivos.
+## Tu segunda cuenta de Claude Code no necesita nada
+
+La memoria del proyecto vive en una carpeta del disco de esta computadora, no
+adentro de la cuenta. Si abrís Claude Code acá con la otra cuenta, lee los mismos
+archivos y sigue donde quedaste.
 
 ---
 
-## Tres cosas que conviene tener claras
+## Para mantenerlo al día
 
-**1. Esto lleva datos sensibles.** Adentro hay sueldos del equipo, cuánto factura
-cada cliente y datos de contacto. Subirlo a ChatGPT o a Gemini es mandarle esa
-información a esas empresas. Conviene revisar antes, en la configuración de cada
-una, que el uso de tus datos para entrenamiento esté desactivado.
+Hacé doble clic en **\`Actualizar contexto.bat\`**, en esta misma carpeta. Tarda
+unos segundos y vuelve a leer los números de la base.
 
-**2. La sincronización va en un solo sentido.** Lo que decidas en otra IA **no
-vuelve solo**. Si ahí sale algo importante, copialo y pasáselo a la sesión de
-Claude Code para que quede en la memoria del proyecto. Si no, se pierde.
+Conviene hacerlo cuando entra o se va un cliente, cambia el equipo, o se toma una
+decisión importante.
 
-**3. Esto envejece.** Los números salen de la base el día que se genera. Volvé a
-correr \`node scripts/contexto-ia.mjs\` cuando entre o se vaya un cliente, cambie
-el equipo, o se tome una decisión grande. Toma unos segundos.
+## Dos cosas que conviene saber
 
-## Qué conviene hacer en cada lado
+**La sincronización va en un solo sentido.** Lo que decidas en otra IA no vuelve
+solo. Si ahí sale algo importante, pegáselo a la sesión de Claude Code para que
+quede en la memoria del proyecto.
 
-| Dónde | Para qué sirve |
-|---|---|
-| **Claude Code** (esta sesión) | Todo lo que toca la plataforma, la base y los números reales: construir, medir, aplicar cambios. |
-| **Las otras IAs** | Pensar, redactar, analizar, preparar propuestas y guiones, discutir decisiones, revisar textos. |
+**Las otras IAs no pueden leer la base ni tocar el código.** Sirven para pensar,
+redactar, analizar y discutir decisiones. Para construir, medir y aplicar cambios,
+Claude Code.
 
-Las otras **no pueden** leer la base, tocar el código ni desplegar. Pedirles eso
-hace que inventen.
+## Y un archivo más, que casi nunca vas a necesitar
+
+\`HISTORICO.md\` tiene las sesiones viejas. Solo sirve para rastrear por qué se
+decidió algo hace meses. No hace falta subirlo.
+`;
+
+  const bat = `@echo off
+chcp 65001 >nul
+title Actualizar contexto de JD Media
+echo.
+echo   Actualizando el contexto de JD Media...
+echo.
+cd /d "${RAIZ}"
+node scripts/contexto-ia.mjs
+echo.
+echo   Listo. Podes cerrar esta ventana.
+pause
 `;
 
   const salidas = [
+    ["JD MEDIA - CONTEXTO COMPLETO.md", contexto],
     ["LEEME.md", instrucciones],
-    ["BRIEF.md", brief],
-    ["CONTEXTO.md", contexto],
     ["HISTORICO.md", historico],
-    ["INDICE.md", `# JD Media — Índice de la memoria\n_Generado el ${hoy}._\n\n${indice}`],
   ];
 
   for (const [nombre, texto] of salidas) {
     fs.writeFileSync(path.join(SALIDA, nombre), texto, "utf8");
     const kb = (Buffer.byteLength(texto, "utf8") / 1024).toFixed(0);
     const tok = Math.round(texto.length / 4).toLocaleString("es-AR");
-    console.log(`  ${nombre.padEnd(14)} ${kb.padStart(5)} KB   ~${tok} tokens`);
+    console.log(`  ${nombre.padEnd(34)} ${kb.padStart(5)} KB   ~${tok} tokens`);
   }
+  // El .bat va en latin1: cmd.exe no lee UTF-8 con BOM y rompe la ruta.
+  fs.writeFileSync(path.join(SALIDA, "Actualizar contexto.bat"), bat, "latin1");
+  console.log(`  ${"Actualizar contexto.bat".padEnd(34)}`);
+
   console.log(`\nListo en: ${SALIDA}`);
-  console.log(`Vigentes: ${vigentes.length} temas · Históricos: ${historicos.length}`);
+  console.log(`${vigentes.length} temas vigentes · ${historicos.length} en el histórico`);
 }
 
 main().catch((e) => {

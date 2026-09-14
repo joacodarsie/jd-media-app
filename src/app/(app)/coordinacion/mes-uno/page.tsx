@@ -54,7 +54,9 @@ export default async function MesUnoPage() {
       [`Sueldo CM`, cm],
       [`Sueldo Paid Media`, paid],
       [`Comisión Brisa (${pctTxt(r.comision_coord_diseno ?? 0)} del diseño)`, brisaM1],
-      [`Plus 1er mes (CM ${ars(plus)} + Paid ${ars(plus)})`, plus * 2],
+      ...(plus > 0
+        ? ([[`Plus 1er mes (CM ${ars(plus)} + Paid ${ars(plus)})`, plus * 2]] as [string, number][])
+        : []),
       [`Comisión Leo (${pctTxt(r.comision_coord_general ?? 0)})`, leo],
     ];
     const items2: [string, number][] = [

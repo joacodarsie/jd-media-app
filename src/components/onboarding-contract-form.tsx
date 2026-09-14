@@ -134,12 +134,12 @@ export function OnboardingContractForm({
 
       <div className="grid gap-3 sm:grid-cols-3">
         {/* Ya no se elige por cliente: la ventana de cobro es la misma para
-            todos (25 → 1º) para llegar con la plata a los sueldos del 5. Se
+            todos (del 1 al 5) para llegar con la plata a los sueldos del 7. Se
             muestra para que quien arma el contrato sepa qué va a decir la carta. */}
         <div className="space-y-1">
           <Label className="text-xs">Cobro mensual</Label>
           <div className="flex h-9 items-center rounded-md border bg-muted/40 px-2 text-sm text-muted-foreground">
-            Del {COBRO_DESDE_DIA} al {COBRO_HASTA_DIA}º, por adelantado
+            Del {COBRO_DESDE_DIA} al {COBRO_HASTA_DIA}, por adelantado
           </div>
         </div>
         <div className="space-y-1">

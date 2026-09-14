@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdmin } from "@/lib/supabase/admin";
-import { currentPeriod, nextPeriod, periodLabel, fmtCurrency } from "@/lib/finanzas";
+import { currentPeriod, periodLabel, fmtCurrency } from "@/lib/finanzas";
 import { reminderAmount, normalizePhone } from "@/lib/payment-reminder";
 import { isClientPausedFor } from "@/lib/client-pause";
 import { whatsappApiConfigured, sendPaymentReminderTemplate } from "@/lib/meta/whatsapp";
@@ -13,11 +13,10 @@ export const maxDuration = 60;
 
 /**
  * Recordatorio de cobro AUTOMÁTICO por WhatsApp (plantilla aprobada por Meta) —
- * corre todos los días, pero solo actúa el **25**, que es cuando abre la
- * ventana de cobro (25 → 1º). Cobra el abono del mes SIGUIENTE.
- *
- * Antes salía el último día del mes: la plata entraba con lo justo para los
- * sueldos del 5. La política y sus fechas viven en lib/finanzas/ciclo-cobro.
+ * corre todos los días, pero solo actúa el **1**, que es cuando abre la
+ * ventana de cobro (del 1 al 5). Cobra el abono del mes que arranca, por
+ * adelantado, así la plata entra antes de los sueldos del 7. La política y sus
+ * fechas viven en lib/finanzas/ciclo-cobro.
  *
  * Mientras no esté conectada la API de WhatsApp Business (`whatsappApiConfigured`
  * en false: falta el Phone Number ID y/o la plantilla aprobada), no manda nada
@@ -57,9 +56,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // Se manda el 25, que es cuando abre la ventana de cobro (25 → 1º). Antes
-  // salía el último día del mes, lo que dejaba muy poco margen para tener la
-  // plata antes de los sueldos del 5.
+  // Se manda el 1, que es cuando abre la ventana de cobro (del 1 al 5).
   const hoy = hoyYmd();
   if (!esDiaDeRecordatorio(hoy)) {
     return NextResponse.json({
@@ -75,7 +72,7 @@ export async function GET(req: NextRequest) {
   }
 
   const admin = createAdmin();
-  const periodo = nextPeriod(currentPeriod()); // se cobra el mes que arranca
+  const periodo = currentPeriod(); // se cobra el mes que arranca, por adelantado
   const mes = periodLabel(periodo);
   const messagePrefix = `Recordatorio de cobro automático · ${mes}`;
 

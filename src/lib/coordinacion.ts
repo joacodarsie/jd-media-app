@@ -151,7 +151,7 @@ export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
     diseno_standalone_coord_pct: 0.1,
     puesta_en_marcha: 0,
     onboarding_extra_pct: 0,
-    plus_primer_mes: 10000,
+    plus_primer_mes: 0,
   },
 };
 

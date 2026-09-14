@@ -91,7 +91,7 @@ export function reminderAmount(
 
 /**
  * Mensaje de recordatorio de pago listo para mandar por WhatsApp, adaptado al
- * cliente y al período. Pago ideal: el 1° del mes.
+ * cliente y al período. Se cobra del 1 al 5 del mes.
  *
  * Sin emoji "astrales" (fuera del plano básico de Unicode, ej. 👋🚀🔹🙌):
  * WhatsApp Web los corrompe al precargar el texto desde el link wa.me
@@ -113,7 +113,7 @@ export function buildPaymentReminder(c: ReminderClient, periodo: string): string
     `• CVU: ${cvu}`,
     `• Nombre: ${titular}`,
     ``,
-    `Te pido que sea antes del ${COBRO_HASTA_DIA}º así arrancamos el mes con todo en orden.`,
+    `Te pido que sea hasta el ${COBRO_HASTA_DIA} así arrancamos el mes con todo en orden.`,
     ``,
     `Cuando lo tengas, mandame el comprobante y seguimos a full con tu contenido. ¡Gracias!`,
   ].join("\n");
@@ -158,7 +158,7 @@ export function buildGroupedPaymentReminder(clients: ReminderClient[], periodo: 
     `• CVU: ${cvu}`,
     `• Nombre: ${titular}`,
     ``,
-    `Te pido que sea antes del ${COBRO_HASTA_DIA}º así arrancamos el mes con todo en orden.`,
+    `Te pido que sea hasta el ${COBRO_HASTA_DIA} así arrancamos el mes con todo en orden.`,
     ``,
     `Cuando lo tengas, mandame el comprobante y seguimos a full con tu contenido. ¡Gracias!`
   );

@@ -294,6 +294,8 @@ describe("computeDesignCoordinationLines", () => {
 
 describe("computeOnboardingExtras", () => {
   const periodo = "2026-08";
+  // El plus existió de julio a septiembre de 2026 (hoy vale 0): se prueba el mecanismo.
+  const r = { ...DEFAULT_AGENCY_SETTINGS.rates, plus_primer_mes: 10000 };
 
   it("suma el plus fijo del 1er mes a CM y Paid Media (modelo FNA)", () => {
     const out = computeOnboardingExtras(

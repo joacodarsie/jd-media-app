@@ -162,8 +162,8 @@ export async function generateInvoicesForPeriod(
       monto,
       moneda: s.moneda ?? "ARS",
       fecha_emision: `${periodo}-01`,
-      // Vence el 1º: la ventana de cobro va del 25 del mes anterior al 1º, para
-      // llegar con la plata a los sueldos del 5. Ver lib/finanzas/ciclo-cobro.
+      // Vence el 5: la ventana de cobro va del 1 al 5 del mes, para llegar con
+      // la plata a los sueldos del 7. Ver lib/finanzas/ciclo-cobro.
       fecha_vencimiento: vencimientoDePeriodo(periodo),
       creado_por_id: creadoPorId,
     });

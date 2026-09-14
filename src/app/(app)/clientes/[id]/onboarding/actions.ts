@@ -10,7 +10,7 @@ import { AGENCY } from "@/lib/agency";
 import { applyContractDiscount } from "@/lib/payment-reminder";
 import { calcularPrimerMes } from "@/lib/finanzas/primer-mes";
 import { COBRO_DESDE_DIA, VENTANA_COBRO_TEXTO } from "@/lib/finanzas/ciclo-cobro";
-import type { ServiceType, ClientService } from "@/lib/types";
+import { mensajesDeBienvenida } from "@/lib/onboarding/bienvenida";
 
 type StepKey =
   | "carta_enviada_at"
@@ -320,123 +320,69 @@ export async function buildWelcomeMessages(clientId: string): Promise<
   { ok: true; messages: string[] } | { ok: false; error: string }
 > {
   await requireUser();
-  const supabase = createClient();
+  // Admin: los nombres del equipo viven en `users`, que RLS no deja leer entero.
+  const admin = createAdmin();
 
-  const { data: client } = await supabase
-    .from("clients")
-    .select("nombre, contacto_nombre, cm:users!clients_cm_id_fkey(nombre)")
-    .eq("id", clientId)
-    .maybeSingle();
+  const [{ data: client }, { data: services }, { data: users }] = await Promise.all([
+    admin
+      .from("clients")
+      .select("nombre, contacto_nombre, cm_id, disenador_id, audiovisual_id, media_buyer_id, coordinador_id")
+      .eq("id", clientId)
+      .maybeSingle(),
+    admin
+      .from("client_services")
+      .select("tipo, media_buyer_aplica")
+      .eq("cliente_id", clientId)
+      .eq("activo", true),
+    admin.from("users").select("id, nombre, rol, rol_secundario, area").eq("activo", true),
+  ]);
   if (!client) return { ok: false, error: "Cliente no encontrado" };
 
-  const { data: services } = await supabase
-    .from("client_services")
-    .select("tipo")
-    .eq("cliente_id", clientId)
-    .eq("activo", true);
-
-  const svcTypes = new Set(((services ?? []) as ClientService[]).map((s) => s.tipo));
   const c = client as {
     nombre: string;
     contacto_nombre: string | null;
-    cm: { nombre?: string } | { nombre?: string }[] | null;
+    cm_id: string | null;
+    disenador_id: string | null;
+    audiovisual_id: string | null;
+    media_buyer_id: string | null;
+    coordinador_id: string | null;
   };
-  const cmName = Array.isArray(c.cm) ? c.cm[0]?.nombre : c.cm?.nombre;
-  const nombreContacto = (c.contacto_nombre ?? c.nombre).split(" ")[0];
+  const svcs = (services ?? []) as { tipo: string; media_buyer_aplica: boolean | null }[];
+  const us = (users ?? []) as {
+    id: string;
+    nombre: string;
+    rol: string;
+    rol_secundario: string | null;
+    area: string | null;
+  }[];
+  const nombreDe = (id: string | null) => (id ? (us.find((u) => u.id === id)?.nombre ?? null) : null);
+  const tieneRol = (u: { rol: string; rol_secundario: string | null }, r: string) =>
+    u.rol === r || u.rol_secundario === r;
 
-  const m1 = `Hola ${nombreContacto}!! 👋 Bienvenido al grupo de trabajo de JD Media.
+  // La project manager es la coordinadora de la cuenta; si no hay, quien tenga
+  // el área de Coordinación. La directora creativa, quien tenga coordinador_diseno.
+  const projectManager =
+    nombreDe(c.coordinador_id) ?? us.find((u) => u.area === "Coordinación")?.nombre ?? null;
+  const directoraCreativa = us.find((u) => tieneRol(u, "coordinador_diseno"))?.nombre ?? null;
+  const mediaBuyer =
+    nombreDe(c.media_buyer_id) ?? us.find((u) => tieneRol(u, "paid_media"))?.nombre ?? null;
+  const redes = svcs.find((sv) => sv.tipo === "gestion_redes");
 
-${cmName ? `${cmName} va a estar a cargo` : "Vamos a estar a cargo"} de la estrategia general y del seguimiento del proyecto.
-
-Este grupo lo vamos a usar para centralizar toda la comunicación del proyecto:
-– coordinación general
-– envío de calendarios de contenido para aprobación
-– informes y reportes de avances
-– coordinación de jornadas de producción
-– envío de links útiles (Drive, materiales, etc.)
-
-La idea es que todo pase por acá, así trabajamos ordenados 🚀`;
-
-  // Mensaje 2 — Cronograma adaptado a los servicios
-  const cronoLines: string[] = [];
-  cronoLines.push("Para que tengas claridad desde el inicio, te contamos cómo es el proceso del primer mes 👇");
-  cronoLines.push("");
-
-  if (svcTypes.has("gestion_redes" as ServiceType)) {
-    cronoLines.push("🗓️ Semana 1");
-    cronoLines.push("– Reunión de onboarding para alinear objetivos, expectativas y conocer la marca a fondo");
-    cronoLines.push("– Análisis de la situación inicial y del entorno");
-    cronoLines.push("– Manual de marca y moodboard");
-    cronoLines.push("– Diagnóstico inicial (PDF) con la estrategia, los pilares de contenido y el plan de acción");
-    cronoLines.push("– Armado del primer calendario de contenidos");
-    cronoLines.push("");
-    cronoLines.push("🗓️ A partir del día 8");
-    cronoLines.push("– Optimización de los perfiles (bio, foto, historias destacadas, links, portadas)");
-    cronoLines.push("– Empezamos a publicar las primeras piezas, ya con el calendario aprobado");
-    cronoLines.push("");
-    cronoLines.push("🗓️ A partir del día 14");
-    cronoLines.push("– Con las primeras publicaciones ya funcionando, ponemos en marcha las campañas para amplificar el alcance y potenciar los resultados");
-  }
-
-  if (svcTypes.has("paid_media" as ServiceType)) {
-    if (cronoLines.length > 1) cronoLines.push("");
-    cronoLines.push("📈 Paid Media (primeros 14 días)");
-    cronoLines.push("– Setup de Business Manager y verificación de accesos");
-    cronoLines.push("– Implementación de píxel y conversiones");
-    cronoLines.push("– Definición de objetivos y KPIs medibles");
-    cronoLines.push("– Configuración de la primera campaña");
-  }
-
-  if (svcTypes.has("desarrollo_web" as ServiceType)) {
-    if (cronoLines.length > 1) cronoLines.push("");
-    cronoLines.push("💻 Desarrollo web");
-    cronoLines.push("– Relevamiento de requerimientos");
-    cronoLines.push("– Wireframes y aprobación de UX");
-    cronoLines.push("– Inicio de desarrollo");
-  }
-
-  if (svcTypes.has("diseno_grafico" as ServiceType) && !svcTypes.has("gestion_redes" as ServiceType)) {
-    if (cronoLines.length > 1) cronoLines.push("");
-    cronoLines.push("🎨 Diseño gráfico");
-    cronoLines.push("– Brief inicial y referencias");
-    cronoLines.push("– Manual de marca visual");
-    cronoLines.push("– Producción de piezas según calendario acordado");
-  }
-
-  const m2 = cronoLines.join("\n");
-
-  // Mensaje 3 — Drive / canal de contenido (solo si hay gestión de contenido)
-  const m3 = (svcTypes.has("gestion_redes" as ServiceType) ||
-    svcTypes.has("edicion_audiovisual" as ServiceType))
-    ? `Durante el proceso te vamos a compartir por acá el link al Drive del proyecto, donde vas a encontrar:
-📁 Contenido crudo: fotos y videos de jornadas de producción o material que nos compartas
-📁 Calendario de contenidos: piezas ya editadas y organizadas para publicar
-
-Si en algún momento tenés una idea puntual, una necesidad específica o querés sumar/modificar algún contenido, podés avisarnos por acá. Nosotros nos encargamos de adaptar el calendario para integrar eso de la mejor manera 👍`
-    : "";
-
-  // Mensaje 4 — Qué necesitamos
-  const accesosLines = ["🔑 Accesos a las cuentas"];
-  if (svcTypes.has("gestion_redes" as ServiceType)) {
-    accesosLines[0] += " (Instagram, Facebook, Business Manager según corresponda)";
-  } else if (svcTypes.has("paid_media" as ServiceType)) {
-    accesosLines[0] += " (Meta Business Manager, Google Ads según corresponda)";
-  }
-
-  const m4 = `Para poder avanzar sin trabas desde el inicio, vamos a necesitar que nos compartas:
-${accesosLines.join("\n")}
-📂 Material existente de la marca (fotos, videos, logos, carpetas de trabajo, etc.)
-
-Lo ideal es que nos lo envíes por link de Drive o carpeta comprimida, así no se pierde calidad del contenido.
-
-Con eso ya podemos arrancar a trabajar con material original desde el primer momento 👍`;
-
-  const messages = [m1, m2];
-  if (m3) messages.push(m3);
-  messages.push(m4);
-
-  // Etiquetar etapa como "lista para mandar" (no la marco como enviada hasta que el user lo confirme)
-  // El user vendrá y tocará "Marcar mensajes enviados" después.
+  const messages = mensajesDeBienvenida({
+    contacto: (c.contacto_nombre ?? c.nombre).split(" ")[0],
+    marca: c.nombre,
+    servicios: svcs.map((sv) => sv.tipo),
+    conGestionDeCampanas: redes ? redes.media_buyer_aplica !== false : false,
+    director: "Joaquín Darsie",
+    equipo: {
+      projectManager,
+      directoraCreativa,
+      communityManager: nombreDe(c.cm_id),
+      disenador: nombreDe(c.disenador_id),
+      editor: nombreDe(c.audiovisual_id),
+      mediaBuyer,
+    },
+  });
 
   return { ok: true, messages };
 }

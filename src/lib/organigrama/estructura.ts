@@ -136,7 +136,7 @@ export const ORGANIGRAMA: NodoOrg = {
         { label: "Jornadas de producción", href: "/coordinacion/jornadas", detalle: "Coordinar las sesiones de fotos y video." },
         { label: "¿Salió de verdad?", href: "/contenidos/salio", detalle: "Contrastar el calendario contra lo que realmente se publicó." },
         { label: "Mes 1", href: "/coordinacion/mes-uno", detalle: "El arranque de las cuentas nuevas." },
-        { label: "Cobros", href: "/cobros", detalle: "Que el cobro del 25 al 1º no se pase." },
+        { label: "Cobros", href: "/cobros", detalle: "Que el cobro del 1 al 5 no se pase." },
       ],
       hijos: [
         {

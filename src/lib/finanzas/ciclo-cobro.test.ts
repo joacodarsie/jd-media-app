@@ -1,74 +1,64 @@
 import { describe, it, expect } from "vitest";
 import {
-  COBRO_DESDE_DIA,
+  COBRO_HASTA_DIA,
   SUELDOS_DIA,
+  VENTANA_COBRO_TEXTO,
   esDiaDeRecordatorio,
   estaVencido,
   periodoQueSeCobra,
   vencimientoDePeriodo,
 } from "./ciclo-cobro";
 
-describe("la ventana de cobro llega antes que los sueldos", () => {
-  it("abre el 25 y los sueldos se pagan el 5: hay margen real", () => {
-    expect(COBRO_DESDE_DIA).toBe(25);
-    expect(SUELDOS_DIA).toBe(5);
+describe("la ventana de cobro cierra antes que los sueldos", () => {
+  it("se cobra hasta el 5 y los sueldos se pagan el 7", () => {
+    expect(COBRO_HASTA_DIA).toBe(5);
+    expect(SUELDOS_DIA).toBe(7);
     // La razón de ser de todo esto: cobrar ANTES de tener que pagar.
-    expect(COBRO_DESDE_DIA).toBeGreaterThan(SUELDOS_DIA);
+    expect(COBRO_HASTA_DIA).toBeLessThan(SUELDOS_DIA);
+  });
+
+  it("la carta acuerdo dice del 1 al 5", () => {
+    expect(VENTANA_COBRO_TEXTO).toBe("entre el 1 y el 5 de cada mes");
   });
 });
 
 describe("vencimientoDePeriodo", () => {
-  it("vence el 1º del mes que se abona, no el 10", () => {
-    expect(vencimientoDePeriodo("2026-09")).toBe("2026-09-01");
-    expect(vencimientoDePeriodo("2026-12")).toBe("2026-12-01");
+  it("vence el 5 del mes que se abona", () => {
+    expect(vencimientoDePeriodo("2026-10")).toBe("2026-10-05");
+    expect(vencimientoDePeriodo("2026-12")).toBe("2026-12-05");
   });
 });
 
 describe("esDiaDeRecordatorio", () => {
-  it("se manda el 25", () => {
-    expect(esDiaDeRecordatorio("2026-08-25")).toBe(true);
+  it("se manda el 1, cuando abre la ventana", () => {
+    expect(esDiaDeRecordatorio("2026-10-01")).toBe(true);
   });
 
-  it("no se manda el resto de los días de la ventana (sería spam)", () => {
-    for (const d of ["24", "26", "28", "30", "31"]) {
-      expect(esDiaDeRecordatorio(`2026-08-${d}`)).toBe(false);
+  it("no se manda el resto de los días (sería spam)", () => {
+    for (const d of ["02", "05", "25", "30"]) {
+      expect(esDiaDeRecordatorio(`2026-10-${d}`)).toBe(false);
     }
-    expect(esDiaDeRecordatorio("2026-09-01")).toBe(false);
-  });
-
-  it("funciona en febrero, que antes dependía del último día del mes", () => {
-    expect(esDiaDeRecordatorio("2026-02-25")).toBe(true);
-    expect(esDiaDeRecordatorio("2026-02-28")).toBe(false);
   });
 });
 
 describe("periodoQueSeCobra", () => {
-  it("del 25 en adelante se cobra el mes siguiente, por adelantado", () => {
-    expect(periodoQueSeCobra("2026-08-25")).toBe("2026-09");
-    expect(periodoQueSeCobra("2026-08-31")).toBe("2026-09");
-  });
-
-  it("antes del 25 se está cobrando el mes en curso (los que pagaron tarde)", () => {
-    expect(periodoQueSeCobra("2026-08-01")).toBe("2026-08");
-    expect(periodoQueSeCobra("2026-08-24")).toBe("2026-08");
-  });
-
-  it("cruza bien el fin de año", () => {
-    expect(periodoQueSeCobra("2026-12-25")).toBe("2027-01");
-    expect(periodoQueSeCobra("2026-12-24")).toBe("2026-12");
+  it("siempre es el mes en curso: se cobra por adelantado dentro del mismo mes", () => {
+    expect(periodoQueSeCobra("2026-10-01")).toBe("2026-10");
+    expect(periodoQueSeCobra("2026-10-28")).toBe("2026-10");
+    expect(periodoQueSeCobra("2026-12-31")).toBe("2026-12");
   });
 });
 
 describe("estaVencido", () => {
-  it("el 1º todavía no está vencido: es el último día de la ventana", () => {
-    expect(estaVencido("2026-09", "2026-09-01")).toBe(false);
+  it("el 5 todavía no está vencido: es el último día de la ventana", () => {
+    expect(estaVencido("2026-10", "2026-10-05")).toBe(false);
   });
 
-  it("del 2 en adelante sí", () => {
-    expect(estaVencido("2026-09", "2026-09-02")).toBe(true);
+  it("del 6 en adelante sí", () => {
+    expect(estaVencido("2026-10", "2026-10-06")).toBe(true);
   });
 
-  it("durante la ventana previa no está vencido", () => {
-    expect(estaVencido("2026-09", "2026-08-25")).toBe(false);
+  it("antes de que abra la ventana no está vencido", () => {
+    expect(estaVencido("2026-10", "2026-09-28")).toBe(false);
   });
 });

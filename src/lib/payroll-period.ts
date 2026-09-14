@@ -63,6 +63,16 @@ const CONTENT_PAYROLL_FROM = "2026-07";
  */
 const ONBOARDING_EXTRA_FROM = "2026-07";
 
+/**
+ * Último período en que se pagó el PLUS DEL PRIMER MES a la CM y al media buyer.
+ * Se sacó el 15/9/2026: con dos semanas de puesta en marcha el arranque ya no
+ * es trabajo extra comprimido, entra en los tiempos normales. Hasta septiembre
+ * se sigue calculando con el monto que se pagaba, para que los meses cerrados
+ * no cambien al mirarlos; desde octubre no existe.
+ */
+const PLUS_PRIMER_MES_HASTA = "2026-09";
+const PLUS_PRIMER_MES_HISTORICO = 10000;
+
 export interface PeriodPayrollResult {
   periodo: string;
   people: PersonPayroll[];
@@ -282,13 +292,12 @@ export async function buildPeriodPayroll(
   }
 
   // Extra de onboarding del equipo (CM + Paid Media), solo el primer mes de
-  // cada cuenta: +% de su tarifa por el laburo exclusivo del arranque. Solo
-  // desde ONBOARDING_EXTRA_FROM (junio y antes no aplican).
-  if (periodo >= ONBOARDING_EXTRA_FROM) {
+  // cada cuenta. Existió de julio a septiembre de 2026 (ver PLUS_PRIMER_MES_HASTA).
+  if (periodo >= ONBOARDING_EXTRA_FROM && periodo <= PLUS_PRIMER_MES_HASTA) {
     const onboardingExtras = computeOnboardingExtras(
       clients,
       services,
-      settings.rates,
+      { ...settings.rates, plus_primer_mes: PLUS_PRIMER_MES_HISTORICO },
       periodo,
       fallbackMediaBuyer,
       ctxAsignaciones

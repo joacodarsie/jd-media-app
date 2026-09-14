@@ -9,6 +9,7 @@ import {
 } from "@/lib/contract-clauses";
 import type { ClientService } from "@/lib/types";
 import { VENTANA_COBRO_TEXTO } from "@/lib/finanzas/ciclo-cobro";
+import { JORNADA_PRECIO_HORA, JORNADA_PRECIO_HORA_EXTRA } from "@/lib/jornada";
 import { PrintButton } from "@/components/print-button";
 import { DocEditToggle } from "@/components/doc-edit-toggle";
 
@@ -795,6 +796,19 @@ export function ContractDocument({ model }: { model: ContractModel }) {
             </p>
           )}
 
+          {tieneGestionContenido && (
+            <p>
+              <strong>Jornadas de producción:</strong> las jornadas presenciales de
+              filmación o fotografía <strong>no están incluidas en el abono
+              mensual y se cobran aparte</strong>, cada vez que el Cliente las
+              solicite: <strong>{fmtMoney(JORNADA_PRECIO_HORA, "ARS")}</strong> la
+              primera hora y{" "}
+              <strong>{fmtMoney(JORNADA_PRECIO_HORA_EXTRA, "ARS")}</strong> cada hora
+              adicional, más los viáticos de traslado. Cada jornada se coordina y se
+              confirma con anticipación por los canales oficiales.
+            </p>
+          )}
+
           {tieneGestionRedes && puestaTotal > 0 && (
             <p>
               <strong>Puesta en marcha (pago único inicial):</strong> al inicio del
@@ -942,8 +956,8 @@ export function ContractDocument({ model }: { model: ContractModel }) {
                   <strong>Jornadas de producción audiovisual:</strong> la producción
                   presencial (jornadas de filmación o fotografía en el domicilio del
                   Cliente o en locación) <strong>no</strong> está incluida en el
-                  abono mensual y constituye un servicio adicional, que se cotiza y
-                  abona por separado según se acuerde en cada caso.
+                  abono mensual: se abona por separado, según los valores
+                  indicados en la cláusula de honorarios.
                 </p>
               </>
             )}

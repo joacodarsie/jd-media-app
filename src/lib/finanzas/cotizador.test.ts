@@ -10,7 +10,9 @@ import {
   type CostoCotizacion,
 } from "./cotizador";
 
-const rates = DEFAULT_AGENCY_SETTINGS.rates;
+// Tarifas con el plus del primer mes que se pagó hasta septiembre de 2026: los
+// tests de arranque prueban el mecanismo, que sigue existiendo aunque hoy valga 0.
+const rates = { ...DEFAULT_AGENCY_SETTINGS.rates, plus_primer_mes: 10000 };
 
 /** Una cuenta Presencia de lista: 4 reels, 4 piezas, CM y pauta. */
 const PRESENCIA = {

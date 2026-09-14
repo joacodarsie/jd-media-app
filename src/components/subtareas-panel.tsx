@@ -4,9 +4,12 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2, Plus } from "lucide-react";
 import { addSubtarea } from "@/app/(app)/tareas/actions";
 import { formatTicket, progresoTicket } from "@/lib/tareas/tickets";
+import { normalizarLinks, type LinkBorrador } from "@/lib/tareas/links";
+import { LinksEditor } from "@/components/links-editor";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,17 +58,29 @@ export function SubtareasPanel({
   const [asignado, setAsignado] = useState("");
   const [fecha, setFecha] = useState("");
   const [guardando, setGuardando] = useState(false);
+  // El detalle de la subtarea (copy, indicaciones, referencias), plegado para
+  // que cargar muchas seguidas siga siendo de una línea.
+  const [conDetalle, setConDetalle] = useState(false);
+  const [descripcion, setDescripcion] = useState("");
+  const [links, setLinks] = useState<LinkBorrador[]>([]);
 
   const prog = progresoTicket(subtareas);
 
   async function agregar() {
     if (!titulo.trim()) return;
+    const l = normalizarLinks(links);
+    if (l.error) {
+      toast.error(l.error);
+      return;
+    }
     setGuardando(true);
     const res = await addSubtarea({
       parentId,
       titulo,
+      descripcion: descripcion || null,
       asignado_a_id: asignado || null,
       fecha_limite: fecha || null,
+      links: l.links,
     });
     setGuardando(false);
     if (res?.error) {
@@ -75,6 +90,8 @@ export function SubtareasPanel({
     // El responsable y la fecha quedan puestos: cargar quince placas seguidas
     // para la misma persona no puede obligar a elegirla quince veces.
     setTitulo("");
+    setDescripcion("");
+    setLinks([]);
     toast.success("Subtarea agregada");
     startTransition(() => router.refresh());
   }
@@ -187,6 +204,20 @@ export function SubtareasPanel({
               className="h-8 w-36 text-xs"
             />
           </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2 text-xs"
+            onClick={() => setConDetalle((v) => !v)}
+          >
+            {conDetalle ? (
+              <ChevronDown className="mr-1 h-3.5 w-3.5" />
+            ) : (
+              <ChevronRight className="mr-1 h-3.5 w-3.5" />
+            )}
+            Detalle
+          </Button>
           <Button size="sm" onClick={agregar} disabled={guardando || !titulo.trim()}>
             {guardando ? (
               <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
@@ -196,8 +227,20 @@ export function SubtareasPanel({
             Agregar
           </Button>
         </div>
+        {conDetalle && (
+          <div className="space-y-2 rounded-md bg-muted/40 p-3">
+            <Textarea
+              rows={3}
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
+              placeholder="El detalle de esta subtarea: el copy exacto, qué va en cada placa, indicaciones para diseño o edición…"
+              className="bg-background text-sm"
+            />
+            <LinksEditor value={links} onChange={setLinks} compacto />
+          </div>
+        )}
         <p className="text-[11px] text-muted-foreground">
-          La subtarea hereda cliente, área y prioridad del ticket. Si no elegís responsable
+          Cada subtarea se abre con su propia ficha: descripción, links, comentarios e historial. La subtarea hereda cliente, área y prioridad del ticket. Si no elegís responsable
           o fecha, usa los del ticket.
         </p>
       </div>

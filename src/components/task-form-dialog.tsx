@@ -3,10 +3,13 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { ChevronDown, ChevronRight, ListTree, Plus, X } from "lucide-react";
 import { createTask, updateTask } from "@/app/(app)/tareas/actions";
 import { AREAS, PRIORITY_LABEL, STATUS_LABEL } from "@/lib/constants";
 import type { AppUser, Client, TaskWithRels } from "@/lib/types";
 import { validarFechaLimite } from "@/lib/tareas/fecha-limite";
+import { normalizarLinks, type LinkBorrador } from "@/lib/tareas/links";
+import { LinksEditor } from "@/components/links-editor";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +32,34 @@ import {
 
 const NONE = "__none__";
 
+/** Una subtarea todavía no guardada, cargada dentro del formulario del ticket. */
+interface SubtareaBorrador {
+  titulo: string;
+  asignado: string;
+  fecha: string;
+  descripcion: string;
+  links: LinkBorrador[];
+  abierta: boolean;
+}
+
+const subtareaVacia = (): SubtareaBorrador => ({
+  titulo: "",
+  asignado: NONE,
+  fecha: "",
+  descripcion: "",
+  links: [],
+  abierta: false,
+});
+
+/**
+ * Crear o editar una tarea (ticket).
+ *
+ * Es una ventana grande a propósito, como la de Jira: a la izquierda lo que se
+ * escribe (título, descripción, links de referencia y el desglose en
+ * subtareas), a la derecha los campos del ticket. Así un ticket de "15 días de
+ * contenido" nace completo, con cada pieza como subtarea y su propio detalle,
+ * en vez de crearse vacío y completarse después.
+ */
 export function TaskFormDialog({
   mode,
   task,
@@ -50,25 +81,37 @@ export function TaskFormDialog({
   const [pending, start] = useTransition();
 
   const [titulo, setTitulo] = useState<string>(task?.titulo ?? "");
-  const [descripcion, setDescripcion] = useState<string>(
-    task?.descripcion ?? ""
-  );
-  const [asignado, setAsignado] = useState<string>(
-    task?.asignado_a_id ?? NONE
-  );
+  const [descripcion, setDescripcion] = useState<string>(task?.descripcion ?? "");
+  const [asignado, setAsignado] = useState<string>(task?.asignado_a_id ?? NONE);
   const [cliente, setCliente] = useState<string>(task?.cliente_id ?? NONE);
   const [area, setArea] = useState<string>(task?.area ?? "Community Manager");
-  const [prioridad, setPrioridad] = useState<string>(
-    task?.prioridad ?? "media"
-  );
+  const [prioridad, setPrioridad] = useState<string>(task?.prioridad ?? "media");
   const [estado, setEstado] = useState<string>(task?.estado ?? "pendiente");
-  const [fecha, setFecha] = useState<string>(
-    task?.fecha_limite?.slice(0, 10) ?? ""
-  );
+  const [fecha, setFecha] = useState<string>(task?.fecha_limite?.slice(0, 10) ?? "");
   const [aprobador, setAprobador] = useState<string>(task?.aprobador_id ?? NONE);
   // Colgar la tarea de un ticket al crearla. Solo al crear: mover una tarea de
   // ticket después es otra cosa (arrastra el desglose) y no se resuelve acá.
   const [madre, setMadre] = useState<string>(NONE);
+  const [links, setLinks] = useState<LinkBorrador[]>([]);
+  const [subtareas, setSubtareas] = useState<SubtareaBorrador[]>([]);
+
+  const esCreacion = mode === "create";
+  // Una subtarea no puede tener su propio desglose (trigger de la 0165).
+  const puedeDesglosar = esCreacion && madre === NONE;
+
+  const setSub = (i: number, cambio: Partial<SubtareaBorrador>) =>
+    setSubtareas((prev) => prev.map((s, j) => (j === i ? { ...s, ...cambio } : s)));
+
+  function reset() {
+    setTitulo("");
+    setDescripcion("");
+    setAsignado(NONE);
+    setCliente(NONE);
+    setFecha("");
+    setMadre(NONE);
+    setLinks([]);
+    setSubtareas([]);
+  }
 
   function submit() {
     if (!titulo.trim()) {
@@ -82,6 +125,36 @@ export function TaskFormDialog({
       toast.error(chequeo.error!);
       return;
     }
+    const linksOk = normalizarLinks(links);
+    if (linksOk.error) {
+      toast.error(linksOk.error);
+      return;
+    }
+    const subsPayload: {
+      titulo: string;
+      descripcion: string;
+      asignado_a_id: string | null;
+      fecha_limite: string | null;
+      links: ReturnType<typeof normalizarLinks>["links"];
+    }[] = [];
+    if (puedeDesglosar) {
+      for (const s of subtareas) {
+        if (!s.titulo.trim()) continue;
+        const l = normalizarLinks(s.links);
+        if (l.error) {
+          toast.error(`Subtarea "${s.titulo.trim()}": ${l.error}`);
+          return;
+        }
+        subsPayload.push({
+          titulo: s.titulo.trim(),
+          descripcion: s.descripcion,
+          asignado_a_id: s.asignado === NONE ? null : s.asignado,
+          fecha_limite: s.fecha || null,
+          links: l.links,
+        });
+      }
+    }
+
     start(async () => {
       const payload = {
         titulo: titulo.trim(),
@@ -93,102 +166,237 @@ export function TaskFormDialog({
         fecha_limite: chequeo.fecha!,
         aprobador_id: aprobador === NONE ? null : aprobador,
         requiere_aprobacion: aprobador !== NONE,
-        ...(mode === "create" && madre !== NONE ? { parent_id: madre } : {}),
       };
-      const res =
-        mode === "create"
-          ? await createTask(payload)
-          : await updateTask(task!.id, { ...payload, estado });
+      const res = esCreacion
+        ? await createTask({
+            ...payload,
+            ...(madre !== NONE ? { parent_id: madre } : {}),
+            links: linksOk.links,
+            subtareas: subsPayload,
+          })
+        : await updateTask(task!.id, { ...payload, estado });
       if (res?.error) {
         toast.error("No se pudo guardar: " + res.error);
         return;
       }
-      toast.success(mode === "create" ? "Tarea creada" : "Tarea actualizada");
+      toast.success(
+        esCreacion
+          ? subsPayload.length
+            ? `Ticket creado con ${subsPayload.length} ${subsPayload.length === 1 ? "subtarea" : "subtareas"}`
+            : "Tarea creada"
+          : "Tarea actualizada"
+      );
       setOpen(false);
-      if (mode === "create") {
-        setTitulo("");
-        setDescripcion("");
-        setAsignado(NONE);
-        setCliente(NONE);
-        setFecha("");
-        setMadre(NONE);
-      }
-      router.refresh();
+      if (esCreacion) reset();
+      const nuevoId = esCreacion && res && "id" in res ? (res.id as string | undefined) : undefined;
+      // El ticket con desglose se abre: es donde se sigue trabajando.
+      if (nuevoId && subsPayload.length) router.push(`/tareas/${nuevoId}`);
+      else router.refresh();
     });
   }
+
+  const selectUsuarios = (value: string, onChange: (v: string) => void, vacio: string, clase = "") => (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className={clase}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={NONE}>{vacio}</SelectItem>
+        {users.map((u) => (
+          <SelectItem key={u.id} value={u.id}>
+            {u.nombre}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-5xl">
         <DialogHeader>
-          <DialogTitle>
-            {mode === "create" ? "Nueva tarea" : "Editar tarea"}
-          </DialogTitle>
+          <DialogTitle>{esCreacion ? "Nueva tarea" : "Editar tarea"}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          {/* Colgar la tarea de un ticket, como el "parent" de Jira. Va PRIMERO
-              porque cambia qué estás creando: una tarea suelta o un paso de un
-              trabajo más grande. */}
-          {mode === "create" && tickets.length > 0 && (
+
+        <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_17rem]">
+          {/* ── Lo que se escribe ── */}
+          <div className="min-w-0 space-y-5">
             <div className="space-y-2">
-              <Label>Parte de un ticket</Label>
-              <Select value={madre} onValueChange={setMadre}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>Tarea suelta</SelectItem>
-                  {tickets.map((tk) => (
-                    <SelectItem key={tk.id} value={tk.id}>
-                      {tk.numero ? `JD-${tk.numero} · ` : ""}
-                      {tk.titulo}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {madre !== NONE && (
-                <p className="text-[11px] text-muted-foreground">
-                  Va a quedar adentro de ese ticket, en su desglose.
-                </p>
-              )}
+              <Label htmlFor="titulo">Título</Label>
+              <Input
+                id="titulo"
+                value={titulo}
+                onChange={(e) => setTitulo(e.target.value)}
+                placeholder="Ej: Contenido 1 al 15 de octubre · Impermax"
+                className="text-base"
+              />
             </div>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="titulo">Título</Label>
-            <Input
-              id="titulo"
-              value={titulo}
-              onChange={(e) => setTitulo(e.target.value)}
-              placeholder="Ej: Calendario de contenido junio"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="desc">Descripción (acepta Markdown)</Label>
-            <Textarea
-              id="desc"
-              rows={4}
-              value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-              placeholder="**Detalle** de la tarea, checklist, etc."
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Asignar a</Label>
-              <Select value={asignado} onValueChange={setAsignado}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>Sin asignar</SelectItem>
-                  {users.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="desc">Descripción</Label>
+              <Textarea
+                id="desc"
+                rows={6}
+                value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
+                placeholder="Qué hay que hacer, con el detalle necesario: copys, indicaciones, fechas de publicación…"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Acepta formato: **negrita**, listas con guiones y casillas con - [ ].
+              </p>
+            </div>
+
+            {esCreacion && (
+              <div className="space-y-2">
+                <Label>Links de referencia</Label>
+                <LinksEditor value={links} onChange={setLinks} />
+              </div>
+            )}
+
+            {puedeDesglosar && (
+              <div className="rounded-lg border">
+                <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
+                  <div className="flex items-center gap-2 text-sm font-semibold">
+                    <ListTree className="h-4 w-4 text-muted-foreground" />
+                    Subtareas
+                    {subtareas.length > 0 && (
+                      <span className="font-normal text-muted-foreground">({subtareas.length})</span>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => setSubtareas((prev) => [...prev, { ...subtareaVacia(), abierta: false }])}
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" /> Agregar subtarea
+                  </Button>
+                </div>
+
+                {subtareas.length === 0 ? (
+                  <p className="px-3 py-3 text-xs text-muted-foreground">
+                    Dividí el trabajo en partes: una subtarea por pieza, por publicación o por
+                    paso. Cada una tiene su responsable, su fecha y su propio detalle.
+                  </p>
+                ) : (
+                  <ul className="divide-y">
+                    {subtareas.map((s, i) => (
+                      <li key={i} className="space-y-2 px-3 py-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 shrink-0"
+                            onClick={() => setSub(i, { abierta: !s.abierta })}
+                            title={s.abierta ? "Ocultar detalle" : "Ver detalle"}
+                          >
+                            {s.abierta ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          </Button>
+                          <Input
+                            value={s.titulo}
+                            onChange={(e) => setSub(i, { titulo: e.target.value })}
+                            placeholder={`Subtarea ${i + 1} (ej: Carrusel «5 señales»)`}
+                            className="h-8 min-w-[10rem] flex-1 text-sm"
+                          />
+                          {selectUsuarios(s.asignado, (v) => setSub(i, { asignado: v }), "Como el ticket", "h-8 w-40 text-xs")}
+                          <Input
+                            type="date"
+                            value={s.fecha}
+                            onChange={(e) => setSub(i, { fecha: e.target.value })}
+                            className="h-8 w-36 text-xs"
+                            title="Entrega (vacío = la del ticket)"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 shrink-0"
+                            onClick={() => setSubtareas((prev) => prev.filter((_, j) => j !== i))}
+                            title="Quitar subtarea"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        {s.abierta && (
+                          <div className="ml-9 space-y-2 rounded-md bg-muted/40 p-3">
+                            <Textarea
+                              rows={3}
+                              value={s.descripcion}
+                              onChange={(e) => setSub(i, { descripcion: e.target.value })}
+                              placeholder="El detalle de esta subtarea: el copy exacto, qué va en cada placa, indicaciones para diseño o edición…"
+                              className="bg-background text-sm"
+                            />
+                            <LinksEditor value={s.links} onChange={(v) => setSub(i, { links: v })} compacto />
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {subtareas.length > 0 && (
+                  <p className="border-t px-3 py-2 text-[11px] text-muted-foreground">
+                    Heredan cliente, área y prioridad del ticket. Sin responsable o fecha, usan
+                    los del ticket.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ── Los campos del ticket ── */}
+          <div className="space-y-4 md:border-l md:pl-6">
+            {esCreacion && tickets.length > 0 && (
+              <div className="space-y-2">
+                <Label>Parte de un ticket</Label>
+                <Select value={madre} onValueChange={setMadre}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Tarea suelta</SelectItem>
+                    {tickets.map((tk) => (
+                      <SelectItem key={tk.id} value={tk.id}>
+                        {tk.numero ? `JD-${tk.numero} · ` : ""}
+                        {tk.titulo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {madre !== NONE && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Va a quedar adentro de ese ticket, en su desglose.
+                  </p>
+                )}
+              </div>
+            )}
+            {!esCreacion && (
+              <div className="space-y-2">
+                <Label>Estado</Label>
+                <Select value={estado} onValueChange={setEstado}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(STATUS_LABEL).map(([v, l]) => (
+                      <SelectItem key={v} value={v}>
+                        {l}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Responsable</Label>
+              {selectUsuarios(asignado, setAsignado, "Sin asignar")}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fecha">
+                Fecha límite <span className="text-destructive">*</span>
+              </Label>
+              <Input id="fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Cliente</Label>
@@ -236,66 +444,23 @@ export function TaskFormDialog({
                 </SelectContent>
               </Select>
             </div>
-            {mode === "edit" && (
-              <div className="space-y-2">
-                <Label>Estado</Label>
-                <Select value={estado} onValueChange={setEstado}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(STATUS_LABEL).map(([v, l]) => (
-                      <SelectItem key={v} value={v}>
-                        {l}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
             <div className="space-y-2">
-              <Label htmlFor="fecha">
-                Fecha límite <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="fecha"
-                type="date"
-                value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2 col-span-2">
               <Label>Requiere aprobación de</Label>
-              <Select value={aprobador} onValueChange={setAprobador}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>No requiere aprobación</SelectItem>
-                  {users.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {selectUsuarios(aprobador, setAprobador, "No requiere aprobación")}
               <p className="text-[10px] text-muted-foreground">
-                Si elegís un aprobador, le llega notificación cuando se crea la tarea
-                y cuando pasa a &quot;en revisión&quot; o &quot;completada&quot;.
+                Le llega aviso cuando se crea la tarea y cuando pasa a &quot;en revisión&quot; o
+                &quot;completada&quot;.
               </p>
             </div>
           </div>
         </div>
+
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => setOpen(false)}
-            disabled={pending}
-          >
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={pending}>
             Cancelar
           </Button>
           <Button onClick={submit} disabled={pending}>
-            {pending ? "Guardando…" : "Guardar"}
+            {pending ? "Guardando…" : esCreacion && subtareas.some((s) => s.titulo.trim()) ? "Crear ticket" : "Guardar"}
           </Button>
         </DialogFooter>
       </DialogContent>

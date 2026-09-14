@@ -30,6 +30,20 @@ export async function createTask(input: {
   requiere_aprobacion?: boolean;
   /** Si viene, la tarea nace como subtarea de ese ticket. */
   parent_id?: string | null;
+  /** Links de referencia, ya normalizados (lib/tareas/links). */
+  links?: TaskLink[];
+  /**
+   * El desglose, cargado en el mismo formulario: el ticket nace con sus
+   * subtareas. Heredan cliente, área y prioridad del ticket; si no traen
+   * responsable o fecha, usan los del ticket.
+   */
+  subtareas?: {
+    titulo: string;
+    descripcion?: string | null;
+    asignado_a_id?: string | null;
+    fecha_limite?: string | null;
+    links?: TaskLink[];
+  }[];
 }) {
   const { supabase, userId } = await uid();
   // Toda tarea lleva fecha límite: sin ella no aparece en el aviso diario y
@@ -37,25 +51,73 @@ export async function createTask(input: {
   // porque este es el único paso por el que pasan todas.
   const fecha = validarFechaLimite(input.fecha_limite);
   if (!fecha.ok) return { error: fecha.error! };
-  const { error } = await supabase.from("tasks").insert({
-    titulo: input.titulo,
-    descripcion: input.descripcion || null,
-    asignado_a_id: input.asignado_a_id || null,
-    creado_por_id: userId,
-    cliente_id: input.cliente_id || null,
-    area: input.area,
-    prioridad: input.prioridad,
-    fecha_limite: fecha.fecha,
-    aprobador_id: input.aprobador_id || null,
-    requiere_aprobacion: input.requiere_aprobacion ?? !!input.aprobador_id,
-    // El trigger de la 0165 rechaza anidar una subtarea dentro de otra; acá
-    // solo se pasa lo que eligieron.
-    parent_id: input.parent_id || null,
-  });
+
+  const subtareas = (input.subtareas ?? []).filter((s) => s.titulo.trim());
+  if (subtareas.length && input.parent_id) {
+    return { error: "Una subtarea no puede tener su propio desglose: cargá las subtareas en el ticket." };
+  }
+  // Las fechas de las subtareas se validan ANTES de crear nada, así un error en
+  // la quinta no deja un ticket a medio cargar.
+  const fechasSub: string[] = [];
+  for (const s of subtareas) {
+    const f = validarFechaLimite(s.fecha_limite || fecha.fecha);
+    if (!f.ok) return { error: `Subtarea "${s.titulo.trim()}": ${f.error}` };
+    fechasSub.push(f.fecha!);
+  }
+
+  const { data: creada, error } = await supabase
+    .from("tasks")
+    .insert({
+      titulo: input.titulo,
+      descripcion: input.descripcion || null,
+      asignado_a_id: input.asignado_a_id || null,
+      creado_por_id: userId,
+      cliente_id: input.cliente_id || null,
+      area: input.area,
+      prioridad: input.prioridad,
+      fecha_limite: fecha.fecha,
+      aprobador_id: input.aprobador_id || null,
+      requiere_aprobacion: input.requiere_aprobacion ?? !!input.aprobador_id,
+      // El trigger de la 0165 rechaza anidar una subtarea dentro de otra; acá
+      // solo se pasa lo que eligieron.
+      parent_id: input.parent_id || null,
+      ...(input.links?.length ? { links: input.links } : {}),
+    })
+    .select("id")
+    .single();
   if (error) return { error: error.message };
+  const id = (creada as { id: string }).id;
+
+  if (subtareas.length) {
+    const { error: errSubs } = await supabase.from("tasks").insert(
+      subtareas.map((s, i) => ({
+        titulo: s.titulo.trim(),
+        descripcion: s.descripcion?.trim() || null,
+        asignado_a_id: s.asignado_a_id || input.asignado_a_id || null,
+        creado_por_id: userId,
+        cliente_id: input.cliente_id || null,
+        area: input.area,
+        prioridad: input.prioridad,
+        fecha_limite: fechasSub[i],
+        parent_id: id,
+        ...(s.links?.length ? { links: s.links } : {}),
+      }))
+    );
+    if (errSubs) {
+      return { error: `El ticket se creó, pero no las subtareas: ${errSubs.message}`, id };
+    }
+    if (input.cliente_id) {
+      try {
+        await ensureDriveFolder(id);
+      } catch (e) {
+        console.error("createTask → carpeta de Drive:", e);
+      }
+    }
+  }
+
   revalidatePath("/tareas");
   revalidatePath("/dashboard");
-  return { ok: true };
+  return { ok: true, id };
 }
 
 
@@ -77,6 +139,8 @@ export async function addSubtarea(input: {
   descripcion?: string | null;
   asignado_a_id?: string | null;
   fecha_limite?: string | null;
+  /** Links de referencia, ya normalizados (lib/tareas/links). */
+  links?: TaskLink[];
 }) {
   const { supabase, userId } = await uid();
   if (!input.titulo.trim()) return { error: "Falta el título de la subtarea." };
@@ -114,6 +178,7 @@ export async function addSubtarea(input: {
     prioridad: m.prioridad,
     fecha_limite: fecha.fecha,
     parent_id: input.parentId,
+    ...(input.links?.length ? { links: input.links } : {}),
   });
   if (error) return { error: error.message };
 

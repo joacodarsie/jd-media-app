@@ -41,6 +41,29 @@ describe("esLinkValido", () => {
   });
 });
 
+describe("historias", () => {
+  const base = {
+    estadoNuevo: "publicado",
+    estadoAnterior: "aprobado",
+    pieza: {},
+    creadaEn: "2026-09-14",
+  };
+
+  it("una historia se marca publicada sin link: dura 24 h y no tiene link fijo", () => {
+    expect(chequearLinkParaPublicar({ ...base, tipo: "historia" }).motivo).toBeNull();
+  });
+
+  it("si igual traen un link roto, se frena", () => {
+    expect(chequearLinkParaPublicar({ ...base, tipo: "historia", linkNuevo: "ig.com/x" }).motivo).toContain(
+      "no parece"
+    );
+  });
+
+  it("un reel sigue pidiendo el link", () => {
+    expect(chequearLinkParaPublicar({ ...base, tipo: "reel" }).motivo).toContain("Falta el link");
+  });
+});
+
 describe("chequearLinkParaPublicar", () => {
   const base = {
     estadoNuevo: "publicado",

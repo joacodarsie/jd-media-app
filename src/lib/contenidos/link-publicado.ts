@@ -58,6 +58,11 @@ export function esLinkValido(url: string | null | undefined): boolean {
  */
 export const LINK_OBLIGATORIO_DESDE = "2026-09-13";
 
+/** ¿A este tipo de pieza se le pide el link al publicarla? Todo menos historias. */
+export function tiposQuePidenLink(tipo: string | null | undefined): boolean {
+  return tipo !== "historia";
+}
+
 export interface ChequeoLink {
   /** null = se puede publicar. Con texto = el motivo para frenar. */
   motivo: string | null;
@@ -74,6 +79,8 @@ export function chequearLinkParaPublicar(input: {
   estadoNuevo: string;
   estadoAnterior: string;
   pieza: LinksDePieza;
+  /** Tipo de pieza. Las historias no tienen link fijo: no se les exige. */
+  tipo?: string | null;
   /** created_at de la pieza. Sin fecha se asume vieja y no se le exige nada. */
   creadaEn?: string | null;
   linkNuevo?: string | null;
@@ -90,6 +97,11 @@ export function chequearLinkParaPublicar(input: {
     return { motivo: "Ese link no parece una dirección válida. Tiene que empezar con https://" };
   }
   if (trajoLink) return { motivo: null };
+
+  // Una historia desaparece a las 24 horas y no tiene un link de posteo que
+  // se pueda guardar: exigirlo trababa a las CM (15/9, pedido de Belén) sin
+  // ganar nada, porque ese link se rompe al día siguiente.
+  if (!tiposQuePidenLink(input.tipo)) return { motivo: null };
 
   // Sin fecha se asume vieja y no se exige: que falte el dato es una falla
   // nuestra al leerlo, y trabar a alguien por eso es peor que dejar pasar una

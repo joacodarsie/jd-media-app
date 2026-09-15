@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { tiposQuePidenLink } from "@/lib/contenidos/link-publicado";
 
 const ALL_STATUSES: PublicationStatus[] = [
   "idea",
@@ -35,7 +36,7 @@ export function PublicationStatusSelect({
   className,
   size = "sm",
 }: {
-  publication: Pick<Publication, "id" | "estado">;
+  publication: Pick<Publication, "id" | "estado"> & { tipo?: string | null };
   className?: string;
   size?: "sm" | "md";
 }) {
@@ -94,7 +95,8 @@ export function PublicationStatusSelect({
     if (t === localEstado) return;
     // "Publicado" pide el link del posteo. Es el mismo gesto que ya existe
     // para "pedir cambios": se abre un campito abajo en vez de un diálogo.
-    if (t === "publicado") {
+    // Las historias no tienen link fijo (duran 24 h): se marcan directo.
+    if (t === "publicado" && tiposQuePidenLink(publication.tipo)) {
       setPendingNote(t);
       setInlineError(null);
       return;

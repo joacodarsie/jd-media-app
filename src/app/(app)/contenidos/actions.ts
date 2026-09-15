@@ -187,7 +187,7 @@ export async function changePublicationStatus(
   const { data: pub } = await admin
     .from("publications")
     .select(
-      "cliente_id, estado, titulo, asset_url, fecha_publicacion, created_at, link_instagram"
+      "cliente_id, estado, titulo, tipo, asset_url, fecha_publicacion, created_at, link_instagram"
     )
     .eq("id", id)
     .maybeSingle();
@@ -209,6 +209,7 @@ export async function changePublicationStatus(
     estadoNuevo: estado,
     estadoAnterior: pub.estado as string,
     pieza: piezaLinks,
+    tipo: (pub as { tipo?: string | null }).tipo,
     creadaEn: piezaLinks.created_at,
     linkNuevo: linkPosteo,
   });
@@ -490,11 +491,12 @@ export async function bulkChangePublicationStatus(ids: string[], estado: string)
     const { data: piezas } = await writeDb()
       .from("publications")
       .select(
-        "id, titulo, estado, created_at, link_instagram"
+        "id, titulo, tipo, estado, created_at, link_instagram"
       )
       .in("id", ids);
     const filas = (piezas ?? []) as unknown as (LinksDePieza & {
       titulo: string | null;
+      tipo: string | null;
       estado: string;
       created_at: string | null;
     })[];
@@ -504,6 +506,7 @@ export async function bulkChangePublicationStatus(ids: string[], estado: string)
           estadoNuevo: "publicado",
           estadoAnterior: x.estado,
           pieza: x,
+          tipo: x.tipo,
           creadaEn: x.created_at,
         }).motivo !== null
     );

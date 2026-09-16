@@ -284,3 +284,40 @@ export function ensureHttp(url: string | null | undefined): string | null {
   if (!v) return null;
   return v.startsWith("http") ? v : `https://${v}`;
 }
+
+/**
+ * ¿Este contacto sirve para escribirle?
+ *
+ * Pedido del dueño (16/9/2026): *"si no tiene teléfono o Instagram, el contacto
+ * no me sirve"*. Una búsqueda le devolvió filas con "sin teléfono" y solo un
+ * link: para contactarlas hay que entrar a la web, buscar el número y recién
+ * ahí escribir, y eso en volumen no lo hace nadie.
+ *
+ * La web sola NO alcanza. Un fijo sí cuenta —se puede llamar, aunque no tenga
+ * WhatsApp—, pero la tabla lo marca para que el equipo lo sepa.
+ */
+export function esContactable(c: {
+  telefono?: string | null;
+  instagram?: string | null;
+}): boolean {
+  return !!c.telefono?.trim() || !!c.instagram?.trim();
+}
+
+/**
+ * Los mejores primero: celular con Instagram, después celular, después
+ * Instagram solo, y al final los que únicamente tienen un fijo.
+ */
+export function ordenarPorContactabilidad<
+  T extends { telefono?: string | null; instagram?: string | null },
+>(contactos: T[]): T[] {
+  const puntaje = (c: T) => {
+    const tel = c.telefono?.trim();
+    const movil = !!tel && !esProbableFijoAr(tel);
+    const ig = !!c.instagram?.trim();
+    if (movil && ig) return 0;
+    if (movil) return 1;
+    if (ig) return 2;
+    return 3;
+  };
+  return [...contactos].sort((a, b) => puntaje(a) - puntaje(b));
+}

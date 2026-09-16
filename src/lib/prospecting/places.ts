@@ -12,7 +12,7 @@
  * el volumen de la agencia entra holgado en el tramo gratis.
  */
 import { createAdmin } from "@/lib/supabase/admin";
-import { esProbableFijoAr } from "./shared";
+import { esContactable, ordenarPorContactabilidad } from "./shared";
 
 const ENDPOINT = "https://places.googleapis.com/v1/places:searchText";
 
@@ -189,15 +189,13 @@ export async function searchPlaces(input: {
 }
 
 /**
- * Se queda con los que se pueden trabajar: hace falta un celular o un sitio web
- * (mismo criterio que el extractor con IA — un fijo suelto no sirve para
- * WhatsApp y sin web tampoco hay dónde buscar el número real).
+ * Se queda con los que se pueden trabajar: tiene que haber un teléfono (Maps
+ * casi siempre lo trae). Un negocio con web pero sin número no entra — es
+ * exactamente lo que el equipo no puede contactar (pedido del dueño, 16/9).
+ * Los celulares van primero; el fijo suelto, al final.
  */
 export function filtrarContactables(contactos: PlaceContacto[]): PlaceContacto[] {
-  return contactos.filter((c) => {
-    const movil = !!c.telefono && !esProbableFijoAr(c.telefono);
-    return movil || !!c.sitio_web;
-  });
+  return ordenarPorContactabilidad(contactos.filter((c) => esContactable(c)));
 }
 
 /** Traduce los errores de Google a algo accionable. */

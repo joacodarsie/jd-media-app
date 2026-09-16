@@ -6,6 +6,7 @@ import { FUENTES_OK } from "@/lib/prospecting/shared";
 import { searchPlaces, filtrarContactables, placesConfigured } from "@/lib/prospecting/places";
 import { friendlyAiError } from "@/lib/ai/errors";
 import { IndiceContactos, claveEmpresa } from "@/lib/prospecting/repetidos";
+import { esContactable } from "@/lib/prospecting/shared";
 
 /** Quién puede sacar contactos de Google Places (no gasta tokens). */
 const PROSPECTING_ROLES = ["admin", "coordinador", "comercial", "prospecting"];
@@ -171,6 +172,9 @@ export async function POST(
         // Repetido contra la base (cualquier campaña) o contra esta misma corrida.
         const key = claveEmpresa(ct.empresa);
         if (!key || deEstaCorrida.has(key) || indice.esRepetido(ct)) continue;
+        // Última red: sin teléfono ni Instagram el contacto no se puede
+        // trabajar, así que no se guarda aunque la IA lo haya devuelto.
+        if (!esContactable(ct)) continue;
         deEstaCorrida.add(key);
         nombresDichos.push(ct.empresa);
         contactos.push(ct);

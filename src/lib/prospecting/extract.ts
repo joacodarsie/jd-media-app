@@ -12,7 +12,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { AI_MODEL_FAST } from "@/lib/ai/models";
 import { trackAiUsage } from "@/lib/ai/usage";
 import { toHandle } from "./verify";
-import { esProbableFijoAr } from "./shared";
+import { esContactable, ordenarPorContactabilidad } from "./shared";
 
 const client = new Anthropic();
 
@@ -103,8 +103,8 @@ QUÉ TRAER (solo esto, nada más)
   Un fijo publicado como número de recepción hace que el equipo escriba a un chat que no existe.
   - Buscá el CELULAR / WhatsApp que el negocio publica para que le escriban (suele estar en el botón "WhatsApp" de la web, en la ficha de Maps o en la bio de Instagram).
   - En Argentina los celulares se publican con "15" (ej: 351 15 331-9555) o con +54 9. Los que arrancan con 4 después del código de área (ej: 351 422-3152, 11 4321-8765) son FIJOS.
-  - Si el único número que conseguís es un fijo, traelo igual, PERO en ese caso es OBLIGATORIO traer además el instagram o el sitio_web para que se pueda llegar por otro lado.
-- instagram: el handle de su Instagram (solo el usuario, sin @ y sin URL, ej: gimnasioolimpo). Es LA VÍA ALTERNATIVA cuando no hay WhatsApp, así que buscalo SIEMPRE, incluso si ya consiguiste teléfono. PROHIBIDO deducirlo del nombre de la empresa: ponelo solo si viste el perfil real en un resultado. Si no lo viste, null.
+  - Si el único número que conseguís es un fijo, traelo igual (se puede llamar), pero buscá también el instagram: es por donde se le escribe.
+- instagram: el handle de su Instagram (solo el usuario, sin @ y sin URL, ej: gimnasioolimpo). Es LA VÍA ALTERNATIVA cuando no hay WhatsApp y es OBLIGATORIO buscarlo cuando no conseguiste teléfono; buscalo igual aunque ya tengas el número. PROHIBIDO deducirlo del nombre de la empresa: ponelo solo si viste el perfil real en un resultado. Si no lo viste, null.
 - sitio_web: su sitio oficial, o el link de donde sacaste los datos (ficha de Maps, directorio, perfil). TRAELO SIEMPRE que exista, incluso si ya tenés teléfono e Instagram: el equipo entra a la web a buscar el WhatsApp real y a mirar el negocio antes de escribir. Es el dato que más se usa y el que más falta.
 
 CÓMO
@@ -115,7 +115,8 @@ REGLAS DURAS
 - PROHIBIDO inventar. Nada de teléfonos "de ejemplo" ni handles supuestos. Si no lo viste en un resultado real, va null.
 - Solo negocios reales que existan hoy. Nada de agencias de marketing (son competencia) ni multinacionales grandes.
 - Traé cada empresa una sola vez.
-- CADA empresa tiene que quedar CONTACTABLE de verdad. Antes de incluirla, chequeá que tenga AL MENOS UNA de estas tres: (a) un celular/WhatsApp, (b) instagram, (c) sitio_web. Si solo conseguiste un teléfono FIJO y nada más, NO la incluyas: el equipo no puede escribirle.
+- 🚫 REGLA QUE NO SE NEGOCIA: una empresa SIN teléfono y SIN instagram NO VA EN LA LISTA. El sitio web NO alcanza — nadie entra a una web a buscar el número antes de escribir, así que ese contacto se descarta igual. Si encontraste la empresa pero no su número ni su Instagram, hacé UNA búsqueda más para conseguirlo ("<empresa> <zona> whatsapp", "<empresa> instagram"); si aun así no aparece, descartala y traé otra en su lugar.
+- Preferí siempre el CELULAR con Instagram. Es mejor traer 8 empresas con número que 15 a medias.
 - Ideal por empresa: celular + instagram + sitio_web. Cuantas más vías, mejor: si una falla, el equipo llega por otra en vez de perder el contacto.
 
 SALIDA
@@ -146,13 +147,9 @@ function safeParse(raw: string): ExtractedContact[] {
     const telefono = str(o.telefono);
     const instagram = toHandle(str(o.instagram));
     const sitioWeb = str(o.sitio_web);
-    // Tiene que quedar alguna vía usable. El sitio web CUENTA: es donde el
-    // equipo entra a buscar el WhatsApp real cuando el número publicado es un
-    // fijo. Y un fijo solo, sin web ni Instagram, no sirve: wa.me abre un chat
-    // muerto y el contacto se descarta igual, pero después de perder el tiempo.
-    const soloFijo = !!telefono && esProbableFijoAr(telefono);
-    const tieneVia = (!!telefono && !soloFijo) || !!instagram || !!sitioWeb;
-    if (!tieneVia) continue;
+    // Sin teléfono ni Instagram no entra: un link suelto no es un contacto
+    // (pedido del dueño, 16/9 — le volvían filas con "sin teléfono").
+    if (!esContactable({ telefono, instagram })) continue;
     out.push({
       empresa: empresa.slice(0, 160),
       contacto_nombre: str(o.contacto_nombre)?.slice(0, 120) ?? null,
@@ -198,5 +195,6 @@ export async function extractContacts(
     .join("\n")
     .trim();
 
-  return safeParse(text).slice(0, n);
+  // Los mejores arriba: celular con Instagram primero, fijo suelto al final.
+  return ordenarPorContactabilidad(safeParse(text)).slice(0, n);
 }

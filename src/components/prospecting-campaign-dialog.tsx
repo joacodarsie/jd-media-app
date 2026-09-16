@@ -24,6 +24,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PROSPECTING_CHANNELS, PROSPECTING_LANGS } from "@/lib/prospecting/shared";
+import { AudioATexto } from "@/components/audio-a-texto";
+import type { CampaniaSugerida } from "@/lib/prospecting/campania-desde-texto";
 import {
   createCampaign,
   updateCampaign,
@@ -80,6 +82,41 @@ export function ProspectingCampaignDialog({
   const [idioma, setIdioma] = useState(campaign?.idioma ?? "es_ar");
   const [suggesting, setSuggesting] = useState(false);
   const [suggestions, setSuggestions] = useState<SectorSuggestion[]>([]);
+  // El atajo: una frase ("tecno por Córdoba") y la IA completa toda la ficha.
+  const [frase, setFrase] = useState("");
+  const [completando, setCompletando] = useState(false);
+
+  async function completarDesdeFrase() {
+    const texto = frase.trim();
+    if (texto.length < 3) return void toast.error("Contame a quién querés prospectar.");
+    setCompletando(true);
+    try {
+      const res = await fetch("/api/prospeccion/campania-desde-texto", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texto }),
+      });
+      const data = (await res.json()) as { campania?: CampaniaSugerida; error?: string };
+      if (!res.ok || !data.campania) {
+        toast.error(data.error ?? "No se pudo completar.");
+        return;
+      }
+      const c = data.campania;
+      setNombre(c.nombre);
+      setRubro(c.rubro);
+      setUbicacion(c.ubicacion ?? "");
+      setServicio(c.servicio ?? NONE);
+      setAngulo(c.angulo ?? "");
+      setCanal(c.canal);
+      setIdioma(c.idioma);
+      setSuggestions([]);
+      toast.success("Campos completados. Revisalos antes de crear.");
+    } catch {
+      toast.error("Error de red al completar.");
+    } finally {
+      setCompletando(false);
+    }
+  }
 
   async function pedirSugerencias() {
     setSuggesting(true);
@@ -159,6 +196,40 @@ export function ProspectingCampaignDialog({
           Una campaña es un <b>cluster</b>: un rubro homogéneo en una zona. Cuanto
           más afilado, mejores leads y mensajes. Ej: <i>gimnasios premium de Córdoba</i>.
         </p>
+
+        {mode === "create" && canSuggest && (
+          <div className="rounded-lg border border-primary/40 bg-primary/5 p-3">
+            <Label className="text-xs">Contame la campaña en una línea</Label>
+            <Textarea
+              rows={2}
+              value={frase}
+              onChange={(e) => setFrase(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) completarDesdeFrase();
+              }}
+              placeholder="Ej: tecno por Córdoba · peluquerías premium de Rosario · gimnasios que no hacen pauta"
+              className="mt-1 bg-background text-sm"
+              disabled={completando}
+            />
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+              <AudioATexto
+                onTexto={(t) => setFrase((prev) => (prev.trim() ? prev.trim() + " " + t : t))}
+                disabled={completando}
+              />
+              <Button type="button" size="sm" onClick={completarDesdeFrase} disabled={completando}>
+                {completando ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="mr-2 h-4 w-4" />
+                )}
+                Completar con IA
+              </Button>
+            </div>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              Completa rubro, zona, servicio, ángulo, canal e idioma. Después lo editás.
+            </p>
+          </div>
+        )}
 
         {mode === "create" && canSuggest && (
           <div className="rounded-lg border border-dashed p-3">

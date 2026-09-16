@@ -43,6 +43,8 @@ export interface CampaignFormValue {
   angulo: string | null;
   canal: string;
   idioma: string;
+  /** Quién manda los mensajes de la campaña: con su nombre se firman. */
+  escribe_id?: string | null;
 }
 
 interface SectorSuggestion {
@@ -56,12 +58,18 @@ export function ProspectingCampaignDialog({
   mode,
   campaign,
   services,
+  equipo = [],
+  yoId,
   trigger,
   canSuggest = false,
 }: {
   mode: "create" | "edit";
   campaign?: CampaignFormValue;
   services: { slug: string; name: string }[];
+  /** Quiénes pueden figurar como autores de los mensajes. */
+  equipo?: { id: string; nombre: string }[];
+  /** Quien está usando la app: es el autor por defecto al crear. */
+  yoId?: string;
   trigger?: React.ReactNode;
   /**
    * Muestra "Sugerir con IA". Abierto a todo el equipo de prospección desde
@@ -80,6 +88,8 @@ export function ProspectingCampaignDialog({
   const [angulo, setAngulo] = useState(campaign?.angulo ?? "");
   const [canal, setCanal] = useState(campaign?.canal ?? "whatsapp");
   const [idioma, setIdioma] = useState(campaign?.idioma ?? "es_ar");
+  // Quién firma los mensajes. Al crear, arranca en quien está usando la app.
+  const [escribe, setEscribe] = useState(campaign?.escribe_id ?? yoId ?? NONE);
   const [suggesting, setSuggesting] = useState(false);
   const [suggestions, setSuggestions] = useState<SectorSuggestion[]>([]);
   // El atajo: una frase ("tecno por Córdoba") y la IA completa toda la ficha.
@@ -158,6 +168,7 @@ export function ProspectingCampaignDialog({
       angulo: angulo || null,
       canal,
       idioma,
+      escribe_id: escribe === NONE ? null : escribe,
     };
     start(async () => {
       const res =
@@ -349,6 +360,25 @@ export function ProspectingCampaignDialog({
               onChange={(e) => setAngulo(e.target.value)}
               placeholder="Ej: tienen buena marca pero el Instagram está abandonado y no hacen pauta; les traemos socios nuevos con contenido + ads."
             />
+          </div>
+          <div>
+            <Label>Quién escribe los mensajes</Label>
+            <Select value={escribe} onValueChange={setEscribe}>
+              <SelectTrigger>
+                <SelectValue placeholder="Quien los genere" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>Quien los genere</SelectItem>
+                {equipo.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Los mensajes se firman con su nombre: &quot;soy {(equipo.find((u) => u.id === escribe)?.nombre ?? "…").split(" ")[0]} de JD Media&quot;.
+            </p>
           </div>
           <div>
             <Label>Idioma del mensaje</Label>

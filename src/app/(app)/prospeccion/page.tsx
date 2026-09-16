@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Radar, ArrowRight, MapPin, Send, Clock, FolderOpen, ChevronDown } from "lucide-react";
 import { requireRole } from "@/lib/auth";
+import { equipoQueEscribe } from "@/lib/prospecting/equipo";
 import { createAdmin } from "@/lib/supabase/admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,8 +20,9 @@ const ALLOWED = ["admin", "coordinador", "comercial", "prospecting"];
 export default async function ProspeccionPage() {
   // El acceso a la sección ya es el permiso: adentro, todo el equipo de
   // prospección puede usar "Sugerir con IA" al crear una campaña.
-  await requireRole(ALLOWED);
+  const me = await requireRole(ALLOWED);
   const admin = createAdmin();
+  const equipo = await equipoQueEscribe();
 
   const { data: campaigns, error } = await admin
     .from("prospecting_campaigns")
@@ -170,7 +172,13 @@ export default async function ProspeccionPage() {
           >
             📄 Propuestas
           </Link>
-          <ProspectingCampaignDialog mode="create" services={services} canSuggest />
+          <ProspectingCampaignDialog
+            mode="create"
+            services={services}
+            equipo={equipo}
+            yoId={me.id}
+            canSuggest
+          />
         </div>
       </div>
 
@@ -217,7 +225,13 @@ export default async function ProspeccionPage() {
                 Córdoba”</i> o <i>“estudios de abogados en Madrid”</i>.
               </p>
             </div>
-            <ProspectingCampaignDialog mode="create" services={services} canSuggest />
+            <ProspectingCampaignDialog
+              mode="create"
+              services={services}
+              equipo={equipo}
+              yoId={me.id}
+              canSuggest
+            />
           </CardContent>
         </Card>
       ) : usarCarpetas ? (

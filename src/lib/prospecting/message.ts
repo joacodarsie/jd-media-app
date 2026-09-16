@@ -37,6 +37,8 @@ export interface MessageContext {
   idioma: string; // es_ar | es | en
   /** Catálogo real de servicios. Sin esto la IA ofrece SEO/LinkedIn. */
   catalogo?: ServicioAgencia[];
+  /** Quién manda el mensaje: con su nombre se firma. Por defecto, el representante. */
+  autorNombre?: string | null;
 }
 
 function langInstruction(idioma: string): string {
@@ -45,19 +47,29 @@ function langInstruction(idioma: string): string {
   return "Escribí en español rioplatense (voseo), tono cercano y profesional, como habla un cordobés.";
 }
 
-function channelInstruction(canal: string): string {
+function channelInstruction(canal: string, autor: string): string {
   if (canal === "email")
-    return `Es un EMAIL en frío. Empezá con una línea "Asunto: ..." breve y atractiva, después el cuerpo (4-6 líneas). Firmá como ${AGENCY.representante}, ${AGENCY.brand}.`;
+    return `Es un EMAIL en frío. Empezá con una línea "Asunto: ..." breve y atractiva, después el cuerpo (4-6 líneas). Firmá como ${autor}, ${AGENCY.brand}.`;
   if (canal === "instagram")
     return "Es un DM de Instagram. Muy breve (3-4 líneas), informal pero profesional, sin asunto ni firma formal. Mencioná algo concreto que viste en su perfil.";
   return "Es un mensaje de WhatsApp. Breve (3-5 líneas), cálido y directo. Saludo + presentación de una línea + el gancho + CTA. Sin asunto ni firma formal (se ve el remitente).";
+}
+
+/**
+ * Quién firma el mensaje: quien lo va a mandar, no siempre el dueño. Si lo
+ * manda Matías, el prospecto le contesta a Matías. Sin nadie elegido en la
+ * campaña, firma el representante de la agencia, como antes.
+ */
+export function autorDe(nombre: string | null | undefined): string {
+  return nombre?.trim() || AGENCY.representante;
 }
 
 function buildSystem(ctx: MessageContext): string {
   const servicio = ctx.servicioNombre
     ? `${ctx.servicioNombre}${ctx.servicioDesc ? ` (${ctx.servicioDesc})` : ""}`
     : "marketing digital (gestión de redes, pauta, contenido)";
-  return `Sos ${AGENCY.representante}, de ${AGENCY.brand}, una agencia de marketing digital de Córdoba, Argentina. Escribís el PRIMER mensaje de contacto en frío a un negocio que querés sumar como cliente.
+  const autor = autorDe(ctx.autorNombre);
+  return `Sos ${autor}, de ${AGENCY.brand}, una agencia de marketing digital de Córdoba, Argentina. Escribís el PRIMER mensaje de contacto en frío a un negocio que querés sumar como cliente.
 
 QUÉ OFRECEMOS EN ESTA CAMPAÑA: ${servicio}.
 ÁNGULO / PROPUESTA DE VALOR: ${ctx.angulo ?? "ayudarlos a tener más presencia y traerles más clientes con su marketing digital"}.
@@ -66,7 +78,7 @@ ${bloqueServiciosParaPrompt(ctx.catalogo ?? [], ctx.servicioSlug)}
 
 OBJETIVO REAL: que acepte una REUNIÓN CORTA POR GOOGLE MEET (15-20 min). Ahí se cierran las ventas.
 
-${channelInstruction(ctx.canal)}
+${channelInstruction(ctx.canal, autor)}
 ${langInstruction(ctx.idioma)}
 
 ESTRUCTURA (clave para que respondan)

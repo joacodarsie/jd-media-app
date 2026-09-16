@@ -45,6 +45,32 @@ export interface CampaignInput {
   angulo: string | null;
   canal: string;
   idioma: string;
+  /** Quién manda los mensajes: con su nombre se firman (0175). */
+  escribe_id?: string | null;
+}
+
+/**
+ * El nombre de quien escribe la campaña, para firmar los mensajes.
+ *
+ * Si la campaña no tiene a nadie elegido —o si la 0175 todavía no está
+ * aplicada— firma quien los está generando, que es como funcionaba antes.
+ */
+async function quienEscribe(
+  supabase: Awaited<ReturnType<typeof ctx>>["supabase"],
+  campaignId: string,
+  porDefecto: string
+): Promise<string> {
+  try {
+    const { data } = await supabase
+      .from("prospecting_campaigns")
+      .select("escribe:users!prospecting_campaigns_escribe_id_fkey(nombre)")
+      .eq("id", campaignId)
+      .maybeSingle();
+    const nombre = (data as { escribe?: { nombre?: string } | null } | null)?.escribe?.nombre;
+    return nombre?.trim() || porDefecto;
+  } catch {
+    return porDefecto;
+  }
 }
 
 export async function createCampaign(input: CampaignInput) {
@@ -61,6 +87,8 @@ export async function createCampaign(input: CampaignInput) {
       angulo: input.angulo?.trim() || null,
       canal: input.canal || "whatsapp",
       idioma: input.idioma || "es_ar",
+      // Por defecto la escribe quien la crea: es lo que pasa casi siempre.
+      escribe_id: input.escribe_id ?? userId,
       created_by: userId,
     })
     .select("id")
@@ -82,6 +110,7 @@ export async function updateCampaign(id: string, input: CampaignInput) {
       angulo: input.angulo?.trim() || null,
       canal: input.canal || "whatsapp",
       idioma: input.idioma || "es_ar",
+      ...(input.escribe_id !== undefined ? { escribe_id: input.escribe_id } : {}),
     })
     .eq("id", id);
   if (error) return { error: error.message };
@@ -328,6 +357,11 @@ export async function generateLeadMessage(id: string) {
     canal: c.canal,
     idioma: c.idioma,
     catalogo: await cargarCatalogoServicios(),
+    autorNombre: await quienEscribe(
+      supabase,
+      (lead as { campaign_id: string }).campaign_id,
+      (await requireUser()).nombre
+    ),
   };
 
   let mensaje: string | null;
@@ -844,8 +878,8 @@ export async function regenerateCampaignMessages(campaignId: string) {
       angulo: c.angulo,
       canal: c.canal,
       idioma: c.idioma,
-      // Los firma quien los genera: si los saca Guille, no puede decir "soy Joaquín".
-      autorNombre: me.nombre,
+      // Los firma quien escribe la campaña; si no hay nadie elegido, quien los genera.
+      autorNombre: await quienEscribe(supabase, campaignId, me.nombre),
       // Sin el catálogo real, la IA ofrece servicios que no vendemos.
       catalogo: await cargarCatalogoServicios(),
     });

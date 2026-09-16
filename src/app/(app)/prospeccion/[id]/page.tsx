@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, MapPin, Send, Languages, Target, Table2 } from "lucide-react";
+import { ArrowLeft, MapPin, Send, Languages, Target, Table2, PenLine } from "lucide-react";
 import { requireRole } from "@/lib/auth";
+import { equipoQueEscribe, escribeDeCampania } from "@/lib/prospecting/equipo";
 import { createAdmin } from "@/lib/supabase/admin";
 import { Badge } from "@/components/ui/badge";
 import { ProspectingCampaignDialog } from "@/components/prospecting-campaign-dialog";
@@ -26,8 +27,9 @@ export default async function CampaignDetailPage({
   // Los mensajes plantilla los puede generar todo el equipo de Prospección: es
   // una llamada por campaña y sin ellos no se puede escribir. Lo que escala con
   // el uso ("Sacar contactos con IA") sigue con el permiso `contactos_ia`.
-  await requireRole(ALLOWED);
+  const me = await requireRole(ALLOWED);
   const admin = createAdmin();
+  const equipo = await equipoQueEscribe();
 
   const { data: camp } = await admin
     .from("prospecting_campaigns")
@@ -54,6 +56,9 @@ export default async function CampaignDetailPage({
     .order("orden");
   const services = (svc ?? []) as { slug: string; name: string }[];
   const servicioNombre = services.find((s) => s.slug === c.servicio)?.name ?? null;
+  // Quién firma los mensajes (0175). Si la migración no está, queda null.
+  const escribeId = await escribeDeCampania(c.id);
+  const escribeNombre = equipo.find((u) => u.id === escribeId)?.nombre ?? null;
 
   // Plantilla de mensajes de la campaña (resiliente si falta la 0132).
   let mensajesPlantilla: CampaignMessages | null = null;
@@ -115,6 +120,11 @@ export default async function CampaignDetailPage({
                   <Target className="h-3 w-3" /> {servicioNombre}
                 </span>
               )}
+              {escribeNombre && (
+                <span className="inline-flex items-center gap-1">
+                  <PenLine className="h-3 w-3" /> Escribe {escribeNombre.split(" ")[0]}
+                </span>
+              )}
             </div>
             {c.angulo && (
               <p className="mt-2 max-w-2xl rounded-lg bg-primary/5 px-3 py-2 text-sm">
@@ -134,8 +144,11 @@ export default async function CampaignDetailPage({
                 angulo: c.angulo,
                 canal: c.canal,
                 idioma: c.idioma,
+                escribe_id: escribeId,
               }}
               services={services}
+              equipo={equipo}
+              yoId={me.id}
             />
             <ProspectingCampaignActions id={c.id} estado={c.estado} nombre={c.nombre} />
           </div>

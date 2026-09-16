@@ -364,7 +364,7 @@ function ChannelsSidebar({
           </DialogContent>
         </Dialog>
       </div>
-      <div className="flex-1 overflow-y-auto px-2 pb-4 pt-1">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-4 pt-1">
         <SidebarSection
           title="Canales"
           items={channels.filter((c) => c.kind === "public")}

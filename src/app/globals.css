@@ -91,3 +91,11 @@
   scrollbar-width: thin;
   scrollbar-color: hsl(0 0% 25% / 0.5) transparent;
 }
+
+/* El menú del celular: el dedo tiene que poder arrastrar la lista.
+   Sin -webkit-overflow-scrolling el scroll interno de un panel fijo se traba
+   en iOS, y sin touch-action el gesto vertical compite con el del panel. */
+.sidebar-scroll {
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}

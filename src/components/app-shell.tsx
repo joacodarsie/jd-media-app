@@ -182,14 +182,14 @@ function SidebarContent({
     });
   }
   return (
-    <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
+    <div className="flex h-full max-h-[100dvh] min-h-0 flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex items-center gap-2 px-5 py-5">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#FFD400]">
           <span className="text-sm font-extrabold text-black">JD</span>
         </div>
         <span className="text-lg font-bold">JD Media</span>
       </div>
-      <nav className="sidebar-scroll flex-1 space-y-4 overflow-y-auto px-3 pb-4">
+      <nav className="sidebar-scroll min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-3 pb-4">
         {groups.map((group, gi) => {
           const groupHasActive = group.items.some((i) => i.href === activeHref);
           const isCollapsed = group.label
@@ -277,7 +277,7 @@ function SidebarContent({
           );
         })}
       </nav>
-      <div className="border-t border-sidebar-border px-5 py-3 text-xs text-sidebar-foreground/60">
+      <div className="shrink-0 border-t border-sidebar-border px-5 py-3 text-xs text-sidebar-foreground/60">
         <div className="truncate font-medium text-sidebar-foreground/80">
           {user.nombre}
         </div>
@@ -322,7 +322,7 @@ export function AppShell({
   return (
     <div className="flex min-h-screen">
       <aside className="hidden w-60 shrink-0 md:block">
-        <div className="fixed h-screen w-60">
+        <div className="fixed h-[100dvh] w-60">
           <SidebarContent
             user={user}
             badges={badges}
@@ -333,7 +333,7 @@ export function AppShell({
       </aside>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="left" className="w-64 p-0">
+        <SheetContent side="left" className="h-[100dvh] w-64 p-0">
           <SheetTitle className="sr-only">Menú</SheetTitle>
           <SidebarContent
             user={user}

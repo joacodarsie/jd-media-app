@@ -62,6 +62,20 @@ export function getDeliverables(svc: ClientService): string[] {
         "Integración con WhatsApp Business y/u otros canales.",
         "Mantenimiento y optimización del bot.",
       ];
+    case "gestion_whatsapp":
+      return [
+        "WhatsApp Business configurado con la foto, el diseño y la imagen profesional de la marca.",
+        "Estrategia y ejecución de contenido en los estados de WhatsApp.",
+        "Gestión de grupos de WhatsApp.",
+        "Mensajes a los contactos cercanos y a los leads que ya interactuaron con el contenido.",
+      ];
+    case "chatter":
+      return [
+        "Respuesta de los mensajes que llegan por WhatsApp.",
+        "Filtro de cada consulta antes de la venta: se piden los datos necesarios y se envía la información base.",
+        "Se le pasan al cliente las consultas listas para cerrar; el presupuesto final y la entrega quedan a su cargo.",
+        "El horario de atención queda sujeto a la disponibilidad del chatter.",
+      ];
     case "consultoria":
       return [
         "Reuniones de consultoría según frecuencia acordada.",

@@ -72,6 +72,8 @@ const TIPO_LABEL: Record<string, string> = {
   branding: "Branding",
   web: "Desarrollo web",
   botly: "Botly",
+  gestion_whatsapp: "Gestión de WhatsApp",
+  chatter: "Chatter",
 };
 
 /**

@@ -114,6 +114,8 @@ const SERVICE_LABEL: Record<string, string> = {
   edicion_audiovisual: "Edición audiovisual",
   desarrollo_web: "Desarrollo web",
   botly: "Botly",
+  gestion_whatsapp: "Gestión de WhatsApp",
+  chatter: "Chatter",
   consultoria: "Consultoría",
   otro: "Otro",
 };

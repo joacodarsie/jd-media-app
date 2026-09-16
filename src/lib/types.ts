@@ -42,6 +42,8 @@ export type ServiceType =
   | "desarrollo_web"
   | "branding"
   | "botly"
+  | "gestion_whatsapp"
+  | "chatter"
   | "consultoria"
   | "otro";
 

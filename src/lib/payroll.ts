@@ -719,8 +719,8 @@ export function payrollKindLabel(kind: PayrollLineKind): string {
  */
 export const COMERCIAL_FIXED_MENSUAL = 25000;
 
-// Las comisiones del comercial (cliente nuevo mes 1 + residual, servicio extra
-// y premios) viven en `./payroll/comision-comercial.ts`. Los escalones por
+// Las comisiones del comercial (cliente nuevo mes 1, cartera y servicio extra)
+// viven en `./payroll/comision-comercial.ts`. Los escalones por
 // cantidad de cierres se descartaron el 14/9/2026: no volver a agregarlos.
 
 /** Codifica/decodifica el detalle de una comisión en payroll_items.notas: "rol:base". */

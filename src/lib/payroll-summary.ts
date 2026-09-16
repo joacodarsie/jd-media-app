@@ -259,11 +259,9 @@ export function payModelRules(settings: AgencySettings): PayRule[] {
       label: PUESTO_LABEL.comercial,
       regla: `${comercialFijo ? `${ars(comercialFijo)} fijos por mes + ` : ""}${pct(
         r.comision_cierre ?? 0
-      )} del abono el mes 1 y ${pct(r.comision_residual ?? 0)} por mes del mes 2 al ${
-        1 + (r.comision_residual_meses ?? 0)
-      } de cada cliente que trae, mientras el cliente siga. Si además queda a cargo de la cuenta, en vez de ese residual cobra ${pct(
+      )} del abono el mes 1 de cada cliente que trae y, desde el mes 2, ${pct(
         r.comision_cartera ?? 0
-      )} todos los meses (cartera).`,
+      )} todos los meses de cada cuenta a su cargo (cartera), mientras el cliente siga y pague.`,
       detalles: [
         comercialFijo
           ? "El fijo es por sostener la prospección: se cobra haya cierres o no."
@@ -271,10 +269,7 @@ export function payModelRules(settings: AgencySettings): PayRule[] {
         `Servicio extra a un cliente ya activo: ${pct(
           r.comision_servicio_extra ?? 0
         )} de una sola vez sobre lo que pague ese servicio.`,
-        `Premio del mes: ${ars(r.premio_3_cuentas ?? 0)} con 3 cuentas nuevas, ${ars(
-          r.premio_5_cuentas ?? 0
-        )} con 5 (gestión de redes de ${ars(r.premio_abono_minimo ?? 0)} o más; se cobra el más alto).`,
-        "Se carga sola según quién figura como \"Cerrado por\" en la ficha del cliente y \"Vendido por\" en el servicio.",
+        "Se carga sola según quién figura como \"Cerrado por\" y \"Responsable de la cuenta\" en la ficha del cliente, y \"Vendido por\" en el servicio. Cada cuenta paga un solo 5% de cartera por mes.",
       ].filter(Boolean),
     },
     {

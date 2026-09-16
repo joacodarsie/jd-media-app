@@ -31,7 +31,6 @@ import {
   selectCarteraCommissions,
   selectCloserCommissions,
   selectUpsellCommissions,
-  selectCloserPrizes,
 } from "./payroll/comision-comercial";
 import {
   computeDireccionCreativaLines,
@@ -81,7 +80,7 @@ export interface PeriodPayrollResult {
   salaryConcepto: string;
   clientOptions: { id: string; nombre: string; abono: number }[];
   teamOptions: { id: string; nombre: string; rol: string }[];
-  commission: { cierre: number; residual: number; residualMeses: number; servicioExtra: number };
+  commission: { cierre: number; cartera: number; servicioExtra: number };
   /** Comisión base de coordinación (ej 0.10) y reparto excepcional del mes. */
   coordinacion: { pct: number; split: { userId: string; pct: number }[] };
   /** Tarifas y packs vigentes: alimentan el "cómo se paga cada puesto". */
@@ -411,10 +410,10 @@ export async function buildPeriodPayroll(
   }
 
   // ── Comisión del comercial (acuerdo del 14/9/2026) ──
-  // Cliente nuevo: % del abono el mes 1 y un residual del mes 2 al 6 mientras
-  // la cuenta siga activa (si se fue, no está en `clients` y se corta sola).
-  // Servicio extra a una cuenta ya activa: % de una sola vez, para quien lo
-  // vendió. Premio del mes por cantidad de cuentas nuevas. Si ya se cargó una
+  // Cliente nuevo: % del abono el mes 1 para quien la cerró. Desde el mes 2,
+  // la cartera para quien la atiende, mientras la cuenta siga activa (si se
+  // fue, no está en `clients` y se corta sola). Servicio extra a una cuenta ya
+  // activa: % de una sola vez, para quien lo vendió. Si ya se cargó una
   // comisión manual para esa cuenta este mes, no se duplica.
   const recurringByClient = new Map<string, number>();
   for (const s of services) {
@@ -452,17 +451,6 @@ export async function buildPeriodPayroll(
       cliente: fc.cliente,
       concepto: fc.concepto,
       monto: fc.monto,
-      kind: "comision",
-    });
-  }
-  for (const premio of selectCloserPrizes(clients, services, periodo, settings.rates)) {
-    if (admins.has(premio.closerId)) continue;
-    if (!autoByUser.has(premio.closerId)) autoByUser.set(premio.closerId, []);
-    autoByUser.get(premio.closerId)!.push({
-      clienteId: null,
-      cliente: "—",
-      concepto: premio.concepto,
-      monto: premio.monto,
       kind: "comision",
     });
   }
@@ -607,8 +595,7 @@ export async function buildPeriodPayroll(
     teamOptions,
     commission: {
       cierre: settings.rates.comision_cierre ?? 0.1,
-      residual: settings.rates.comision_residual ?? 0,
-      residualMeses: settings.rates.comision_residual_meses ?? 0,
+      cartera: settings.rates.comision_cartera ?? 0,
       servicioExtra: settings.rates.comision_servicio_extra ?? 0,
     },
     coordinacion: { pct: coordPct, split: coordSplit },

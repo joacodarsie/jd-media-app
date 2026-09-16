@@ -41,26 +41,14 @@ export interface AgencyRates {
   /** Cliente nuevo: % del abono el MES 1 (cuando entra el primer pago). */
   comision_cierre: number;
   /**
-   * Cliente nuevo: % del abono CADA MES después del primero, mientras el
-   * cliente siga. Acuerdo con Santi (14/9/2026): 5%.
-   */
-  comision_residual: number;
-  /** Cuántos meses dura el residual después del mes 1 (5 → termina en el mes 6). */
-  comision_residual_meses: number;
-  /**
-   * CARTERA: % del abono que cobra CADA MES quien atiende la cuenta
-   * (`clients.responsable_id`), mientras el cliente siga y esté al día.
-   * Acuerdo del 16/9/2026: 5%. Se paga por atender, no por haber vendido.
+   * CARTERA: % del abono que cobra CADA MES, desde el mes 2, quien atiende la
+   * cuenta (`clients.responsable_id`), mientras el cliente siga y esté al día.
+   * Acuerdo del 16/9/2026: 5%. Un solo 5% por cuenta: el residual de los meses
+   * 2-4 y los premios por cantidad de cuentas se sacaron ese día.
    */
   comision_cartera: number;
   /** Servicio extra a un cliente ya activo: % de una sola vez sobre lo que pague ese servicio. */
   comision_servicio_extra: number;
-  /** Premio del mes por 3 cuentas nuevas de gestión de redes (≥ `premio_abono_minimo`). */
-  premio_3_cuentas: number;
-  /** Premio del mes por 5 cuentas nuevas (no se acumula con el de 3: se cobra el más alto). */
-  premio_5_cuentas: number;
-  /** Abono mínimo de gestión de redes para que una cuenta nueva cuente para el premio. */
-  premio_abono_minimo: number;
   /**
    * @deprecated Se sacó del acuerdo el 14/9/2026 ("el 20% ya es el máximo").
    * Queda por compatibilidad con configs guardadas; no se usa en ningún cálculo.
@@ -142,13 +130,8 @@ export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
     media_buyer: { Presencia: 50000, Crecimiento: 70000, Escala: 90000, Personalizado: 50000 },
     comercial_fijo: 25000,
     comision_cierre: 0.15,
-    comision_residual: 0.05,
-    comision_residual_meses: 3,
     comision_cartera: 0.05,
     comision_servicio_extra: 0.15,
-    premio_3_cuentas: 50000,
-    premio_5_cuentas: 150000,
-    premio_abono_minimo: 300000,
     comision_lead_propio: 0,
     comision_coordinacion: 0.1,
     comision_coord_general: 0.05,

@@ -127,29 +127,27 @@ export function CoordinacionPanel({
   );
 
   // Simulador: primer mes vs. meses siguientes vs. año 1
-  // La comisión del comercial es % del precio del pack: una parte el mes 1 y un
-  // residual mensual los meses siguientes (acuerdo del 14/9/2026).
+  // La comisión del comercial es % del precio del pack el mes 1; desde el mes 2
+  // se paga la cartera a quien atiende la cuenta (acuerdo del 16/9/2026).
   const sim = useMemo(() => {
     const p = packs.find((x) => x.id === simPack) ?? packs[0];
     const costoRec = packCost(p, rates);
     const margenRec = p.precio - costoRec;
     const closerFull = Math.round(p.precio * (rates.comision_cierre ?? 0.1));
-    const residualMes = Math.round(p.precio * (rates.comision_residual ?? 0));
-    const residualMeses = Math.max(0, Math.round(rates.comision_residual_meses ?? 0));
+    const carteraMes = Math.round(p.precio * (rates.comision_cartera ?? 0));
     const closerMonto = simCloser ? closerFull : 0;
-    const residualTotal = simCloser ? residualMes * Math.min(residualMeses, 11) : 0;
+    const carteraTotal = simCloser ? carteraMes * 11 : 0;
     const manualMonto = simManual ? rates.manual_marca : 0;
     const oneTime = closerMonto + manualMonto;
     const margenMes1 = margenRec - oneTime;
-    const anio1 = margenMes1 + margenRec * 11 - residualTotal;
+    const anio1 = margenMes1 + margenRec * 11 - carteraTotal;
     return {
       p,
       costoRec,
       margenRec,
       closerFull,
-      residualMes,
-      residualMeses,
-      residualTotal,
+      carteraMes,
+      carteraTotal,
       closerMonto,
       manualMonto,
       oneTime,
@@ -272,8 +270,8 @@ export function CoordinacionPanel({
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={simCloser} onChange={(e) => setSimCloser(e.target.checked)} className="h-4 w-4 accent-primary" />
               Comisión del comercial · {Math.round((rates.comision_cierre ?? 0) * 100)}% el mes 1 (<span className="font-medium">{fmt(sim.closerFull)}</span>)
-              {sim.residualMeses > 0 && sim.residualMes > 0 && (
-                <> + {Math.round((rates.comision_residual ?? 0) * 100)}% × {sim.residualMeses} meses (<span className="font-medium">{fmt(sim.residualMes)}</span>/mes)</>
+              {sim.carteraMes > 0 && (
+                <> + cartera {Math.round((rates.comision_cartera ?? 0) * 100)}% desde el mes 2 (<span className="font-medium">{fmt(sim.carteraMes)}</span>/mes)</>
               )}
             </label>
             <label className="flex items-center gap-2 text-sm">
@@ -286,7 +284,7 @@ export function CoordinacionPanel({
             <StatCard label="Margen recurrente" value={fmt(sim.margenRec)} sub={`/mes · ${pctOf(sim.margenRec, sim.p.precio)}%`} tone="good" />
             <StatCard label="Costos 1er mes" value={fmt(sim.oneTime)} sub="una vez" muted />
             <StatCard label="Margen 1er mes" value={fmt(sim.margenMes1)} sub={`${pctOf(sim.margenMes1, sim.p.precio)}% del 1er mes`} tone={sim.margenMes1 >= 0 ? "good" : "bad"} />
-            <StatCard label="Ganancia año 1" value={fmt(sim.anio1)} sub={sim.residualTotal > 0 ? `mes1 + 11 recurrentes − ${fmt(sim.residualTotal)} de residual` : "mes1 + 11 recurrentes"} tone="good" />
+            <StatCard label="Ganancia año 1" value={fmt(sim.anio1)} sub={sim.carteraTotal > 0 ? `mes1 + 11 recurrentes − ${fmt(sim.carteraTotal)} de cartera` : "mes1 + 11 recurrentes"} tone="good" />
           </div>
         </div>
       </section>
@@ -383,23 +381,11 @@ export function CoordinacionPanel({
               <Field label="Cliente nuevo · % del mes 1">
                 <NumInput prefix="%" value={Math.round((rates.comision_cierre ?? 0) * 100)} onChange={(n) => patchRate("comision_cierre", n / 100)} />
               </Field>
-              <Field label="Cliente nuevo · % por mes después">
-                <NumInput prefix="%" value={Math.round((rates.comision_residual ?? 0) * 100)} onChange={(n) => patchRate("comision_residual", n / 100)} />
-              </Field>
-              <Field label="Cuántos meses dura ese %">
-                <NumInput value={rates.comision_residual_meses ?? 0} onChange={(n) => patchRate("comision_residual_meses", n)} />
+              <Field label="Cartera · % por mes desde el mes 2">
+                <NumInput prefix="%" value={Math.round((rates.comision_cartera ?? 0) * 100)} onChange={(n) => patchRate("comision_cartera", n / 100)} />
               </Field>
               <Field label="Servicio extra · % una vez">
                 <NumInput prefix="%" value={Math.round((rates.comision_servicio_extra ?? 0) * 100)} onChange={(n) => patchRate("comision_servicio_extra", n / 100)} />
-              </Field>
-              <Field label="Premio · 3 cuentas nuevas">
-                <NumInput prefix="$" value={rates.premio_3_cuentas ?? 0} onChange={(n) => patchRate("premio_3_cuentas", n)} />
-              </Field>
-              <Field label="Premio · 5 cuentas nuevas">
-                <NumInput prefix="$" value={rates.premio_5_cuentas ?? 0} onChange={(n) => patchRate("premio_5_cuentas", n)} />
-              </Field>
-              <Field label="Abono mínimo para el premio">
-                <NumInput prefix="$" value={rates.premio_abono_minimo ?? 0} onChange={(n) => patchRate("premio_abono_minimo", n)} />
               </Field>
               <Field label="Comisión de coordinación · % del abono">
                 <NumInput prefix="%" value={Math.round((rates.comision_coordinacion ?? 0) * 100)} onChange={(n) => patchRate("comision_coordinacion", n / 100)} />
@@ -409,9 +395,9 @@ export function CoordinacionPanel({
               </Field>
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">
-              El comercial cobra el % del mes 1 cuando entra el primer pago y el % mensual
-              del mes 2 al {1 + Math.max(0, Math.round(rates.comision_residual_meses ?? 0))} mientras
-              el cliente siga. Un servicio extra a un cliente activo paga su % de una sola vez a
+              El comercial cobra el % del mes 1 cuando entra el primer pago. Desde el mes 2,
+              quien figura como &ldquo;Responsable de la cuenta&rdquo; cobra la cartera todos
+              los meses, mientras el cliente siga y pague: un solo % por cuenta. Un servicio extra a un cliente activo paga su % de una sola vez a
               quien figura como &ldquo;Vendido por&rdquo;. La <b>coordinación</b> cobra su % del
               abono de cada cuenta que coordina, todos los meses.
             </p>

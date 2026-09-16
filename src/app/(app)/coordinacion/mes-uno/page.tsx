@@ -35,8 +35,7 @@ export default async function MesUnoPage() {
     const luz = Math.round(p.precio * (r.comision_coordinacion ?? 0));
     const leo = Math.round(p.precio * (r.comision_coord_general ?? 0));
     const cdv = Math.round(p.precio * (r.comision_cierre ?? 0));
-    const cdvResidual = Math.round(p.precio * (r.comision_residual ?? 0));
-    const residualHasta = 1 + Math.max(0, Math.round(r.comision_residual_meses ?? 0));
+    const cartera = Math.round(p.precio * (r.comision_cartera ?? 0));
     const brisaM1 = Math.round(
       (diseno + portadasCosto + (r.manual_marca ?? 0)) * (r.comision_coord_diseno ?? 0)
     );
@@ -63,7 +62,7 @@ export default async function MesUnoPage() {
       [`Diseño (${p.posts} × ${ars(r.diseno_pieza)})`, diseno],
       [`Portadas (${portadas} × ${ars(r.portada_reel)})`, portadasCosto],
       [`Edición (${p.reels} × ${ars(r.edicion_reel)})`, edicion],
-      [`Comisión comercial (${pctTxt(r.comision_residual ?? 0)} · mes 2 a ${residualHasta})`, cdvResidual],
+      [`Cartera del responsable (${pctTxt(r.comision_cartera ?? 0)})`, cartera],
       [`Comisión Luz (${pctTxt(r.comision_coordinacion ?? 0)})`, luz],
       [`Sueldo CM`, cm],
       [`Sueldo Paid Media`, paid],
@@ -72,7 +71,7 @@ export default async function MesUnoPage() {
     ];
     const total1 = items1.reduce((a, [, v]) => a + v, 0);
     const total2 = items2.reduce((a, [, v]) => a + v, 0);
-    return { pack: p, items1, items2, total1, total2, residualHasta };
+    return { pack: p, items1, items2, total1, total2 };
   });
 
   return (
@@ -112,7 +111,7 @@ export default async function MesUnoPage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        {rows.map(({ pack, items1, items2, total1, total2, residualHasta }) => (
+        {rows.map(({ pack, items1, items2, total1, total2 }) => (
           <div key={pack.id} className="rounded-lg border bg-card p-4">
             <div className="mb-1 flex items-baseline justify-between">
               <h2 className="text-lg font-bold">{pack.id}</h2>
@@ -147,8 +146,8 @@ export default async function MesUnoPage() {
               </tbody>
             </table>
             <p className="mt-1 text-[10px] text-muted-foreground">
-              La comisión del comercial del mes 2 al {residualHasta} está en la columna
-              de los meses siguientes; a partir del mes {residualHasta + 1} desaparece.
+              Desde el mes 2 el comercial deja de cobrar venta y quien atiende la cuenta
+              cobra la cartera todos los meses, mientras el cliente siga.
               {(r.puesta_en_marcha ?? 0) > 0
                 ? ` La puesta en marcha (${ars(r.puesta_en_marcha ?? 0)}) mejora el bruto del mes 1.`
                 : " El mes 1 arranca con dos semanas de puesta en marcha sin publicación: se descuentan del contenido, no del abono."}

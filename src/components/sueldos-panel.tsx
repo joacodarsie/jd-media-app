@@ -59,10 +59,8 @@ export type { PersonPayroll } from "@/lib/payroll";
 export interface CommissionConfig {
   /** Cliente nuevo, mes 1: fracción del abono (ej: 0.10). */
   cierre: number;
-  /** Cliente nuevo, meses siguientes: fracción del abono por mes (ej: 0.05). */
-  residual: number;
-  /** Cuántos meses dura el residual después del primero (5 → hasta el mes 6). */
-  residualMeses: number;
+  /** Cartera, desde el mes 2: fracción del abono por mes para quien atiende la cuenta (ej: 0.05). */
+  cartera: number;
   /** Servicio extra a un cliente activo: fracción de una sola vez (ej: 0.15). */
   servicioExtra: number;
 }
@@ -534,7 +532,7 @@ function PersonCard({
 // ─────────────────────────────────────────────────────────────────────────
 // Diálogo: comisión del comercial cargada a mano (casos especiales)
 // ─────────────────────────────────────────────────────────────────────────
-type TipoComisionManual = "mes1" | "residual" | "extra";
+type TipoComisionManual = "mes1" | "cartera" | "extra";
 
 function CommissionDialog({
   periodo,
@@ -557,12 +555,12 @@ function CommissionDialog({
 
   const pctDe: Record<TipoComisionManual, number> = {
     mes1: commission.cierre,
-    residual: commission.residual,
+    cartera: commission.cartera,
     extra: commission.servicioExtra,
   };
   const labelDe: Record<TipoComisionManual, string> = {
     mes1: "cliente nuevo · mes 1",
-    residual: `cliente nuevo · mes 2 a ${1 + commission.residualMeses}`,
+    cartera: "cartera · desde el mes 2",
     extra: "servicio extra",
   };
   const pct = pctDe[tipo];
@@ -614,9 +612,9 @@ function CommissionDialog({
         <div className="space-y-3">
           <div className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] text-muted-foreground">
             Las comisiones se cargan <strong className="text-foreground">solas</strong>:
-            el {Math.round(commission.cierre * 100)}% del mes 1 y el{" "}
-            {Math.round(commission.residual * 100)}% del mes 2 al {1 + commission.residualMeses}{" "}
-            según quién figura como &ldquo;Cerrado por&rdquo; en la ficha del cliente, y el{" "}
+            el {Math.round(commission.cierre * 100)}% del mes 1 según &ldquo;Cerrado por&rdquo;,
+            el {Math.round(commission.cartera * 100)}% de cartera desde el mes 2 según
+            &ldquo;Responsable de la cuenta&rdquo;, y el{" "}
             {Math.round(commission.servicioExtra * 100)}% del servicio extra según
             &ldquo;Vendido por&rdquo; en el servicio. Usá esto solo para un caso que quedó
             sin taggear. Si cargás una a mano para una cuenta, ese mes la automática de esa

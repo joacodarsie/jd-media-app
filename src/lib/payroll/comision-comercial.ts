@@ -1,18 +1,18 @@
-// La comisión del comercial, tal como está en el acuerdo firmado con Santiago
-// Reinaldi el 14/9/2026 ("JD Media - Rol Coordinador Comercial"):
+// La comisión del área comercial, tal como está en los acuerdos de Santiago
+// Reinaldi y Matías Castello (versión del 16/9/2026):
 //
-//   · Cliente nuevo, mes 1 → 15% del abono, cuando entra el primer pago.
-//   · Cliente nuevo, meses 2 a 4 → 5% del abono cada mes, MIENTRAS EL CLIENTE
-//     SIGA, y SOLO para quien cerró la cuenta y NO se queda atendiéndola.
-//   · CARTERA, todos los meses → 5% del abono para quien atiende la cuenta
-//     (`responsable_id`), mientras el cliente siga y haya pagado ese mes.
-//     Actualizado el 16/9/2026: el que vende y además atiende cobra cierre +
-//     cartera; el que solo vende cobra cierre + residual y suelta la cuenta.
+//   · Cliente nuevo, mes 1 → 15% del abono, cuando entra el primer pago, para
+//     quien cerró la cuenta (`cerrado_por_id`).
+//   · CARTERA, desde el mes 2 → 5% del abono todos los meses para quien atiende
+//     la cuenta (`responsable_id`), mientras el cliente siga y haya pagado ese
+//     mes. Por defecto la atiende quien la cerró. Cada cuenta paga UN solo 5%:
+//     si pasa a otra persona, el 5% pasa con ella.
 //   · Servicio extra a un cliente que ya está activo → 15% de una sola vez
 //     sobre lo que pague ese servicio.
-//   · Premios del mes: 3 cuentas nuevas → $50.000 · 5 cuentas nuevas → $150.000.
-//     No se acumulan (se cobra el más alto). Cuentan solo cuentas nuevas de
-//     gestión de redes con abono de $300.000 o más. Arranca de cero cada mes.
+//
+// ⚠️ El 16/9/2026 se SACARON el residual de los meses 2-4 (pagaba un segundo
+// 5% sobre la misma cuenta y no daban los márgenes) y los premios por cantidad
+// de cuentas nuevas. No volver a sumarlos.
 //
 // Todo son funciones puras: la nómina (`payroll-period.ts`) les pasa las
 // filas y ellas devuelven líneas. Los porcentajes y montos salen de
@@ -28,13 +28,8 @@ import type { PayrollClient } from "../payroll";
 export type ComisionRates = Pick<
   AgencyRates,
   | "comision_cierre"
-  | "comision_residual"
-  | "comision_residual_meses"
   | "comision_cartera"
   | "comision_servicio_extra"
-  | "premio_3_cuentas"
-  | "premio_5_cuentas"
-  | "premio_abono_minimo"
 >;
 
 /** Servicio de una cuenta, con lo que hace falta para pagar el extra. */
@@ -76,13 +71,13 @@ export function mesDelCliente(fechaInicio: string | null | undefined, periodo: s
 }
 
 /**
- * Las comisiones por CLIENTE NUEVO del período: el 10% el mes 1 y el residual
- * del mes 2 al 6, para quien figura como `cerrado_por_id`.
+ * La comisión por CLIENTE NUEVO del período: el % del mes 1 para quien figura
+ * como `cerrado_por_id`. Del mes 2 en adelante lo que se paga es la cartera
+ * (`selectCarteraCommissions`), a quien atiende la cuenta.
  *
- * `clients` tiene que venir ya filtrado a las cuentas ACTIVAS del período (así
- * "mientras el cliente siga" sale solo: la cuenta que se fue no está en la
- * lista y el residual se corta). `hasManualCommission` evita duplicar cuando
- * ya se cargó a mano una comisión para esa cuenta ese mes.
+ * `clients` tiene que venir ya filtrado a las cuentas ACTIVAS del período.
+ * `hasManualCommission` evita duplicar cuando ya se cargó a mano una comisión
+ * para esa cuenta ese mes.
  */
 export function selectCloserCommissions(
   clients: PayrollClient[],
@@ -91,23 +86,15 @@ export function selectCloserCommissions(
   rates: ComisionRates,
   hasManualCommission: (clienteId: string) => boolean
 ): LineaComision[] {
-  const cierre = rates.comision_cierre ?? 0;
-  const residual = rates.comision_residual ?? 0;
-  const ultimoMes = 1 + Math.max(0, Math.round(rates.comision_residual_meses ?? 0));
+  const pct = rates.comision_cierre ?? 0;
+  if (pct <= 0) return [];
   const out: LineaComision[] = [];
   for (const c of clients) {
     if (!c.cerrado_por_id) continue;
-    const mes = mesDelCliente(c.fecha_inicio, periodo);
-    if (mes === null || mes > ultimoMes) continue;
+    if (mesDelCliente(c.fecha_inicio, periodo) !== 1) continue;
     if (hasManualCommission(c.id)) continue;
     const base = recurringByClient.get(c.id) ?? 0;
     if (base <= 0) continue;
-    // El residual es para el que vende y SUELTA la cuenta. Si el que cerró es
-    // además quien la atiende, ya cobra la cartera todos los meses: pagarle las
-    // dos cosas sería pagar dos veces el mismo cliente.
-    if (mes > 1 && c.responsable_id && c.responsable_id === c.cerrado_por_id) continue;
-    const pct = mes === 1 ? cierre : residual;
-    if (pct <= 0) continue;
     out.push({
       closerId: c.cerrado_por_id,
       clienteId: c.id,
@@ -115,10 +102,7 @@ export function selectCloserCommissions(
       base,
       pct,
       monto: Math.round(base * pct),
-      concepto:
-        mes === 1
-          ? `Comisión cliente nuevo (${pctTxt(pct)}) · mes 1`
-          : `Comisión cliente nuevo (${pctTxt(pct)}) · mes ${mes} de ${ultimoMes}`,
+      concepto: `Comisión cliente nuevo (${pctTxt(pct)}) · mes 1`,
     });
   }
   return out;
@@ -131,6 +115,8 @@ export function selectCloserCommissions(
  * haberlo vendido: la reunión mensual, la relación y que renueve. Por eso mira
  * `responsable_id` y no `cerrado_por_id`, y por eso se corta sola cuando la
  * cuenta cambia de manos.
+ *
+ * Arranca en el MES 2: el mes 1 ya se paga como comisión de venta.
  *
  * Dos condiciones, las dos del acuerdo:
  *  - la cuenta está activa (si se fue, no viene en `clients`);
@@ -150,7 +136,7 @@ export function selectCarteraCommissions(
   for (const c of clients) {
     if (!c.responsable_id) continue;
     const mes = mesDelCliente(c.fecha_inicio, periodo);
-    if (mes === null) continue;
+    if (mes === null || mes < 2) continue;
     if (!pagoRegistrado(c.id)) continue;
     const base = recurringByClient.get(c.id) ?? 0;
     if (base <= 0) continue;
@@ -204,58 +190,6 @@ export function selectUpsellCommissions(
       pct,
       monto: Math.round(base * pct),
       concepto: `Comisión servicio extra (${pctTxt(pct)}) · ${s.tipo.replace(/_/g, " ")}`,
-    });
-  }
-  return out;
-}
-
-export interface PremioComercial {
-  closerId: string;
-  cuentas: number;
-  monto: number;
-  concepto: string;
-}
-
-/**
- * El premio del mes por cantidad de cuentas nuevas de gestión de redes con
- * abono ≥ mínimo, por closer. No acumulativo: el más alto que alcanzó.
- */
-export function selectCloserPrizes(
-  clients: PayrollClient[],
-  services: Pick<ServicioComision, "cliente_id" | "tipo" | "monto_mensual" | "facturacion">[],
-  periodo: string,
-  rates: ComisionRates
-): PremioComercial[] {
-  const minimo = rates.premio_abono_minimo ?? 0;
-  const premio3 = rates.premio_3_cuentas ?? 0;
-  const premio5 = rates.premio_5_cuentas ?? 0;
-  if (premio3 <= 0 && premio5 <= 0) return [];
-
-  // Abono mensual de gestión de redes por cuenta.
-  const redesByClient = new Map<string, number>();
-  for (const s of services) {
-    if (s.tipo !== "gestion_redes") continue;
-    if ((s.facturacion ?? "mensual") === "unico") continue;
-    redesByClient.set(s.cliente_id, (redesByClient.get(s.cliente_id) ?? 0) + (Number(s.monto_mensual) || 0));
-  }
-
-  const porCloser = new Map<string, number>();
-  for (const c of clients) {
-    if (!c.cerrado_por_id) continue;
-    if (mesDelCliente(c.fecha_inicio, periodo) !== 1) continue;
-    if ((redesByClient.get(c.id) ?? 0) < minimo) continue;
-    porCloser.set(c.cerrado_por_id, (porCloser.get(c.cerrado_por_id) ?? 0) + 1);
-  }
-
-  const out: PremioComercial[] = [];
-  for (const [closerId, cuentas] of porCloser) {
-    const monto = cuentas >= 5 && premio5 > 0 ? premio5 : cuentas >= 3 && premio3 > 0 ? premio3 : 0;
-    if (monto <= 0) continue;
-    out.push({
-      closerId,
-      cuentas,
-      monto,
-      concepto: `Premio del mes · ${cuentas} cuentas nuevas`,
     });
   }
   return out;

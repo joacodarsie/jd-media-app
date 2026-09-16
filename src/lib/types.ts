@@ -166,6 +166,8 @@ export interface Client {
   media_buyer_id: string | null;
   coordinador_id: string | null;
   cerrado_por_id: string | null;
+  /** Quién atiende la cuenta hoy: cobra la cartera todos los meses (0177). */
+  responsable_id?: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -28,6 +28,7 @@ import {
   type CoordinationSplit,
 } from "./payroll";
 import {
+  selectCarteraCommissions,
   selectCloserCommissions,
   selectUpsellCommissions,
   selectCloserPrizes,
@@ -107,12 +108,13 @@ export async function buildPeriodPayroll(
     { data: pubsRaw },
     { data: splitRaw },
     { data: dgApprovalsRaw },
+    { data: invoicesRaw },
   ] = await Promise.all([
     admin.from("agency_settings").select("packs, rates").eq("id", 1).maybeSingle(),
     admin
       .from("clients")
       .select(
-        "id, nombre, cm_id, disenador_id, audiovisual_id, media_buyer_id, coordinador_id, cerrado_por_id, fecha_inicio, pausas"
+        "id, nombre, cm_id, disenador_id, audiovisual_id, media_buyer_id, coordinador_id, cerrado_por_id, responsable_id, fecha_inicio, pausas"
       )
       .eq("estado", "activo")
       .eq("es_interno", false),
@@ -156,6 +158,8 @@ export async function buildPeriodPayroll(
       .select("cliente_id, dg_aprobado_at")
       .gte("dg_aprobado_at", `${periodo}-01`)
       .lt("dg_aprobado_at", `${nextPeriod(periodo)}-01`),
+    // Facturas del período: la cartera se paga solo si el cliente pagó.
+    admin.from("client_invoices").select("cliente_id, fecha_cobro").eq("periodo", periodo),
   ]);
 
   const settings: AgencySettings = mergeSettings(settingsRow);
@@ -424,9 +428,20 @@ export async function buildPeriodPayroll(
   // mismo y solo serviría para inflar la nómina y achicar el margen en falso.
   // Al 14/9/2026 Magic, Amelia y Origen figuran cerradas por Joaquín.
   const admins = new Set(users.filter((u) => u.rol === "admin").map((u) => u.id));
+  // La cartera se paga solo por los clientes que PAGARON el período: es la
+  // condición del acuerdo ("se cobra si el cliente pagó ese mes") y lo que evita
+  // pagarle a alguien por una cuenta que no entró plata.
+  const cobraron = new Set(
+    ((invoicesRaw ?? []) as { cliente_id: string; fecha_cobro: string | null }[])
+      .filter((i) => !!i.fecha_cobro)
+      .map((i) => i.cliente_id)
+  );
   const comisiones = [
     ...selectCloserCommissions(clients, recurringByClient, periodo, settings.rates, (clienteId) =>
       items.some((i) => i.tipo === "comision" && i.cliente_id === clienteId)
+    ),
+    ...selectCarteraCommissions(clients, recurringByClient, periodo, settings.rates, (clienteId) =>
+      cobraron.has(clienteId)
     ),
     ...selectUpsellCommissions(clients, services, periodo, settings.rates),
   ].filter((fc) => !admins.has(fc.closerId));

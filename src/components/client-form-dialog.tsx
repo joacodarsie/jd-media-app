@@ -90,6 +90,11 @@ export function ClientFormDialog({
   const [verTodos, setVerTodos] = useState(false);
   const opciones = (puesto: Parameters<typeof usersForPuesto>[1], cur: string) =>
     verTodos ? usersProp : usersForPuesto(usersProp, puesto, cur === NONE ? null : cur);
+  // Quién ATIENDE la cuenta: cobra la cartera todos los meses (0177). Arranca
+  // en quien la cerró, que es lo que pasa casi siempre.
+  const [responsableId, setResponsableId] = useState<string>(
+    client?.responsable_id ?? client?.cerrado_por_id ?? NONE
+  );
   const [cerradoPorId, setCerradoPorId] = useState<string>(
     client?.cerrado_por_id ?? NONE
   );
@@ -206,6 +211,7 @@ export function ClientFormDialog({
       media_buyer_id: mediaBuyerId === NONE ? null : mediaBuyerId,
       coordinador_id: coordinadorId === NONE ? null : coordinadorId,
       cerrado_por_id: cerradoPorId === NONE ? null : cerradoPorId,
+      responsable_id: responsableId === NONE ? null : responsableId,
     };
     const servicesPayload: NewClientServiceInput[] = draftServices
       .filter((s) => s.tipo)
@@ -345,6 +351,26 @@ export function ClientFormDialog({
                   De acá sale la comisión del comercial. Si queda vacío, no se le paga.
                 </p>
               )}
+            </div>
+            <div className="space-y-2">
+              <Label>Responsable de la cuenta</Label>
+              <Select value={responsableId} onValueChange={setResponsableId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="—" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Sin asignar</SelectItem>
+                  {opciones("comercial", responsableId).map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Quien la atiende hoy: da la reunión mensual y responde por que se quede.
+                Cobra la cartera todos los meses mientras el cliente siga y esté al día.
+              </p>
             </div>
             {mode === "edit" && (
               <div className="space-y-2">

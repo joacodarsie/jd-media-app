@@ -123,9 +123,9 @@ describe("el arranque: lo que solo se paga el primer mes", () => {
   it("desglosa el arranque completo de una cuenta Presencia", () => {
     const r = resultadoDePrecio(400_000, conManual, rates);
     // manual 50.000 + 5% del manual para coordinación de diseño 2.500 +
-    // comisión del comercial 40.000 + plus 20.000
-    expect(r.arranque).toBe(112_500);
-    expect(r.margenPrimerMes).toBe(25_500);
+    // comisión del comercial 60.000 (15% desde el 16/9) + plus 20.000
+    expect(r.arranque).toBe(132_500);
+    expect(r.margenPrimerMes).toBe(5_500);
   });
 
   it("si la venta la cerró el dueño, no hay comisión que pagar", () => {
@@ -133,7 +133,7 @@ describe("el arranque: lo que solo se paga el primer mes", () => {
     const sinComercial = resultadoDePrecio(400_000, conManual, rates, {
       conComisionCierre: false,
     });
-    expect(sinComercial.arranque).toBe(conComercial.arranque - 40_000);
+    expect(sinComercial.arranque).toBe(conComercial.arranque - 60_000);
     expect(sinComercial.arranqueLineas.some((l) => l.concepto === "Comisión del comercial")).toBe(
       false
     );

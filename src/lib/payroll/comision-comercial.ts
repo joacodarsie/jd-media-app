@@ -1,9 +1,13 @@
 // La comisión del comercial, tal como está en el acuerdo firmado con Santiago
 // Reinaldi el 14/9/2026 ("JD Media - Rol Coordinador Comercial"):
 //
-//   · Cliente nuevo, mes 1 → 10% del abono, cuando entra el primer pago.
-//   · Cliente nuevo, meses 2 a 6 → 5% del abono cada mes, MIENTRAS EL CLIENTE
-//     SIGA. Si se va, se corta. Termina en el mes 6.
+//   · Cliente nuevo, mes 1 → 15% del abono, cuando entra el primer pago.
+//   · Cliente nuevo, meses 2 a 4 → 5% del abono cada mes, MIENTRAS EL CLIENTE
+//     SIGA, y SOLO para quien cerró la cuenta y NO se queda atendiéndola.
+//   · CARTERA, todos los meses → 5% del abono para quien atiende la cuenta
+//     (`responsable_id`), mientras el cliente siga y haya pagado ese mes.
+//     Actualizado el 16/9/2026: el que vende y además atiende cobra cierre +
+//     cartera; el que solo vende cobra cierre + residual y suelta la cuenta.
 //   · Servicio extra a un cliente que ya está activo → 15% de una sola vez
 //     sobre lo que pague ese servicio.
 //   · Premios del mes: 3 cuentas nuevas → $50.000 · 5 cuentas nuevas → $150.000.
@@ -26,6 +30,7 @@ export type ComisionRates = Pick<
   | "comision_cierre"
   | "comision_residual"
   | "comision_residual_meses"
+  | "comision_cartera"
   | "comision_servicio_extra"
   | "premio_3_cuentas"
   | "premio_5_cuentas"
@@ -97,6 +102,10 @@ export function selectCloserCommissions(
     if (hasManualCommission(c.id)) continue;
     const base = recurringByClient.get(c.id) ?? 0;
     if (base <= 0) continue;
+    // El residual es para el que vende y SUELTA la cuenta. Si el que cerró es
+    // además quien la atiende, ya cobra la cartera todos los meses: pagarle las
+    // dos cosas sería pagar dos veces el mismo cliente.
+    if (mes > 1 && c.responsable_id && c.responsable_id === c.cerrado_por_id) continue;
     const pct = mes === 1 ? cierre : residual;
     if (pct <= 0) continue;
     out.push({
@@ -110,6 +119,49 @@ export function selectCloserCommissions(
         mes === 1
           ? `Comisión cliente nuevo (${pctTxt(pct)}) · mes 1`
           : `Comisión cliente nuevo (${pctTxt(pct)}) · mes ${mes} de ${ultimoMes}`,
+    });
+  }
+  return out;
+}
+
+/**
+ * La CARTERA: lo que cobra todos los meses quien ATIENDE la cuenta.
+ *
+ * Es la parte del acuerdo del 16/9/2026 que paga sostener al cliente, no
+ * haberlo vendido: la reunión mensual, la relación y que renueve. Por eso mira
+ * `responsable_id` y no `cerrado_por_id`, y por eso se corta sola cuando la
+ * cuenta cambia de manos.
+ *
+ * Dos condiciones, las dos del acuerdo:
+ *  - la cuenta está activa (si se fue, no viene en `clients`);
+ *  - el cliente PAGÓ ese período (`pagoRegistrado`). Si no pagó, no se paga
+ *    comisión por él: es lo que evita cerrar con quien sea.
+ */
+export function selectCarteraCommissions(
+  clients: PayrollClient[],
+  recurringByClient: Map<string, number>,
+  periodo: string,
+  rates: ComisionRates,
+  pagoRegistrado: (clienteId: string) => boolean
+): LineaComision[] {
+  const pct = rates.comision_cartera ?? 0;
+  if (pct <= 0) return [];
+  const out: LineaComision[] = [];
+  for (const c of clients) {
+    if (!c.responsable_id) continue;
+    const mes = mesDelCliente(c.fecha_inicio, periodo);
+    if (mes === null) continue;
+    if (!pagoRegistrado(c.id)) continue;
+    const base = recurringByClient.get(c.id) ?? 0;
+    if (base <= 0) continue;
+    out.push({
+      closerId: c.responsable_id,
+      clienteId: c.id,
+      cliente: c.nombre,
+      base,
+      pct,
+      monto: Math.round(base * pct),
+      concepto: `Cartera (${pctTxt(pct)}) · cuenta a su cargo`,
     });
   }
   return out;

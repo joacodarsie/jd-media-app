@@ -89,7 +89,8 @@ describe("payModelRules", () => {
     expect(diseno.regla).toContain("$2.000");
 
     const comercial = rules.find((r) => r.key === "comercial")!;
-    expect(comercial.regla).toContain("10%");
+    expect(comercial.regla).toContain("15%");
+    expect(comercial.regla).toContain("cartera");
   });
 
   it("no promete un fijo mensual al comercial cuando está en cero", () => {

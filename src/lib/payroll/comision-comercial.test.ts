@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   mesDelCliente,
+  selectCarteraCommissions,
   selectCloserCommissions,
   selectUpsellCommissions,
   selectCloserPrizes,
@@ -58,33 +59,41 @@ describe("mesDelCliente", () => {
 });
 
 describe("selectCloserCommissions — cliente nuevo", () => {
-  it("el mes 1 paga el 10% del abono: cliente de $300.000 → $30.000", () => {
+  it("el mes 1 paga el 15% del abono: cliente de $300.000 → $45.000", () => {
     const out = selectCloserCommissions([cliente()], rec, "2026-09", rates, noManual);
     expect(out).toHaveLength(1);
-    expect(out[0]).toMatchObject({ closerId: "santi", clienteId: "c1", base: 300_000, pct: 0.1, monto: 30_000 });
+    expect(out[0]).toMatchObject({ closerId: "santi", clienteId: "c1", base: 300_000, pct: 0.15, monto: 45_000 });
     expect(out[0].concepto).toContain("mes 1");
   });
 
-  it("del mes 2 al 6 paga el 5% cada mes: $15.000", () => {
-    for (const periodo of ["2026-10", "2026-11", "2026-12", "2027-01", "2027-02"]) {
+  it("del mes 2 al 4 paga el 5% cada mes: $15.000", () => {
+    for (const periodo of ["2026-10", "2026-11", "2026-12"]) {
       const out = selectCloserCommissions([cliente()], rec, periodo, rates, noManual);
       expect(out).toHaveLength(1);
       expect(out[0].monto).toBe(15_000);
     }
-    const mes6 = selectCloserCommissions([cliente()], rec, "2027-02", rates, noManual);
-    expect(mes6[0].concepto).toContain("mes 6 de 6");
+    const ultimo = selectCloserCommissions([cliente()], rec, "2026-12", rates, noManual);
+    expect(ultimo[0].concepto).toContain("mes 4 de 4");
   });
 
-  it("en el mes 7 se termina", () => {
-    expect(selectCloserCommissions([cliente()], rec, "2027-03", rates, noManual)).toHaveLength(0);
+  it("en el mes 5 se termina", () => {
+    expect(selectCloserCommissions([cliente()], rec, "2027-01", rates, noManual)).toHaveLength(0);
   });
 
-  it("el total por un cliente que se queda es el 35% de un abono, repartido en 6 meses", () => {
+  it("quien cierra y ADEMÁS atiende la cuenta no cobra residual: esa parte la cobra como cartera", () => {
+    const suya = cliente({ responsable_id: "santi" });
+    // el mes 1 cobra igual la comisión de venta
+    expect(selectCloserCommissions([suya], rec, "2026-09", rates, noManual)).toHaveLength(1);
+    // del mes 2 en adelante, no: ya cobra el 5% de cartera todos los meses
+    expect(selectCloserCommissions([suya], rec, "2026-10", rates, noManual)).toHaveLength(0);
+  });
+
+  it("el total por un cliente que se queda y se suelta es el 30% de un abono", () => {
     let total = 0;
-    for (const periodo of ["2026-09", "2026-10", "2026-11", "2026-12", "2027-01", "2027-02", "2027-03"]) {
+    for (const periodo of ["2026-09", "2026-10", "2026-11", "2026-12", "2027-01"]) {
       total += selectCloserCommissions([cliente()], rec, periodo, rates, noManual).reduce((a, l) => a + l.monto, 0);
     }
-    expect(total).toBe(30_000 + 15_000 * 5); // $105.000 = 35% de $300.000
+    expect(total).toBe(45_000 + 15_000 * 3); // $90.000 = 30% de $300.000
   });
 
   it("si el cliente se fue no está en la lista y el residual se corta solo", () => {
@@ -127,9 +136,45 @@ describe("selectCloserCommissions — cliente nuevo", () => {
       noManual
     );
     expect(out.map((l) => [l.closerId, l.monto])).toEqual([
-      ["santi", 30_000],
-      ["joaco", 40_000],
+      ["santi", 45_000],
+      ["joaco", 60_000],
     ]);
+  });
+});
+
+describe("selectCarteraCommissions — lo que cobra quien atiende la cuenta", () => {
+  const pago = () => true;
+
+  it("paga el 5% del abono todos los meses al responsable", () => {
+    const c = cliente({ responsable_id: "santi" });
+    for (const periodo of ["2026-09", "2026-12", "2027-06"]) {
+      const out = selectCarteraCommissions([c], rec, periodo, rates, pago);
+      expect(out).toHaveLength(1);
+      expect(out[0]).toMatchObject({ closerId: "santi", monto: 15_000, pct: 0.05 });
+    }
+  });
+
+  it("no tiene fecha de vencimiento: al año sigue cobrando", () => {
+    const c = cliente({ responsable_id: "santi" });
+    expect(selectCarteraCommissions([c], rec, "2027-09", rates, pago)).toHaveLength(1);
+  });
+
+  it("si el cliente no pagó ese mes, no se cobra", () => {
+    const c = cliente({ responsable_id: "santi" });
+    expect(selectCarteraCommissions([c], rec, "2026-09", rates, () => false)).toHaveLength(0);
+  });
+
+  it("sin responsable no hay cartera: la cuenta que nadie atiende no paga a nadie", () => {
+    expect(selectCarteraCommissions([cliente()], rec, "2026-09", rates, pago)).toHaveLength(0);
+  });
+
+  it("la cartera sigue a la cuenta: si cambia de responsable, cobra el nuevo", () => {
+    const c = cliente({ cerrado_por_id: "mati", responsable_id: "santi" });
+    expect(selectCarteraCommissions([c], rec, "2026-10", rates, pago)[0].closerId).toBe("santi");
+  });
+
+  it("un cliente que se fue no viene en la lista y la cartera se corta sola", () => {
+    expect(selectCarteraCommissions([], rec, "2026-10", rates, pago)).toHaveLength(0);
   });
 });
 

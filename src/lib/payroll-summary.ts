@@ -261,7 +261,9 @@ export function payModelRules(settings: AgencySettings): PayRule[] {
         r.comision_cierre ?? 0
       )} del abono el mes 1 y ${pct(r.comision_residual ?? 0)} por mes del mes 2 al ${
         1 + (r.comision_residual_meses ?? 0)
-      } de cada cliente que trae, mientras el cliente siga.`,
+      } de cada cliente que trae, mientras el cliente siga. Si además queda a cargo de la cuenta, en vez de ese residual cobra ${pct(
+        r.comision_cartera ?? 0
+      )} todos los meses (cartera).`,
       detalles: [
         comercialFijo
           ? "El fijo es por sostener la prospección: se cobra haya cierres o no."

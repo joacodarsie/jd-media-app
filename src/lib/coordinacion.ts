@@ -47,6 +47,12 @@ export interface AgencyRates {
   comision_residual: number;
   /** Cuántos meses dura el residual después del mes 1 (5 → termina en el mes 6). */
   comision_residual_meses: number;
+  /**
+   * CARTERA: % del abono que cobra CADA MES quien atiende la cuenta
+   * (`clients.responsable_id`), mientras el cliente siga y esté al día.
+   * Acuerdo del 16/9/2026: 5%. Se paga por atender, no por haber vendido.
+   */
+  comision_cartera: number;
   /** Servicio extra a un cliente ya activo: % de una sola vez sobre lo que pague ese servicio. */
   comision_servicio_extra: number;
   /** Premio del mes por 3 cuentas nuevas de gestión de redes (≥ `premio_abono_minimo`). */
@@ -135,9 +141,10 @@ export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
     cm: { Presencia: 50000, Crecimiento: 70000, Escala: 90000, Personalizado: 50000 },
     media_buyer: { Presencia: 50000, Crecimiento: 70000, Escala: 90000, Personalizado: 50000 },
     comercial_fijo: 25000,
-    comision_cierre: 0.1,
+    comision_cierre: 0.15,
     comision_residual: 0.05,
-    comision_residual_meses: 5,
+    comision_residual_meses: 3,
+    comision_cartera: 0.05,
     comision_servicio_extra: 0.15,
     premio_3_cuentas: 50000,
     premio_5_cuentas: 150000,

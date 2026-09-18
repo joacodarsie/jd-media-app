@@ -176,6 +176,9 @@ export function PublicationsMonth({
   const [fEstadoCliente, setFEstadoCliente] = useState<"activos" | "inactivos" | "todos">(
     "activos"
   );
+  // En la tabla, lo ya PUBLICADO de meses anteriores se esconde: es historia y
+  // empuja hacia abajo lo que todavía falta hacer. Se puede mostrar con el botón.
+  const [verHistorial, setVerHistorial] = useState(false);
   const [clienteSearch, setClienteSearch] = useState("");
   const [clienteSearchOpen, setClienteSearchOpen] = useState(false);
 
@@ -322,6 +325,19 @@ export function PublicationsMonth({
     return m;
   }, [filtered]);
 
+  // Filas de la tabla: sin la historia, salvo que se pida verla.
+  const mesActual = new Date().toISOString().slice(0, 7);
+  const esHistorial = (p: PublicationWithRels) =>
+    p.estado === "publicado" &&
+    !!p.fecha_publicacion &&
+    p.fecha_publicacion.slice(0, 7) < mesActual;
+  const tablaPubs = useMemo(
+    () => (verHistorial ? filtered : filtered.filter((p) => !esHistorial(p))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filtered, verHistorial, mesActual]
+  );
+  const historialCount = filtered.length - tablaPubs.length;
+
   const unscheduled = filtered.filter((p) => !p.fecha_publicacion);
   const activeFilters = (fCliente !== "__all__" ? 1 : 0) + (fRed !== "__all__" ? 1 : 0) + (fEstado !== "__all__" ? 1 : 0);
 
@@ -438,7 +454,7 @@ export function PublicationsMonth({
           )}
           {mode === "tabla" && (
             <h2 className="text-lg font-semibold">
-              {publications.length} publicacion{publications.length === 1 ? "" : "es"}
+              {tablaPubs.length} publicacion{tablaPubs.length === 1 ? "" : "es"}
             </h2>
           )}
         </div>
@@ -449,6 +465,18 @@ export function PublicationsMonth({
             <ModeBtn icon={KanbanSquare} label="Kanban" active={mode === "kanban"} onClick={() => setMode("kanban")} />
             <ModeBtn icon={TableIcon} label="Tabla" active={mode === "tabla"} onClick={() => setMode("tabla")} />
           </div>
+          {mode === "tabla" && (historialCount > 0 || verHistorial) && (
+            <Button
+              variant={verHistorial ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setVerHistorial((v) => !v)}
+              title="Lo publicado de meses anteriores"
+            >
+              {verHistorial
+                ? "Ocultar meses anteriores"
+                : `Ver ${historialCount} de meses anteriores`}
+            </Button>
+          )}
           {canEdit && mode === "tabla" && (
             <Button
               variant={selectMode ? "secondary" : "outline"}
@@ -832,7 +860,7 @@ export function PublicationsMonth({
       ) : (
         // Modo tabla — planilla ordenada por fecha (con selección para bulk)
         <PubTable
-          pubs={filtered}
+          pubs={tablaPubs}
           clients={clients}
           users={users}
           unseenByPub={unseenByPub}

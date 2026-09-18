@@ -7,7 +7,13 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ChevronDown, ChevronRight, ListTree, Plus, X } from "lucide-react";
 import { createTask, updateTask } from "@/app/(app)/tareas/actions";
-import { AREAS, PRIORITY_LABEL, STATUS_LABEL } from "@/lib/constants";
+import {
+  AREAS,
+  PRIORITY_LABEL,
+  PUBLICATION_NETWORK_LABEL,
+  PUBLICATION_TYPE_LABEL,
+  STATUS_LABEL,
+} from "@/lib/constants";
 import type { AppUser, Client, TaskWithRels } from "@/lib/types";
 import { validarFechaLimite } from "@/lib/tareas/fecha-limite";
 import { normalizarLinks, type LinkBorrador } from "@/lib/tareas/links";
@@ -94,6 +100,11 @@ export function TaskFormDialog({
   // Colgar la tarea de un ticket al crearla. Solo al crear: mover una tarea de
   // ticket después es otra cosa (arrastra el desglose) y no se resuelve acá.
   const [madre, setMadre] = useState<string>(NONE);
+  // La tarea puede ser una PIEZA de contenido: se crea también en el calendario.
+  const [esPieza, setEsPieza] = useState(false);
+  const [piezaTipo, setPiezaTipo] = useState<string>("post");
+  const [piezaRed, setPiezaRed] = useState<string>("instagram");
+  const [piezaFecha, setPiezaFecha] = useState<string>("");
   const [links, setLinks] = useState<LinkBorrador[]>([]);
   const [subtareas, setSubtareas] = useState<SubtareaBorrador[]>([]);
 
@@ -122,6 +133,10 @@ export function TaskFormDialog({
     setCliente(NONE);
     setFecha("");
     setMadre(NONE);
+    setEsPieza(false);
+    setPiezaTipo("post");
+    setPiezaRed("instagram");
+    setPiezaFecha("");
     setLinks([]);
     setSubtareas([]);
   }
@@ -136,6 +151,14 @@ export function TaskFormDialog({
     const chequeo = validarFechaLimite(fecha);
     if (!chequeo.ok) {
       toast.error(chequeo.error!);
+      return;
+    }
+    if (esPieza && cliente === NONE) {
+      toast.error("Una pieza de contenido va a una cuenta: elegí el cliente.");
+      return;
+    }
+    if (esPieza && !piezaFecha) {
+      toast.error("Poné la fecha de publicación de la pieza.");
       return;
     }
     const linksOk = normalizarLinks(links);
@@ -184,6 +207,15 @@ export function TaskFormDialog({
         ? await createTask({
             ...payload,
             ...(madre !== NONE ? { parent_id: madre } : {}),
+            ...(esPieza
+              ? {
+                  pieza: {
+                    tipo: piezaTipo,
+                    red: piezaRed,
+                    fecha_publicacion: piezaFecha,
+                  },
+                }
+              : {}),
             links: linksOk.links,
             subtareas: subsPayload,
           })
@@ -194,7 +226,9 @@ export function TaskFormDialog({
       }
       const aviso = res && "aviso" in res ? (res.aviso as string | undefined) : undefined;
       toast.success(
-        esCreacion
+        esCreacion && esPieza && !aviso
+          ? "Tarea creada y pieza cargada en el calendario"
+          : esCreacion
           ? `${
               subsPayload.length
                 ? `Ticket creado con ${subsPayload.length} ${subsPayload.length === 1 ? "subtarea" : "subtareas"}`
@@ -438,6 +472,69 @@ export function TaskFormDialog({
                 </SelectContent>
               </Select>
             </div>
+            {esCreacion && (
+              <div className="space-y-2 rounded-md border p-3">
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    checked={esPieza}
+                    onChange={(e) => setEsPieza(e.target.checked)}
+                    className="h-4 w-4 accent-primary"
+                  />
+                  Es una pieza de contenido
+                </label>
+                {esPieza ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Select value={piezaTipo} onValueChange={setPiezaTipo}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(PUBLICATION_TYPE_LABEL).map(([v, l]) => (
+                            <SelectItem key={v} value={v}>
+                              {l}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={piezaRed} onValueChange={setPiezaRed}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(PUBLICATION_NETWORK_LABEL).map(([v, l]) => (
+                            <SelectItem key={v} value={v}>
+                              {l}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="pieza-fecha" className="text-xs">
+                        Fecha de publicación <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="pieza-fecha"
+                        type="date"
+                        value={piezaFecha}
+                        onChange={(e) => setPiezaFecha(e.target.value)}
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Se crea también en el calendario de contenidos, atada a esta tarea: cuando la
+                      tarea avanza, la pieza avanza con ella.
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-[10px] text-muted-foreground">
+                    Marcalo si esta tarea es un posteo, un reel o una historia: además del ticket se
+                    carga la pieza en el calendario.
+                  </p>
+                )}
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Área</Label>
               <Select value={area} onValueChange={setArea}>

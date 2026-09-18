@@ -76,6 +76,13 @@ export async function createTask(input: {
   /** Links de referencia, ya normalizados (lib/tareas/links). */
   links?: TaskLink[];
   /**
+   * Si viene, la tarea es una PIEZA: además del ticket se crea la publicación
+   * en el calendario de contenidos, ya linkeada (`publications.task_id`). El
+   * trigger que genera una tarea por cada pieza no duplica nada porque la
+   * publicación nace con su `task_id` puesto.
+   */
+  pieza?: { tipo: string; red: string; fecha_publicacion: string | null } | null;
+  /**
    * El desglose, cargado en el mismo formulario: el ticket nace con sus
    * subtareas. Heredan cliente, área y prioridad del ticket; si no traen
    * responsable o fecha, usan los del ticket.
@@ -176,8 +183,29 @@ export async function createTask(input: {
     }
   }
 
+  // La pieza en el calendario. Si falla, el ticket ya existe: se avisa y no se
+  // pierde lo cargado.
+  let piezaError: string | null = null;
+  if (input.pieza && input.cliente_id) {
+    const { error: errPub } = await supabase.from("publications").insert({
+      cliente_id: input.cliente_id,
+      titulo: input.titulo,
+      descripcion: input.descripcion || null,
+      tipo: input.pieza.tipo,
+      red: input.pieza.red,
+      fecha_publicacion: input.pieza.fecha_publicacion || null,
+      task_id: id,
+      creado_por_id: userId,
+    });
+    if (errPub) piezaError = errPub.message;
+    else revalidatePath("/contenidos");
+  }
+
   revalidatePath("/tareas");
   revalidatePath("/dashboard");
+  if (piezaError) {
+    return { ok: true, id, aviso: `La tarea se creó, pero no la pieza en el calendario: ${piezaError}` };
+  }
   return { ok: true, id };
 }
 

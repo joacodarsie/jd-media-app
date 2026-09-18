@@ -80,6 +80,14 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "Users2",
         match: ["/organigrama", "/reclutamiento"],
       },
+      // Las quejas de los clientes: solo Dirección y Comercial (el responsable de
+      // cuentas). Es información sensible sobre el trabajo del equipo.
+      {
+        href: "/quejas",
+        label: "Quejas",
+        icon: "MessageSquareWarning",
+        roles: ["admin", "comercial"],
+      },
       {
         href: "/contratos",
         label: "Contratos",

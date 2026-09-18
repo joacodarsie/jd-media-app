@@ -38,12 +38,12 @@ export async function saveAgencySettings(
 export async function savePreciosReferencia(precios: PrecioReferencia[]) {
   await requireRole(["admin"]);
   const admin = createAdmin();
+  // UPDATE y no upsert: un upsert con solo estas columnas intenta insertar la
+  // fila entera y explota porque `packs` es NOT NULL. La fila 1 existe siempre.
   const { error } = await admin
     .from("agency_settings")
-    .upsert(
-      { id: 1, precios_referencia: precios, updated_at: new Date().toISOString() },
-      { onConflict: "id" }
-    );
+    .update({ precios_referencia: precios, updated_at: new Date().toISOString() })
+    .eq("id", 1);
   if (error) return { error: error.message };
   revalidatePath("/coordinacion/cotizador");
   revalidatePath("/coordinacion");

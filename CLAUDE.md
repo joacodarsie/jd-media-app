@@ -8,10 +8,21 @@ App de gestión de la agencia. Next.js 14 (App Router) + Supabase + Vercel.
 - Antes de deployar: `npx tsc --noEmit`, `npx vitest run` y `npm run build` verdes.
 - Rutas de IA: el gateway corta respuestas no-streaming a los 60s (504 en texto plano). Toda ruta que llame a un modelo con inputs potencialmente largos va con **SSE + `maxDuration = 300`** (patrón de `api/diagnostico/generate` / `api/post-meet-message`).
 
-## Regla: aura "sin testear" (`review_flags`)
+## Regla: lo prueba Claude, no el dueño (18/9/2026)
 
-Toda feature nueva visible en la UI queda marcada "sin testear" hasta que el dueño la aprueba:
+El dueño **nunca usó** el aura "sin testear": los carteles amarillos se
+acumularon 18 sin aprobar. **No se crean más `review_flags`.** En su lugar, toda
+feature nueva se prueba antes de decir que está lista:
 
-- Al crear una pantalla/sección/flujo nuevo, insertar una fila en `review_flags` (`ruta`, `label`, `nota` con qué probar). Si la feature trae migración, poner el insert ahí mismo; si no, insertarla vía service role (script tsx con `SUPABASE_SERVICE_ROLE_KEY` de `.env.local`).
-- El banner amarillo del layout `(app)` (`src/components/review-flags-banner.tsx`) se la muestra a los admin en esa ruta (match por prefijo); el botón "Aprobar" la limpia.
-- No hace falta flagear fixes chicos ni cambios data-only; sí todo lo que el dueño debería revisar con sus ojos.
+- **Lógica de plata y de reglas** → test en `vitest` (hay 1.033 corriendo).
+- **Permisos y RLS** → probar con el usuario real: cookie de sesión de esa
+  persona y `curl` a la ruta (tiene que redirigir a /dashboard a quien no
+  corresponde), y la política con `set_config('request.jwt.claims', ...)` en SQL.
+- **Flujo de pantalla** → hacerlo de punta a punta en el navegador, con datos de
+  prueba, y **borrar los datos de prueba al terminar**.
+- Recién ahí se dice que anda, y se dice QUÉ se probó. Si algo no se pudo
+  probar, se avisa en esa misma frase.
+
+Para la cookie de sesión de cualquier usuario en local: magic link de
+`/auth/v1/admin/generate_link` → tokens del fragment → cookie
+`sb-vjnwswibnrttcljbmysq-auth-token` = `base64-` + base64url del JSON de sesión.

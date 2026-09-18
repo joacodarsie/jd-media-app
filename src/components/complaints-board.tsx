@@ -66,7 +66,24 @@ const GRAVEDAD_CHIP: Record<ComplaintRow["gravedad"], string> = {
 
 /** Las áreas que se reclaman de verdad: las que tocan el trabajo del cliente. */
 const AREAS_QUEJA: string[] = [
-  ...AREAS.filter((a) => !["Prospecting", "Comercial", "Estrategia/Dirección"].includes(a)),
+  // Primero las que tocan el trabajo del cliente: son de las que se queja, y
+  // así la que queda elegida por defecto es una de verdad.
+  "Community Manager",
+  "Diseño",
+  "Edición Audiovisual",
+  "Paid Media",
+  ...AREAS.filter(
+    (a) =>
+      ![
+        "Community Manager",
+        "Diseño",
+        "Edición Audiovisual",
+        "Paid Media",
+        "Prospecting",
+        "Comercial",
+        "Estrategia/Dirección",
+      ].includes(a)
+  ),
   "Otra",
 ];
 

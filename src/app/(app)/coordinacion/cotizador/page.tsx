@@ -2,6 +2,7 @@ import { requireFeature } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { mergeSettings, type AgencySettings } from "@/lib/coordinacion";
 import { CotizadorPanel } from "@/components/cotizador-panel";
+import { PreciosReferencia } from "@/components/precios-referencia";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export default async function CotizadorPage() {
 
   const { data: settingsRaw } = await admin
     .from("agency_settings")
-    .select("packs, rates")
+    .select("packs, rates, precios_referencia")
     .eq("id", 1)
     .maybeSingle();
 
@@ -40,6 +41,8 @@ export default async function CotizadorPage() {
           los pagos al equipo, esto cambia solo.
         </p>
       </div>
+
+      <PreciosReferencia initial={settings.preciosReferencia} />
 
       <CotizadorPanel rates={settings.rates} />
     </div>

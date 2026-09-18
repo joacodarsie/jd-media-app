@@ -109,9 +109,23 @@ export interface AgencyRates {
   plus_primer_mes: number;
 }
 
+/**
+ * Una línea de la lista de precios de referencia: de cuánto se parte para
+ * cotizar ese servicio. Desde el 18/9/2026 la web no publica precios (todo se
+ * cotiza a medida), así que estos números son internos y cambian seguido: por
+ * eso viven en la base y se editan en el Cotizador, no en el código.
+ */
+export interface PrecioReferencia {
+  id: string;
+  nombre: string;
+  precio: number;
+  nota: string;
+}
+
 export interface AgencySettings {
   packs: PackParam[];
   rates: AgencyRates;
+  preciosReferencia: PrecioReferencia[];
 }
 
 export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
@@ -119,6 +133,17 @@ export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
     { id: "Presencia", precio: 400000, reels: 4, posts: 4, stories: 8, portadas: 4 },
     { id: "Crecimiento", precio: 600000, reels: 8, posts: 8, stories: 12, portadas: 8 },
     { id: "Escala", precio: 800000, reels: 12, posts: 12, stories: 20, portadas: 12 },
+  ],
+  preciosReferencia: [
+    { id: "redes_presencia", nombre: "Gestión de redes · Presencia", precio: 400000, nota: "4 reels · 4 posts · 8 días de historias" },
+    { id: "redes_crecimiento", nombre: "Gestión de redes · Crecimiento", precio: 600000, nota: "8 reels · 8 posts · 12 días de historias" },
+    { id: "redes_escala", nombre: "Gestión de redes · Escala", precio: 800000, nota: "12 reels · 12 posts · 20 días de historias" },
+    { id: "paid_media", nombre: "Gestión de pauta", precio: 100000, nota: "Por mes. La inversión publicitaria va aparte." },
+    { id: "gestion_whatsapp", nombre: "Gestión de WhatsApp", precio: 50000, nota: "Imagen de marca, estados, grupos y mensajes a contactos." },
+    { id: "chatter", nombre: "Chatter", precio: 50000, nota: "Responde y filtra las consultas antes de la venta." },
+    { id: "branding", nombre: "Branding / manual de marca", precio: 400000, nota: "Pago único." },
+    { id: "desarrollo_web", nombre: "Sitio web", precio: 300000, nota: "Pago único, según el alcance." },
+    { id: "jornada", nombre: "Jornada de producción", precio: 50000, nota: "La primera hora; cada hora extra $25.000 + viáticos." },
   ],
   rates: {
     diseno_pieza: 8000,
@@ -150,11 +175,21 @@ export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
  * Útil cuando agregamos parámetros nuevos (closer, Personalizado) y la fila
  * vieja todavía no los tiene.
  */
-export function mergeSettings(raw: Partial<AgencySettings> | null): AgencySettings {
+export function mergeSettings(
+  // La columna de la base se llama `precios_referencia`; se acepta de las dos
+  // formas para no tener que mapearla en cada página que lee settings.
+  raw: (Partial<AgencySettings> & { precios_referencia?: PrecioReferencia[] }) | null
+): AgencySettings {
   const d = DEFAULT_AGENCY_SETTINGS;
   if (!raw) return d;
   return {
     packs: raw.packs?.length ? raw.packs : d.packs,
+    preciosReferencia:
+      raw.preciosReferencia?.length
+        ? raw.preciosReferencia
+        : raw.precios_referencia?.length
+        ? raw.precios_referencia
+        : d.preciosReferencia,
     rates: {
       ...d.rates,
       ...(raw.rates ?? {}),

@@ -24,6 +24,7 @@ import { guardarSnapshotDirector } from "@/lib/director/snapshots";
 import { requireUser } from "@/lib/auth";
 import { runRefillContactos } from "@/lib/prospecting/refill";
 import { runReunionesMensuales } from "@/lib/retencion/reunion-mensual-run";
+import { runReunionesDesdeCalendario } from "@/lib/retencion/reunion-calendario-run";
 import { runRutinasMensuales } from "@/lib/tareas/rutinas-mensuales-run";
 import { currentPeriod } from "@/lib/finanzas";
 import { hoyYmd } from "@/lib/dates";
@@ -138,6 +139,16 @@ export async function GET(req: NextRequest) {
     reuniones = await runReunionesMensuales(admin, hoyYmd());
   } catch (e) {
     reuniones = { error: e instanceof Error ? e.message : "falló" };
+  }
+
+  // Reconocer en el calendario las reuniones que ya se dieron: si hubo un meet
+  // con el nombre de la cuenta y ya pasó, se registra y el trigger de la 0182
+  // completa el ticket. Es lo que evita que una reunión dada figure como no dada.
+  let reunionesCalendario: unknown = null;
+  try {
+    reunionesCalendario = await runReunionesDesdeCalendario(admin, currentPeriod());
+  } catch (e) {
+    reunionesCalendario = { error: e instanceof Error ? e.message : "falló" };
   }
 
   // Las tareas de todos los meses (cobrar, cerrar el mes, pagar sueldos). El
@@ -360,6 +371,7 @@ export async function GET(req: NextRequest) {
     finance_notified: financeNotified,
     prospeccion,
     reuniones,
+    reunionesCalendario,
     rutinas,
     revision_creativa: revisionCreativa,
     aprobaciones,

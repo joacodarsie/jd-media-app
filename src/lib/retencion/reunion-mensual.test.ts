@@ -30,6 +30,18 @@ const base = {
   hoy: "2026-09-02",
 };
 
+describe("quién da la reunión", () => {
+  it("la da el RESPONSABLE de la cuenta cuando lo hay: es quien cobra el 5% de cartera", () => {
+    const out = reunionesFaltantes({ ...base, clientes: [cli({ responsable_id: "santi" })] });
+    expect(out[0].asignado_a_id).toBe("santi");
+  });
+
+  it("sin responsable, la da la Project Manager", () => {
+    const out = reunionesFaltantes(base);
+    expect(out[0].asignado_a_id).toBe(LUZ);
+  });
+});
+
 describe("tituloReunion", () => {
   it("es estable: el mismo cliente y mes dan el mismo título", () => {
     expect(tituloReunion("Impermax", "2026-09")).toBe("Reunión mensual — Impermax — 2026-09");

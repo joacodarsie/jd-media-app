@@ -28,7 +28,10 @@ export async function runReunionesMensuales(
   const periodo = periodoDe(hoy);
 
   const [clientesRes, meetingsRes, tasksRes, usersRes] = await Promise.all([
-    admin.from("clients").select("id, nombre, estado, es_interno, cm_id").eq("estado", "activo"),
+    admin
+      .from("clients")
+      .select("id, nombre, estado, es_interno, cm_id, responsable_id")
+      .eq("estado", "activo"),
     admin.from("client_meetings").select("cliente_id, periodo").eq("periodo", periodo),
     // Solo los títulos del período: alcanza para deduplicar y no trae la tabla
     // entera. Las archivadas también cuentan — si alguien archivó el ticket, no

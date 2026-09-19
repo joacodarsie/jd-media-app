@@ -24,6 +24,8 @@ import { guardarSnapshotDirector } from "@/lib/director/snapshots";
 import { requireUser } from "@/lib/auth";
 import { runRefillContactos } from "@/lib/prospecting/refill";
 import { runReunionesMensuales } from "@/lib/retencion/reunion-mensual-run";
+import { runRutinasMensuales } from "@/lib/tareas/rutinas-mensuales-run";
+import { currentPeriod } from "@/lib/finanzas";
 import { hoyYmd } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
@@ -136,6 +138,16 @@ export async function GET(req: NextRequest) {
     reuniones = await runReunionesMensuales(admin, hoyYmd());
   } catch (e) {
     reuniones = { error: e instanceof Error ? e.message : "falló" };
+  }
+
+  // Las tareas de todos los meses (cobrar, cerrar el mes, pagar sueldos). El
+  // cron propio corre el día 1; esto es el respaldo por si ese día falla, y no
+  // duplica nada porque `rutina_key` es único.
+  let rutinas: unknown = null;
+  try {
+    rutinas = await runRutinasMensuales(admin, currentPeriod());
+  } catch (e) {
+    rutinas = { error: e instanceof Error ? e.message : "falló" };
   }
 
   // Reabastecimiento de contactos: si a una campaña activa le quedan pocos sin
@@ -348,6 +360,7 @@ export async function GET(req: NextRequest) {
     finance_notified: financeNotified,
     prospeccion,
     reuniones,
+    rutinas,
     revision_creativa: revisionCreativa,
     aprobaciones,
     refill,

@@ -30,6 +30,11 @@ export interface ClienteParaReunion {
   es_interno: boolean | null;
   /** Community manager de la cuenta, si tiene. */
   cm_id: string | null;
+  /**
+   * Quien responde por la cuenta (acuerdo del 16/9/2026). Si lo hay, la
+   * reunión es suya: es lo que cobra con el 5% de cartera. Si no, la da la PM.
+   */
+  responsable_id?: string | null;
 }
 
 export interface ReunionRegistrada {
@@ -113,6 +118,10 @@ export function reunionesFaltantes(input: {
    * toda la reestructura salió de que nadie respondía por el resultado de una
    * cuenta, y darle la reunión estratégica al CM reconstruye ese agujero.
    * El CM igual figura en la descripción: prepara el material y participa.
+   *
+   * Desde el 16/9/2026 hay una excepción: si la cuenta tiene `responsable_id`,
+   * la reunión es de esa persona — es la que cobra el 5% de cartera por
+   * atenderla, y ese 5% depende justamente de que la reunión se dé.
    */
   responsable: string;
   /** id → nombre, para nombrar al CM en la descripción. */
@@ -138,7 +147,7 @@ export function reunionesFaltantes(input: {
         (c.cm_id && nombrePorId?.[c.cm_id]) || null
       ),
       cliente_id: c.id,
-      asignado_a_id: responsable,
+      asignado_a_id: c.responsable_id || responsable,
       area: "Coordinación",
       prioridad: "alta",
       fecha_limite: fecha,

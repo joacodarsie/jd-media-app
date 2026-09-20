@@ -23,6 +23,7 @@ import { generateFixedExpensesForPeriod } from "@/lib/finanzas/fixed-expenses";
 import { guardarSnapshotDirector } from "@/lib/director/snapshots";
 import { requireUser } from "@/lib/auth";
 import { runRefillContactos } from "@/lib/prospecting/refill";
+import { runOnboardingPendiente } from "@/lib/retencion/onboarding-pendiente-run";
 import { runReunionesMensuales } from "@/lib/retencion/reunion-mensual-run";
 import { runReunionesDesdeCalendario } from "@/lib/retencion/reunion-calendario-run";
 import { runRutinasMensuales } from "@/lib/tareas/rutinas-mensuales-run";
@@ -129,6 +130,19 @@ export async function GET(req: NextRequest) {
     aprobaciones = await ensureAprobacionNudges(admin);
   } catch (e) {
     aprobaciones = { error: e instanceof Error ? e.message : "falló" };
+  }
+
+  // El arranque de las cuentas nuevas. Existe porque el onboarding de 15 días
+  // colgaba de un solo camino (el pase de propuesta a activo) y por eso NUNCA
+  // se creó para ninguna cuenta: al 20/9 había cero tickets de arranque en
+  // toda la historia de la app, y las tres cuentas más nuevas llevaban días
+  // sin una sola tarea. Esto lo arma mire por donde mire: da igual cómo haya
+  // nacido la cuenta. Idempotente por el título del ticket madre.
+  let onboardings: unknown = null;
+  try {
+    onboardings = await runOnboardingPendiente(admin, hoyYmd());
+  } catch (e) {
+    onboardings = { error: e instanceof Error ? e.message : "falló" };
   }
 
   // La reunión mensual con cada cliente: crea el ticket del mes y, pasado el
@@ -370,6 +384,7 @@ export async function GET(req: NextRequest) {
     processed_failed: failed,
     finance_notified: financeNotified,
     prospeccion,
+    onboardings,
     reuniones,
     reunionesCalendario,
     rutinas,

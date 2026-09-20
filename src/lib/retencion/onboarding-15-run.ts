@@ -10,6 +10,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatInTimeZone } from "date-fns-tz";
 import { TIMEZONE } from "@/lib/constants";
+import { AREA_PM } from "@/lib/tareas/puerta";
 import { planOnboarding, filasDelPlan, tituloMadre } from "./onboarding-15";
 
 type Admin = SupabaseClient;
@@ -58,13 +59,21 @@ export async function runOnboarding15(
   if (yaHay?.length) return { creado: false, motivo: "ya_existe" };
 
   // Fallback de responsable: la project manager; si no está, el primer admin.
+  // Se resuelve por ÁREA y no por email: el puesto lo puede ocupar otra
+  // persona y el arranque no puede depender de que alguien se acuerde de
+  // tocar el código (antes decía luz@jdmedia.com escrito a mano).
   const { data: usersRaw } = await admin
     .from("users")
-    .select("id, email, rol")
+    .select("id, rol, area, area_secundaria")
     .eq("activo", true);
-  const users = (usersRaw ?? []) as { id: string; email: string | null; rol: string }[];
+  const users = (usersRaw ?? []) as {
+    id: string;
+    rol: string;
+    area: string | null;
+    area_secundaria: string | null;
+  }[];
   const fallback =
-    users.find((u) => u.rol === "coordinador" && u.email === "luz@jdmedia.com")?.id ??
+    users.find((u) => u.area === AREA_PM || u.area_secundaria === AREA_PM)?.id ??
     users.find((u) => u.rol === "admin")?.id;
   if (!fallback) return { creado: false, motivo: "sin_responsable" };
 

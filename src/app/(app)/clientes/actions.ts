@@ -118,6 +118,30 @@ function faltaCerrador(input: ClientInput): string | null {
   return "Falta quién cerró la cuenta. De ese dato sale la comisión del comercial: sin él no se le paga.";
 }
 
+/**
+ * Arma el onboarding de 15 días si la cuenta está activa y es de cliente.
+ *
+ * Se llama desde TODOS los caminos por los que una cuenta puede terminar
+ * activa, porque colgarlo de uno solo ya salió mal: hasta el 20/9/2026 esto
+ * vivía únicamente en `activateClient` (el pase de propuesta a activo) y las
+ * cuentas que se cargan directo como activas nunca tuvieron arranque. En toda
+ * la historia de la app se habían creado CERO tickets de onboarding.
+ *
+ * Es best-effort e idempotente: si falla, la cuenta queda igual y el cron
+ * diario (`lib/retencion/onboarding-pendiente-run`) lo arma al otro día.
+ */
+async function armarArranque(clienteId: string, estado: string | null | undefined, actorId?: string) {
+  if (estado !== "activo") return;
+  try {
+    const admin = createAdmin();
+    const { data } = await admin.from("clients").select("es_interno").eq("id", clienteId).maybeSingle();
+    if ((data as { es_interno: boolean | null } | null)?.es_interno) return;
+    await runOnboarding15(admin, clienteId, { creadoPorId: actorId });
+  } catch (e) {
+    console.error("armarArranque:", e);
+  }
+}
+
 export async function createClientRow(
   input: ClientInput,
   services?: NewClientServiceInput[]
@@ -174,6 +198,11 @@ export async function createClientRow(
   // Notificar a TODO el equipo asignado a la cuenta (cm, diseño, audiovisual,
   // media buyer, coordinación) que no haya recibido ya un aviso de servicio.
   await notifyNewClientTeam(clienteId, input.nombre, cleaned, notified, userId);
+
+  // Si nace activa, arranca. Los servicios ya están cargados arriba, así que
+  // el plan sale con los pasos que corresponden a lo que contrató.
+  await armarArranque(clienteId, cleaned.estado as string | undefined, userId);
+  revalidatePath("/tareas");
 
   revalidatePath("/clientes");
   invalidateClientsCache();
@@ -308,6 +337,8 @@ export async function updateClientRow(
   // pasan al responsable nuevo. Sin esto quedaban a nombre de quien ya no la
   // lleva, para siempre.
   const { movidas } = await reasignarTareasDeCuenta(id);
+  // Pasar la cuenta a activa desde la ficha es otro camino al arranque.
+  await armarArranque(id, patch.estado as string | undefined, me.id);
   revalidatePath("/clientes");
   revalidatePath(`/clientes/${id}`);
   revalidatePath("/tareas");
@@ -386,8 +417,12 @@ export async function toggleClientStatus(id: string, currentStatus: string) {
     driveWarn = "No se pudo mover la carpeta de Drive.";
   }
 
+  // Volver a activar una cuenta también dispara el arranque, si nunca lo tuvo.
+  await armarArranque(id, next);
+
   revalidatePath("/clientes");
   revalidatePath(`/clientes/${id}`);
+  revalidatePath("/tareas");
   return { ok: true, nuevo: next, driveMsg, driveWarn };
 }
 

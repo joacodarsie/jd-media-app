@@ -43,14 +43,10 @@ export const NAV_GROUPS: NavGroup[] = [
       // JDmedIA en vivo ya no es ítem: se entra con el botón "Sesión en vivo"
       // dentro de /jdmedia (misma feature jdmedia_live).
       { href: "/jdmedia", label: "JDmedIA", icon: "MessageCircle" },
-      {
-        href: "/director",
-        label: "Director IA",
-        icon: "Sparkles",
-        // El admin llega por la pestaña "Director IA" de Coordinación; el ítem
-        // queda solo para coordinación, que no ve esa sección.
-        roles: ["coordinador"],
-      },
+      // Director IA salió del menú el 20/9/2026: el último informe que generó
+      // es del 3 de julio. La sección sigue viva en /director y en la pestaña
+      // "Director IA" de Coordinación — lo que se saca es el lugar que ocupaba
+      // en la lista de todos los días.
     ],
   },
   {

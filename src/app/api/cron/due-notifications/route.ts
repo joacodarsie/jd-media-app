@@ -23,6 +23,8 @@ import { generateFixedExpensesForPeriod } from "@/lib/finanzas/fixed-expenses";
 import { guardarSnapshotDirector } from "@/lib/director/snapshots";
 import { requireUser } from "@/lib/auth";
 import { runRefillContactos } from "@/lib/prospecting/refill";
+import { cortesDeHigiene } from "@/lib/notifications-higiene";
+import { runAvisoLinkFaltante } from "@/lib/contenidos/link-faltante-run";
 import { runOnboardingPendiente } from "@/lib/retencion/onboarding-pendiente-run";
 import { runReunionesMensuales } from "@/lib/retencion/reunion-mensual-run";
 import { runReunionesDesdeCalendario } from "@/lib/retencion/reunion-calendario-run";
@@ -132,6 +134,19 @@ export async function GET(req: NextRequest) {
     aprobaciones = { error: e instanceof Error ? e.message : "falló" };
   }
 
+  // Recordatorio a cada CM de las piezas que salieron sin el link del posteo.
+  // El candado de link-publicado solo corre al marcar "publicado" y solo para
+  // piezas creadas después del 13/9: de las 29 de septiembre que no son
+  // historias, 14 quedaron sin link. Un candado que se puede esquivar
+  // necesita a alguien que avise. Tacaño a propósito: mínimo 3 piezas, una
+  // vez por día y como recordatorio, así la higiene lo borra a la semana.
+  let linksFaltantes: unknown = null;
+  try {
+    linksFaltantes = await runAvisoLinkFaltante(admin, hoyYmd());
+  } catch (e) {
+    linksFaltantes = { error: e instanceof Error ? e.message : "falló" };
+  }
+
   // El arranque de las cuentas nuevas. Existe porque el onboarding de 15 días
   // colgaba de un solo camino (el pase de propuesta a activo) y por eso NUNCA
   // se creó para ninguna cuenta: al 20/9 había cero tickets de arranque en
@@ -195,15 +210,57 @@ export async function GET(req: NextRequest) {
     .lt("fecha_completada", cutoff)
     .select("id");
 
-  // Higiene: purgar notificaciones LEÍDAS de más de 60 días (la tabla crece
-  // sin tope y nadie vuelve a mirarlas). Las no leídas se conservan.
-  const notifCutoff = new Date(Date.now() - 60 * 86400_000).toISOString();
-  const { data: purgedNotifs } = await admin
-    .from("notifications")
-    .delete()
-    .eq("leida", true)
-    .lt("created_at", notifCutoff)
-    .select("id");
+  // Higiene de la campana. Antes solo borraba las LEÍDAS de más de 60 días,
+  // o sea justo las que no molestaban: quedaban 870 sin leer (178 el dueño).
+  // Ahora también se van los RECORDATORIOS viejos sin leer, porque el cron
+  // los vuelve a generar hoy: guardar el de la semana pasada no agrega nada
+  // y, si el problema se resolvió, encima miente. Las asignaciones y
+  // menciones —que pasaron una sola vez— aguantan 30 días.
+  // Las reglas viven en `lib/notifications-higiene` (puro y testeado).
+  const cortes = cortesDeHigiene();
+  const purgas = await Promise.all([
+    admin
+      .from("notifications")
+      .delete()
+      .eq("leida", true)
+      .lt("created_at", cortes.leidosAntesDe)
+      .select("id"),
+    admin
+      .from("notifications")
+      .delete()
+      .eq("leida", false)
+      .in("tipo", cortes.tiposRegenerables)
+      .lt("created_at", cortes.regenerablesAntesDe)
+      .select("id"),
+    admin
+      .from("notifications")
+      .delete()
+      .eq("leida", false)
+      .not("tipo", "in", `(${cortes.tiposRegenerables.join(",")})`)
+      .lt("created_at", cortes.hechosAntesDe)
+      .select("id"),
+  ]);
+  const purgedNotifs = purgas.flatMap((p) => p.data ?? []);
+
+  // Y los avisos sin leer de tareas que YA se cerraron: al 20/9 había 108, 45
+  // de ellos en la campana de la PM. Avisan de algo que no hay que hacer.
+  const { data: tareasCerradas } = await admin
+    .from("tasks")
+    .select("id")
+    .in("estado", ["completada", "archivada"]);
+  const idsCerradas = ((tareasCerradas ?? []) as { id: string }[]).map((t) => t.id);
+  let purgadosCerrados = 0;
+  // De a tandas: la lista de tareas cerradas crece sin tope y un `in` con
+  // miles de ids no entra en la URL de PostgREST.
+  for (let i = 0; i < idsCerradas.length; i += 200) {
+    const { data } = await admin
+      .from("notifications")
+      .delete()
+      .eq("leida", false)
+      .in("task_id", idsCerradas.slice(i, i + 200))
+      .select("id");
+    purgadosCerrados += (data ?? []).length;
+  }
 
   // Director Creativo — chequeos de fecha (van acá para no sumar crons en Hobby).
   // Envueltos en try/catch para que un fallo nunca corte las notificaciones.
@@ -385,6 +442,7 @@ export async function GET(req: NextRequest) {
     finance_notified: financeNotified,
     prospeccion,
     onboardings,
+    linksFaltantes,
     reuniones,
     reunionesCalendario,
     rutinas,
@@ -392,7 +450,7 @@ export async function GET(req: NextRequest) {
     aprobaciones,
     refill,
     tasks_archived: archivedRows?.length ?? 0,
-    notifications_purged: purgedNotifs?.length ?? 0,
+    notifications_purged: (purgedNotifs?.length ?? 0) + purgadosCerrados,
     month_end: monthEnd,
     month_start: monthStart,
     cobros_generados: cobrosGenerados,

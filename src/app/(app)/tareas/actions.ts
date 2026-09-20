@@ -93,6 +93,12 @@ export async function createTask(input: {
     asignado_a_id?: string | null;
     fecha_limite?: string | null;
     links?: TaskLink[];
+    /**
+     * La subtarea es además una PIEZA del calendario. Es el caso normal de
+     * un ticket de contenido: el ticket es la quincena y cada subtarea es un
+     * posteo con su fecha (pedido del 20/9).
+     */
+    pieza?: { tipo: string; red: string; fecha_publicacion: string } | null;
   }[];
 }) {
   const { supabase, userId } = await uid();
@@ -156,8 +162,9 @@ export async function createTask(input: {
   if (error) return { error: error.message };
   const id = (creada as { id: string }).id;
 
+  let subPiezasError: string | null = null;
   if (subtareas.length) {
-    const { error: errSubs } = await supabase.from("tasks").insert(
+    const { data: filasSub, error: errSubs } = await supabase.from("tasks").insert(
       subtareas.map((s, i) => ({
         titulo: s.titulo.trim(),
         descripcion: s.descripcion?.trim() || null,
@@ -170,9 +177,35 @@ export async function createTask(input: {
         parent_id: id,
         ...(s.links?.length ? { links: s.links } : {}),
       }))
-    );
+    ).select("id");
     if (errSubs) {
       return { error: `El ticket se creó, pero no las subtareas: ${errSubs.message}`, id };
+    }
+
+    // Las subtareas que además son posteos van al calendario, cada una con su
+    // fecha y atada a SU subtarea (no al ticket): así el ticket es la quincena
+    // y cada pieza avanza por su cuenta. El insert vuelve en el mismo orden
+    // que se mandó; si no coincide la cantidad no se cuelga nada, para no
+    // atar una pieza a la subtarea equivocada.
+    const idsSub = ((filasSub ?? []) as { id: string }[]).map((x) => x.id);
+    const conPieza = subtareas
+      .map((sub, i) => ({ sub, i }))
+      .filter((x) => x.sub.pieza && x.sub.pieza.fecha_publicacion);
+    if (conPieza.length && input.cliente_id && idsSub.length === subtareas.length) {
+      const { error: errPubs } = await supabase.from("publications").insert(
+        conPieza.map(({ sub, i }) => ({
+          cliente_id: input.cliente_id,
+          titulo: sub.titulo.trim(),
+          descripcion: sub.descripcion?.trim() || null,
+          tipo: sub.pieza!.tipo,
+          red: sub.pieza!.red,
+          fecha_publicacion: sub.pieza!.fecha_publicacion,
+          task_id: idsSub[i],
+          creado_por_id: userId,
+        }))
+      );
+      if (errPubs) subPiezasError = errPubs.message;
+      else revalidatePath("/contenidos");
     }
     if (input.cliente_id) {
       try {
@@ -203,8 +236,13 @@ export async function createTask(input: {
 
   revalidatePath("/tareas");
   revalidatePath("/dashboard");
-  if (piezaError) {
-    return { ok: true, id, aviso: `La tarea se creó, pero no la pieza en el calendario: ${piezaError}` };
+  const falloPieza = piezaError ?? subPiezasError;
+  if (falloPieza) {
+    return {
+      ok: true,
+      id,
+      aviso: `La tarea se creó, pero no la pieza en el calendario: ${falloPieza}`,
+    };
   }
   return { ok: true, id };
 }

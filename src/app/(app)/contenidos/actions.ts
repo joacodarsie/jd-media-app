@@ -5,6 +5,12 @@ import {
   chequearLinkParaPublicar,
   type LinksDePieza,
 } from "@/lib/contenidos/link-publicado";
+import {
+  bandejaDeAprobacion,
+  destinoAlAprobar,
+  motivoParaNoAprobar,
+  motivoParaNoProgramar,
+} from "@/lib/contenidos/aprobacion";
 import { publicarPiezaEnDrive } from "@/lib/google-drive";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -214,6 +220,17 @@ export async function changePublicationStatus(
     linkNuevo: linkPosteo,
   });
   if (chequeo.motivo) return { error: chequeo.motivo, faltaLink: true };
+
+  // Programar una pieza sin el archivo final es aprobar algo que nadie vio.
+  // El candado va acá y no solo en el botón: al calendario se le cambia el
+  // estado desde el select, desde el arrastre del kanban y desde la bandeja.
+  const motivoArchivo = motivoParaNoProgramar({
+    estadoNuevo: estado,
+    estadoAnterior: pub.estado as string,
+    pieza: pub as { estado: string; asset_url?: string | null; link_instagram?: string | null },
+    linkNuevo: linkPosteo,
+  });
+  if (motivoArchivo) return { error: motivoArchivo, faltaArchivo: true };
 
   const patch: Record<string, unknown> = { estado, ...selloDeRevision(estado, pub.estado) };
   if (linkPosteo && linkPosteo.trim()) {
@@ -524,6 +541,40 @@ export async function bulkChangePublicationStatus(ids: string[], estado: string)
     }
   }
 
+  // Lo mismo con el archivo: marcar veinte piezas como programadas no puede
+  // ser la forma de saltearse el candado de a una.
+  if (estado === "aprobado") {
+    const { data: piezas } = await writeDb()
+      .from("publications")
+      .select("id, titulo, estado, asset_url, link_instagram")
+      .in("id", ids);
+    const sinArchivo = ((piezas ?? []) as unknown as {
+      titulo: string | null;
+      estado: string;
+      asset_url: string | null;
+      link_instagram: string | null;
+    }[]).filter(
+      (x) =>
+        motivoParaNoProgramar({
+          estadoNuevo: "aprobado",
+          estadoAnterior: x.estado,
+          pieza: x,
+        }) !== null
+    );
+    if (sinArchivo.length > 0) {
+      const nombres = sinArchivo.slice(0, 3).map((x) => x.titulo ?? "sin título").join(", ");
+      return {
+        error:
+          sinArchivo.length +
+          " pieza(s) no tienen cargado el link del Drive o del Canva: " +
+          nombres +
+          (sinArchivo.length > 3 ? "…" : "") +
+          ". Cargalo desde Aprobar y volvé a intentarlo.",
+        faltaArchivo: true,
+      };
+    }
+  }
+
   const { error } = await updateTolerandoSello(
     (p) => writeDb().from("publications").update(p).in("id", ids),
     { estado, ...selloDeRevision(estado) }
@@ -619,4 +670,175 @@ async function dejarPiezaAprobadaEnDrive(input: {
     periodo: (input.fecha ?? "").slice(0, 7) || "sin-fecha",
   });
   if ("error" in res) console.error("dejarPiezaAprobadaEnDrive:", res.error);
+}
+
+// ─── La bandeja de aprobación ────────────────────────────────────────────────
+//
+// Pedido del 20/9: aprobar el mes entero de una cuenta de un saque, y no de a
+// una pieza. Las tres acciones de abajo son las que usa esa pantalla; la
+// decisión de qué se puede aprobar vive en `lib/contenidos/aprobacion` (pura).
+
+type PiezaDecidible = {
+  id: string;
+  estado: string;
+  tipo: string | null;
+  titulo: string | null;
+  cliente_id: string;
+  asset_url: string | null;
+  link_instagram: string | null;
+  creado_por_id: string | null;
+  audiovisual_id: string | null;
+  task_id: string | null;
+};
+
+async function piezaParaDecidir(id: string) {
+  const { data } = await writeDb()
+    .from("publications")
+    .select(
+      "id, estado, tipo, titulo, cliente_id, asset_url, link_instagram, creado_por_id, audiovisual_id, task_id"
+    )
+    .eq("id", id)
+    .maybeSingle();
+  return (data ?? null) as PiezaDecidible | null;
+}
+
+/**
+ * Avisarle a quien tiene que hacer algo con la pieza: quien la cargó, quien la
+ * tiene asignada y quien tiene la tarea del calendario. Sin esto, la corrección
+ * queda escrita en una pieza que nadie vuelve a abrir.
+ */
+async function avisarDeLaPieza(
+  pieza: PiezaDecidible,
+  yo: string,
+  mensaje: string
+) {
+  const admin = writeDb();
+  let responsableTarea: string | null = null;
+  if (pieza.task_id) {
+    const { data } = await admin
+      .from("tasks")
+      .select("asignado_a_id")
+      .eq("id", pieza.task_id)
+      .maybeSingle();
+    responsableTarea = (data as { asignado_a_id: string | null } | null)?.asignado_a_id ?? null;
+  }
+  const destinos = [...new Set([pieza.creado_por_id, pieza.audiovisual_id, responsableTarea])].filter(
+    (u): u is string => !!u && u !== yo
+  );
+  if (!destinos.length) return;
+  await admin.from("notifications").insert(
+    destinos.map((user_id) => ({
+      user_id,
+      tipo: "recordatorio" as const,
+      mensaje,
+      link: `/contenidos?pub=${pieza.id}`,
+      ...(pieza.task_id ? { task_id: pieza.task_id } : {}),
+    }))
+  );
+}
+
+/**
+ * Aprobar una pieza desde la bandeja.
+ *
+ * Si es una idea, la manda a producir. Si es la pieza terminada, la programa y
+ * la deja en el Drive del cliente — y ahí el link del Drive/Canva es
+ * obligatorio: se puede cargar en el mismo movimiento (`assetUrl`).
+ */
+export async function aprobarPieza(id: string, assetUrl?: string | null) {
+  const gate = await ensureCalendarEditor();
+  if (gate) return { error: gate };
+  const pieza = await piezaParaDecidir(id);
+  if (!pieza) return { error: "No encontré la pieza." };
+
+  const link = assetUrl?.trim() || null;
+  if (link && link !== pieza.asset_url) {
+    const { error } = await writeDb().from("publications").update({ asset_url: link }).eq("id", id);
+    if (error) return { error: error.message };
+    pieza.asset_url = link;
+  }
+
+  const motivo = motivoParaNoAprobar(pieza);
+  if (motivo) return { error: motivo, faltaArchivo: !motivo.startsWith("Esta pieza") };
+  const destino = destinoAlAprobar(pieza);
+  if (!destino) return { error: "Esta pieza no está esperando una aprobación." };
+
+  // La nota de revisión se limpia: si quedó escrita la corrección anterior, en
+  // la próxima vuelta parece que todavía hay algo pendiente.
+  return changePublicationStatus(id, destino, "");
+}
+
+/**
+ * Devolver una pieza con correcciones escritas.
+ *
+ * La idea vuelve a quedar como idea (con la nota a la vista, para que se
+ * corrija el texto y se vuelva a mirar); la pieza terminada pasa a "Cambios
+ * pedidos", que es lo que mira quien la produjo.
+ */
+export async function corregirPieza(id: string, nota: string) {
+  const texto = nota.trim();
+  if (texto.length < 5) {
+    return { error: "Escribí qué hay que corregir: sin eso el equipo tiene que adivinar." };
+  }
+  const gate = await ensureCalendarEditor();
+  if (gate) return { error: gate };
+  const { userId } = await ctx();
+  const pieza = await piezaParaDecidir(id);
+  if (!pieza) return { error: "No encontré la pieza." };
+  if (pieza.estado !== "idea" && pieza.estado !== "revision_creativa") {
+    return { error: "Esta pieza no está esperando una aprobación." };
+  }
+
+  const nuevoEstado = pieza.estado === "idea" ? "idea" : "rechazado";
+  const { error } = await writeDb()
+    .from("publications")
+    .update({ estado: nuevoEstado, notas_revision: texto })
+    .eq("id", id);
+  if (error) return { error: error.message };
+
+  await avisarDeLaPieza(
+    pieza,
+    userId,
+    `✏️ Correcciones en "${pieza.titulo ?? "una pieza"}": ${texto.slice(0, 120)}${texto.length > 120 ? "…" : ""}`
+  );
+  invalidate(pieza.cliente_id);
+  return { ok: true };
+}
+
+/**
+ * Aprobar de una vez todas las ideas que se le pasen.
+ *
+ * Es el botón que pidió Luz: mirar el mes entero y darle el visto bueno de un
+ * saque. Solo ideas — las piezas terminadas necesitan su archivo, así que esas
+ * siguen yendo de a una.
+ */
+export async function aprobarIdeasEnBloque(ids: string[]) {
+  if (!ids.length) return { ok: true, aprobadas: 0 };
+  const gate = await ensureCalendarEditor();
+  if (gate) return { error: gate };
+
+  const { data } = await writeDb()
+    .from("publications")
+    .select("id, estado, tipo, cliente_id")
+    .in("id", ids);
+  const piezas = (data ?? []) as { id: string; estado: string; tipo: string | null; cliente_id: string }[];
+  const { ideas } = bandejaDeAprobacion(piezas);
+  if (!ideas.length) return { error: "Ninguna de esas piezas es una idea esperando aprobación." };
+
+  // Las ideas de posteo van a diseño y las de reel a edición: se agrupan por
+  // destino para no hacer un update por pieza.
+  const porDestino = new Map<string, string[]>();
+  for (const p of ideas) {
+    const destino = destinoAlAprobar(p);
+    if (!destino) continue;
+    porDestino.set(destino, [...(porDestino.get(destino) ?? []), p.id]);
+  }
+  for (const [destino, lista] of porDestino) {
+    const { error } = await writeDb()
+      .from("publications")
+      .update({ estado: destino, notas_revision: null })
+      .in("id", lista);
+    if (error) return { error: error.message };
+  }
+  invalidate(piezas[0]?.cliente_id);
+  return { ok: true, aprobadas: ideas.length };
 }

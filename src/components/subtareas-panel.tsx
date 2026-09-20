@@ -4,13 +4,12 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, Loader2, Plus } from "lucide-react";
+import { CalendarDays, Loader2, Maximize2, Plus } from "lucide-react";
 import { addSubtarea } from "@/app/(app)/tareas/actions";
 import { reasignarTarea } from "@/app/(app)/tareas/aprobacion-actions";
 import { formatTicket, progresoTicket } from "@/lib/tareas/tickets";
-import { normalizarLinks, type LinkBorrador } from "@/lib/tareas/links";
-import { LinksEditor } from "@/components/links-editor";
-import { Textarea } from "@/components/ui/textarea";
+import { TaskFormDialog } from "@/components/task-form-dialog";
+import type { AppUser, Client } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +32,16 @@ export interface SubtareaFila {
   asignado: { id: string; nombre: string } | null;
 }
 
+/** El ticket del que cuelga el desglose. */
+export interface TicketMadre {
+  id: string;
+  titulo: string;
+  numero: number | null;
+  cliente_id: string | null;
+  area: string;
+  prioridad: string;
+}
+
 const HECHA = new Set(["completada", "archivada"]);
 
 /**
@@ -43,17 +52,28 @@ const HECHA = new Set(["completada", "archivada"]);
  * pieza. El alta es de una línea a propósito — cliente, área y prioridad los
  * hereda de la madre — porque cargar quince subtareas con un formulario largo
  * no lo hace nadie.
+ *
+ * Y cuando una subtarea sí necesita desarrollarse (el copy entero, las
+ * referencias, marcarla como posteo del calendario), el botón «Con detalle»
+ * abre la ventana grande en vez de un recuadro de tres renglones. Ese recuadro
+ * chico era el que hacía que cargar bien una subtarea fuera incómodo (20/9).
  */
 export function SubtareasPanel({
-  parentId,
+  parent,
   subtareas,
   usuarios,
+  clientes = [],
+  piezaPorSubtarea = {},
   reparte = false,
   puerta = null,
 }: {
-  parentId: string;
+  parent: TicketMadre;
   subtareas: SubtareaFila[];
-  usuarios: { id: string; nombre: string }[];
+  usuarios: Pick<AppUser, "id" | "nombre">[];
+  /** Solo para la ventana grande; la subtarea hereda la cuenta del ticket. */
+  clientes?: Pick<Client, "id" | "nombre">[];
+  /** subtarea.id → id de la pieza del calendario, si es un posteo. */
+  piezaPorSubtarea?: Record<string, string>;
   /** La PM (o la dirección): el responsable de cada fila se cambia ahí mismo. */
   reparte?: boolean;
   /** Si viene, el pedido le llega a la PM: no se elige responsable. */
@@ -65,29 +85,19 @@ export function SubtareasPanel({
   const [asignado, setAsignado] = useState("");
   const [fecha, setFecha] = useState("");
   const [guardando, setGuardando] = useState(false);
-  // El detalle de la subtarea (copy, indicaciones, referencias), plegado para
-  // que cargar muchas seguidas siga siendo de una línea.
-  const [conDetalle, setConDetalle] = useState(false);
-  const [descripcion, setDescripcion] = useState("");
-  const [links, setLinks] = useState<LinkBorrador[]>([]);
 
   const prog = progresoTicket(subtareas);
 
   async function agregar() {
     if (!titulo.trim()) return;
-    const l = normalizarLinks(links);
-    if (l.error) {
-      toast.error(l.error);
-      return;
-    }
     setGuardando(true);
     const res = await addSubtarea({
-      parentId,
+      parentId: parent.id,
       titulo,
-      descripcion: descripcion || null,
+      descripcion: null,
       asignado_a_id: asignado || null,
       fecha_limite: fecha || null,
-      links: l.links,
+      links: [],
     });
     setGuardando(false);
     if (res?.error) {
@@ -97,8 +107,6 @@ export function SubtareasPanel({
     // El responsable y la fecha quedan puestos: cargar quince placas seguidas
     // para la misma persona no puede obligar a elegirla quince veces.
     setTitulo("");
-    setDescripcion("");
-    setLinks([]);
     toast.success("Subtarea agregada");
     startTransition(() => router.refresh());
   }
@@ -133,6 +141,7 @@ export function SubtareasPanel({
         <ul className="divide-y">
           {subtareas.map((s) => {
             const hecha = HECHA.has(s.estado);
+            const piezaId = piezaPorSubtarea[s.id];
             return (
               <li key={s.id} className="flex flex-wrap items-center gap-2 px-4 py-2 text-sm">
                 <span className="w-16 shrink-0 font-mono text-[11px] text-muted-foreground">
@@ -147,6 +156,17 @@ export function SubtareasPanel({
                 >
                   {s.titulo}
                 </Link>
+                {/* Si la subtarea es un posteo del calendario, se ve acá: era
+                    lo que el dueño no encontraba al mirar el desglose. */}
+                {piezaId && (
+                  <Link
+                    href={`/contenidos?pub=${piezaId}`}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/10"
+                    title="Está en el calendario de contenidos"
+                  >
+                    <CalendarDays className="h-3 w-3" /> Pieza
+                  </Link>
+                )}
                 {/* El estado de cada subtarea: sin esto el desglose no dice
                     en qué anda cada paso, solo si terminó o no. */}
                 <span
@@ -243,20 +263,6 @@ export function SubtareasPanel({
               className="h-8 w-36 text-xs"
             />
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 text-xs"
-            onClick={() => setConDetalle((v) => !v)}
-          >
-            {conDetalle ? (
-              <ChevronDown className="mr-1 h-3.5 w-3.5" />
-            ) : (
-              <ChevronRight className="mr-1 h-3.5 w-3.5" />
-            )}
-            Detalle
-          </Button>
           <Button size="sm" onClick={agregar} disabled={guardando || !titulo.trim()}>
             {guardando ? (
               <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
@@ -265,22 +271,23 @@ export function SubtareasPanel({
             )}
             Agregar
           </Button>
+          <TaskFormDialog
+            mode="create"
+            users={usuarios}
+            clients={clientes}
+            parent={parent}
+            trigger={
+              <Button variant="outline" size="sm" className="h-8">
+                <Maximize2 className="mr-1 h-3.5 w-3.5" />
+                Con detalle
+              </Button>
+            }
+          />
         </div>
-        {conDetalle && (
-          <div className="space-y-2 rounded-md bg-muted/40 p-3">
-            <Textarea
-              rows={3}
-              value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-              placeholder="El detalle de esta subtarea: el copy exacto, qué va en cada placa, indicaciones para diseño o edición…"
-              className="bg-background text-sm"
-            />
-            <LinksEditor value={links} onChange={setLinks} compacto />
-          </div>
-        )}
         <p className="text-[11px] text-muted-foreground">
-          Cada subtarea se abre con su propia ficha: descripción, links, comentarios e historial. La subtarea hereda cliente, área y prioridad del ticket. Si no elegís responsable
-          o fecha, usa los del ticket.
+          La línea de arriba es para cargar varias de una. <b>Con detalle</b> abre la ventana
+          grande: descripción larga, links de referencia y la opción de marcarla como posteo del
+          calendario. La subtarea hereda cuenta, área y prioridad del ticket.
         </p>
       </div>
     </section>

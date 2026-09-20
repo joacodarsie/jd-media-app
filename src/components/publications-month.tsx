@@ -15,6 +15,7 @@ import {
   Trash2,
   Table as TableIcon,
   ExternalLink,
+  BadgeCheck,
   Briefcase,
   FolderOpen,
   X,
@@ -38,6 +39,8 @@ import {
   type ClientForPub,
 } from "@/components/publication-form-dialog";
 import { PublicationDetailDialog } from "@/components/publication-detail-dialog";
+import { AprobacionMes } from "@/components/aprobacion-mes";
+import { bandejaDeAprobacion } from "@/lib/contenidos/aprobacion";
 import { PublicationStatusSelect } from "@/components/publication-status-select";
 import {
   updatePublicationDate,
@@ -55,7 +58,7 @@ import {
 } from "@/components/ui/select";
 
 const DAY_NAMES = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-type Mode = "mes" | "kanban" | "tabla";
+type Mode = "mes" | "kanban" | "tabla" | "aprobar";
 
 const STATUS_ORDER: PublicationStatus[] = [
   "idea",
@@ -372,6 +375,22 @@ export function PublicationsMonth({
     return c;
   }, [filtered, cursorYM]);
 
+  // La bandeja de aprobación: lo que espera una decisión de Luz. Se mira por
+  // mes, igual que el calendario, con las piezas sin fecha siempre a la vista
+  // (una idea sin fecha también hay que aprobarla).
+  const esperanDecision = useMemo(() => {
+    const { ideas, terminadas } = bandejaDeAprobacion(filtered);
+    return [...ideas, ...terminadas];
+  }, [filtered]);
+  const pendientesDelMes = useMemo(
+    () =>
+      esperanDecision.filter((p) => {
+        const ym = (p.fecha_publicacion ?? "").slice(0, 7);
+        return ym === cursorYM || ym === "";
+      }),
+    [esperanDecision, cursorYM]
+  );
+
   const selectedClient =
     fCliente !== "__all__" ? clients.find((c) => c.id === fCliente) ?? null : null;
 
@@ -419,7 +438,7 @@ export function PublicationsMonth({
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          {mode === "mes" && (
+          {(mode === "mes" || mode === "aprobar") && (
             <>
               <Button
                 variant="outline"
@@ -464,6 +483,13 @@ export function PublicationsMonth({
             <ModeBtn icon={CalendarDays} label="Mes" active={mode === "mes"} onClick={() => setMode("mes")} />
             <ModeBtn icon={KanbanSquare} label="Kanban" active={mode === "kanban"} onClick={() => setMode("kanban")} />
             <ModeBtn icon={TableIcon} label="Tabla" active={mode === "tabla"} onClick={() => setMode("tabla")} />
+            <ModeBtn
+              icon={BadgeCheck}
+              label="Aprobar"
+              badge={pendientesDelMes.length}
+              active={mode === "aprobar"}
+              onClick={() => setMode("aprobar")}
+            />
           </div>
           {mode === "tabla" && (historialCount > 0 || verHistorial) && (
             <Button
@@ -857,7 +883,7 @@ export function PublicationsMonth({
             );
           })}
         </div>
-      ) : (
+      ) : mode === "tabla" ? (
         // Modo tabla — planilla ordenada por fecha (con selección para bulk)
         <PubTable
           pubs={tablaPubs}
@@ -867,6 +893,15 @@ export function PublicationsMonth({
           selectMode={selectMode}
           selectedIds={selectedIds}
           onToggleSelect={toggleSelect}
+        />
+      ) : (
+        // Modo aprobar — la bandeja del mes: primero las ideas, después las
+        // piezas terminadas. Es la vista de Luz.
+        <AprobacionMes
+          pubs={pendientesDelMes}
+          mesLabel={monthLabel}
+          clienteNombre={selectedClient?.nombre ?? null}
+          pendientesFuera={esperanDecision.length - pendientesDelMes.length}
         />
       )}
 
@@ -967,11 +1002,14 @@ function ModeBtn({
   label,
   active,
   onClick,
+  badge,
 }: {
   icon: typeof List;
   label: string;
   active: boolean;
   onClick: () => void;
+  /** Un número al lado del nombre (lo pendiente de aprobar). */
+  badge?: number;
 }) {
   return (
     <button
@@ -984,6 +1022,16 @@ function ModeBtn({
     >
       <Icon className="h-3.5 w-3.5" />
       <span className="hidden sm:inline">{label}</span>
+      {!!badge && (
+        <span
+          className={cn(
+            "rounded-full px-1.5 text-[10px] font-semibold tabular-nums",
+            active ? "bg-primary-foreground/20" : "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+          )}
+        >
+          {badge}
+        </span>
+      )}
     </button>
   );
 }

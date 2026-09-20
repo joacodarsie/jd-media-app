@@ -143,6 +143,18 @@ export default async function TaskDetail({
       : Promise.resolve({ data: null }),
   ]);
   const subtareas = (subsRaw ?? []) as unknown as SubtareaFila[];
+  // Qué subtareas son además una pieza del calendario: se marca en el
+  // desglose para no tener que entrar a cada una para saberlo.
+  const piezaPorSubtarea: Record<string, string> = {};
+  if (subtareas.length) {
+    const { data: piezasSub } = await supabase
+      .from("publications")
+      .select("id, task_id")
+      .in("task_id", subtareas.map((x) => x.id));
+    for (const p of (piezasSub ?? []) as { id: string; task_id: string | null }[]) {
+      if (p.task_id) piezaPorSubtarea[p.task_id] = p.id;
+    }
+  }
   // Si la migración 0165 no está aplicada, la columna no existe y la consulta
   // vuelve con error: se esconde el panel en vez de mostrar uno que no guarda.
   const ticketsActivos = !errSubs;
@@ -404,9 +416,18 @@ export default async function TaskDetail({
 
       {ticketsActivos && !t.parent_id && (
         <SubtareasPanel
-          parentId={t.id}
+          parent={{
+            id: t.id,
+            titulo: t.titulo,
+            numero: (t as unknown as { numero?: number | null }).numero ?? null,
+            cliente_id: t.cliente_id ?? null,
+            area: t.area ?? "Community Manager",
+            prioridad: t.prioridad ?? "media",
+          }}
           subtareas={subtareas}
           usuarios={users ?? []}
+          clientes={clients ?? []}
+          piezaPorSubtarea={piezaPorSubtarea}
           reparte={reparte}
           puerta={puertaSubtareas}
         />

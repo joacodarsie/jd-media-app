@@ -48,6 +48,11 @@ interface SubtareaBorrador {
   descripcion: string;
   links: LinkBorrador[];
   abierta: boolean;
+  /** La subtarea es además un posteo del calendario. */
+  esPieza: boolean;
+  piezaTipo: string;
+  piezaRed: string;
+  piezaFecha: string;
 }
 
 const subtareaVacia = (): SubtareaBorrador => ({
@@ -57,6 +62,10 @@ const subtareaVacia = (): SubtareaBorrador => ({
   descripcion: "",
   links: [],
   abierta: false,
+  esPieza: false,
+  piezaTipo: "post",
+  piezaRed: "instagram",
+  piezaFecha: "",
 });
 
 /**
@@ -75,6 +84,7 @@ export function TaskFormDialog({
   clients,
   trigger,
   tickets = [],
+  parent,
 }: {
   mode: "create" | "edit";
   task?: TaskWithRels;
@@ -83,6 +93,20 @@ export function TaskFormDialog({
   trigger: React.ReactNode;
   /** Tickets madre abiertos, para poder crear la tarea ya colgada de uno. */
   tickets?: { id: string; numero: number | null; titulo: string }[];
+  /**
+   * Si viene, la ventana crea una SUBTAREA de ese ticket: hereda cuenta, área
+   * y prioridad, y no se puede desglosar (una subtarea no tiene subtareas).
+   * Es la versión grande del alta de una línea del desglose, para cuando hay
+   * que escribir el copy, pegar referencias o marcarla como pieza.
+   */
+  parent?: {
+    id: string;
+    titulo: string;
+    numero: number | null;
+    cliente_id: string | null;
+    area: string;
+    prioridad: string;
+  };
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -91,9 +115,9 @@ export function TaskFormDialog({
   const [titulo, setTitulo] = useState<string>(task?.titulo ?? "");
   const [descripcion, setDescripcion] = useState<string>(task?.descripcion ?? "");
   const [asignado, setAsignado] = useState<string>(task?.asignado_a_id ?? NONE);
-  const [cliente, setCliente] = useState<string>(task?.cliente_id ?? NONE);
-  const [area, setArea] = useState<string>(task?.area ?? "Community Manager");
-  const [prioridad, setPrioridad] = useState<string>(task?.prioridad ?? "media");
+  const [cliente, setCliente] = useState<string>(parent?.cliente_id ?? task?.cliente_id ?? NONE);
+  const [area, setArea] = useState<string>(parent?.area ?? task?.area ?? "Community Manager");
+  const [prioridad, setPrioridad] = useState<string>(parent?.prioridad ?? task?.prioridad ?? "media");
   const [estado, setEstado] = useState<string>(task?.estado ?? "pendiente");
   const [fecha, setFecha] = useState<string>(task?.fecha_limite?.slice(0, 10) ?? "");
   const [aprobador, setAprobador] = useState<string>(task?.aprobador_id ?? NONE);
@@ -121,7 +145,7 @@ export function TaskFormDialog({
   const esCreacion = mode === "create";
   const pasaPorPm = !!puerta && puerta.hayPm && !puerta.libre && vaPorLaPm(area);
   const pmCorto = puerta?.pmNombre?.split(" ")[0] ?? "la Project Manager";  // Una subtarea no puede tener su propio desglose (trigger de la 0165).
-  const puedeDesglosar = esCreacion && madre === NONE;
+  const puedeDesglosar = esCreacion && madre === NONE && !parent;
 
   const setSub = (i: number, cambio: Partial<SubtareaBorrador>) =>
     setSubtareas((prev) => prev.map((s, j) => (j === i ? { ...s, ...cambio } : s)));
@@ -130,7 +154,7 @@ export function TaskFormDialog({
     setTitulo("");
     setDescripcion("");
     setAsignado(NONE);
-    setCliente(NONE);
+    setCliente(parent?.cliente_id ?? NONE);
     setFecha("");
     setMadre(NONE);
     setEsPieza(false);
@@ -172,6 +196,7 @@ export function TaskFormDialog({
       asignado_a_id: string | null;
       fecha_limite: string | null;
       links: ReturnType<typeof normalizarLinks>["links"];
+      pieza?: { tipo: string; red: string; fecha_publicacion: string } | null;
     }[] = [];
     if (puedeDesglosar) {
       for (const s of subtareas) {
@@ -181,12 +206,31 @@ export function TaskFormDialog({
           toast.error(`Subtarea "${s.titulo.trim()}": ${l.error}`);
           return;
         }
+        if (s.esPieza && cliente === NONE) {
+          toast.error(
+            `Subtarea "${s.titulo.trim()}": una pieza va a una cuenta, elegí el cliente.`
+          );
+          return;
+        }
+        if (s.esPieza && !s.piezaFecha) {
+          toast.error(`Subtarea "${s.titulo.trim()}": poné la fecha de publicación.`);
+          return;
+        }
         subsPayload.push({
           titulo: s.titulo.trim(),
           descripcion: s.descripcion,
           asignado_a_id: s.asignado === NONE ? null : s.asignado,
           fecha_limite: s.fecha || null,
           links: l.links,
+          ...(s.esPieza
+            ? {
+                pieza: {
+                  tipo: s.piezaTipo,
+                  red: s.piezaRed,
+                  fecha_publicacion: s.piezaFecha,
+                },
+              }
+            : {}),
         });
       }
     }
@@ -206,7 +250,7 @@ export function TaskFormDialog({
       const res = esCreacion
         ? await createTask({
             ...payload,
-            ...(madre !== NONE ? { parent_id: madre } : {}),
+            ...(parent ? { parent_id: parent.id } : madre !== NONE ? { parent_id: madre } : {}),
             ...(esPieza
               ? {
                   pieza: {
@@ -266,7 +310,15 @@ export function TaskFormDialog({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-5xl">
         <DialogHeader>
-          <DialogTitle>{esCreacion ? "Nueva tarea" : "Editar tarea"}</DialogTitle>
+          <DialogTitle>
+            {parent ? "Nueva subtarea" : esCreacion ? "Nueva tarea" : "Editar tarea"}
+          </DialogTitle>
+          {parent && (
+            <p className="text-xs text-muted-foreground">
+              Dentro de {parent.numero ? `JD-${parent.numero} · ` : ""}
+              {parent.titulo}. Hereda la cuenta, el área y la prioridad del ticket.
+            </p>
+          )}
         </DialogHeader>
 
         <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_17rem]">
@@ -380,6 +432,59 @@ export function TaskFormDialog({
                               className="bg-background text-sm"
                             />
                             <LinksEditor value={s.links} onChange={(v) => setSub(i, { links: v })} compacto />
+                            {/* Cada subtarea puede ser un posteo: el ticket es
+                                "el contenido del 1 al 15" y cada pieza va al
+                                calendario por separado (pedido del 20/9). */}
+                            <label className="flex items-center gap-2 text-xs font-medium">
+                              <input
+                                type="checkbox"
+                                checked={s.esPieza}
+                                onChange={(e) => setSub(i, { esPieza: e.target.checked })}
+                                className="h-3.5 w-3.5 accent-primary"
+                              />
+                              Es un posteo del calendario
+                            </label>
+                            {s.esPieza && (
+                              <div className="flex flex-wrap gap-2">
+                                <Select
+                                  value={s.piezaTipo}
+                                  onValueChange={(v) => setSub(i, { piezaTipo: v })}
+                                >
+                                  <SelectTrigger className="h-8 w-32 bg-background text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {Object.entries(PUBLICATION_TYPE_LABEL).map(([v, l]) => (
+                                      <SelectItem key={v} value={v}>
+                                        {l}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Select
+                                  value={s.piezaRed}
+                                  onValueChange={(v) => setSub(i, { piezaRed: v })}
+                                >
+                                  <SelectTrigger className="h-8 w-32 bg-background text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {Object.entries(PUBLICATION_NETWORK_LABEL).map(([v, l]) => (
+                                      <SelectItem key={v} value={v}>
+                                        {l}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Input
+                                  type="date"
+                                  value={s.piezaFecha}
+                                  onChange={(e) => setSub(i, { piezaFecha: e.target.value })}
+                                  className="h-8 w-36 bg-background text-xs"
+                                  title="Fecha de publicación"
+                                />
+                              </div>
+                            )}
                           </div>
                         )}
                       </li>
@@ -399,7 +504,7 @@ export function TaskFormDialog({
 
           {/* ── Los campos del ticket ── */}
           <div className="space-y-4 md:border-l md:pl-6">
-            {esCreacion && tickets.length > 0 && (
+            {esCreacion && !parent && tickets.length > 0 && (
               <div className="space-y-2">
                 <Label>Parte de un ticket</Label>
                 <Select value={madre} onValueChange={setMadre}>
@@ -456,6 +561,7 @@ export function TaskFormDialog({
               </Label>
               <Input id="fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
             </div>
+            {!parent && (
             <div className="space-y-2">
               <Label>Cliente</Label>
               <Select value={cliente} onValueChange={setCliente}>
@@ -472,6 +578,7 @@ export function TaskFormDialog({
                 </SelectContent>
               </Select>
             </div>
+            )}
             {esCreacion && (
               <div className="space-y-2 rounded-md border p-3">
                 <label className="flex items-center gap-2 text-sm font-medium">
@@ -481,7 +588,7 @@ export function TaskFormDialog({
                     onChange={(e) => setEsPieza(e.target.checked)}
                     className="h-4 w-4 accent-primary"
                   />
-                  Es una pieza de contenido
+                  {parent ? "Es un posteo del calendario" : "Es una pieza de contenido"}
                 </label>
                 {esPieza ? (
                   <>
@@ -529,12 +636,13 @@ export function TaskFormDialog({
                   </>
                 ) : (
                   <p className="text-[10px] text-muted-foreground">
-                    Marcalo si esta tarea es un posteo, un reel o una historia: además del ticket se
+                    Marcalo si esta {parent ? "subtarea" : "tarea"} es un posteo, un reel o una historia: además del ticket se
                     carga la pieza en el calendario.
                   </p>
                 )}
               </div>
             )}
+            {!parent && (
             <div className="space-y-2">
               <Label>Área</Label>
               <Select value={area} onValueChange={setArea}>
@@ -550,6 +658,8 @@ export function TaskFormDialog({
                 </SelectContent>
               </Select>
             </div>
+            )}
+            {!parent && (
             <div className="space-y-2">
               <Label>Prioridad</Label>
               <Select value={prioridad} onValueChange={setPrioridad}>
@@ -565,6 +675,7 @@ export function TaskFormDialog({
                 </SelectContent>
               </Select>
             </div>
+            )}
             <div className="space-y-2">
               <Label>Aprobación</Label>
               {requiereAprobacion(area) ? (

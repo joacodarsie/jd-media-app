@@ -2,6 +2,14 @@
 title: Novedades
 ---
 
+## 2026-09-20 — Se aprueba el mes entero, y cada subtarea puede ser un posteo
+
+- ✅ **Vista «Aprobar» en Contenidos.** Al lado de Mes, Kanban y Tabla hay una vista nueva que junta todo lo que está esperando una decisión en el mes de esa cuenta, en dos bloques: primero las **ideas** (con un botón para aprobar todas de una) y después los **diseños y videos terminados**. En cada fila, **Aprobar** o **Corregir** escribiendo ahí mismo qué hay que cambiar. Ya no hay que entrar pieza por pieza.
+- 🔗 **Para aprobar una pieza terminada va el link del Drive o del Canva, sí o sí.** Se carga en la misma fila. Aprobar algo que no se puede abrir no es aprobar, y antes se podía marcar «Programado» con el campo vacío. Vale también para el select de estado, el arrastre del kanban y el cambio en bloque.
+- ✏️ **Las correcciones llegan como aviso** a quien cargó la pieza y a quien la tiene asignada, y quedan escritas en la pieza hasta que se aprueba.
+- 🧩 **Subtareas con la ventana grande.** En el desglose de un ticket, el botón **Con detalle** abre el formulario completo (descripción larga, links de referencia) en vez del recuadro de tres renglones.
+- 📅 **«Es un posteo» ahora es de cada subtarea.** Un ticket de quincena se carga con una subtarea por pieza y cada una va al calendario con su fecha, atada a esa subtarea. En el desglose se ve el chip **Pieza** en las que están en el calendario.
+
 ## 2026-09-15 — Todo por tickets: Luz reparte y Brisa aprueba
 
 - 🚪 **Community, diseño y edición se le piden a Luz.** Cuando creás un ticket de esas áreas, le llega a Luz (Project Manager) y ella lo reparte a quien lo va a hacer. En la ventana del ticket ya no se elige responsable: dice a quién le llega.

@@ -32,24 +32,33 @@ export async function ensureDueNotifications(
   const manana = formatInTimeZone(tomorrowDate, TIMEZONE, "yyyy-MM-dd");
   const inicioHoyCordoba = toZonedTime(new Date(hoy + "T00:00:00"), TIMEZONE);
 
+  // Las ARCHIVADAS quedan afuera. Estaban entrando —el filtro solo sacaba las
+  // completadas— y eso generaba un aviso de "vencida" por tarea archivada y por
+  // día, para siempre: al 20/9/2026 una sola persona tenía 2.845 avisos sin
+  // leer, casi todos de tareas archivadas hace meses. Una campana que siempre
+  // grita es una campana que nadie mira.
   const { data: misTareas } = await supabase
     .from("tasks")
     .select("id, titulo, fecha_limite")
     .eq("asignado_a_id", userId)
-    .neq("estado", "completada")
+    .not("estado", "in", "(completada,archivada)")
     .not("fecha_limite", "is", null);
 
   if (!misTareas || misTareas.length === 0) return;
 
   const taskIds = misTareas.map((t) => t.id);
 
+  // Se deduplica por AVISO VIVO, no por día: mientras el de esa tarea siga sin
+  // leer, no se crea otro. Antes se creaba uno por día y una tarea vencida hace
+  // dos meses generaba sesenta avisos iguales; la lista se volvía inmirable y
+  // dejaba de avisar de lo nuevo, que es para lo único que sirve.
   const { data: existentes } = await supabase
     .from("notifications")
     .select("task_id, tipo, created_at")
     .eq("user_id", userId)
     .in("task_id", taskIds)
     .in("tipo", ["vencida", "proxima_a_vencer"])
-    .gte("created_at", inicioHoyCordoba.toISOString());
+    .or(`leida.eq.false,created_at.gte.${inicioHoyCordoba.toISOString()}`);
 
   const yaCreadas = new Set(
     (existentes ?? []).map((n) => `${n.task_id}:${n.tipo}`)

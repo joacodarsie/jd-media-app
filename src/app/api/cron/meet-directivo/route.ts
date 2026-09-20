@@ -6,13 +6,13 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 /**
- * Recordatorio de la REUNIÓN DIRECTIVA QUINCENAL (Bri + Luz + Dirección) —
+ * Recordatorio de la REUNIÓN DIRECTIVA QUINCENAL (Dirección + Coordinación) —
  * lunes 18hs Argentina (cron a las 21:00 UTC de cada lunes). Como Vercel Cron no
  * hace "un lunes sí y otro no", corre TODOS los lunes y el route deja pasar solo
  * las semanas pares desde un lunes ancla (ciclo quincenal).
  *
  * Manda notificación in-app + push a la coordinación general (Luz), la
- * coordinación de diseño (Bri) y los admin, con la agenda fija: revisar la
+ * coordinación y los admin, con la agenda fija: revisar la
  * identidad visual de las cuentas y que se respete. Idempotente por día.
  */
 
@@ -44,7 +44,8 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdmin();
 
-  // Destinatarios: coordinación general (Luz), coordinación de diseño (Bri) y admin.
+  // Destinatarios: coordinación y dirección, por ROL: si mañana el puesto lo
+  // ocupa otra persona, el aviso la sigue sin tocar nada.
   const { data: usersRaw, error } = await admin
     .from("users")
     .select("id, rol, rol_secundario")
@@ -60,7 +61,7 @@ export async function GET(req: NextRequest) {
   }
 
   const mensaje =
-    "Reunión directiva quincenal — hoy 18hs. Con Bri y Luz: revisar la identidad visual de las cuentas y que se respete en cada una.";
+    "Reunión directiva quincenal — hoy 18hs: revisar la identidad visual de las cuentas y que se respete en cada una.";
 
   // Idempotencia: si ya se notificó hoy, no duplicar.
   const startOfDay = new Date(
@@ -89,7 +90,7 @@ export async function GET(req: NextRequest) {
 
   await sendPushToUsers(recipients, {
     title: "Reunión directiva quincenal · 18hs",
-    body: "Con Bri y Luz: revisar la identidad visual de las cuentas.",
+    body: "Revisar la identidad visual de las cuentas.",
     url: "/dashboard",
     tag: "meet-directivo",
   }).catch(() => {});

@@ -256,8 +256,13 @@ export function ClientsDashboard({
 
       <div className="space-y-2">
         {filtered.length === 0 ? (
+          // Quien solo lleva la cuenta interna (JD Media) veía "no hay clientes"
+          // con la tarjeta de JD Media abajo: parecía un error. Se le dice lo
+          // que pasa de verdad.
           <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center text-sm text-muted-foreground">
-            No hay clientes con esos filtros.
+            {internalClients.length > 0 && realClients.length === 0
+              ? "No tenés cuentas de clientes asignadas. Tu trabajo está en la cuenta interna de acá abajo."
+              : "No hay clientes con esos filtros."}
           </div>
         ) : porEquipo && teams.length > 0 ? (
           // Agrupado: una sección por equipo + "Sin equipo" al final.

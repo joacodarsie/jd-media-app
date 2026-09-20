@@ -260,7 +260,11 @@ export default async function DashboardPage() {
   tasks.sort((a, b) => PRIORITY_ORDER[a.prioridad] - PRIORITY_ORDER[b.prioridad]);
   const pubsHoy = (clientPubsToday ?? []) as unknown as PublicationWithRels[];
 
-  const activas = tasks.filter((t) => t.estado !== "completada");
+  // Archivada = fuera de la lista, igual que completada. Si no, el arrastre
+  // viejo vuelve a aparecer como "atrasado" aunque ya se haya limpiado.
+  const activas = tasks.filter(
+    (t) => t.estado !== "completada" && t.estado !== "archivada"
+  );
 
   // Vencidas del mes en curso vs. arrastre viejo. Lo pidió Luz: le aparecían
   // tareas de MAYO como vencidas del día, muchas ya hechas y nunca marcadas.

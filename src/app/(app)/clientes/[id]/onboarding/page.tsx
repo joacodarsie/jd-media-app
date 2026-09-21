@@ -5,11 +5,6 @@ import {
   FileText,
   CheckCircle2,
   AlertTriangle,
-  Megaphone,
-  Network,
-  Palette,
-  MessageCircle,
-  ChevronRight,
 } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -22,6 +17,8 @@ import { UnifiedContractPicker } from "@/components/unified-contract-picker";
 import { AssignContractNumberButton } from "@/components/assign-contract-number-button";
 import { HelpTrigger } from "@/components/help-trigger";
 import { loadOnboarding, OnboardingStepRow } from "./_shared";
+import { OnboardingTabs } from "@/components/onboarding-tabs";
+import { panelesVisibles } from "@/lib/onboarding/paneles";
 
 export const dynamic = "force-dynamic";
 
@@ -31,11 +28,17 @@ export default async function OnboardingPage({
   params: { id: string };
 }) {
   // Onboarding INICIAL: solo Dirección (admin).
-  await requireRole(["admin"]);
+  const me = await requireRole(["admin"]);
 
   const data = await loadOnboarding(params.id);
   if (!data) notFound();
-  const { client, services, onb, coordName, mediaBuyerName, total, pagoEsperado, credenciales, tienePauta, steps, hasContractData } = data;
+  const { client, services, onb, total, pagoEsperado, credenciales, steps, hasContractData } = data;
+
+  const paneles = panelesVisibles([me.rol, me.rol_secundario], {
+    gestionRedes: services.some((s) => s.tipo === "gestion_redes"),
+    disenoGrafico: services.some((s) => s.tipo === "diseno_grafico"),
+    paidMedia: services.some((s) => s.tipo === "paid_media"),
+  });
 
   const inicialSteps = steps.filter((s) => s.stage === "inicial");
   const inicialDone = inicialSteps.filter((s) => s.done).length;
@@ -77,6 +80,13 @@ export default async function OnboardingPage({
           <ArrowLeft className="h-4 w-4" /> Volver al cliente
         </Link>
       </div>
+
+      <OnboardingTabs
+        clienteId={client.id}
+        clienteNombre={client.nombre}
+        paneles={paneles}
+        actual="inicial"
+      />
 
       <div>
         <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
@@ -247,74 +257,9 @@ export default async function OnboardingPage({
         </div>
       )}
 
-      {/* Acceso a las otras etapas (admin ve todo) */}
-      <div className="grid gap-2 sm:grid-cols-2">
-        <Link
-          href={`/clientes/${client.id}/onboarding/redes`}
-          className="flex items-center justify-between gap-2 rounded-lg border bg-card px-4 py-3 transition hover:border-primary/40 hover:bg-muted"
-        >
-          <span className="flex items-center gap-2 text-sm font-medium">
-            <Network className="h-4 w-4 text-primary" />
-            <span>
-              Onboarding de Gestión de Redes
-              <span className="block text-xs font-normal text-muted-foreground">
-                Coordinación{coordName ? ` · ${coordName}` : ""}
-              </span>
-            </span>
-          </span>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </Link>
-
-        <Link
-          href={`/clientes/${client.id}/onboarding/cm`}
-          className="flex items-center justify-between gap-2 rounded-lg border bg-card px-4 py-3 transition hover:border-primary/40 hover:bg-muted"
-        >
-          <span className="flex items-center gap-2 text-sm font-medium">
-            <MessageCircle className="h-4 w-4 text-primary" />
-            <span>
-              Onboarding de Community Manager
-              <span className="block text-xs font-normal text-muted-foreground">
-                Arranque operativo de la cuenta
-              </span>
-            </span>
-          </span>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </Link>
-
-        <Link
-          href={`/clientes/${client.id}/onboarding/diseno`}
-          className="flex items-center justify-between gap-2 rounded-lg border bg-card px-4 py-3 transition hover:border-primary/40 hover:bg-muted"
-        >
-          <span className="flex items-center gap-2 text-sm font-medium">
-            <Palette className="h-4 w-4 text-primary" />
-            <span>
-              Onboarding de Diseño Gráfico
-              <span className="block text-xs font-normal text-muted-foreground">
-                Identidad visual del arranque
-              </span>
-            </span>
-          </span>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </Link>
-
-        {tienePauta && (
-          <Link
-            href={`/clientes/${client.id}/pauta`}
-            className="flex items-center justify-between gap-2 rounded-lg border bg-card px-4 py-3 transition hover:border-primary/40 hover:bg-muted"
-          >
-            <span className="flex items-center gap-2 text-sm font-medium">
-              <Megaphone className="h-4 w-4 text-primary" />
-              <span>
-                Onboarding de publicidad
-                <span className="block text-xs font-normal text-muted-foreground">
-                  Paid Media{mediaBuyerName ? ` · ${mediaBuyerName}` : ""}
-                </span>
-              </span>
-            </span>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </Link>
-        )}
-      </div>
+      {/* Las tarjetas a las otras etapas se sacaron el 21/9/2026: arriba están
+          las mismas pantallas como pestañas, y tener las dos cosas era el mismo
+          dato dos veces en la misma pantalla. */}
     </div>
   );
 }

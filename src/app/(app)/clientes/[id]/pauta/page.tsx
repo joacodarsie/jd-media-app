@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Megaphone, TrendingUp, BarChart3 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
+import { OnboardingTabs } from "@/components/onboarding-tabs";
+import { panelesVisibles } from "@/lib/onboarding/paneles";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { AdsOnboardingChecklist, type AdsOnboardingState } from "@/components/ads-onboarding-checklist";
@@ -17,7 +19,7 @@ export default async function PublicidadOnboardingPage({
 }: {
   params: { id: string };
 }) {
-  await requireUser();
+  const me = await requireUser();
   const supabase = createClient();
   const admin = createAdmin();
 
@@ -55,9 +57,23 @@ export default async function PublicidadOnboardingPage({
   const adAccountId = onb.meta_ad_account_id ?? null;
   // Gestión de redes ya incluye el paid media básico en Meta Ads.
   const tienePauta = ((paidSvc ?? []) as unknown[]).length > 0;
+  // Las pestañas del onboarding: esta pantalla es una de ellas desde el
+  // 21/9/2026, en vez de un botón aparte en la ficha del cliente.
+  const tiposSvc = ((paidSvc ?? []) as { tipo: string }[]).map((s) => s.tipo);
+  const paneles = panelesVisibles([me.rol, me.rol_secundario], {
+    gestionRedes: tiposSvc.includes("gestion_redes"),
+    disenoGrafico: false,
+    paidMedia: tiposSvc.includes("paid_media"),
+  });
 
   return (
     <div className="space-y-5">
+      <OnboardingTabs
+        clienteId={client.id as string}
+        clienteNombre={client.nombre as string}
+        paneles={paneles}
+        actual="pauta"
+      />
       <div>
         <Link
           href={`/clientes/${client.id}`}

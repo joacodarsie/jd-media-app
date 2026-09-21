@@ -5,6 +5,8 @@ import { requireRole } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HelpTrigger } from "@/components/help-trigger";
 import { loadOnboarding, OnboardingStepRow } from "../_shared";
+import { OnboardingTabs } from "@/components/onboarding-tabs";
+import { panelesVisibles } from "@/lib/onboarding/paneles";
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +17,16 @@ export default async function OnboardingCmPage({
 }) {
   // Onboarding del Community Manager: lo hace la CM de la cuenta; admin y la
   // coordinación general también lo ven.
-  await requireRole(["admin", "coordinador", "community_manager"]);
+  const me = await requireRole(["admin", "coordinador", "community_manager"]);
 
   const data = await loadOnboarding(params.id);
   if (!data) notFound();
-  const { client, onb, pagoEsperado, credenciales, steps } = data;
+  const { client, services, onb, pagoEsperado, credenciales, steps } = data;
+  const paneles = panelesVisibles([me.rol, me.rol_secundario], {
+    gestionRedes: services.some((s) => s.tipo === "gestion_redes"),
+    disenoGrafico: services.some((s) => s.tipo === "diseno_grafico"),
+    paidMedia: services.some((s) => s.tipo === "paid_media"),
+  });
 
   const cmSteps = steps.filter((s) => s.stage === "cm");
   const cmDone = cmSteps.filter((s) => s.done).length;
@@ -35,6 +42,13 @@ export default async function OnboardingCmPage({
           <ArrowLeft className="h-4 w-4" /> Volver al cliente
         </Link>
       </div>
+
+      <OnboardingTabs
+        clienteId={client.id}
+        clienteNombre={client.nombre}
+        paneles={paneles}
+        actual="cm"
+      />
 
       <div>
         <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">

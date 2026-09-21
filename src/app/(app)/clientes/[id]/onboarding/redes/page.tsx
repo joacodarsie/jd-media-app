@@ -9,6 +9,8 @@ import { HelpTrigger } from "@/components/help-trigger";
 import { RedesConnectionGuide } from "@/components/redes-connection-guide";
 import { ClientTeamAssign } from "@/components/client-team-assign";
 import { loadOnboarding, OnboardingStepRow } from "../_shared";
+import { OnboardingTabs } from "@/components/onboarding-tabs";
+import { panelesVisibles } from "@/lib/onboarding/paneles";
 
 export const dynamic = "force-dynamic";
 
@@ -18,12 +20,18 @@ export default async function OnboardingRedesPage({
   params: { id: string };
 }) {
   // Onboarding de Gestión de Redes: lo da la coordinación del servicio (+ admin).
-  await requireRole(["admin", "coordinador"]);
+  const me = await requireRole(["admin", "coordinador"]);
 
   const data = await loadOnboarding(params.id);
   if (!data) notFound();
-  const { client, onb, coordName, mediaBuyerName, pagoEsperado, credenciales, tienePauta, steps, driveEmail, driveNeedsUpdate } =
+  const { client, services, onb, coordName, mediaBuyerName, pagoEsperado, credenciales, tienePauta, steps, driveEmail, driveNeedsUpdate } =
     data;
+
+  const paneles = panelesVisibles([me.rol, me.rol_secundario], {
+    gestionRedes: services.some((s) => s.tipo === "gestion_redes"),
+    disenoGrafico: services.some((s) => s.tipo === "diseno_grafico"),
+    paidMedia: services.some((s) => s.tipo === "paid_media"),
+  });
 
   const redesSteps = steps.filter((s) => s.stage === "redes");
   const redesDone = redesSteps.filter((s) => s.done).length;
@@ -60,6 +68,13 @@ export default async function OnboardingRedesPage({
           <ArrowLeft className="h-4 w-4" /> Volver al cliente
         </Link>
       </div>
+
+      <OnboardingTabs
+        clienteId={client.id}
+        clienteNombre={client.nombre}
+        paneles={paneles}
+        actual="redes"
+      />
 
       <div>
         <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">

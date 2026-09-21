@@ -11,7 +11,6 @@ import {
   FolderOpen,
   Globe,
   Mail,
-  Megaphone,
   MessageCircle,
   Phone,
   Pencil,
@@ -20,6 +19,7 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import { requireUser, isStaffUser, userInRoles, canSeeAllClients } from "@/lib/auth";
+import { hrefDePanel, panelDeEntrada } from "@/lib/onboarding/paneles";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { listEventsForUser } from "@/lib/google-calendar";
@@ -277,19 +277,32 @@ export default async function ClientDetail({
     fecha: i.fecha_cobro ?? i.fecha_vencimiento,
   }));
 
+  // Por dónde entra esta persona al onboarding de la cuenta. Las pantallas
+  // tienen dueños distintos (la inicial es de dirección, publicidad del media
+  // buyer) y un botón que rebota es peor que no tener botón.
+  const entradaOnboarding = panelDeEntrada(
+    [me.rol, (me as { rol_secundario?: string | null }).rol_secundario],
+    {
+      gestionRedes: svcList.some((s) => s.tipo === "gestion_redes"),
+      disenoGrafico: svcList.some((s) => s.tipo === "diseno_grafico"),
+      paidMedia: svcList.some((s) => s.tipo === "paid_media"),
+    }
+  );
+
   // ── Acciones de navegación de la ficha (toolbar) ──
   const navBtn =
     "inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-md border bg-card px-3 text-sm font-medium transition hover:bg-muted";
   const actions: { href: string; label: string; icon: typeof Sparkles; show: boolean; blank?: boolean }[] = [
-    // UN solo botón de onboarding (21/9/2026). Antes eran cuatro —general,
-    // redes, CM y diseño— y los tres últimos ya están adentro del primero:
-    // la barra de la ficha se llenaba de botones que llevaban al mismo lado.
-    // El panorama de todas las cuentas está en /onboarding.
+    // UN solo botón de onboarding (21/9/2026). Antes eran CINCO —general,
+    // redes, CM, diseño y publicidad— y todos llevaban a lo mismo por caminos
+    // distintos. Ahora se entra por la pantalla que le toca a cada uno y
+    // adentro se pasa al resto con pestañas. El panorama de todas las cuentas
+    // está en /onboarding.
     {
-      href: `/clientes/${c.id}/onboarding`,
+      href: entradaOnboarding ? hrefDePanel(c.id, entradaOnboarding.key) : "#",
       label: "Onboarding",
       icon: Sparkles,
-      show: userInRoles(me, ["admin", "coordinador", "community_manager", "coordinador_diseno", "diseno"]),
+      show: !!entradaOnboarding,
     },
     { href: `/clientes/${c.id}/diagnostico`, label: "Diagnóstico", icon: FileBarChart, show: true },
     // Reunión de cierre de mes: guión antes del meet, diagnóstico del mes después.
@@ -301,17 +314,8 @@ export default async function ClientDetail({
       show: c.estado !== "propuesta",
     },
     { href: `/clientes/${c.id}/plan-mensual`, label: "Plan mensual", icon: CalendarDays, show: true },
-    // El servicio de gestión de redes ya incluye el paid media básico en Meta Ads,
-    // así que la sección de publicidad se muestra con gestión de redes O paid media.
-    // Solo para staff / media buyer (los que gestionan pauta).
-    {
-      href: `/clientes/${c.id}/pauta`,
-      label: "Onboarding publicidad",
-      icon: Megaphone,
-      show:
-        userInRoles(me, ["admin", "coordinador", "paid_media"]) &&
-        svcList.some((s) => s.tipo === "paid_media" || s.tipo === "gestion_redes"),
-    },
+    // El onboarding de publicidad ya no tiene botón propio: es una pestaña más
+    // adentro del onboarding de la cuenta.
     {
       href: `/clientes/${c.id}/pauta/analisis`,
       label: "Análisis de pauta",

@@ -5,6 +5,8 @@ import { requireRole } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HelpTrigger } from "@/components/help-trigger";
 import { loadOnboarding, OnboardingStepRow } from "../_shared";
+import { OnboardingTabs } from "@/components/onboarding-tabs";
+import { panelesVisibles } from "@/lib/onboarding/paneles";
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +17,16 @@ export default async function OnboardingDisenoPage({
 }) {
   // Onboarding de Diseño Gráfico: lo hace el diseñador/a; lo aprueba la
   // Coordinación de Diseño. Admin y la coordinación (general y de diseño) lo ven.
-  await requireRole(["admin", "coordinador", "coordinador_diseno", "diseno"]);
+  const me = await requireRole(["admin", "coordinador", "coordinador_diseno", "diseno"]);
 
   const data = await loadOnboarding(params.id);
   if (!data) notFound();
-  const { client, onb, pagoEsperado, credenciales, steps } = data;
+  const { client, services, onb, pagoEsperado, credenciales, steps } = data;
+  const paneles = panelesVisibles([me.rol, me.rol_secundario], {
+    gestionRedes: services.some((s) => s.tipo === "gestion_redes"),
+    disenoGrafico: services.some((s) => s.tipo === "diseno_grafico"),
+    paidMedia: services.some((s) => s.tipo === "paid_media"),
+  });
 
   const disenoSteps = steps.filter((s) => s.stage === "diseno");
   const disenoDone = disenoSteps.filter((s) => s.done).length;
@@ -35,6 +42,13 @@ export default async function OnboardingDisenoPage({
           <ArrowLeft className="h-4 w-4" /> Volver al cliente
         </Link>
       </div>
+
+      <OnboardingTabs
+        clienteId={client.id}
+        clienteNombre={client.nombre}
+        paneles={paneles}
+        actual="diseno"
+      />
 
       <div>
         <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">

@@ -59,6 +59,15 @@ export const NAV_GROUPS: NavGroup[] = [
         // Visible para todo el equipo. La pagina internamente oculta datos
         // sensibles (monto, pagos, contacto privado) a no-admin/coord.
       },
+      // Los 15 días de arranque de todas las cuentas nuevas, juntos. Antes
+      // vivían en cuatro botones adentro de la ficha de cada cliente y no
+      // había dónde verlos de conjunto, así que no los miraba nadie.
+      {
+        href: "/onboarding",
+        label: "Arranques",
+        icon: "Rocket",
+        roles: ["admin", "coordinador"],
+      },
       // Comercial agrupa: Comercial, Prospección y Post-meet (pestañas).
       {
         href: "/comercial",

@@ -13,8 +13,6 @@ import {
   Mail,
   Megaphone,
   MessageCircle,
-  Network,
-  Palette,
   Phone,
   Pencil,
   Sparkles,
@@ -283,28 +281,15 @@ export default async function ClientDetail({
   const navBtn =
     "inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-md border bg-card px-3 text-sm font-medium transition hover:bg-muted";
   const actions: { href: string; label: string; icon: typeof Sparkles; show: boolean; blank?: boolean }[] = [
-    { href: `/clientes/${c.id}/onboarding`, label: "Onboarding", icon: Sparkles, show: me.rol === "admin" },
+    // UN solo botón de onboarding (21/9/2026). Antes eran cuatro —general,
+    // redes, CM y diseño— y los tres últimos ya están adentro del primero:
+    // la barra de la ficha se llenaba de botones que llevaban al mismo lado.
+    // El panorama de todas las cuentas está en /onboarding.
     {
-      href: `/clientes/${c.id}/onboarding/redes`,
-      label: "Onboarding redes",
-      icon: Network,
-      show: userInRoles(me, ["admin", "coordinador"]) && svcList.some((s) => s.tipo === "gestion_redes"),
-    },
-    {
-      href: `/clientes/${c.id}/onboarding/cm`,
-      label: "Onboarding CM",
-      icon: MessageCircle,
-      show:
-        userInRoles(me, ["admin", "coordinador", "community_manager"]) &&
-        svcList.some((s) => s.tipo === "gestion_redes"),
-    },
-    {
-      href: `/clientes/${c.id}/onboarding/diseno`,
-      label: "Onboarding diseño",
-      icon: Palette,
-      show:
-        userInRoles(me, ["admin", "coordinador", "coordinador_diseno", "diseno"]) &&
-        svcList.some((s) => s.tipo === "gestion_redes" || s.tipo === "diseno_grafico"),
+      href: `/clientes/${c.id}/onboarding`,
+      label: "Onboarding",
+      icon: Sparkles,
+      show: userInRoles(me, ["admin", "coordinador", "community_manager", "coordinador_diseno", "diseno"]),
     },
     { href: `/clientes/${c.id}/diagnostico`, label: "Diagnóstico", icon: FileBarChart, show: true },
     // Reunión de cierre de mes: guión antes del meet, diagnóstico del mes después.

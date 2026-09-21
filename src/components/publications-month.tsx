@@ -41,6 +41,16 @@ import {
 import { PublicationDetailDialog } from "@/components/publication-detail-dialog";
 import { AprobacionMes } from "@/components/aprobacion-mes";
 import { bandejaDeAprobacion } from "@/lib/contenidos/aprobacion";
+import {
+  contarPorEtapa,
+  estadoAlElegirEtapa,
+
+  ETAPAS,
+  ETAPA_AYUDA,
+  ETAPA_HEX,
+  ETAPA_LABEL,
+  type Etapa,
+} from "@/lib/contenidos/etapas";
 import { PublicationStatusSelect } from "@/components/publication-status-select";
 import {
   updatePublicationDate,
@@ -60,6 +70,10 @@ import {
 const DAY_NAMES = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 type Mode = "mes" | "kanban" | "tabla" | "aprobar";
 
+/**
+ * Los estados finos. Ya no arman el kanban —eso va por etapas— pero siguen
+ * estando en el cambio en bloque, donde hace falta precisión.
+ */
 const STATUS_ORDER: PublicationStatus[] = [
   "idea",
   "en_diseno",
@@ -153,6 +167,15 @@ export function PublicationsMonth({
       toast.success(date ? "Movida al " + date : "Sin fecha");
       router.refresh();
     });
+  }
+
+  /** Soltar una pieza en una columna del kanban: la etapa decide el estado. */
+  function moveToEtapa(id: string, etapa: Etapa) {
+    const pub = publications.find((p) => p.id === id);
+    if (!pub) return;
+    const destino = estadoAlElegirEtapa(etapa, pub.estado, pub.tipo);
+    if (!destino) return;
+    moveToStatus(id, destino);
   }
 
   function moveToStatus(id: string, status: PublicationStatus) {
@@ -312,21 +335,21 @@ export function PublicationsMonth({
     return m;
   }, [filtered]);
 
-  const byStatus = useMemo(() => {
-    const m = new Map<PublicationStatus, PublicationWithRels[]>();
-    for (const p of filtered) {
-      if (!m.has(p.estado)) m.set(p.estado, []);
-      m.get(p.estado)!.push(p);
-    }
-    for (const [, arr] of m) {
-      arr.sort((a, b) => {
+  // Las piezas agrupadas por ETAPA: cinco columnas en vez de nueve. El equipo
+  // usaba dos de los nueve estados (129 en idea, 377 en publicado, cero en
+  // diseño), así que la grilla mostraba siete columnas vacías.
+  const byEtapa = useMemo(() => {
+    const grupos = contarPorEtapa(filtered);
+    for (const e of ETAPAS) {
+      grupos[e].sort((a, b) => {
         if (!a.fecha_publicacion) return 1;
         if (!b.fecha_publicacion) return -1;
         return a.fecha_publicacion.localeCompare(b.fecha_publicacion);
       });
     }
-    return m;
+    return grupos;
   }, [filtered]);
+
 
   // Filas de la tabla: sin la historia, salvo que se pida verla.
   const mesActual = new Date().toISOString().slice(0, 7);
@@ -654,16 +677,12 @@ export function PublicationsMonth({
           onChange={(e) => setFEstado(e.target.value)}
           className="h-8 rounded-md border bg-background px-2 text-xs"
         >
-          <option value="__all__">Todos los estados</option>
-          <option value="idea">Idea</option>
-          <option value="en_diseno">En diseño</option>
-          <option value="guion">Guion</option>
-          <option value="edicion">Edición</option>
-          <option value="revision_creativa">Revisión creativa</option>
-          <option value="revision_cliente">Revisión cliente</option>
-          <option value="aprobado">Aprobado</option>
-          <option value="publicado">Publicado</option>
-          <option value="rechazado">Cambios pedidos</option>
+          <option value="__all__">Todas las etapas</option>
+          {ETAPAS.map((e) => (
+            <option key={e} value={e}>
+              {ETAPA_LABEL[e]}
+            </option>
+          ))}
         </select>
         {activeFilters > 0 && (
           <button
@@ -820,10 +839,10 @@ export function PublicationsMonth({
           </div>
         </>
       ) : mode === "kanban" ? (
-        // Modo kanban — columnas por estado del flujo, drag & drop entre columnas
+        // Modo kanban — una columna por ETAPA, drag & drop entre columnas
         <div className="flex gap-3 overflow-x-auto pb-2">
-          {STATUS_ORDER.map((s) => {
-            const arr = byStatus.get(s) ?? [];
+          {ETAPAS.map((s) => {
+            const arr = byEtapa[s];
             const dropHover = hoverKey === "k_" + s && draggingId;
             return (
               <div
@@ -841,21 +860,24 @@ export function PublicationsMonth({
                 onDrop={(e) => {
                   e.preventDefault();
                   const id = e.dataTransfer.getData("text/plain") || draggingId;
-                  if (id) moveToStatus(id, s);
+                  if (id) moveToEtapa(id, s);
                 }}
                 className={cn(
                   "flex w-72 shrink-0 flex-col rounded-lg border bg-card transition-colors",
                   dropHover && "ring-2 ring-inset ring-primary"
                 )}
               >
-                <div className="flex items-center justify-between border-b px-3 py-2">
-                  <span
-                    className="rounded px-2 py-0.5 text-[11px] font-semibold text-foreground"
-                    style={{ backgroundColor: PUBLICATION_STATUS_HEX[s] + "33" }}
-                  >
-                    {PUBLICATION_STATUS_LABEL[s]}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{arr.length}</span>
+                <div className="border-b px-3 py-2">
+                  <div className="flex items-center justify-between">
+                    <span
+                      className="rounded px-2 py-0.5 text-[11px] font-semibold text-foreground"
+                      style={{ backgroundColor: ETAPA_HEX[s] + "33" }}
+                    >
+                      {ETAPA_LABEL[s]}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{arr.length}</span>
+                  </div>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">{ETAPA_AYUDA[s]}</p>
                 </div>
                 <div className="flex-1 space-y-1.5 overflow-y-auto p-2">
                   {arr.length === 0 ? (

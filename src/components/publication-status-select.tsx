@@ -3,12 +3,19 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, PenLine } from "lucide-react";
 import { changePublicationStatus } from "@/app/(app)/contenidos/actions";
 import {
-  PUBLICATION_STATUS_LABEL,
-  PUBLICATION_STATUS_HEX,
-} from "@/lib/constants";
+  estadoAlElegirEtapa,
+  etapaDe,
+  ETAPAS,
+  ETAPA_AYUDA,
+  ETAPA_HEX,
+  ETAPA_LABEL,
+  tieneCorrecciones,
+  type Etapa,
+} from "@/lib/contenidos/etapas";
+import { PUBLICATION_STATUS_LABEL } from "@/lib/constants";
 import type { PublicationStatus, Publication } from "@/lib/types";
 import {
   Select,
@@ -20,17 +27,15 @@ import {
 import { cn } from "@/lib/utils";
 import { tiposQuePidenLink } from "@/lib/contenidos/link-publicado";
 
-const ALL_STATUSES: PublicationStatus[] = [
-  "idea",
-  "en_diseno",
-  "edicion",
-  "revision_creativa",
-  "revision_cliente",
-  "aprobado",
-  "publicado",
-  "rechazado",
-];
-
+/**
+ * En qué etapa está la pieza.
+ *
+ * Antes este select tenía los NUEVE estados de la base y el equipo usaba dos:
+ * al 20/9 había 129 piezas en "idea", 377 en "publicado" y cero en "en diseño".
+ * Ahora ofrece las cuatro etapas de `lib/contenidos/etapas` y la app traduce a
+ * qué estado fino corresponde —producir un posteo es diseñarlo y producir un
+ * reel es editarlo—, que es lo que nadie iba a elegir bien a mano.
+ */
 export function PublicationStatusSelect({
   publication,
   className,
@@ -42,21 +47,20 @@ export function PublicationStatusSelect({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [pendingNote, setPendingNote] = useState<PublicationStatus | null>(null);
+  const [pendingNote, setPendingNote] = useState<"publicado" | "rechazado" | null>(null);
   const [notes, setNotes] = useState("");
   const [linkPosteo, setLinkPosteo] = useState("");
   const [inlineError, setInlineError] = useState<string | null>(null);
   // Estado local optimista: refleja el estado mostrado en el SelectTrigger
   // sin esperar a que el padre rerenderice tras router.refresh().
-  const [localEstado, setLocalEstado] = useState<PublicationStatus>(
-    publication.estado
-  );
+  const [localEstado, setLocalEstado] = useState<PublicationStatus>(publication.estado);
 
-  // Si el padre rerendea con un estado nuevo (por router.refresh o cambio externo),
-  // sincronizamos el local.
   useEffect(() => {
     setLocalEstado(publication.estado);
   }, [publication.estado]);
+
+  const etapaActual: Etapa = etapaDe(localEstado);
+  const conCorrecciones = tieneCorrecciones(localEstado);
 
   function apply(target: PublicationStatus, finalNote?: string, link?: string) {
     setInlineError(null);
@@ -74,10 +78,12 @@ export function PublicationStatusSelect({
           toast.error(msg);
           return;
         }
-        // Actualización optimista local: el trigger ya quedó OK en DB,
-        // reflejamos visualmente al instante.
         setLocalEstado(target);
-        toast.success("Estado: " + PUBLICATION_STATUS_LABEL[target]);
+        toast.success(
+          target === "rechazado"
+            ? "Cambios pedidos."
+            : "Etapa: " + ETAPA_LABEL[etapaDe(target)]
+        );
         setPendingNote(null);
         setNotes("");
         setLinkPosteo("");
@@ -90,37 +96,29 @@ export function PublicationStatusSelect({
     });
   }
 
-  function onChange(target: string) {
-    const t = target as PublicationStatus;
-    if (t === localEstado) return;
-    // "Publicado" pide el link del posteo. Es el mismo gesto que ya existe
-    // para "pedir cambios": se abre un campito abajo en vez de un diálogo.
-    // Las historias no tienen link fijo (duran 24 h): se marcan directo.
-    if (t === "publicado" && tiposQuePidenLink(publication.tipo)) {
-      setPendingNote(t);
+  function onChange(value: string) {
+    const destino = estadoAlElegirEtapa(value as Etapa, localEstado, publication.tipo);
+    if (!destino) return;
+    // "Publicado" pide el link del posteo: se abre un campito abajo en vez de
+    // un diálogo. Las historias no tienen link fijo (duran 24 h).
+    if (destino === "publicado" && tiposQuePidenLink(publication.tipo)) {
+      setPendingNote("publicado");
       setInlineError(null);
       return;
     }
-    if (t === "rechazado") {
-      setPendingNote(t);
-      setInlineError(null);
-      return;
-    }
-    apply(t);
+    apply(destino);
   }
 
   return (
     <div className={cn("space-y-2", className)}>
       <Select
-        // El key forzamos que Radix re-monte cuando el estado local cambia,
-        // así el trigger refleja siempre el último valor aplicado.
         key={localEstado}
-        value={localEstado}
+        value={etapaActual}
         onValueChange={onChange}
         disabled={pending}
       >
         <SelectTrigger
-          style={{ backgroundColor: PUBLICATION_STATUS_HEX[localEstado] + "2e" }}
+          style={{ backgroundColor: ETAPA_HEX[etapaActual] + "2e" }}
           className={cn(
             "w-full border-0 font-medium text-foreground",
             size === "sm" ? "h-8 text-xs" : "h-9 text-sm"
@@ -129,19 +127,45 @@ export function PublicationStatusSelect({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {ALL_STATUSES.map((s) => (
-            <SelectItem key={s} value={s}>
+          {ETAPAS.map((e) => (
+            <SelectItem key={e} value={e}>
               <span className="flex items-center gap-2">
                 <span
                   className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: PUBLICATION_STATUS_HEX[s] }}
+                  style={{ backgroundColor: ETAPA_HEX[e] }}
                 />
-                {PUBLICATION_STATUS_LABEL[s]}
+                <span>
+                  {ETAPA_LABEL[e]}
+                  <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
+                    {ETAPA_AYUDA[e]}
+                  </span>
+                </span>
               </span>
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
+
+      {/* La marca de correcciones: la etapa dice "Produciendo" y esto dice por
+          qué volvió. Antes era un estado propio y sacaba la pieza del flujo. */}
+      {conCorrecciones && !pendingNote && (
+        <p className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+          Volvió con correcciones. Mirá las notas de revisión.
+        </p>
+      )}
+
+      {!pendingNote && localEstado !== "publicado" && (
+        <button
+          type="button"
+          onClick={() => {
+            setPendingNote("rechazado");
+            setInlineError(null);
+          }}
+          className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+        >
+          <PenLine className="h-3 w-3" /> Pedir cambios
+        </button>
+      )}
 
       {pendingNote === "publicado" && (
         <div className="space-y-2 rounded-md border bg-muted/30 p-2">
@@ -198,7 +222,7 @@ export function PublicationStatusSelect({
       {pendingNote === "rechazado" && (
         <div className="space-y-2 rounded-md border bg-muted/30 p-2">
           <p className="text-xs font-medium">
-            Pediste cambios. Dejá una nota explicando qué hay que ajustar:
+            Contá qué hay que ajustar. Le llega a quien la está haciendo:
           </p>
           <textarea
             rows={2}
@@ -244,6 +268,14 @@ export function PublicationStatusSelect({
             </button>
           </div>
         </div>
+      )}
+
+      {/* El estado fino, chiquito: sirve para entender de dónde viene una pieza
+          vieja sin volver a llenar la pantalla de casilleros. */}
+      {PUBLICATION_STATUS_LABEL[localEstado] !== ETAPA_LABEL[etapaActual] && (
+        <p className="text-[10px] text-muted-foreground">
+          {PUBLICATION_STATUS_LABEL[localEstado]}
+        </p>
       )}
     </div>
   );

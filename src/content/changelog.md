@@ -9,6 +9,7 @@ title: Novedades
 - 🎬 **El contenido pasa de nueve estados a cuatro etapas**: Idea → Produciendo → Para aprobar → Programada, y después Publicado. La app traduce sola: producir un posteo es diseñarlo y producir un reel es editarlo. «Cambios pedidos» deja de ser un estado aparte — una pieza con correcciones está produciendo otra vez, y se ve con su marca ámbar. El kanban pasa de 9 columnas a 5.
 - 🔔 **La campana deja de acumular.** Los recordatorios sin leer se borran a la semana (el sistema los vuelve a generar si el problema sigue); las asignaciones y menciones, al mes. Y se van los avisos de tareas que ya se cerraron. De 870 sin leer a 565 de entrada.
 - 🔗 **Aviso a cada CM de las piezas que salieron sin el link del posteo.** Sin el link no se puede abrir el posteo ni entra en el informe del cliente.
+
 ## 2026-09-20 — Se aprueba el mes entero, y cada subtarea puede ser un posteo
 
 - ✅ **Vista «Aprobar» en Contenidos.** Al lado de Mes, Kanban y Tabla hay una vista nueva que junta todo lo que está esperando una decisión en el mes de esa cuenta, en dos bloques: primero las **ideas** (con un botón para aprobar todas de una) y después los **diseños y videos terminados**. En cada fila, **Aprobar** o **Corregir** escribiendo ahí mismo qué hay que cambiar. Ya no hay que entrar pieza por pieza.

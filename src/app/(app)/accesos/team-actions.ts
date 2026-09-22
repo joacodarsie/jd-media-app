@@ -188,6 +188,98 @@ export async function toggleUserActive(userId: string, activo: boolean) {
   return { ok: true };
 }
 
+/**
+ * Dónde puede haber quedado rastro de una persona.
+ *
+ * Borrar un usuario NO es inofensivo: las FK están mezcladas. Unas cuantas
+ * son `on delete cascade` (payroll_items, team_payments, compensation,
+ * comments) — o sea que borrar a alguien con historial se lleva puesto lo que
+ * se le pagó — y otras son `set null`, que le borran la autoría a tareas y
+ * publicaciones sin avisar. Por eso solo se borra una cuenta que no hizo
+ * nada; el resto se desactiva, que es para lo que está el botón de al lado.
+ */
+const RASTROS: { tabla: string; columnas: string[]; que: string }[] = [
+  { tabla: "tasks", columnas: ["asignado_a_id", "creado_por_id", "aprobador_id"], que: "tareas" },
+  { tabla: "comments", columnas: ["user_id"], que: "comentarios" },
+  { tabla: "clients", columnas: ["responsable_id", "cm_id", "disenador_id", "audiovisual_id", "media_buyer_id", "coordinador_id", "cerrado_por_id"], que: "cuentas" },
+  { tabla: "publications", columnas: ["creado_por_id", "disenador_id", "audiovisual_id"], que: "contenidos" },
+  { tabla: "payroll_items", columnas: ["user_id", "creado_por_id"], que: "sueldos" },
+  { tabla: "team_payments", columnas: ["user_id"], que: "pagos" },
+  { tabla: "compensation", columnas: ["user_id"], que: "acuerdos de pago" },
+  { tabla: "client_assignments", columnas: ["user_id"], que: "pases de cuenta" },
+  { tabla: "task_time_entries", columnas: ["user_id"], que: "tiempos cargados" },
+  { tabla: "team_messages", columnas: ["user_id"], que: "mensajes del chat" },
+  { tabla: "leads", columnas: ["asignado_a_id", "created_by_id"], que: "leads" },
+  { tabla: "prospecting_contacts", columnas: ["asignado_a", "created_by"], que: "contactos" },
+  { tabla: "client_meetings", columnas: ["registrado_por"], que: "reuniones" },
+  { tabla: "documents", columnas: ["subido_por_id"], que: "documentos" },
+  { tabla: "proposals", columnas: ["creada_por_id"], que: "propuestas" },
+];
+
+/** Qué dejó atrás una persona. Vacío = se puede borrar sin perder nada. */
+async function rastrosDe(userId: string): Promise<string[]> {
+  const admin = createAdmin();
+  const hallados = await Promise.all(
+    RASTROS.map(async (r) => {
+      const filtro = r.columnas.map((c) => `${c}.eq.${userId}`).join(",");
+      const { count, error } = await admin
+        .from(r.tabla)
+        .select("*", { count: "exact", head: true })
+        .or(filtro);
+      // Si la consulta falla (tabla que todavía no existe en este entorno),
+      // se asume que SÍ hay rastro: ante la duda no se borra nada.
+      if (error) return r.que;
+      return (count ?? 0) > 0 ? r.que : null;
+    })
+  );
+  return hallados.filter((x): x is string => x !== null);
+}
+
+/**
+ * Borra una cuenta para siempre — solo si nunca se usó.
+ *
+ * Pensado para el caso real: creaste un usuario de prueba o te equivocaste al
+ * darlo de alta y quedó ahí como "Inactivo" molestando. Si la persona trabajó,
+ * devuelve qué tiene cargado y no borra nada.
+ */
+export async function deleteUser(userId: string) {
+  const me = await requireRole(["admin"]);
+  if (!isOwner(me)) {
+    return { error: "Solo la dirección puede borrar una cuenta." };
+  }
+  if (me.id === userId) return { error: "No podés borrar tu propia cuenta." };
+
+  const admin = createAdmin();
+  const { data: victima } = await admin
+    .from("users")
+    .select("id, nombre, activo, rol")
+    .eq("id", userId)
+    .maybeSingle();
+  if (!victima) return { error: "Esa cuenta ya no existe." };
+  if (victima.activo) {
+    return {
+      error: "Primero desactivala. Borrar es definitivo y no se puede deshacer.",
+    };
+  }
+
+  const rastros = await rastrosDe(userId);
+  if (rastros.length > 0) {
+    return {
+      error: `${victima.nombre} tiene ${rastros.join(", ")} a su nombre. Borrarla perdería ese historial: dejala desactivada.`,
+    };
+  }
+
+  // Primero auth (que arrastra el perfil por la FK), y si esa cuenta no tenía
+  // usuario de auth, se limpia el perfil suelto igual.
+  const { error: aErr } = await admin.auth.admin.deleteUser(userId);
+  if (aErr && !/not found/i.test(aErr.message)) return { error: aErr.message };
+  const { error: uErr } = await admin.from("users").delete().eq("id", userId);
+  if (uErr) return { error: uErr.message };
+
+  invalidate();
+  return { ok: true, nombre: victima.nombre };
+}
+
 /** Crea un usuario nuevo (auth + perfil). */
 export async function inviteNewUser(input: {
   nombre: string;

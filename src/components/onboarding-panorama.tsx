@@ -13,6 +13,7 @@ import {
 import { DIAS_ONBOARDING } from "@/lib/retencion/onboarding-15";
 import type { ArranqueEnCurso } from "@/lib/retencion/onboarding-panorama";
 import { OnboardingCamino } from "@/components/onboarding-camino";
+import { TareaPeekProvider, useTareaPeek } from "@/components/tarea-peek";
 import { cn } from "@/lib/utils";
 
 /**
@@ -24,6 +25,17 @@ import { cn } from "@/lib/utils";
  * para saber cómo viene el arranque, que es exactamente lo que nadie hacía.
  */
 export function OnboardingPanorama({ filas }: { filas: ArranqueEnCurso[] }) {
+  // El provider va afuera de la lista porque el mapa y los renglones abren la
+  // misma ventanita, y quien la abre tiene que estar debajo del provider.
+  return (
+    <TareaPeekProvider>
+      <Lista filas={filas} />
+    </TareaPeekProvider>
+  );
+}
+
+function Lista({ filas }: { filas: ArranqueEnCurso[] }) {
+  const { abrir } = useTareaPeek();
   // La primera cuenta viene abierta: si todo arranca cerrado, la pantalla
   // parece un índice y hay que hacer un clic para ver cualquier cosa.
   const [abiertas, setAbiertas] = useState<Set<string>>(
@@ -117,7 +129,7 @@ export function OnboardingPanorama({ filas }: { filas: ArranqueEnCurso[] }) {
                       titulo: p.titulo,
                       hecho: p.hecho,
                       fecha: `Día ${p.dia}`,
-                      href: `/tareas/${p.id}`,
+                      tareaId: p.id,
                     }))}
                   />
                 </div>
@@ -140,15 +152,18 @@ export function OnboardingPanorama({ filas }: { filas: ArranqueEnCurso[] }) {
                             : "bg-muted-foreground/30"
                         )}
                       />
-                      <Link
-                        href={`/tareas/${p.id}`}
+                      {/* El renglón abre la misma ventanita que el nodo del
+                          mapa: mirar un paso no debería sacarte de acá. */}
+                      <button
+                        type="button"
+                        onClick={() => abrir(p.id)}
                         className={cn(
-                          "min-w-0 flex-1 truncate hover:underline",
+                          "min-w-0 flex-1 truncate text-left hover:underline",
                           p.hecho && "text-muted-foreground line-through"
                         )}
                       >
                         {p.titulo}
-                      </Link>
+                      </button>
                       {p.area && (
                         <span className="shrink-0 text-[11px] text-muted-foreground">
                           {p.area}

@@ -8,6 +8,7 @@ import {
   pasoActual,
   puntosDelCamino,
 } from "@/lib/onboarding/camino";
+import { useTareaPeekSiHay } from "@/components/tarea-peek";
 import { cn } from "@/lib/utils";
 
 export interface PasoDelCamino {
@@ -21,6 +22,12 @@ export interface PasoDelCamino {
    * (`#paso-<key>`); en el panorama de arranques lleva al ticket.
    */
   href?: string;
+  /**
+   * La tarea que hay detrás del paso, si la hay. Cuando está, el nodo abre la
+   * vista rápida en vez de navegar: el mapa es para mirar, y mandar a la
+   * página completa por cada curiosidad obligaba a volver atrás siempre.
+   */
+  tareaId?: string;
 }
 
 /**
@@ -42,6 +49,7 @@ export function OnboardingCamino({
   columnas?: number;
 }) {
   const [encima, setEncima] = useState<number | null>(null);
+  const peek = useTareaPeekSiHay();
 
   if (pasos.length === 0) return null;
 
@@ -119,10 +127,21 @@ export function OnboardingCamino({
           const paso = pasos[n.i];
           const esActual = n.i === actual;
           const esUltimo = n.i === pasos.length - 1;
+          // Con tarea detrás el nodo abre la ventanita; sin ella sigue siendo
+          // un ancla que baja al paso en la lista.
+          const abrePeek = !!(paso.tareaId && peek);
+          const Nodo = abrePeek ? "button" : "a";
+          const propsDelNodo = abrePeek
+            ? {
+                type: "button" as const,
+                onClick: () => peek!.abrir(paso.tareaId!),
+              }
+            : { href: paso.href ?? `#paso-${paso.key}` };
+
           return (
-            <a
+            <Nodo
               key={paso.key}
-              href={paso.href ?? `#paso-${paso.key}`}
+              {...propsDelNodo}
               onMouseEnter={() => setEncima(n.i)}
               onMouseLeave={() => setEncima(null)}
               onFocus={() => setEncima(n.i)}
@@ -165,7 +184,7 @@ export function OnboardingCamino({
                   )}
                 </span>
               )}
-            </a>
+            </Nodo>
           );
         })}
       </div>

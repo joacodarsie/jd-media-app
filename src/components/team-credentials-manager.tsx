@@ -15,6 +15,7 @@ import {
   Copy,
   UserCog,
   Pencil,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ import {
   sendPasswordReset,
   setUserPassword,
   toggleUserActive,
+  deleteUser,
   updateUserEmail,
   updateUserName,
   updateUserPermissions,
@@ -271,6 +273,24 @@ function UserRow({ user, soyDirector }: { user: TeamRow; soyDirector: boolean })
     });
   }
 
+  function borrar() {
+    if (
+      !confirm(
+        `Borrar la cuenta de ${user.nombre} (${user.email}) para siempre.\n\nEsto no se puede deshacer. Si la persona trabajó en algo, la app no te va a dejar y te va a decir qué tiene cargado.\n\n¿Seguimos?`
+      )
+    )
+      return;
+    start(async () => {
+      const res = await deleteUser(user.id);
+      if (res?.error) {
+        toast.error(res.error, { duration: 8000 });
+        return;
+      }
+      toast.success(`Cuenta borrada: ${user.nombre}`);
+      router.refresh();
+    });
+  }
+
   return (
     <tr className="border-b last:border-0 hover:bg-muted/20">
       <td className="px-3 py-2 font-medium">
@@ -350,6 +370,20 @@ function UserRow({ user, soyDirector }: { user: TeamRow; soyDirector: boolean })
           >
             <Power className="h-3.5 w-3.5" />
           </Button>
+          {/* Borrar solo aparece con la cuenta ya desactivada: primero se
+              apaga, después se decide si se tira. */}
+          {!user.activo && soyDirector && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={borrar}
+              disabled={pending}
+              title="Borrar la cuenta para siempre"
+              className="h-8 gap-1 px-2 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </td>
     </tr>

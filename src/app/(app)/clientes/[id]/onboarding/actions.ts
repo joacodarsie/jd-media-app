@@ -331,10 +331,10 @@ export async function buildWelcomeMessages(clientId: string): Promise<
       .maybeSingle(),
     admin
       .from("client_services")
-      .select("tipo, media_buyer_aplica")
+      .select("tipo, media_buyer_aplica, responsables, costo_override_user")
       .eq("cliente_id", clientId)
       .eq("activo", true),
-    admin.from("users").select("id, nombre, rol, rol_secundario, area").eq("activo", true),
+    admin.from("users").select("id, nombre, rol, rol_secundario, area, area_secundaria").eq("activo", true),
   ]);
   if (!client) return { ok: false, error: "Cliente no encontrado" };
 
@@ -347,23 +347,39 @@ export async function buildWelcomeMessages(clientId: string): Promise<
     media_buyer_id: string | null;
     coordinador_id: string | null;
   };
-  const svcs = (services ?? []) as { tipo: string; media_buyer_aplica: boolean | null }[];
+  const svcs = (services ?? []) as {
+    tipo: string;
+    media_buyer_aplica: boolean | null;
+    responsables: string[] | null;
+    costo_override_user: string | null;
+  }[];
   const us = (users ?? []) as {
     id: string;
     nombre: string;
     rol: string;
     rol_secundario: string | null;
     area: string | null;
+    area_secundaria: string | null;
   }[];
   const nombreDe = (id: string | null) => (id ? (us.find((u) => u.id === id)?.nombre ?? null) : null);
   const tieneRol = (u: { rol: string; rol_secundario: string | null }, r: string) =>
     u.rol === r || u.rol_secundario === r;
 
   // La project manager es la coordinadora de la cuenta; si no hay, quien tenga
-  // el área de Coordinación. La directora creativa, quien tenga coordinador_diseno.
+  // el área de Coordinación. La dirección creativa, quien tenga coordinador_diseno
+  // o el área de Coordinación de Diseño (desde el 22/9 es Santi, como área secundaria).
   const projectManager =
     nombreDe(c.coordinador_id) ?? us.find((u) => u.area === "Coordinación")?.nombre ?? null;
-  const directoraCreativa = us.find((u) => tieneRol(u, "coordinador_diseno"))?.nombre ?? null;
+  const directoraCreativa =
+    us.find((u) => tieneRol(u, "coordinador_diseno"))?.nombre ??
+    us.find((u) => u.area === "Coordinación de Diseño" || u.area_secundaria === "Coordinación de Diseño")
+      ?.nombre ??
+    null;
+  // Quien brinda el WhatsApp: el "Lo lleva" del servicio; si no hay, a quien se le paga.
+  const svcWsp = svcs.filter((sv) => sv.tipo === "gestion_whatsapp" || sv.tipo === "chatter");
+  const whatsapp =
+    nombreDe(svcWsp.flatMap((sv) => sv.responsables ?? [])[0] ?? null) ??
+    nombreDe(svcWsp.find((sv) => sv.costo_override_user)?.costo_override_user ?? null);
   const mediaBuyer =
     nombreDe(c.media_buyer_id) ?? us.find((u) => tieneRol(u, "paid_media"))?.nombre ?? null;
   const redes = svcs.find((sv) => sv.tipo === "gestion_redes");
@@ -381,6 +397,7 @@ export async function buildWelcomeMessages(clientId: string): Promise<
       disenador: nombreDe(c.disenador_id),
       editor: nombreDe(c.audiovisual_id),
       mediaBuyer,
+      whatsapp,
     },
   });
 

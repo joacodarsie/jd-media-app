@@ -26,6 +26,8 @@ export interface EquipoBienvenida {
   disenador: string | null;
   editor: string | null;
   mediaBuyer: string | null;
+  /** Quien brinda la gestión de WhatsApp y/o el chatter (el "Lo lleva" del servicio). */
+  whatsapp?: string | null;
 }
 
 export interface EntradaBienvenida {
@@ -49,6 +51,15 @@ export function mensajesDeBienvenida(e: EntradaBienvenida): string[] {
   const pauta = svc.has("paid_media") || (redes && e.conGestionDeCampanas);
   const contenido = redes || svc.has("edicion_audiovisual");
   const eq = e.equipo;
+  const wsp = svc.has("gestion_whatsapp") || svc.has("chatter");
+  const queWsp = svc.has("chatter")
+    ? svc.has("gestion_whatsapp")
+      ? "tu WhatsApp: imagen de marca, estados, grupos y la atención de las consultas"
+      : "la atención de las consultas de tu WhatsApp"
+    : "tu WhatsApp: imagen de marca, estados y grupos";
+  // Si la misma persona dirige lo creativo y lleva el WhatsApp, va en una sola línea.
+  const wspEnDireccion =
+    wsp && contenido && !!eq.directoraCreativa && !!eq.whatsapp && eq.whatsapp === eq.directoraCreativa;
 
   // ── 1. Bienvenida y equipo ──
   const equipo: string[] = [];
@@ -59,7 +70,8 @@ export function mensajesDeBienvenida(e: EntradaBienvenida): string[] {
   }
   if (contenido && eq.directoraCreativa) {
     equipo.push(
-      `– *${pila(eq.directoraCreativa)}*, dirección creativa: define la línea del contenido y aprueba cada pieza antes de que te llegue.`
+      `– *${pila(eq.directoraCreativa)}*, dirección creativa: define la línea del contenido y aprueba cada pieza antes de que te llegue.` +
+        (wspEnDireccion ? ` También lleva ${queWsp}.` : "")
     );
   }
   if (redes && eq.communityManager) {
@@ -69,6 +81,10 @@ export function mensajesDeBienvenida(e: EntradaBienvenida): string[] {
   if (contenido && eq.editor) equipo.push(`– *${pila(eq.editor)}*, edición audiovisual.`);
   if (pauta && eq.mediaBuyer) {
     equipo.push(`– *${pila(eq.mediaBuyer)}*, campañas publicitarias: configura y sigue tus anuncios todos los días.`);
+  }
+
+  if (wsp && eq.whatsapp && !wspEnDireccion) {
+    equipo.push(`– *${pila(eq.whatsapp)}*, WhatsApp: lleva ${queWsp}.`);
   }
 
   const m1 = [
@@ -127,6 +143,14 @@ export function mensajesDeBienvenida(e: EntradaBienvenida): string[] {
     if (arranque.length) arranque.push(``);
     arranque.push(`🎨 Diseño gráfico: brief y referencias, manual de marca y producción de las piezas acordadas.`);
   }
+  if (wsp) {
+    if (arranque.length) arranque.push(``);
+    arranque.push(
+      svc.has("gestion_whatsapp")
+        ? `💬 WhatsApp: configuramos tu WhatsApp Business con la imagen de la marca y armamos la estrategia de estados y grupos${svc.has("chatter") ? ", y el guion para responder las consultas" : ""}.`
+        : `💬 WhatsApp: armamos el guion para responder las consultas y empezamos a atenderlas.`
+    );
+  }
   if (arranque.length) mensajes.push(arranque.join("\n"));
 
   // ── 3. Cómo trabajamos mes a mes ──
@@ -160,6 +184,9 @@ export function mensajesDeBienvenida(e: EntradaBienvenida): string[] {
   }
   if (pauta) {
     pedidos.push(`🔑 Acceso a tu Business Manager de Meta, y una tarjeta para la pauta. Te recomendamos la de Dólar App: la publicidad no paga el recargo de impuestos.`);
+  }
+  if (wsp) {
+    pedidos.push(`📱 Acceso a tu WhatsApp Business: lo vinculamos como dispositivo, sin cambiar tu número.`);
   }
   if (contenido || svc.has("diseno_grafico")) {
     pedidos.push(`🎨 Tu logo en buena calidad (ideal vectorizado) y los colores o tipografías que ya uses.`);

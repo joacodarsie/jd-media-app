@@ -42,6 +42,9 @@ import {
 
 type UserLite = { id: string; nombre: string };
 
+/** Servicios que brinda una persona puntual, elegida en el servicio. */
+const TIPOS_CON_BRINDA = new Set(["gestion_whatsapp", "chatter"]);
+
 export function ClientServicesEditor({
   clienteId,
   services,
@@ -238,6 +241,15 @@ function ServiceDialog({
   // pero ya no se edita acá (era redundante y confuso).
   const responsables =
     (service as { responsables?: string[] } | undefined)?.responsables ?? [];
+  // WhatsApp y chatter los brinda UNA persona (hoy Santi Reinaldi) que no sale
+  // del equipo de la cuenta: se elige acá, se ve como "Lo lleva" y la presenta
+  // el mensaje de bienvenida al grupo.
+  const [brinda, setBrinda] = useState<string>(
+    responsables[0] ??
+      (service as { costo_override_user?: string | null } | undefined)?.costo_override_user ??
+      users.find((u) => /reinaldi/i.test(u.nombre))?.id ??
+      ""
+  );
   const [pack, setPack] = useState<string>(service?.pack ?? "Presencia");
   const [fechaInicio, setFechaInicio] = useState(service?.fecha_inicio ?? "");
   const [fechaFin, setFechaFin] = useState(service?.fecha_fin ?? "");
@@ -329,7 +341,7 @@ function ServiceDialog({
       facturacion,
       notas,
       activo,
-      responsables,
+      responsables: TIPOS_CON_BRINDA.has(tipo) ? (brinda ? [brinda] : []) : responsables,
       media_buyer_aplica: isRedes ? mediaBuyerAplica : true,
       // Costo de entrega: solo para servicios que no son gestión de redes.
       costo_override:
@@ -379,6 +391,36 @@ function ServiceDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {TIPOS_CON_BRINDA.has(tipo) && (
+            <div className="space-y-1">
+              <Label>Quién lo brinda</Label>
+              <Select
+                value={brinda || "none"}
+                onValueChange={(v) => {
+                  const id = v === "none" ? "" : v;
+                  setBrinda(id);
+                  // Casi siempre es también a quien se le paga.
+                  if (id && !costoUser) setCostoUser(id);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Persona" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— Sin asignar —</SelectItem>
+                  {users.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Aparece en el mensaje de bienvenida al grupo del cliente.
+              </p>
+            </div>
+          )}
 
           {tipo === "gestion_redes" && (
             <>

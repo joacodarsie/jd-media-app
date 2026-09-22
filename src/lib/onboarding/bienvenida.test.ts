@@ -69,6 +69,37 @@ describe("mensajesDeBienvenida — variantes", () => {
     expect(m.join("\n")).not.toContain("Jornadas");
   });
 
+  it("sin WhatsApp contratado no lo menciona", () => {
+    const m = mensajesDeBienvenida({ ...base, equipo: { ...base.equipo, whatsapp: "Santiago Reinaldi" } });
+    expect(m.join("\n")).not.toContain("WhatsApp Business");
+    expect(m[0]).not.toContain("Santiago");
+  });
+
+  it("gestión de WhatsApp sin chatter: presenta a quien lo brinda y pide el acceso", () => {
+    const m = mensajesDeBienvenida({
+      ...base,
+      servicios: ["gestion_redes", "gestion_whatsapp"],
+      equipo: { ...base.equipo, whatsapp: "Santiago Reinaldi" },
+    });
+    expect(m[0]).toContain("*Santiago*, WhatsApp: lleva tu WhatsApp: imagen de marca, estados y grupos.");
+    expect(m[1]).toContain("configuramos tu WhatsApp Business");
+    expect(m[1]).not.toContain("guion para responder");
+    expect(m[3]).toContain("Acceso a tu WhatsApp Business");
+  });
+
+  it("si dirige lo creativo y lleva el WhatsApp, va en una sola línea", () => {
+    const m = mensajesDeBienvenida({
+      ...base,
+      servicios: ["gestion_redes", "gestion_whatsapp", "chatter"],
+      equipo: { ...base.equipo, directoraCreativa: "Santiago Reinaldi", whatsapp: "Santiago Reinaldi" },
+    });
+    expect(m[0]).toContain(
+      "*Santiago*, dirección creativa: define la línea del contenido y aprueba cada pieza antes de que te llegue. También lleva tu WhatsApp: imagen de marca, estados, grupos y la atención de las consultas."
+    );
+    expect(m[0].match(/\*Santiago\*/g)).toHaveLength(1);
+    expect(m[1]).toContain("y el guion para responder las consultas");
+  });
+
   it("si falta alguien del equipo, no deja una línea vacía", () => {
     const m = mensajesDeBienvenida({ ...base, equipo: { ...base.equipo, editor: null } });
     expect(m[0]).not.toContain("edición audiovisual");

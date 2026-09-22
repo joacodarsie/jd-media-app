@@ -2,6 +2,10 @@
 title: Novedades
 ---
 
+## 2026-09-22 — El arranque de una cuenta ahora se lee como un mapa
+
+- 🗺️ **Caminito de pasos** arriba de cada onboarding y en Arranques: los pasos hechos son nodos verdes unidos por una línea, lo que falta queda punteado y el paso actual late con su nombre a la vista. El último es una bandera. Tocá un nodo y baja al paso en la lista.
+- Se ve de un vistazo por dónde va la cuenta, sin leer trece renglones.
 ## 2026-09-21 — Arranques, cuatro etapas de contenido y menos ruido en la campana
 
 - 🚀 **Sección nueva: Arranques.** Los 15 primeros días de cada cuenta nueva, todos juntos, con la línea de tiempo de cada una: en qué día va, qué pasos se cumplieron y cuáles quedaron atrás. Apareció porque el plan de arranque **no se estaba creando nunca**: ahora se arma solo al activar la cuenta, venga por donde venga, y el cron de la noche revisa que no falte ninguno.

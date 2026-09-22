@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -59,6 +59,7 @@ import {
   type Feature,
 } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import { fmtDate } from "@/lib/dates";
 import { ROLE_DEFAULT_FEATURES } from "@/lib/role-defaults";
 import { Shield } from "lucide-react";
 
@@ -73,7 +74,13 @@ export interface TeamRow {
   activo: boolean;
   permisos?: Record<string, boolean> | null;
   password_visible?: string | null;
+  created_at?: string | null;
 }
+
+/** Cómo se ordena la lista del equipo. */
+type Orden = "nombre" | "nuevos";
+/** Qué usuarios se muestran. Por defecto solo los que siguen entrando. */
+type Filtro = "activos" | "inactivos" | "todos";
 
 /** Valor centinela para "sin rol/área secundaria" en los Select. */
 const NONE = "__none__";
@@ -114,6 +121,24 @@ export function TeamCredentialsManager({
   /** El director puede editar los permisos de cualquiera, admins incluidos. */
   soyDirector?: boolean;
 }) {
+  const [orden, setOrden] = useState<Orden>("nombre");
+  const [filtro, setFiltro] = useState<Filtro>("activos");
+
+  const activos = users.filter((u) => u.activo).length;
+  const inactivos = users.length - activos;
+
+  const visibles = useMemo(() => {
+    const filtrados = users.filter((u) =>
+      filtro === "todos" ? true : filtro === "activos" ? u.activo : !u.activo
+    );
+    if (orden === "nombre") return filtrados;
+    // Los más nuevos arriba. Sin fecha (usuarios viejos importados) van al
+    // fondo: no sabemos cuándo entraron, así que no pueden ser "lo último".
+    return [...filtrados].sort(
+      (a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "")
+    );
+  }, [users, orden, filtro]);
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -125,6 +150,33 @@ export function TeamCredentialsManager({
           </p>
         </div>
         <InviteDialog />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="flex items-center gap-1">
+          <span className="text-[11px] text-muted-foreground">Mostrar</span>
+          <Chip activo={filtro === "activos"} onClick={() => setFiltro("activos")}>
+            Activos ({activos})
+          </Chip>
+          <Chip
+            activo={filtro === "inactivos"}
+            onClick={() => setFiltro("inactivos")}
+          >
+            Desactivados ({inactivos})
+          </Chip>
+          <Chip activo={filtro === "todos"} onClick={() => setFiltro("todos")}>
+            Todos
+          </Chip>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="text-[11px] text-muted-foreground">Ordenar por</span>
+          <Chip activo={orden === "nombre"} onClick={() => setOrden("nombre")}>
+            Nombre
+          </Chip>
+          <Chip activo={orden === "nuevos"} onClick={() => setOrden("nuevos")}>
+            Más nuevos
+          </Chip>
+        </div>
       </div>
 
       {/* overflow-x-auto: son 6 columnas, en celular se desbordaban. */}
@@ -141,13 +193,52 @@ export function TeamCredentialsManager({
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
-              <UserRow key={u.id} user={u} soyDirector={soyDirector} />
-            ))}
+            {visibles.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={6}
+                  className="px-3 py-8 text-center text-xs text-muted-foreground"
+                >
+                  {filtro === "inactivos"
+                    ? "No hay nadie desactivado."
+                    : "No hay usuarios para mostrar."}
+                </td>
+              </tr>
+            ) : (
+              visibles.map((u) => (
+                <UserRow key={u.id} user={u} soyDirector={soyDirector} />
+              ))
+            )}
           </tbody>
         </table>
       </div>
     </div>
+  );
+}
+
+/** Botoncito de filtro/orden. Mismo look que los chips del resto de la app. */
+function Chip({
+  activo,
+  onClick,
+  children,
+}: {
+  activo: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
+        activo
+          ? "border-primary bg-primary/10 font-medium text-primary"
+          : "text-muted-foreground hover:bg-muted"
+      )}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -184,6 +275,11 @@ function UserRow({ user, soyDirector }: { user: TeamRow; soyDirector: boolean })
     <tr className="border-b last:border-0 hover:bg-muted/20">
       <td className="px-3 py-2 font-medium">
         <ChangeNamePopover user={user} />
+        {user.created_at && (
+          <div className="text-[10px] font-normal text-muted-foreground">
+            Alta {fmtDate(user.created_at)}
+          </div>
+        )}
       </td>
       <td className="px-3 py-2">
         <div className="inline-flex items-center gap-1">

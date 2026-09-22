@@ -30,14 +30,14 @@ export default async function AccesosPage() {
         .order("activo", { ascending: false })
         .order("nombre");
     const full = await sel(
-      "id, nombre, email, rol, area, rol_secundario, area_secundaria, activo, permisos, password_visible"
+      "id, nombre, email, rol, area, rol_secundario, area_secundaria, activo, permisos, password_visible, created_at"
     );
     if (!full.error) return full;
     const noSecondary = await sel(
-      "id, nombre, email, rol, area, activo, permisos, password_visible"
+      "id, nombre, email, rol, area, activo, permisos, password_visible, created_at"
     );
     if (!noSecondary.error) return noSecondary;
-    return sel("id, nombre, email, rol, area, activo, permisos");
+    return sel("id, nombre, email, rol, area, activo, permisos, created_at");
   }
 
   const [

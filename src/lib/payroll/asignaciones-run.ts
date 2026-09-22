@@ -12,6 +12,9 @@ import type { Asignacion, RolDeCuenta } from "./asignaciones";
 export const ROLES_CON_HISTORIAL: { rol: RolDeCuenta; campo: string }[] = [
   { rol: "cm", campo: "cm_id" },
   { rol: "media_buyer", campo: "media_buyer_id" },
+  // Quien atiende la cuenta: cobra el 5% de cartera, así que un cambio de
+  // responsable sin fecha reescribiría los meses ya cerrados.
+  { rol: "responsable", campo: "responsable_id" },
 ];
 
 /**

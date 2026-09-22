@@ -303,7 +303,7 @@ export async function updateClientRow(
   const admin = createAdmin();
   const { data: antes } = await admin
     .from("clients")
-    .select("cm_id, media_buyer_id, fecha_inicio")
+    .select("cm_id, media_buyer_id, responsable_id, fecha_inicio")
     .eq("id", id)
     .maybeSingle();
 
@@ -315,12 +315,13 @@ export async function updateClientRow(
     const previo = antes as {
       cm_id: string | null;
       media_buyer_id: string | null;
+      responsable_id: string | null;
       fecha_inicio: string | null;
     };
     for (const { rol, campo } of ROLES_CON_HISTORIAL) {
       const nuevo = (patch as Record<string, unknown>)[campo] as string | null | undefined;
       if (nuevo === undefined) continue;
-      const viejo = previo[campo as "cm_id" | "media_buyer_id"];
+      const viejo = previo[campo as "cm_id" | "media_buyer_id" | "responsable_id"];
       if ((nuevo ?? null) === (viejo ?? null)) continue;
       await anotarPaseDeCuenta(admin, {
         clienteId: id,

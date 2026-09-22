@@ -141,6 +141,43 @@ describe("selectCarteraCommissions — lo que cobra quien atiende la cuenta", ()
     expect(selectCarteraCommissions([c], rec, "2026-10", rates, pago)[0].closerId).toBe("santi");
   });
 
+  // ── El historial de pases (22/9/2026) ──
+  // Las 15 cuentas pasaron a Santi desde octubre. Sin historial, el cambio le
+  // habría pagado también septiembre, que ya estaba corriendo.
+
+  it("con historial manda el historial, no el responsable de la ficha", () => {
+    const c = cliente({ responsable_id: "santi" });
+    const out = selectCarteraCommissions([c], rec, "2026-10", rates, pago, () => [
+      { userId: "luz", fraccion: 1 },
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].closerId).toBe("luz");
+  });
+
+  it("si ese mes todavía no la llevaba nadie, no se paga aunque la ficha diga otra cosa", () => {
+    const c = cliente({ responsable_id: "santi" });
+    expect(selectCarteraCommissions([c], rec, "2026-10", rates, pago, () => [])).toHaveLength(0);
+  });
+
+  it("un pase a mitad de mes se reparte por días", () => {
+    const c = cliente({ responsable_id: "santi" });
+    const out = selectCarteraCommissions([c], rec, "2026-10", rates, pago, () => [
+      { userId: "luz", fraccion: 0.6 },
+      { userId: "santi", fraccion: 0.4 },
+    ]);
+    expect(out.map((l) => [l.closerId, l.monto])).toEqual([
+      ["luz", 9_000],
+      ["santi", 6_000],
+    ]);
+    expect(out[0].concepto).toContain("60% del mes");
+  });
+
+  it("sin historial cargado se sigue usando el responsable de la ficha", () => {
+    const c = cliente({ responsable_id: "santi" });
+    const out = selectCarteraCommissions([c], rec, "2026-10", rates, pago, undefined);
+    expect(out[0].closerId).toBe("santi");
+  });
+
   it("una cuenta paga un solo 5% por mes, aunque la haya cerrado otro", () => {
     const c = cliente({ cerrado_por_id: "mati", responsable_id: "mati" });
     let total = 0;

@@ -123,32 +123,64 @@ export function selectCloserCommissions(
  *  - el cliente PAGÓ ese período (`pagoRegistrado`). Si no pagó, no se paga
  *    comisión por él: es lo que evita cerrar con quien sea.
  */
+/**
+ * Quién atendía la cuenta en ese mes, y en qué proporción.
+ *
+ * Devuelve vacío si no hay historial para esa cuenta: ahí se cae al
+ * responsable de la ficha, que es como venía funcionando.
+ */
+export type ResponsableDelMes = (
+  clienteId: string
+) => { userId: string; fraccion: number }[];
+
 export function selectCarteraCommissions(
   clients: PayrollClient[],
   recurringByClient: Map<string, number>,
   periodo: string,
   rates: ComisionRates,
-  pagoRegistrado: (clienteId: string) => boolean
+  pagoRegistrado: (clienteId: string) => boolean,
+  /**
+   * El historial de pases. Sin esto se usa el responsable actual de la
+   * ficha — que es justo lo que reescribía el pasado al pasar una cuenta.
+   */
+  responsableDelMes?: ResponsableDelMes
 ): LineaComision[] {
   const pct = rates.comision_cartera ?? 0;
   if (pct <= 0) return [];
   const out: LineaComision[] = [];
   for (const c of clients) {
-    if (!c.responsable_id) continue;
     const mes = mesDelCliente(c.fecha_inicio, periodo);
     if (mes === null || mes < 2) continue;
     if (!pagoRegistrado(c.id)) continue;
     const base = recurringByClient.get(c.id) ?? 0;
     if (base <= 0) continue;
-    out.push({
-      closerId: c.responsable_id,
-      clienteId: c.id,
-      cliente: c.nombre,
-      base,
-      pct,
-      monto: Math.round(base * pct),
-      concepto: `Cartera (${pctTxt(pct)}) · cuenta a su cargo`,
-    });
+
+    // Con historial manda el historial, aunque no devuelva a nadie: que la
+    // cuenta todavía no tenga responsable ESE mes es una respuesta válida.
+    const historial = responsableDelMes?.(c.id);
+    const tramos =
+      historial !== undefined
+        ? historial
+        : c.responsable_id
+        ? [{ userId: c.responsable_id, fraccion: 1 }]
+        : [];
+
+    for (const t of tramos) {
+      const monto = Math.round(base * pct * t.fraccion);
+      if (monto <= 0) continue;
+      const parcial = t.fraccion < 1;
+      out.push({
+        closerId: t.userId,
+        clienteId: c.id,
+        cliente: c.nombre,
+        base: Math.round(base * t.fraccion),
+        pct,
+        monto,
+        concepto: parcial
+          ? `Cartera (${pctTxt(pct)}) · cuenta a su cargo ${Math.round(t.fraccion * 100)}% del mes`
+          : `Cartera (${pctTxt(pct)}) · cuenta a su cargo`,
+      });
+    }
   }
   return out;
 }

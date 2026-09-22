@@ -12,6 +12,7 @@ import { SERVICE_TYPE_LABEL } from "./constants";
 import { splitJornada } from "./jornada";
 import { isClientPausedFor } from "./client-pause";
 import { cargarAsignaciones } from "./payroll/asignaciones-run";
+import { quienLlevaba } from "./payroll/asignaciones";
 import {
   computeAutoPayroll,
   computeContentPayroll,
@@ -439,8 +440,22 @@ export async function buildPeriodPayroll(
     ...selectCloserCommissions(clients, recurringByClient, periodo, settings.rates, (clienteId) =>
       items.some((i) => i.tipo === "comision" && i.cliente_id === clienteId)
     ),
-    ...selectCarteraCommissions(clients, recurringByClient, periodo, settings.rates, (clienteId) =>
-      cobraron.has(clienteId)
+    ...selectCarteraCommissions(
+      clients,
+      recurringByClient,
+      periodo,
+      settings.rates,
+      (clienteId) => cobraron.has(clienteId),
+      // El 5% de cartera se le paga a quien atendía la cuenta ESE mes. Las 15
+      // cuentas pasaron a Santi el 22/9/2026 desde octubre: sin esto, el cambio
+      // le habría pagado también septiembre, que ya estaba corriendo.
+      ctxAsignaciones
+        ? (clienteId) =>
+            quienLlevaba(asignaciones, clienteId, "responsable", periodo).map((t) => ({
+              userId: t.userId,
+              fraccion: t.fraccion,
+            }))
+        : undefined
     ),
     ...selectUpsellCommissions(clients, services, periodo, settings.rates),
   ].filter((fc) => !admins.has(fc.closerId));

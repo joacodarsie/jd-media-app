@@ -14,7 +14,20 @@
  * Puro y testeado: acá se decide plata.
  */
 
-export type RolDeCuenta = "cm" | "disenador" | "audiovisual" | "media_buyer" | "coordinador";
+/**
+ * Los roles que una cuenta puede tener asignados a lo largo del tiempo.
+ *
+ * `responsable` es quien ATIENDE la cuenta y cobra el 5% de cartera. Entró
+ * el 22/9/2026, cuando las 15 cuentas pasaron a Santi: sin historial, el
+ * cambio le habría pagado también los meses ya corridos.
+ */
+export type RolDeCuenta =
+  | "cm"
+  | "disenador"
+  | "audiovisual"
+  | "media_buyer"
+  | "coordinador"
+  | "responsable";
 
 export interface Asignacion {
   clienteId: string;

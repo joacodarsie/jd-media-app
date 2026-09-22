@@ -26,7 +26,7 @@ describe("mensajesDeBienvenida — gestión de redes con campañas", () => {
 
   it("presenta la estructura nueva con nombres de pila", () => {
     expect(m[0]).toContain("*Luz*, project manager");
-    expect(m[0]).toContain("*Brisa*, directora creativa");
+    expect(m[0]).toContain("*Brisa*, dirección creativa");
     expect(m[0]).toContain("*Belén*, community manager");
     expect(m[0]).toContain("*Guillermo*, campañas publicitarias");
     expect(m[0]).toContain("Y yo, Joaquín");

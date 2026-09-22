@@ -7,7 +7,7 @@
  * desaparece del radar de todos. El 10/9/2026 había dos piezas de Ana Monjes
  * esperando revisión hacía 19 y 20 días sin que nadie supiera que existían.
  *
- * Quién revisa: desde el 15/9/2026 la Directora Creativa (antes, el CM de la
+ * Quién revisa: desde el 15/9/2026 la dirección creativa (antes, el CM de la
  * cuenta, que sigue de respaldo si no hay directora cargada). Las piezas cuya
  * tarea ya espera aprobación las avisa el ticket, no esto.
  * Si la pieza lleva demasiado esperando, se le avisa TAMBIÉN a
@@ -103,7 +103,7 @@ export function avisosDeRevisionCreativa(
   adminIds: string[],
   hoy: string,
   /**
-   * Desde el 15/9/2026 la revisión creativa es de la Directora Creativa, no
+   * Desde el 15/9/2026 la revisión creativa es de la dirección creativa, no
    * del CM de la cuenta. Si no hay directora cargada, vuelve al CM.
    */
   directoraId: string | null = null

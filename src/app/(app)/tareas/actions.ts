@@ -57,7 +57,7 @@ function estadoConAprobacion(
   if (actor.rol === "admin" || actor.id === aprobadora || actor.id === directoraId) return { estado };
   return {
     estado: "en_revision",
-    aviso: "Quedó En revisión: los diseños los aprueba la Directora Creativa antes de ir al cliente.",
+    aviso: "Quedó En revisión: los diseños los aprueba la dirección creativa antes de ir al cliente.",
   };
 }
 

@@ -68,7 +68,7 @@ export async function BandejaCoordinacion({ me }: { me: { id: string; rol: strin
   if (!repartir.length && !aprobar.length) return null;
 
   const pm = clave.pmNombre?.split(" ")[0] ?? "la PM";
-  const directora = clave.directoraNombre?.split(" ")[0] ?? "la directora";
+  const directora = clave.directoraNombre?.split(" ")[0] ?? "la dirección creativa";
 
   return (
     <div className="grid gap-3 md:grid-cols-2">

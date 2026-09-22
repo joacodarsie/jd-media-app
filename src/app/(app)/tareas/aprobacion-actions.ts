@@ -76,7 +76,7 @@ export async function aprobarTarea(id: string) {
   if (!t) return { error: "No encontré el ticket." };
   if (t.estado !== "en_revision") return { error: "Este ticket no está esperando aprobación." };
   if (!puedeAprobar(t, actor, clave.directoraId)) {
-    return { error: "Solo la Directora Creativa puede aprobar este ticket." };
+    return { error: "Solo la dirección creativa puede aprobar este ticket." };
   }
   const bloqueo = await motivoParaNoCerrarTareas(createAdmin(), [id], "completada");
   if (bloqueo) return { error: bloqueo };
@@ -104,7 +104,7 @@ export async function pedirCambios(id: string, detalle: string) {
   if (!t) return { error: "No encontré el ticket." };
   if (t.estado !== "en_revision") return { error: "Este ticket no está esperando aprobación." };
   if (!puedeAprobar(t, actor, clave.directoraId)) {
-    return { error: "Solo la Directora Creativa puede pedir cambios en este ticket." };
+    return { error: "Solo la dirección creativa puede pedir cambios en este ticket." };
   }
 
   const { error } = await supabase.from("tasks").update({ estado: "en_progreso" }).eq("id", id);

@@ -680,7 +680,7 @@ export function TaskFormDialog({
               <Label>Aprobación</Label>
               {requiereAprobacion(area) ? (
                 <p className="rounded-md border border-amber-400/50 bg-amber-50/60 px-3 py-2 text-xs dark:bg-amber-950/20">
-                  Lo aprueba <b>{puerta?.directoraNombre ?? "la Directora Creativa"}</b> antes de ir al cliente. Le
+                  Lo aprueba <b>{puerta?.directoraNombre ?? "la dirección creativa"}</b> antes de ir al cliente. Le
                   llega cuando pasa a En revisión y tiene 24 h hábiles.
                 </p>
               ) : (

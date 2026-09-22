@@ -2,7 +2,7 @@
 // cuenta nueva, después del pago.
 //
 // Reescrita el 15/9/2026 con la forma de trabajo actual:
-//   · la estructura: project manager (tiempos), directora creativa
+//   · la estructura: project manager (tiempos), dirección creativa
 //     (aprobaciones), y el equipo de la cuenta con nombre y apellido de rol;
 //   · el arranque de 15 días, con los mismos hitos que arma el ticket de
 //     onboarding (lib/retencion/onboarding-15.ts), para que lo que se le promete
@@ -59,7 +59,7 @@ export function mensajesDeBienvenida(e: EntradaBienvenida): string[] {
   }
   if (contenido && eq.directoraCreativa) {
     equipo.push(
-      `– *${pila(eq.directoraCreativa)}*, directora creativa: define la línea del contenido y aprueba cada pieza antes de que te llegue.`
+      `– *${pila(eq.directoraCreativa)}*, dirección creativa: define la línea del contenido y aprueba cada pieza antes de que te llegue.`
     );
   }
   if (redes && eq.communityManager) {

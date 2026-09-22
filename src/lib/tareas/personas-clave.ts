@@ -2,7 +2,7 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { AREA_DIRECTORA, AREA_PM } from "@/lib/tareas/puerta";
 
 /**
- * Quién es hoy la Project Manager y quién la Directora Creativa.
+ * Quién ocupa hoy la Project Manager y la dirección creativa.
  *
  * Se resuelve por área, como el organigrama: si mañana el puesto lo ocupa otra
  * persona, se le cambia el área en Accesos y todo sigue andando. Va por service

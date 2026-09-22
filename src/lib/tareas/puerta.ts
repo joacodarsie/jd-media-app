@@ -6,7 +6,7 @@
  *    asignaba directo a quien le parecía, y la PM se enteraba tarde de la
  *    carga de su propio equipo.
  *
- * 2. **Nada de diseño llega al cliente sin la Directora Creativa.** Cuando una
+ * 2. **Nada de diseño llega al cliente sin la dirección creativa.** Cuando una
  *    pieza de diseño o de edición pasa a "En revisión", la aprueba ella o pide
  *    cambios, y tiene 24 horas hábiles para responder.
  *
@@ -20,14 +20,14 @@
 /** Las áreas cuyo trabajo se le pide a la Project Manager. */
 export const AREAS_DE_LA_PM = ["Community Manager", "Diseño", "Edición Audiovisual"];
 
-/** Las áreas cuyo trabajo aprueba la Directora Creativa antes de ir al cliente. */
+/** Las áreas cuyo trabajo aprueba la dirección creativa antes de ir al cliente. */
 export const AREAS_CON_APROBACION = ["Diseño", "Edición Audiovisual"];
 
 /** Las áreas de `users.area` que definen los dos puestos. */
 export const AREA_PM = "Coordinación";
 export const AREA_DIRECTORA = "Coordinación de Diseño";
 
-/** Horas hábiles que tiene la Directora Creativa para responder. */
+/** Horas hábiles que tiene la dirección creativa para responder. */
 export const HORAS_PARA_APROBAR = 24;
 
 export function vaPorLaPm(area: string | null | undefined): boolean {

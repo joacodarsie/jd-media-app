@@ -207,7 +207,7 @@ export default async function TaskDetail({
     papel,
     {
       pm: clave.pmNombre?.split(" ")[0] ?? "la Project Manager",
-      directora: clave.directoraNombre?.split(" ")[0] ?? "la Directora Creativa",
+      directora: clave.directoraNombre?.split(" ")[0] ?? "la dirección creativa",
     }
   );
   const aprobadoraNombre = t.aprobador?.nombre ?? clave.directoraNombre;
@@ -253,7 +253,7 @@ export default async function TaskDetail({
           </div>
           <p className="mt-2 text-[10px] text-muted-foreground">
             El estado de esta tarea está sincronizado con el de la pieza. Cuando la pasás a
-            <b> En revisión</b>, le llega a la Directora Creativa; cuando la aprueba, la pieza
+            <b> En revisión</b>, le llega a la dirección creativa; cuando la aprueba, la pieza
             queda lista para mandarle al cliente.
           </p>
         </Link>

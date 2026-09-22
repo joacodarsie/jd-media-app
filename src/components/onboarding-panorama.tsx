@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { DIAS_ONBOARDING } from "@/lib/retencion/onboarding-15";
 import type { ArranqueEnCurso } from "@/lib/retencion/onboarding-panorama";
+import { OnboardingCamino } from "@/components/onboarding-camino";
 import { cn } from "@/lib/utils";
 
 /**
@@ -107,7 +108,19 @@ export function OnboardingPanorama({ filas }: { filas: ArranqueEnCurso[] }) {
 
             {abierta && (
               <div className="border-t">
-                <LineaDeTiempo fila={f} />
+                {/* El arranque como mapa: el mismo caminito que se ve
+                    adentro de la cuenta, para leer sin entrar. */}
+                <div className="px-3 pt-2">
+                  <OnboardingCamino
+                    pasos={f.pasos.map((p) => ({
+                      key: p.id,
+                      titulo: p.titulo,
+                      hecho: p.hecho,
+                      fecha: `Día ${p.dia}`,
+                      href: `/tareas/${p.id}`,
+                    }))}
+                  />
+                </div>
                 <ul className="divide-y">
                   {f.pasos.map((p) => (
                     <li
@@ -172,59 +185,6 @@ export function OnboardingPanorama({ filas }: { filas: ArranqueEnCurso[] }) {
               </div>
             )}
           </section>
-        );
-      })}
-    </div>
-  );
-}
-
-/**
- * Los 15 días como una tira de casilleros. Es la forma más corta de contestar
- * "¿va bien o va tarde?" sin leer la lista de pasos.
- */
-function LineaDeTiempo({ fila }: { fila: ArranqueEnCurso }) {
-  const dias = Array.from({ length: DIAS_ONBOARDING }, (_, i) => i + 1);
-  const porDia = new Map<number, { hechos: number; atrasados: number; total: number }>();
-  for (const p of fila.pasos) {
-    const d = Math.min(p.dia, DIAS_ONBOARDING);
-    const v = porDia.get(d) ?? { hechos: 0, atrasados: 0, total: 0 };
-    v.total += 1;
-    if (p.hecho) v.hechos += 1;
-    if (p.atrasado) v.atrasados += 1;
-    porDia.set(d, v);
-  }
-
-  return (
-    <div className="flex items-end gap-1 px-4 pb-1 pt-3">
-      {dias.map((d) => {
-        const v = porDia.get(d);
-        const esHoy = d === Math.min(fila.diaActual, DIAS_ONBOARDING);
-        const color = !v
-          ? "bg-muted"
-          : v.atrasados > 0
-          ? "bg-amber-500"
-          : v.hechos === v.total
-          ? "bg-emerald-500"
-          : "bg-primary/40";
-        return (
-          <div key={d} className="flex flex-1 flex-col items-center gap-1">
-            <span
-              title={
-                v
-                  ? `Día ${d}: ${v.hechos} de ${v.total} listos`
-                  : `Día ${d}: sin pasos`
-              }
-              className={cn("h-2 w-full rounded-sm", color)}
-            />
-            <span
-              className={cn(
-                "text-[9px] tabular-nums",
-                esHoy ? "font-semibold text-foreground" : "text-muted-foreground/60"
-              )}
-            >
-              {d}
-            </span>
-          </div>
         );
       })}
     </div>

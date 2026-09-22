@@ -497,7 +497,9 @@ export function OnboardingStepRow({
   const isDone = !!step.done;
   return (
     <div
-      className={`flex items-start gap-3 rounded-md border bg-card p-3 transition ${
+      // El ancla del mapa: tocar un nodo del caminito baja hasta este paso.
+      id={`paso-${step.key}`}
+      className={`flex scroll-mt-24 items-start gap-3 rounded-md border bg-card p-3 transition ${
         isDone
           ? "border-emerald-300/60 bg-emerald-50/30 dark:border-emerald-900/60 dark:bg-emerald-950/15"
           : ""

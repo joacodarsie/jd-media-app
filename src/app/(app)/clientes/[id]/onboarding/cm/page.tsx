@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HelpTrigger } from "@/components/help-trigger";
 import { loadOnboarding, OnboardingStepRow } from "../_shared";
 import { OnboardingTabs } from "@/components/onboarding-tabs";
+import { OnboardingCamino } from "@/components/onboarding-camino";
+import { fmtDate } from "@/lib/dates";
 import { panelesVisibles } from "@/lib/onboarding/paneles";
 
 export const dynamic = "force-dynamic";
@@ -49,6 +51,18 @@ export default async function OnboardingCmPage({
         paneles={paneles}
         actual="cm"
       />
+
+      {/* El arranque como un mapa: por dónde va la cuenta, de un vistazo.
+          La lista de abajo sigue siendo donde se trabaja. */}
+      <OnboardingCamino
+        pasos={cmSteps.map((s) => ({
+          key: s.key,
+          titulo: s.title,
+          hecho: !!s.done,
+          fecha: typeof s.done === "string" ? fmtDate(s.done) : null,
+        }))}
+      />
+
 
       <div>
         <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">

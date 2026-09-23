@@ -44,6 +44,7 @@ export type ServiceType =
   | "botly"
   | "gestion_whatsapp"
   | "chatter"
+  | "google_ads"
   | "consultoria"
   | "otro";
 

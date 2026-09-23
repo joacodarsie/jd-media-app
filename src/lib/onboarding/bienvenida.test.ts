@@ -100,6 +100,17 @@ describe("mensajesDeBienvenida — variantes", () => {
     expect(m[1]).toContain("y el guion para responder las consultas");
   });
 
+  it("Google Ads y Google Business: arranque propio y pide sus accesos", () => {
+    const m = mensajesDeBienvenida({
+      ...base,
+      servicios: ["gestion_redes", "google_ads"],
+      conGestionDeCampanas: false,
+    });
+    expect(m[0]).toContain("*Guillermo*, campañas publicitarias");
+    expect(m[1]).toContain("Google Business al día");
+    expect(m[3]).toContain("Acceso a tu cuenta de Google Ads");
+  });
+
   it("si falta alguien del equipo, no deja una línea vacía", () => {
     const m = mensajesDeBienvenida({ ...base, equipo: { ...base.equipo, editor: null } });
     expect(m[0]).not.toContain("edición audiovisual");

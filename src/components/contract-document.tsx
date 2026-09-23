@@ -178,7 +178,7 @@ export function ContractDocument({ model }: { model: ContractModel }) {
   // Proyectos de precio cerrado y bajo (hoy, el Pack Marca Real) se pagan
   // completos al inicio: partirlos 50/50 no tiene sentido por el monto.
   const unicoTodoAdelantado = hayUnico && unicosAll.every((s) => esMarcaReal(s));
-  const tienePaid = allServices.some((s) => s.tipo === "paid_media");
+  const tienePaid = allServices.some((s) => s.tipo === "paid_media" || s.tipo === "google_ads");
   const tieneGestionContenido = allServices.some(
     (s) => s.tipo === "gestion_redes" || s.tipo === "edicion_audiovisual"
   );

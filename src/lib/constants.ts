@@ -157,6 +157,7 @@ export const SERVICE_TYPE_LABEL: Record<string, string> = {
   botly: "Botly (bots WhatsApp)",
   gestion_whatsapp: "Gestión de WhatsApp",
   chatter: "Chatter (atención de WhatsApp)",
+  google_ads: "Google Ads y Google Business",
   consultoria: "Consultoría",
   otro: "Otro",
 };
@@ -174,6 +175,7 @@ export const SERVICE_BILLING_DEFAULT: Record<string, Facturacion> = {
   botly: "unico",
   gestion_whatsapp: "mensual",
   chatter: "mensual",
+  google_ads: "mensual",
   otro: "mensual",
 };
 

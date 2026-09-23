@@ -140,6 +140,7 @@ export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
     { id: "redes_escala", nombre: "Gestión de redes · Escala", precio: 800000, nota: "12 reels · 12 posts · 20 días de historias" },
     { id: "paid_media", nombre: "Gestión de pauta", precio: 100000, nota: "Por mes. La inversión publicitaria va aparte." },
     { id: "gestion_whatsapp", nombre: "Gestión de WhatsApp", precio: 50000, nota: "Imagen de marca, estados, grupos y mensajes a contactos." },
+    { id: "google_ads", nombre: "Google Ads y Google Business", precio: 100000, nota: "Campañas de búsqueda y la ficha de Maps. La inversión va aparte." },
     { id: "chatter", nombre: "Chatter", precio: 50000, nota: "Responde y filtra las consultas antes de la venta." },
     { id: "branding", nombre: "Branding / manual de marca", precio: 400000, nota: "Pago único." },
     { id: "desarrollo_web", nombre: "Sitio web", precio: 300000, nota: "Pago único, según el alcance." },

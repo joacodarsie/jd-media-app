@@ -71,6 +71,20 @@ export function getDeliverables(svc: ClientService): string[] {
         "Gestión de grupos de WhatsApp.",
         "Mensajes a los contactos cercanos y a los leads que ya interactuaron con el contenido.",
       ];
+    case "google_ads":
+      return [
+        "## Google Business (ficha de Maps)",
+        "Alta o verificación de la ficha y optimización: categorías, horarios, zona, descripción y fotos.",
+        "Publicaciones en la ficha y seguimiento de las reseñas.",
+        "## Google Ads",
+        "Configuración de la cuenta y de las conversiones (llamadas, WhatsApp y formularios).",
+        "Campañas de búsqueda para quien ya está buscando lo que ofrece la marca, con palabras clave y anuncios.",
+        "Optimización durante todo el mes (palabras clave, presupuesto y anuncios).",
+        "## Reporte",
+        "Reporte mensual: cuántas consultas entraron desde Google y cuánto costó cada una.",
+        "## Importante",
+        "La inversión publicitaria en Google se paga aparte, con el medio de pago del Cliente, y no está incluida en este honorario.",
+      ];
     case "chatter":
       return [
         "Respuesta de los mensajes que llegan por WhatsApp.",

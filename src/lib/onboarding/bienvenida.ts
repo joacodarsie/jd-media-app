@@ -48,7 +48,8 @@ const pila = (nombre: string | null) => (nombre ? nombre.trim().split(/\s+/)[0] 
 export function mensajesDeBienvenida(e: EntradaBienvenida): string[] {
   const svc = new Set(e.servicios);
   const redes = svc.has("gestion_redes");
-  const pauta = svc.has("paid_media") || (redes && e.conGestionDeCampanas);
+  const google = svc.has("google_ads");
+  const pauta = svc.has("paid_media") || google || (redes && e.conGestionDeCampanas);
   const contenido = redes || svc.has("edicion_audiovisual");
   const eq = e.equipo;
   const wsp = svc.has("gestion_whatsapp") || svc.has("chatter");
@@ -143,6 +144,12 @@ export function mensajesDeBienvenida(e: EntradaBienvenida): string[] {
     if (arranque.length) arranque.push(``);
     arranque.push(`🎨 Diseño gráfico: brief y referencias, manual de marca y producción de las piezas acordadas.`);
   }
+  if (google) {
+    if (arranque.length) arranque.push(``);
+    arranque.push(
+      `🔎 Google: dejamos tu ficha de Google Business al día y configuramos las campañas de búsqueda, con sus conversiones.`
+    );
+  }
   if (wsp) {
     if (arranque.length) arranque.push(``);
     arranque.push(
@@ -184,6 +191,9 @@ export function mensajesDeBienvenida(e: EntradaBienvenida): string[] {
   }
   if (pauta) {
     pedidos.push(`🔑 Acceso a tu Business Manager de Meta, y una tarjeta para la pauta. Te recomendamos la de Dólar App: la publicidad no paga el recargo de impuestos.`);
+  }
+  if (google) {
+    pedidos.push(`🔑 Acceso a tu cuenta de Google Ads y a tu ficha de Google Business (o el mail con el que se crearon).`);
   }
   if (wsp) {
     pedidos.push(`📱 Acceso a tu WhatsApp Business: lo vinculamos como dispositivo, sin cambiar tu número.`);

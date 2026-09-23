@@ -116,6 +116,7 @@ const SERVICE_LABEL: Record<string, string> = {
   botly: "Botly",
   gestion_whatsapp: "Gestión de WhatsApp",
   chatter: "Chatter",
+  google_ads: "Google Ads y Google Business",
   consultoria: "Consultoría",
   otro: "Otro",
 };

@@ -12,6 +12,7 @@ import { VENTANA_COBRO_TEXTO } from "@/lib/finanzas/ciclo-cobro";
 import { JORNADA_PRECIO_HORA, JORNADA_PRECIO_HORA_EXTRA } from "@/lib/jornada";
 import { PrintButton } from "@/components/print-button";
 import { DocEditToggle } from "@/components/doc-edit-toggle";
+import { esMarcaReal, MARCA_REAL } from "@/lib/pack-marca-real";
 
 // ============================================================================
 // Documento de carta acuerdo. Renderiza tanto la carta INDIVIDUAL (1 marca)
@@ -65,7 +66,9 @@ function fmtMoney(n: number, moneda: string) {
 
 function fmtDate(iso?: string | null) {
   if (!iso) return "—";
-  const d = new Date(iso);
+  // Una fecha sola ("2026-09-24") se lee como medianoche UTC y en Argentina
+  // caía el día anterior: se fija al mediodía local.
+  const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T12:00:00` : iso);
   return d.toLocaleDateString("es-AR", {
     day: "2-digit",
     month: "long",
@@ -110,14 +113,16 @@ function ServiceCard({ s, moneda }: { s: ClientService; moneda: string }) {
   return (
     <div className="service-card">
       <div className="head">
-        <div className="name">{SERVICE_TYPE_LABEL[s.tipo] ?? s.tipo}</div>
+        <div className="name">
+          {esMarcaReal(s) ? "Pack Marca Real · identidad de marca" : (SERVICE_TYPE_LABEL[s.tipo] ?? s.tipo)}
+        </div>
         <div className="price">
           {s.monto_mensual
             ? `${fmtMoney(Number(s.monto_mensual), s.moneda || moneda)}${esUnico(s) ? " (pago único)" : " / mes"}`
             : "A convenir"}
         </div>
       </div>
-      {s.pack && <div className="pack">Pack: {s.pack}</div>}
+      {s.pack && !esMarcaReal(s) && <div className="pack">Pack: {s.pack}</div>}
       {deliverables.length > 0 && (
         <ul>
           {deliverables.map((d, i) =>
@@ -170,6 +175,9 @@ export function ContractDocument({ model }: { model: ContractModel }) {
   );
   const hayMensual = recurrentesAll.length > 0;
   const hayUnico = unicosAll.length > 0;
+  // Proyectos de precio cerrado y bajo (hoy, el Pack Marca Real) se pagan
+  // completos al inicio: partirlos 50/50 no tiene sentido por el monto.
+  const unicoTodoAdelantado = hayUnico && unicosAll.every((s) => esMarcaReal(s));
   const tienePaid = allServices.some((s) => s.tipo === "paid_media");
   const tieneGestionContenido = allServices.some(
     (s) => s.tipo === "gestion_redes" || s.tipo === "edicion_audiovisual"
@@ -837,10 +845,20 @@ export function ContractDocument({ model }: { model: ContractModel }) {
             <p>
               Por los servicios de <strong>pago único</strong> contratados
               (proyectos de única vez), el Cliente abonará la suma total de{" "}
-              <strong>{fmtMoney(totalUnico, moneda)}</strong>. Salvo acuerdo
-              distinto pactado por escrito, se abona el <strong>50%</strong> por
-              adelantado para iniciar el trabajo y el <strong>50%</strong> restante
-              contra la entrega de los archivos finales aprobados.
+              <strong>{fmtMoney(totalUnico, moneda)}</strong>.{" "}
+              {unicoTodoAdelantado ? (
+                <>
+                  Se abona el <strong>100% por adelantado</strong>, mediante
+                  transferencia bancaria, para reservar el cupo e iniciar el trabajo.
+                </>
+              ) : (
+                <>
+                  Salvo acuerdo distinto pactado por escrito, se abona el{" "}
+                  <strong>50%</strong> por adelantado para iniciar el trabajo y el{" "}
+                  <strong>50%</strong> restante contra la entrega de los archivos
+                  finales aprobados.
+                </>
+              )}
             </p>
           )}
 
@@ -909,8 +927,18 @@ export function ContractDocument({ model }: { model: ContractModel }) {
               <strong>Servicios de pago único:</strong> se ejecutan como proyecto
               puntual. El acuerdo respecto de ellos se considera cumplido con la
               entrega de los archivos finales aprobados y el pago total
-              correspondiente. El plazo estimado de entrega se acuerda por escrito
-              según el alcance del proyecto.
+              correspondiente.{" "}
+              {unicoTodoAdelantado ? (
+                <>
+                  El plazo de entrega es de{" "}
+                  <strong>{MARCA_REAL.diasHabilesEntrega} días hábiles</strong> desde
+                  que el Cliente completa el brief de marca y envía el material
+                  pedido; las demoras en esas entregas o en las aprobaciones corren
+                  la fecha.
+                </>
+              ) : (
+                <>El plazo estimado de entrega se acuerda por escrito según el alcance del proyecto.</>
+              )}
             </p>
           )}
         </section>
@@ -1073,14 +1101,22 @@ export function ContractDocument({ model }: { model: ContractModel }) {
             </span>
             Rescisión
           </h2>
-          {ovBody("rescision") ?? (
+          {ovBody("rescision") ??
+            (!hayMensual ? (
+              <p>
+                Por tratarse de un proyecto de única vez, una vez iniciado el trabajo
+                el pago no se reembolsa. En caso de incumplimiento grave de
+                cualquiera de las partes, la otra podrá dar por terminado el acuerdo
+                con aviso por escrito.
+              </p>
+            ) : (
             <p>
               Cualquiera de las partes puede rescindir el presente acuerdo con aviso
               por escrito de 15 días. En caso de incumplimiento grave, incluyendo la
               falta de pago, La Agencia podrá rescindir el contrato de manera
               inmediata.
             </p>
-          )}
+            ))}
         </section>
 
         <section className="clause">

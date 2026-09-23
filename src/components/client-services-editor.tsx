@@ -19,6 +19,7 @@ import {
   type Facturacion,
 } from "@/lib/constants";
 import type { ClientService } from "@/lib/types";
+import { MARCA_REAL, PACK_MARCA_REAL } from "@/lib/pack-marca-real";
 import { Button } from "@/components/ui/button";
 import { ServiceHistory } from "@/components/service-history";
 import {
@@ -265,6 +266,15 @@ function ServiceDialog({
     setTipo(v);
     // Al cambiar de servicio en un alta, ajustamos la facturación por defecto.
     if (mode === "create") setFacturacion(SERVICE_BILLING_DEFAULT[v] ?? "mensual");
+    if (mode === "create" && v === "branding") elegirPackBranding(PACK_MARCA_REAL);
+    if (v === "gestion_redes" && !PACK_DEFAULTS[pack]) setPack("Presencia");
+  }
+  function elegirPackBranding(p: string) {
+    setPack(p);
+    if (p === PACK_MARCA_REAL) {
+      setFacturacion("unico");
+      setMonto(String(MARCA_REAL.precio));
+    }
   }
   const [moneda, setMoneda] = useState(service?.moneda ?? "ARS");
   const [notas, setNotas] = useState(service?.notas ?? "");
@@ -332,7 +342,7 @@ function ServiceDialog({
     const payload: ServiceInput = {
       cliente_id: clienteId,
       tipo,
-      pack: isRedes ? pack : null,
+      pack: isRedes ? pack : tipo === "branding" && pack === PACK_MARCA_REAL ? pack : null,
       fecha_inicio: fechaInicio || null,
       fecha_fin: fechaFin || null,
       monto_mensual: monto ? Number(monto) : null,
@@ -391,6 +401,32 @@ function ServiceDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {tipo === "branding" && (
+            <div className="space-y-1">
+              <Label>Qué se contrata</Label>
+              <Select
+                value={pack === PACK_MARCA_REAL ? PACK_MARCA_REAL : "medida"}
+                onValueChange={(v) => elegirPackBranding(v === "medida" ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={PACK_MARCA_REAL}>
+                    Pack Marca Real · $
+                    {MARCA_REAL.precio.toLocaleString("es-AR")}
+                  </SelectItem>
+                  <SelectItem value="medida">Branding a medida</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                {pack === PACK_MARCA_REAL
+                  ? "Logo, colores, tipografías, plantillas, perfil de Instagram, calendario y el manual de 30 ideas. La carta acuerdo lo detalla y lo cobra 100% por adelantado."
+                  : "Estrategia de marca completa. La carta acuerdo lo cobra 50% al inicio y 50% contra entrega."}
+              </p>
+            </div>
+          )}
 
           {TIPOS_CON_BRINDA.has(tipo) && (
             <div className="space-y-1">

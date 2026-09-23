@@ -5,6 +5,7 @@
  */
 import type { ServiceType, ClientService } from "@/lib/types";
 import { PACK_DEFAULTS } from "@/lib/constants";
+import { esMarcaReal, marcaRealDeliverables } from "@/lib/pack-marca-real";
 
 export function getDeliverables(svc: ClientService): string[] {
   switch (svc.tipo as ServiceType) {
@@ -34,6 +35,7 @@ export function getDeliverables(svc: ClientService): string[] {
         "Entrega de material editado para publicación en redes.",
       ];
     case "branding":
+      if (esMarcaReal(svc)) return marcaRealDeliverables();
       return [
         "Sesión de descubrimiento de marca (esencia, valores, propósito).",
         "Estrategia de marca: posicionamiento, propuesta de valor y arquitectura de marca.",

@@ -155,7 +155,7 @@ export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
     cm: { Presencia: 50000, Crecimiento: 70000, Escala: 90000, Personalizado: 50000 },
     media_buyer: { Presencia: 50000, Crecimiento: 70000, Escala: 90000, Personalizado: 50000 },
     comercial_fijo: 25000,
-    comision_cierre: 0.15,
+    comision_cierre: 0.1,
     comision_cartera: 0.05,
     comision_servicio_extra: 0.15,
     comision_lead_propio: 0,

@@ -259,9 +259,9 @@ export function payModelRules(settings: AgencySettings): PayRule[] {
       label: PUESTO_LABEL.comercial,
       regla: `${comercialFijo ? `${ars(comercialFijo)} fijos por mes + ` : ""}${pct(
         r.comision_cierre ?? 0
-      )} del abono el mes 1 de cada cliente que trae y, desde el mes 2, ${pct(
+      )} del abono el mes 1 de cada cliente que cierra y, desde el mes 2, ${pct(
         r.comision_cartera ?? 0
-      )} todos los meses de cada cuenta a su cargo (cartera), mientras el cliente siga y pague.`,
+      )} todos los meses de esas mismas cuentas (cartera), mientras el cliente siga y pague.`,
       detalles: [
         comercialFijo
           ? "El fijo es por sostener la prospección: se cobra haya cierres o no."

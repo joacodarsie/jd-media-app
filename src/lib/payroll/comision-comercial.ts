@@ -20,8 +20,28 @@
 //
 // ⚠️ Los escalones progresivos por cantidad de cierres (15/17/18/20) se
 // DESCARTARON en la revisión del 14/9: "marea bastante". No volver a sumarlos.
+//
+// ── Desde OCTUBRE de 2026 (acuerdo con Santi del 24/9) ──
+//   · Cliente nuevo, mes 1 → 10% (antes 15%) para quien la cerró.
+//   · Cartera COMERCIAL, desde el mes 2 → 5% del abono todos los meses para
+//     quien la CERRÓ (`cerrado_por_id`), mientras siga y haya pagado.
+//   · Dirección creativa → 5% del abono de GESTIÓN DE REDES de cada cuenta, desde
+//     el mes 1, para su director creativo (`responsable_id`, con historial),
+//     mientras haya pagado. Reemplaza a la cartera de "quien atiende".
+// Septiembre y antes se liquidan con el modelo viejo: no se reescribe el pasado.
 
 import type { AgencyRates } from "../coordinacion";
+
+/** Primer período con el acuerdo comercial nuevo (24/9/2026). */
+export const ACUERDO_OCTUBRE = "2026-10";
+
+/** Lo que se pagaba por cliente nuevo antes de octubre (el rate de hoy es el nuevo). */
+const CIERRE_HASTA_SEPTIEMBRE = 0.15;
+
+/** % del mes 1 según el período: los meses viejos con su porcentaje de entonces. */
+export function pctCierre(periodo: string, rates: ComisionRates): number {
+  return periodo < ACUERDO_OCTUBRE ? CIERRE_HASTA_SEPTIEMBRE : rates.comision_cierre ?? 0;
+}
 import type { PayrollClient } from "../payroll";
 
 /** Recorte de `rates` que usa este módulo (el resto no le importa). */
@@ -30,6 +50,7 @@ export type ComisionRates = Pick<
   | "comision_cierre"
   | "comision_cartera"
   | "comision_servicio_extra"
+  | "comision_direccion_creativa"
 >;
 
 /** Servicio de una cuenta, con lo que hace falta para pagar el extra. */
@@ -86,7 +107,7 @@ export function selectCloserCommissions(
   rates: ComisionRates,
   hasManualCommission: (clienteId: string) => boolean
 ): LineaComision[] {
-  const pct = rates.comision_cierre ?? 0;
+  const pct = pctCierre(periodo, rates);
   if (pct <= 0) return [];
   const out: LineaComision[] = [];
   for (const c of clients) {
@@ -148,12 +169,29 @@ export function selectCarteraCommissions(
   const pct = rates.comision_cartera ?? 0;
   if (pct <= 0) return [];
   const out: LineaComision[] = [];
+  const nuevo = periodo >= ACUERDO_OCTUBRE;
   for (const c of clients) {
     const mes = mesDelCliente(c.fecha_inicio, periodo);
     if (mes === null || mes < 2) continue;
     if (!pagoRegistrado(c.id)) continue;
     const base = recurringByClient.get(c.id) ?? 0;
     if (base <= 0) continue;
+
+    // Desde octubre la cartera es COMERCIAL: la cobra quien cerró la cuenta.
+    // Lo de quien la atiende pasó a ser la dirección creativa (abajo).
+    if (nuevo) {
+      if (!c.cerrado_por_id) continue;
+      out.push({
+        closerId: c.cerrado_por_id,
+        clienteId: c.id,
+        cliente: c.nombre,
+        base,
+        pct,
+        monto: Math.round(base * pct),
+        concepto: `Cartera comercial (${pctTxt(pct)}) · cuenta que cerró`,
+      });
+      continue;
+    }
 
     // Con historial manda el historial, aunque no devuelva a nadie: que la
     // cuenta todavía no tenga responsable ESE mes es una respuesta válida.
@@ -179,6 +217,59 @@ export function selectCarteraCommissions(
         concepto: parcial
           ? `Cartera (${pctTxt(pct)}) · cuenta a su cargo ${Math.round(t.fraccion * 100)}% del mes`
           : `Cartera (${pctTxt(pct)}) · cuenta a su cargo`,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * La DIRECCIÓN CREATIVA por cuenta, desde octubre de 2026: % del abono de
+ * gestión de redes, desde el mes 1, para el director creativo de esa cuenta
+ * (`responsable_id`, con el historial de pases), si el cliente pagó el mes.
+ *
+ * Es el 5% que Santi cobraba como "cartera": pasa a llamarse por lo que es y
+ * a calcularse solo sobre gestión de redes (lo que él dirige).
+ */
+export function selectDireccionCreativaCuentas(
+  clients: PayrollClient[],
+  gdrByClient: Map<string, number>,
+  periodo: string,
+  rates: ComisionRates,
+  pagoRegistrado: (clienteId: string) => boolean,
+  responsableDelMes?: ResponsableDelMes
+): LineaComision[] {
+  if (periodo < ACUERDO_OCTUBRE) return [];
+  const pct = rates.comision_direccion_creativa ?? 0;
+  if (pct <= 0) return [];
+  const out: LineaComision[] = [];
+  for (const c of clients) {
+    const mes = mesDelCliente(c.fecha_inicio, periodo);
+    if (mes === null) continue;
+    if (!pagoRegistrado(c.id)) continue;
+    const base = gdrByClient.get(c.id) ?? 0;
+    if (base <= 0) continue;
+    const historial = responsableDelMes?.(c.id);
+    const tramos =
+      historial !== undefined
+        ? historial
+        : c.responsable_id
+        ? [{ userId: c.responsable_id, fraccion: 1 }]
+        : [];
+    for (const t of tramos) {
+      const monto = Math.round(base * pct * t.fraccion);
+      if (monto <= 0) continue;
+      out.push({
+        closerId: t.userId,
+        clienteId: c.id,
+        cliente: c.nombre,
+        base: Math.round(base * t.fraccion),
+        pct,
+        monto,
+        concepto:
+          t.fraccion < 1
+            ? `Dirección creativa (${pctTxt(pct)}) · ${Math.round(t.fraccion * 100)}% del mes`
+            : `Dirección creativa (${pctTxt(pct)})`,
       });
     }
   }

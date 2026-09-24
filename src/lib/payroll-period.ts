@@ -31,6 +31,8 @@ import {
 import {
   selectCarteraCommissions,
   selectCloserCommissions,
+  selectDireccionCreativaCuentas,
+  ACUERDO_OCTUBRE,
   selectUpsellCommissions,
 } from "./payroll/comision-comercial";
 import {
@@ -359,7 +361,9 @@ export async function buildPeriodPayroll(
 
   // Dirección creativa (Brisa, acuerdo del 14/9/2026): % del mismo abono de
   // gestión de redes que la coordinación, para quien tenga coordinador_diseno.
-  if (coordDiseno) {
+  // Desde octubre se paga por cuenta al director creativo de cada una (abajo,
+  // con las comisiones): esta línea queda para septiembre y antes.
+  if (coordDiseno && periodo < ACUERDO_OCTUBRE) {
     const dcLines = computeDireccionCreativaLines(
       clients,
       gdrByClient,
@@ -449,6 +453,21 @@ export async function buildPeriodPayroll(
       // El 5% de cartera se le paga a quien atendía la cuenta ESE mes. Las 15
       // cuentas pasaron a Santi el 22/9/2026 desde octubre: sin esto, el cambio
       // le habría pagado también septiembre, que ya estaba corriendo.
+      ctxAsignaciones
+        ? (clienteId) =>
+            quienLlevaba(asignaciones, clienteId, "responsable", periodo).map((t) => ({
+              userId: t.userId,
+              fraccion: t.fraccion,
+            }))
+        : undefined
+    ),
+    // Desde octubre: el 5% del director creativo de cada cuenta (Santi).
+    ...selectDireccionCreativaCuentas(
+      clients,
+      gdrByClient,
+      periodo,
+      settings.rates,
+      (clienteId) => cobraron.has(clienteId),
       ctxAsignaciones
         ? (clienteId) =>
             quienLlevaba(asignaciones, clienteId, "responsable", periodo).map((t) => ({

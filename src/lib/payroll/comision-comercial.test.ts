@@ -4,6 +4,8 @@ import {
   selectCarteraCommissions,
   selectCloserCommissions,
   selectUpsellCommissions,
+  selectDireccionCreativaCuentas,
+  pctCierre,
   type ServicioComision,
 } from "./comision-comercial";
 import { DEFAULT_AGENCY_SETTINGS } from "../coordinacion";
@@ -39,6 +41,8 @@ function servicio(over: Partial<ServicioComision> = {}): ServicioComision {
   };
 }
 const rec = new Map<string, number>([["c1", 300_000]]);
+// Lo que es gestión de redes de ese abono (el resto, otro servicio).
+const gdr = new Map<string, number>([["c1", 250_000]]);
 const noManual = () => false;
 
 describe("mesDelCliente", () => {
@@ -105,93 +109,112 @@ describe("selectCloserCommissions — cliente nuevo", () => {
   });
 });
 
-describe("selectCarteraCommissions — lo que cobra quien atiende la cuenta", () => {
+describe("cartera comercial (desde octubre): el 5% es de quien cerró", () => {
   const pago = () => true;
 
   it("el mes 1 no paga cartera: ese mes se cobra la venta", () => {
-    const c = cliente({ responsable_id: "santi" });
-    expect(selectCarteraCommissions([c], rec, "2026-09", rates, pago)).toHaveLength(0);
+    const c = cliente({ fecha_inicio: "2026-10-05" });
+    expect(selectCarteraCommissions([c], rec, "2026-10", rates, pago)).toHaveLength(0);
   });
 
-  it("desde el mes 2 paga el 5% del abono todos los meses al responsable", () => {
-    const c = cliente({ responsable_id: "santi" });
+  it("desde el mes 2 paga el 5% del abono todos los meses a quien cerró", () => {
+    const c = cliente({ cerrado_por_id: "santi", responsable_id: "otro" });
     for (const periodo of ["2026-10", "2026-12", "2027-06"]) {
       const out = selectCarteraCommissions([c], rec, periodo, rates, pago);
       expect(out).toHaveLength(1);
       expect(out[0]).toMatchObject({ closerId: "santi", monto: 15_000, pct: 0.05 });
+      expect(out[0].concepto).toContain("Cartera comercial");
     }
-  });
-
-  it("no tiene fecha de vencimiento: al año sigue cobrando", () => {
-    const c = cliente({ responsable_id: "santi" });
-    expect(selectCarteraCommissions([c], rec, "2027-09", rates, pago)).toHaveLength(1);
   });
 
   it("si el cliente no pagó ese mes, no se cobra", () => {
-    const c = cliente({ responsable_id: "santi" });
-    expect(selectCarteraCommissions([c], rec, "2026-10", rates, () => false)).toHaveLength(0);
+    expect(selectCarteraCommissions([cliente()], rec, "2026-10", rates, () => false)).toHaveLength(0);
   });
 
-  it("sin responsable no hay cartera: la cuenta que nadie atiende no paga a nadie", () => {
-    expect(selectCarteraCommissions([cliente()], rec, "2026-10", rates, pago)).toHaveLength(0);
-  });
-
-  it("la cartera sigue a la cuenta: si cambia de responsable, cobra el nuevo", () => {
-    const c = cliente({ cerrado_por_id: "mati", responsable_id: "santi" });
-    expect(selectCarteraCommissions([c], rec, "2026-10", rates, pago)[0].closerId).toBe("santi");
-  });
-
-  // ── El historial de pases (22/9/2026) ──
-  // Las 15 cuentas pasaron a Santi desde octubre. Sin historial, el cambio le
-  // habría pagado también septiembre, que ya estaba corriendo.
-
-  it("con historial manda el historial, no el responsable de la ficha", () => {
-    const c = cliente({ responsable_id: "santi" });
-    const out = selectCarteraCommissions([c], rec, "2026-10", rates, pago, () => [
-      { userId: "luz", fraccion: 1 },
-    ]);
-    expect(out).toHaveLength(1);
-    expect(out[0].closerId).toBe("luz");
-  });
-
-  it("si ese mes todavía no la llevaba nadie, no se paga aunque la ficha diga otra cosa", () => {
-    const c = cliente({ responsable_id: "santi" });
-    expect(selectCarteraCommissions([c], rec, "2026-10", rates, pago, () => [])).toHaveLength(0);
-  });
-
-  it("un pase a mitad de mes se reparte por días", () => {
-    const c = cliente({ responsable_id: "santi" });
-    const out = selectCarteraCommissions([c], rec, "2026-10", rates, pago, () => [
-      { userId: "luz", fraccion: 0.6 },
-      { userId: "santi", fraccion: 0.4 },
-    ]);
-    expect(out.map((l) => [l.closerId, l.monto])).toEqual([
-      ["luz", 9_000],
-      ["santi", 6_000],
-    ]);
-    expect(out[0].concepto).toContain("60% del mes");
-  });
-
-  it("sin historial cargado se sigue usando el responsable de la ficha", () => {
-    const c = cliente({ responsable_id: "santi" });
-    const out = selectCarteraCommissions([c], rec, "2026-10", rates, pago, undefined);
-    expect(out[0].closerId).toBe("santi");
-  });
-
-  it("una cuenta paga un solo 5% por mes, aunque la haya cerrado otro", () => {
-    const c = cliente({ cerrado_por_id: "mati", responsable_id: "mati" });
-    let total = 0;
-    for (const periodo of ["2026-09", "2026-10", "2026-11", "2026-12", "2027-01"]) {
-      total += [
-        ...selectCloserCommissions([c], rec, periodo, rates, noManual),
-        ...selectCarteraCommissions([c], rec, periodo, rates, pago),
-      ].reduce((a, l) => a + l.monto, 0);
-    }
-    expect(total).toBe(45_000 + 15_000 * 4); // 15% el mes 1 + 5% por mes
+  it("si nadie la cerró (la cerró el director), no hay cartera comercial", () => {
+    const c = cliente({ cerrado_por_id: null, responsable_id: "santi" });
+    expect(selectCarteraCommissions([c], rec, "2026-10", rates, pago)).toHaveLength(0);
   });
 
   it("un cliente que se fue no viene en la lista y la cartera se corta sola", () => {
     expect(selectCarteraCommissions([], rec, "2026-10", rates, pago)).toHaveLength(0);
+  });
+});
+
+describe("hasta septiembre se liquida con el acuerdo viejo", () => {
+  const pago = () => true;
+  it("la cartera era de quien atendía la cuenta y el mes 1 pagaba 15%", () => {
+    const c = cliente({ cerrado_por_id: "mati", responsable_id: "santi", fecha_inicio: "2026-07-01" });
+    const out = selectCarteraCommissions([c], rec, "2026-09", rates, pago);
+    expect(out[0]).toMatchObject({ closerId: "santi", monto: 15_000 });
+    const nueva = cliente({ fecha_inicio: "2026-09-10" });
+    expect(selectCloserCommissions([nueva], rec, "2026-09", rates, noManual)[0].monto).toBe(45_000);
+    expect(pctCierre("2026-09", rates)).toBe(0.15);
+  });
+  it("la dirección creativa por cuenta no existe antes de octubre", () => {
+    const c = cliente({ responsable_id: "santi", fecha_inicio: "2026-07-01" });
+    expect(selectDireccionCreativaCuentas([c], gdr, "2026-09", rates, pago)).toHaveLength(0);
+  });
+});
+
+describe("dirección creativa por cuenta (desde octubre)", () => {
+  const pago = () => true;
+
+  it("5% del abono de gestión de redes, desde el mes 1, al director creativo", () => {
+    const c = cliente({ responsable_id: "santi", fecha_inicio: "2026-10-03" });
+    const out = selectDireccionCreativaCuentas([c], gdr, "2026-10", rates, pago);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ closerId: "santi", base: 250_000, monto: 12_500, pct: 0.05 });
+    expect(out[0].concepto).toBe("Dirección creativa (5%)");
+  });
+
+  it("solo sobre gestión de redes: una cuenta sin redes no paga", () => {
+    const c = cliente({ id: "c2", responsable_id: "santi" });
+    expect(selectDireccionCreativaCuentas([c], gdr, "2026-10", rates, pago)).toHaveLength(0);
+  });
+
+  it("si el cliente no pagó ese mes, no se cobra", () => {
+    const c = cliente({ responsable_id: "santi" });
+    expect(selectDireccionCreativaCuentas([c], gdr, "2026-10", rates, () => false)).toHaveLength(0);
+  });
+
+  it("con historial manda el historial, no la ficha", () => {
+    const c = cliente({ responsable_id: "santi" });
+    const out = selectDireccionCreativaCuentas([c], gdr, "2026-10", rates, pago, () => [
+      { userId: "luz", fraccion: 1 },
+    ]);
+    expect(out[0].closerId).toBe("luz");
+  });
+
+  it("si ese mes no la llevaba nadie, no se paga aunque la ficha diga otra cosa", () => {
+    const c = cliente({ responsable_id: "santi" });
+    expect(selectDireccionCreativaCuentas([c], gdr, "2026-10", rates, pago, () => [])).toHaveLength(0);
+  });
+
+  it("un pase a mitad de mes se reparte por días", () => {
+    const c = cliente({ responsable_id: "santi" });
+    const out = selectDireccionCreativaCuentas([c], gdr, "2026-10", rates, pago, () => [
+      { userId: "luz", fraccion: 0.6 },
+      { userId: "santi", fraccion: 0.4 },
+    ]);
+    expect(out.map((l) => [l.closerId, l.monto])).toEqual([
+      ["luz", 7_500],
+      ["santi", 5_000],
+    ]);
+    expect(out[0].concepto).toContain("60% del mes");
+  });
+
+  it("lo acordado con Santi: si cierra él, 10% + 5% + 5% (cartera y dirección)", () => {
+    // Cuenta de $300.000 con $250.000 de gestión de redes, que cerró y dirige Santi.
+    const c = cliente({ cerrado_por_id: "santi", responsable_id: "santi", fecha_inicio: "2026-10-01" });
+    const mes = (periodo: string) =>
+      [
+        ...selectCloserCommissions([c], rec, periodo, rates, noManual),
+        ...selectCarteraCommissions([c], rec, periodo, rates, pago),
+        ...selectDireccionCreativaCuentas([c], gdr, periodo, rates, pago),
+      ].reduce((a, l) => a + l.monto, 0);
+    expect(mes("2026-10")).toBe(30_000 + 12_500); // 10% venta + dirección
+    expect(mes("2026-11")).toBe(15_000 + 12_500); // 5% cartera + dirección
   });
 });
 

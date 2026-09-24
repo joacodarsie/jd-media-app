@@ -28,6 +28,8 @@ export interface ContactoFrio {
   contactado_at: string | null;
   /** null = sin intentar · true = el dato sirve · false = no se pudo contactar. */
   contactable: boolean | null;
+  /** Cuándo se cargó el prospecto (pedido de Santi, 24/9). */
+  created_at?: string | null;
 }
 
 /**

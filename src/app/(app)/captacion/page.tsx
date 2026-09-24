@@ -71,7 +71,7 @@ export default async function CaptacionPage() {
     admin
       .from("prospecting_contacts")
       .select(
-        "id, campaign_id, empresa, contacto_nombre, contacto_rol, telefono, instagram, sitio_web, estado, asignado_a, contactado_at, contactable"
+        "id, campaign_id, empresa, contacto_nombre, contacto_rol, telefono, instagram, sitio_web, estado, asignado_a, contactado_at, contactable, created_at"
       )
       .eq("asignado_a", me.id),
     admin.from("prospecting_campaigns").select("id, mensajes_plantilla"),

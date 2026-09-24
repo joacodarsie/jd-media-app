@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -13,6 +13,8 @@ import {
   CalendarCheck,
   AtSign,
   Globe,
+  Send,
+  Undo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,7 +32,23 @@ import {
   personalizarMensaje,
 } from "@/lib/prospecting/shared";
 import { tieneWhatsapp, type ContactoFrio } from "@/lib/captacion/cola-fria";
-import { updateContact } from "@/app/(app)/prospeccion/actions";
+import { updateContact, bulkSetContactoEstado } from "@/app/(app)/prospeccion/actions";
+
+/** Los escritos sin despachar sobreviven a un refresh o a cerrar la pestaña. */
+const LS_ESCRITOS = "cola-fria:escritos";
+function leerEscritos(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(LS_ESCRITOS) ?? "[]");
+    return Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function fechaCorta(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleDateString("es-AR", { day: "numeric", month: "numeric", year: "2-digit" });
+}
 
 /** Mensaje elegido de cada campaña, resuelto en el server. */
 export type MensajesPorCampana = Record<string, { texto: string; label: string } | undefined>;
@@ -43,6 +61,11 @@ export type MensajesPorCampana = Record<string, { texto: string; label: string }
  * es que la cola es de la PERSONA y no de la campaña, y que acá sí se puede
  * marcar **Agendó reunión**: al 13/9/2026 los 1.090 contactos tenían cero
  * reuniones registradas, así que el embudo no tenía su paso más importante.
+ *
+ * Pedido de Santi (24/9): el botón verde ya no manda el contacto a
+ * "contactado" de una. Lo marca como **escrito** y arriba aparece
+ * **Despachar**, que pasa todos los escritos juntos. Así un toque de más se
+ * deshace antes de que cuente.
  */
 export function ColaFriaDespacho({
   cola,
@@ -67,16 +90,98 @@ export function ColaFriaDespacho({
   const [abierto, setAbierto] = useState(false);
   const [saltados, setSaltados] = useState<Set<string>>(new Set());
   const [hechos, setHechos] = useState<Set<string>>(new Set());
+  // Escritos sin despachar: todavía no cuentan como contactados en la base.
+  const [escritos, setEscritos] = useState<string[]>([]);
+  const [despachando, startDespacho] = useTransition();
   const [, startTransition] = useTransition();
 
+  // Recuperar los escritos guardados, solo los que siguen en la cola.
+  useEffect(() => {
+    const enCola = new Set(cola.map((c) => c.id));
+    setEscritos(leerEscritos().filter((id) => enCola.has(id)));
+  }, [cola]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_ESCRITOS, JSON.stringify(escritos));
+    } catch {
+      /* sin storage: queda en memoria */
+    }
+  }, [escritos]);
+  // Avisar antes de irse con escritos sin despachar.
+  useEffect(() => {
+    if (escritos.length === 0) return;
+    const h = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", h);
+    return () => window.removeEventListener("beforeunload", h);
+  }, [escritos.length]);
+
+  const escritosSet = useMemo(() => new Set(escritos), [escritos]);
   const pendientesVista = useMemo(
-    () => cola.filter((c) => !saltados.has(c.id) && !hechos.has(c.id)),
-    [cola, saltados, hechos]
+    () => cola.filter((c) => !saltados.has(c.id) && !hechos.has(c.id) && !escritosSet.has(c.id)),
+    [cola, saltados, hechos, escritosSet]
   );
   const actual = pendientesVista[0] ?? null;
+  const porId = useMemo(() => new Map(cola.map((c) => [c.id, c])), [cola]);
 
-  const hoyTotal = hechosHoy + hechos.size;
-  const faltan = Math.max(0, faltanHoy - hechos.size);
+  // Los escritos cuentan para la meta del día: el mensaje ya salió.
+  const hoyTotal = hechosHoy + hechos.size + escritos.length;
+  const faltan = Math.max(0, faltanHoy - hechos.size - escritos.length);
+
+  function marcarEscrito(c: ContactoFrio) {
+    setEscritos((p) => (p.includes(c.id) ? p : [...p, c.id]));
+  }
+  function deshacerEscrito(id: string) {
+    setEscritos((p) => p.filter((x) => x !== id));
+  }
+  function despacharEscritos() {
+    const ids = [...escritos];
+    if (ids.length === 0) return;
+    startDespacho(async () => {
+      const res = await bulkSetContactoEstado(ids, "contactado");
+      if ("error" in res && res.error) {
+        toast.error(res.error);
+        return;
+      }
+      setHechos((p) => new Set([...p, ...ids]));
+      setEscritos([]);
+      toast.success(`${ids.length} contacto${ids.length === 1 ? "" : "s"} pasado${ids.length === 1 ? "" : "s"} a contactados.`);
+      router.refresh();
+    });
+  }
+
+  const barraEscritos =
+    escritos.length > 0 ? (
+      <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-2.5 dark:border-emerald-500/40 dark:bg-emerald-500/10">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm">
+            <b className="tabular-nums">{escritos.length}</b> escrito{escritos.length === 1 ? "" : "s"} sin despachar
+          </span>
+          <Button
+            size="sm"
+            onClick={despacharEscritos}
+            disabled={despachando}
+            className="bg-emerald-600 text-white hover:bg-emerald-500"
+          >
+            <Send className="mr-1.5 h-3.5 w-3.5" />
+            {despachando ? "Despachando…" : `Despachar ${escritos.length}`}
+          </Button>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1">
+          {escritos.map((id) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => deshacerEscrito(id)}
+              title="Sacarlo: vuelve a la cola"
+              className="inline-flex max-w-[12rem] items-center gap-1 rounded-full border bg-background px-2 py-0.5 text-[11px] hover:bg-muted"
+            >
+              <span className="truncate">{porId.get(id)?.empresa ?? "contacto"}</span>
+              <Undo2 className="h-3 w-3 shrink-0 text-muted-foreground" />
+            </button>
+          ))}
+        </div>
+      </div>
+    ) : null;
   const pct = meta > 0 ? Math.min(100, Math.round((hoyTotal / meta) * 100)) : 0;
 
   function mensajeDe(c: ContactoFrio): string {
@@ -131,12 +236,13 @@ export function ColaFriaDespacho({
             arriba. El mensaje de cada campaña ya viene escrito.
           </p>
         </div>
-        {pendientesVista.length > 0 && (
+        {(pendientesVista.length > 0 || escritos.length > 0) && (
           <Button
             onClick={() => setAbierto(true)}
             className="bg-emerald-600 text-white hover:bg-emerald-500"
           >
-            <Zap className="mr-2 h-4 w-4" /> Escribirle a {pendientesVista.length}
+            <Zap className="mr-2 h-4 w-4" />{" "}
+            {pendientesVista.length > 0 ? `Escribirle a ${pendientesVista.length}` : "Despachar los escritos"}
           </Button>
         )}
       </div>
@@ -172,6 +278,8 @@ export function ColaFriaDespacho({
         </div>
       )}
 
+      {barraEscritos && <div className="mt-3">{barraEscritos}</div>}
+
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t pt-3 text-xs text-muted-foreground">
         <span>
           <b className="text-foreground tabular-nums">{pendientesTotal}</b> sin tocar
@@ -199,6 +307,8 @@ export function ColaFriaDespacho({
             </DialogTitle>
           </DialogHeader>
 
+          {barraEscritos}
+
           {actual ? (
             <div className="min-w-0 space-y-4">
               <div className="flex items-baseline justify-between gap-2">
@@ -210,6 +320,9 @@ export function ColaFriaDespacho({
                     {actual.contacto_nombre
                       ? `${actual.contacto_nombre}${actual.contacto_rol ? ` · ${actual.contacto_rol}` : ""}`
                       : "Sin persona de contacto"}
+                    {fechaCorta(actual.created_at) && (
+                      <> · prospectado el {fechaCorta(actual.created_at)}</>
+                    )}
                     {actual.telefono && (
                       <>
                         {" · "}
@@ -287,11 +400,11 @@ export function ColaFriaDespacho({
                   />
                 </div>
                 <Button
-                  onClick={() => marcar(actual, "contactado")}
+                  onClick={() => marcarEscrito(actual)}
                   className="h-11 min-w-0 bg-emerald-600 text-white hover:bg-emerald-500"
                 >
                   <Check className="mr-2 h-4 w-4 shrink-0" />
-                  <span className="truncate">3 · Marcar contactado y seguir</span>
+                  <span className="truncate">3 · Ya le escribí, siguiente</span>
                 </Button>
                 <div className="grid grid-cols-3 gap-2 [&>*]:min-w-0">
                   <Button
@@ -339,9 +452,11 @@ export function ColaFriaDespacho({
           ) : (
             <div className="space-y-3 py-4 text-center">
               <p className="text-sm font-medium">
-                {hechos.size > 0
-                  ? `Listo: ${hechos.size} contacto${hechos.size === 1 ? "" : "s"} despachado${hechos.size === 1 ? "" : "s"}.`
-                  : "No queda nada en la cola."}
+                {escritos.length > 0
+                  ? "Terminaste la cola. Despachá los escritos de arriba para que cuenten."
+                  : hechos.size > 0
+                    ? `Listo: ${hechos.size} contacto${hechos.size === 1 ? "" : "s"} despachado${hechos.size === 1 ? "" : "s"}.`
+                    : "No queda nada en la cola."}
               </p>
               {saltados.size > 0 && (
                 <Button variant="outline" size="sm" onClick={() => setSaltados(new Set())}>

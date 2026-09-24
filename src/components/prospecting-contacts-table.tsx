@@ -730,6 +730,15 @@ export function ProspectingContactsTable({
                         onBlur={(v) => persist(r.id, "empresa", v)}
                         className="font-medium"
                       />
+                      {/* Cuándo se cargó el prospecto (pedido de Santi, 24/9). */}
+                      <div className="px-1 text-[10px] text-muted-foreground">
+                        prospectado el{" "}
+                        {new Date(r.created_at).toLocaleDateString("es-AR", {
+                          day: "numeric",
+                          month: "numeric",
+                          year: "2-digit",
+                        })}
+                      </div>
                     </Td>
                     <Td>
                       {/* Persona y rol apilados en una sola columna: casi

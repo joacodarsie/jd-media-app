@@ -111,6 +111,16 @@ describe("mensajesDeBienvenida — variantes", () => {
     expect(m[3]).toContain("Acceso a tu cuenta de Google Ads");
   });
 
+  it("Pack Marca Real: el diseñador, el brief y los 10 días hábiles", () => {
+    const m = mensajesDeBienvenida({ ...base, servicios: ["branding", "marca_real"] });
+    expect(m[0]).toContain("*Darío*, diseño: arma la identidad de tu marca");
+    expect(m[0]).not.toContain("community manager");
+    const todo = m.join(" ");
+    expect(todo).toContain("en 10 días hábiles");
+    expect(todo).toContain("El brief de marca completo");
+    expect(todo).not.toContain("quincena");
+  });
+
   it("si falta alguien del equipo, no deja una línea vacía", () => {
     const m = mensajesDeBienvenida({ ...base, equipo: { ...base.equipo, editor: null } });
     expect(m[0]).not.toContain("edición audiovisual");

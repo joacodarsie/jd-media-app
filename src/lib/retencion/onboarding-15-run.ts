@@ -7,6 +7,7 @@
  * Idempotente por el título del ticket madre: se puede llamar dos veces (al
  * activar la cuenta y desde el botón del onboarding) sin duplicar nada.
  */
+import { tiposDeServicio } from "@/lib/pack-marca-real";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatInTimeZone } from "date-fns-tz";
 import { TIMEZONE } from "@/lib/constants";
@@ -79,10 +80,10 @@ export async function runOnboarding15(
 
   const { data: svcRaw } = await admin
     .from("client_services")
-    .select("tipo")
+    .select("tipo, pack")
     .eq("cliente_id", clienteId)
     .eq("activo", true);
-  const servicios = ((svcRaw ?? []) as { tipo: string }[]).map((s) => s.tipo);
+  const servicios = tiposDeServicio((svcRaw ?? []) as { tipo: string; pack: string | null }[]);
 
   const hoy = formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM-dd");
   const inicio = opts.fechaInicio ?? c.fecha_inicio ?? hoy;

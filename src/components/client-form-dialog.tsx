@@ -1,5 +1,6 @@
 "use client";
 
+import { MARCA_REAL, PACK_MARCA_REAL } from "@/lib/pack-marca-real";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -227,7 +228,7 @@ export function ClientFormDialog({
           : {};
         return {
           tipo: s.tipo,
-          pack: isRedes ? s.pack : null,
+          pack: isRedes ? s.pack : s.tipo === "branding" && s.pack === PACK_MARCA_REAL ? s.pack : null,
           monto_mensual: s.monto ? Number(s.monto) : null,
           moneda: "ARS",
           pack_detalle,
@@ -585,17 +586,31 @@ export function ClientFormDialog({
                           <div className="grid flex-1 gap-2 sm:grid-cols-2">
                             <div className="space-y-1">
                               <Label className="text-xs">Servicio</Label>
+                              {/* El Pack Marca Real es un branding con ese pack: opción
+                                  propia para que no se cargue como branding a medida. */}
                               <Select
-                                value={s.tipo}
-                                onValueChange={(v) => updateService(i, { tipo: v })}
+                                value={s.tipo === "branding" && s.pack === PACK_MARCA_REAL ? "marca_real" : s.tipo}
+                                onValueChange={(v) =>
+                                  v === "marca_real"
+                                    ? updateService(i, {
+                                        tipo: "branding",
+                                        pack: PACK_MARCA_REAL,
+                                        facturacion: "unico",
+                                        monto: String(MARCA_REAL.precio),
+                                      })
+                                    : updateService(i, { tipo: v, ...(v === "branding" ? { pack: "" } : {}) })
+                                }
                               >
                                 <SelectTrigger>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
+                                  <SelectItem value="marca_real">
+                                    Pack Marca Real · ${MARCA_REAL.precio.toLocaleString("es-AR")}
+                                  </SelectItem>
                                   {Object.entries(SERVICE_TYPE_LABEL).map(([v, l]) => (
                                     <SelectItem key={v} value={v}>
-                                      {l}
+                                      {v === "branding" ? "Branding a medida" : l}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>

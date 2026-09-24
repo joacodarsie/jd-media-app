@@ -1,5 +1,6 @@
 "use server";
 
+import { esMarcaReal, MARCA_REAL, tiposDeServicio } from "@/lib/pack-marca-real";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -331,7 +332,7 @@ export async function buildWelcomeMessages(clientId: string): Promise<
       .maybeSingle(),
     admin
       .from("client_services")
-      .select("tipo, media_buyer_aplica, responsables, costo_override_user")
+      .select("tipo, pack, media_buyer_aplica, responsables, costo_override_user")
       .eq("cliente_id", clientId)
       .eq("activo", true),
     admin.from("users").select("id, nombre, rol, rol_secundario, area, area_secundaria").eq("activo", true),
@@ -349,6 +350,7 @@ export async function buildWelcomeMessages(clientId: string): Promise<
   };
   const svcs = (services ?? []) as {
     tipo: string;
+    pack: string | null;
     media_buyer_aplica: boolean | null;
     responsables: string[] | null;
     costo_override_user: string | null;
@@ -387,7 +389,7 @@ export async function buildWelcomeMessages(clientId: string): Promise<
   const messages = mensajesDeBienvenida({
     contacto: (c.contacto_nombre ?? c.nombre).split(" ")[0],
     marca: c.nombre,
-    servicios: svcs.map((sv) => sv.tipo),
+    servicios: tiposDeServicio(svcs),
     conGestionDeCampanas: redes ? redes.media_buyer_aplica !== false : false,
     director: "Joaquín Darsie",
     equipo: {
@@ -440,9 +442,24 @@ export async function buildPaymentMessage(clientId: string): Promise<
 
   const { data: services } = await supabase
     .from("client_services")
-    .select("monto_mensual")
+    .select("tipo, pack, monto_mensual, facturacion")
     .eq("cliente_id", clientId)
     .eq("activo", true);
+  const svcs = (services ?? []) as {
+    tipo: string;
+    pack: string | null;
+    monto_mensual: number | null;
+    facturacion: string | null;
+  }[];
+  // Cobro único (Pack Marca Real, un diseño, una web): no es abono ni va
+  // proporcional. Antes se sumaba al "monto mensual" y el mensaje salía mal.
+  const mensuales = svcs.filter((s) => s.facturacion !== "unico");
+  const unicos = svcs.filter((s) => s.facturacion === "unico");
+  const totalUnico = unicos.reduce((a, s) => a + (Number(s.monto_mensual) || 0), 0);
+  const unicoTodoAdelantado = unicos.length > 0 && unicos.every((s) => esMarcaReal(s));
+  // Lo que se paga ahora del único: todo si es Marca Real, la mitad si no.
+  const unicoAhora = unicoTodoAdelantado ? totalUnico : Math.round(totalUnico / 2);
+  const hayRedes = svcs.some((s) => s.tipo === "gestion_redes");
 
   const c = client as {
     nombre: string;
@@ -454,10 +471,7 @@ export async function buildPaymentMessage(clientId: string): Promise<
     contrato_moneda: string | null;
   };
   const moneda = c.contrato_moneda ?? "ARS";
-  const totalMensual = (services ?? []).reduce(
-    (acc, s) => acc + (Number(s.monto_mensual) || 0),
-    0
-  );
+  const totalMensual = mensuales.reduce((acc, s) => acc + (Number(s.monto_mensual) || 0), 0);
 
   const descPct = Number(c.contrato_descuento_pct) || 0;
   const descMonto = Number(c.contrato_descuento_monto) || 0;
@@ -507,24 +521,39 @@ export async function buildPaymentMessage(clientId: string): Promise<
   lines.push(`Listo ${nombre}, te envío la carta acuerdo junto con el alcance de los servicios contratados.`);
   lines.push("");
 
-  lines.push(`El monto mensual del servicio es de ${fmtMoney(montoEffective)}, como acordamos.`);
-  if (inicio) {
+  if (mensuales.length > 0) {
+    lines.push(`El monto mensual del servicio es de ${fmtMoney(montoEffective)}, como acordamos.`);
+  }
+  if (unicos.length > 0) {
+    lines.push(
+      unicoTodoAdelantado
+        ? `El Pack Marca Real tiene un valor de ${fmtMoney(totalUnico)} y se abona el 100% por adelantado: con el pago reservamos tu cupo y arrancamos.`
+        : `Los servicios de pago único suman ${fmtMoney(totalUnico)}: el 50% se abona para arrancar y el 50% contra la entrega de los archivos finales.`
+    );
+  }
+  if (inicio && mensuales.length > 0) {
     lines.push(`Fecha de inicio: ${fmtShort(c.contrato_fecha_inicio!)}.`);
   }
   lines.push("");
 
   // Primer mes proporcional: se cobra solo lo que queda del mes desde el
   // arranque, con el cálculo a la vista para que no haya que explicarlo aparte.
-  if (esProporcional) {
+  if (esProporcional && mensuales.length > 0) {
     lines.push(
       `Como arrancamos el ${fmtShort(c.contrato_fecha_inicio!)}, este primer mes se cobra proporcional a los días que quedan: ${fmtMoney(montoEsteMes)} (${diasRestantes} de ${diasMes} días). A partir del mes que viene se factura el monto mensual completo.`
     );
     lines.push("");
   }
 
-  lines.push(
-    `Te cuento cómo arrancamos: las dos primeras semanas no publicamos contenido, las usamos para dejar todo en orden — diagnóstico de la cuenta, manual de marca, rediseño de perfiles y destacadas, y el calendario del mes para que lo apruebes. Es lo que hace que todo lo que salga después tenga sentido, y lo vas a ir viendo a medida que avanza.`
-  );
+  if (hayRedes) {
+    lines.push(
+      `Te cuento cómo arrancamos: las dos primeras semanas no publicamos contenido, las usamos para dejar todo en orden — diagnóstico de la cuenta, manual de marca, rediseño de perfiles y destacadas, y el calendario del mes para que lo apruebes. Es lo que hace que todo lo que salga después tenga sentido, y lo vas a ir viendo a medida que avanza.`
+    );
+  } else if (unicoTodoAdelantado) {
+    lines.push(
+      `Te cuento cómo arrancamos: te mando el brief de marca, 10 preguntas cortas. Desde que lo completás, en ${MARCA_REAL.diasHabilesEntrega} días hábiles tenés el logo, la identidad, las plantillas, el perfil de Instagram armado, el calendario y el manual de 30 ideas.`
+    );
+  }
 
   if (hayDescuento) {
     const descTxt = descMonto > 0 ? `de ${fmtMoney(descMonto)}` : `del ${descPct}%`;
@@ -534,12 +563,15 @@ export async function buildPaymentMessage(clientId: string): Promise<
     );
   }
 
+  if (mensuales.length > 0) {
+    lines.push("");
+    lines.push(
+      `De acá en adelante el abono se cobra por adelantado, ${VENTANA_COBRO_TEXTO}. Te voy a estar mandando el recordatorio el ${COBRO_DESDE_DIA} de cada mes.`
+    );
+  }
   lines.push("");
-  lines.push(
-    `De acá en adelante el abono se cobra por adelantado, ${VENTANA_COBRO_TEXTO}. Te voy a estar mandando el recordatorio el ${COBRO_DESDE_DIA} de cada mes.`
-  );
-  lines.push("");
-  lines.push(`👉 Total a transferir ahora: ${fmtMoney(montoEsteMes)}`);
+  const aTransferir = (mensuales.length > 0 ? montoEsteMes : 0) + unicoAhora;
+  lines.push(`👉 Total a transferir ahora: ${fmtMoney(aTransferir)}`);
   lines.push("");
   lines.push("Datos para transferencia:");
   lines.push(`Banco: ${AGENCY.bank.nombre}`);
@@ -558,8 +590,8 @@ export async function buildPaymentMessage(clientId: string): Promise<
       moneda,
       totalMensual,
       montoConDescuento: hayDescuento ? montoEffective : null,
-      montoEsteMes,
-      esProporcional,
+      montoEsteMes: aTransferir,
+      esProporcional: esProporcional && mensuales.length > 0,
       diasRestantes,
       diasMes,
       fechaInicio: c.contrato_fecha_inicio,

@@ -45,3 +45,14 @@ export function marcaRealDeliverables(): string[] {
     "No incluye la publicación de contenido, la gestión de las redes ni la pauta: se contratan aparte.",
   ];
 }
+
+/**
+ * Los tipos de servicio de una cuenta, sumando "marca_real" cuando tiene el
+ * pack. El onboarding y la bienvenida razonan por tipo, y el pack es un
+ * branding con `pack = "Marca Real"`: sin esto le caía el arranque de redes.
+ */
+export function tiposDeServicio(services: { tipo: string; pack?: string | null }[]): string[] {
+  const tipos = services.map((s) => s.tipo);
+  if (services.some((s) => esMarcaReal(s))) tipos.push("marca_real");
+  return tipos;
+}

@@ -150,3 +150,28 @@ describe("equipo incompleto", () => {
     expect(t).not.toContain("Asignar el equipo de la cuenta");
   });
 });
+
+describe("Pack Marca Real (sin redes)", () => {
+  it("no le cae el arranque de redes: brief, logo, plantillas y entrega en 10 días", () => {
+    const p = plan(["branding", "marca_real"]);
+    const titulos = p.pasos.map((x) => x.titulo);
+    expect(titulos).toContain("Mandar el brief de marca");
+    expect(titulos).toContain("2 propuestas de logo");
+    expect(titulos).toContain("Entrega final");
+    expect(titulos).not.toContain("Calendario de contenidos para aprobar");
+    expect(titulos).not.toContain("Reunión de diagnóstico");
+    expect(p.madre.dia).toBe(10);
+    expect(p.pasos.find((x) => x.titulo === "2 propuestas de logo")?.asignado_a_id).toBe("dis");
+  });
+
+  it("sin diseñador cargado pide asignarlo y todo cae en la PM", () => {
+    const p = plan(["branding", "marca_real"], { disenador_id: null });
+    expect(p.pasos[0].titulo).toBe("Asignar quién diseña la marca");
+    expect(p.pasos.find((x) => x.titulo === "2 propuestas de logo")?.asignado_a_id).toBe("luz");
+  });
+
+  it("con gestión de redes gana el arranque de redes", () => {
+    const p = plan(["gestion_redes", "branding", "marca_real"]);
+    expect(p.pasos.map((x) => x.titulo)).toContain("Calendario de contenidos para aprobar");
+  });
+});

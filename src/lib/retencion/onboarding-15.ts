@@ -20,6 +20,8 @@
  */
 
 /** Cuántos días dura el arranque. Dos semanas de preparación (acuerdo del 13/9). */
+import { MARCA_REAL } from "@/lib/pack-marca-real";
+
 export const DIAS_ONBOARDING = 15;
 
 export interface EquipoDelCliente {
@@ -74,6 +76,8 @@ export function planOnboarding(input: {
 }): PlanOnboarding {
   const { nombreCliente, servicios, equipo } = input;
   const svc = new Set(servicios);
+  // Pack Marca Real solo: es un proyecto de diez días, no una cuenta de redes.
+  if (svc.has("marca_real") && !svc.has("gestion_redes")) return planMarcaReal(nombreCliente, equipo);
   const cm = equipo.cm_id ?? equipo.fallback;
   const dis = equipo.disenador_id ?? equipo.fallback;
   const av = equipo.audiovisual_id ?? equipo.fallback;
@@ -254,6 +258,94 @@ Al día 15 el cliente tiene que estar publicando, con el perfil optimizado y el 
 
   pasos.sort((a, b) => a.dia - b.dia || a.titulo.localeCompare(b.titulo));
   return { madre, pasos };
+}
+
+/**
+ * El arranque del Pack Marca Real (24/9): brief, dos propuestas de logo, las
+ * rondas de cambios y la entrega en diez días hábiles, lo mismo que promete la
+ * carta acuerdo (lib/pack-marca-real.ts). Antes le caía el onboarding de redes
+ * de 15 días, con calendario, jornada y publicación, que no aplica.
+ */
+function planMarcaReal(nombreCliente: string, equipo: EquipoDelCliente): PlanOnboarding {
+  const dis = equipo.disenador_id ?? equipo.fallback;
+  const pm = equipo.fallback;
+  const m = MARCA_REAL;
+  const pasos: PasoOnboarding[] = [];
+  const add = (dia: number, titulo: string, descripcion: string, area: string, asignado_a_id: string) =>
+    pasos.push({ dia, titulo, descripcion, area, asignado_a_id });
+
+  if (!equipo.disenador_id) {
+    add(
+      1,
+      "Asignar quién diseña la marca",
+      `${nombreCliente} arrancó sin diseñador cargado: todo quedó a tu nombre. Cargalo en la ficha del cliente y reasigná las tareas de abajo.`,
+      "Coordinación",
+      pm
+    );
+  }
+  add(
+    1,
+    "Mandar el brief de marca",
+    `Las 10 preguntas del brief de identidad a ${nombreCliente}: qué hace la marca, a quién le vende, cómo la describiría, referencias que le gustan y qué no quiere. El plazo de ${m.diasHabilesEntrega} días hábiles corre desde que lo devuelve completo.`,
+    "Coordinación",
+    pm
+  );
+  add(
+    3,
+    "Brief recibido y material ordenado",
+    "El brief completo, el logo actual si tiene y sus referencias, en el Drive de la cuenta. Si falta algo, reclamarlo hoy: el plazo de entrega depende de esto.",
+    "Coordinación",
+    pm
+  );
+  add(
+    5,
+    `${m.propuestasLogo} propuestas de logo`,
+    `Dos propuestas de logo distintas entre sí, presentadas con su paleta y tipografías, para que ${nombreCliente} elija una.`,
+    "Diseño",
+    dis
+  );
+  add(
+    7,
+    "Logo final, paleta y tipografías",
+    `Ajustes sobre la propuesta elegida (entran ${m.rondasCambios} rondas de cambios). Logo con y sin fondo, paleta de colores y tipografías definidas.`,
+    "Diseño",
+    dis
+  );
+  add(
+    9,
+    "Plantillas y perfil de Instagram",
+    `${m.plantillasPosteo} plantillas de posteo y ${m.plantillasHistoria} de historia editables en Canva, foto de perfil, biografía y portadas de destacadas.`,
+    "Diseño",
+    dis
+  );
+  add(
+    9,
+    "Plantilla de calendario y manual de 30 ideas",
+    "La plantilla para organizar las publicaciones y el manual de regalo: 10 ideas para vender, 10 para generar confianza y 10 educativas, con el formato de cada una.",
+    "Community Manager",
+    equipo.cm_id ?? pm
+  );
+  add(
+    10,
+    "Entrega final",
+    `Mandarle a ${nombreCliente} los archivos finales (PNG y PDF), el acceso a las plantillas y el manual. Es buen momento para ofrecerle la gestión de redes.`,
+    "Coordinación",
+    pm
+  );
+
+  pasos.sort((a, b) => a.dia - b.dia || a.titulo.localeCompare(b.titulo));
+  return {
+    madre: {
+      titulo: tituloMadre(nombreCliente),
+      descripcion: `El Pack Marca Real de **${nombreCliente}**: identidad, plantillas, perfil de Instagram, calendario y el manual de 30 ideas.
+
+Se entrega en **${m.diasHabilesEntrega} días hábiles** desde que el cliente devuelve el brief. El desglose de abajo sigue ese plazo.`,
+      area: "Coordinación",
+      asignado_a_id: pm,
+      dia: m.diasHabilesEntrega,
+    },
+    pasos,
+  };
 }
 
 /** Las filas listas para insertar, con la fecha resuelta desde el arranque. */

@@ -131,7 +131,11 @@ function ServiceRow({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold">{SERVICE_TYPE_LABEL[service.tipo]}</span>
+            <span className="font-semibold">
+              {service.tipo === "branding" && service.pack === PACK_MARCA_REAL
+                ? "Pack Marca Real"
+                : SERVICE_TYPE_LABEL[service.tipo]}
+            </span>
             {service.pack && (
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium">
                 {service.pack}
@@ -388,14 +392,31 @@ function ServiceDialog({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Tipo de servicio</Label>
-            <Select value={tipo} onValueChange={changeTipo}>
+            {/* El Pack Marca Real va como opción propia (24/9): se guarda como
+                branding con ese pack, pero buscarlo adentro de "Branding" no se
+                encontraba y quedaba cargado como branding a medida. */}
+            <Select
+              value={tipo === "branding" && pack === PACK_MARCA_REAL ? "marca_real" : tipo}
+              onValueChange={(v) => {
+                if (v === "marca_real") {
+                  changeTipo("branding");
+                  elegirPackBranding(PACK_MARCA_REAL);
+                } else {
+                  changeTipo(v);
+                  if (v === "branding") setPack("");
+                }
+              }}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="marca_real">
+                  Pack Marca Real · ${MARCA_REAL.precio.toLocaleString("es-AR")}
+                </SelectItem>
                 {Object.entries(SERVICE_TYPE_LABEL).map(([v, l]) => (
                   <SelectItem key={v} value={v}>
-                    {l}
+                    {v === "branding" ? "Branding a medida" : l}
                   </SelectItem>
                 ))}
               </SelectContent>

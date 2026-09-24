@@ -1,5 +1,6 @@
 "use server";
 
+import { PACK_MARCA_REAL } from "@/lib/pack-marca-real";
 import { hoyYmd } from "@/lib/dates";
 
 import { revalidatePath } from "next/cache";
@@ -166,7 +167,13 @@ export async function createClientRow(
     const rows = validServices.map((s) => ({
       cliente_id: clienteId,
       tipo: s.tipo,
-      pack: s.tipo === "gestion_redes" ? s.pack || null : null,
+      // El Pack Marca Real se guarda como branding con ese pack.
+      pack:
+        s.tipo === "gestion_redes"
+          ? s.pack || null
+          : s.tipo === "branding" && s.pack === PACK_MARCA_REAL
+            ? PACK_MARCA_REAL
+            : null,
       monto_mensual:
         s.monto_mensual === null || Number.isNaN(s.monto_mensual)
           ? null

@@ -80,6 +80,9 @@ export function mensajesDeBienvenida(e: EntradaBienvenida): string[] {
   }
   if (contenido && eq.disenador) equipo.push(`– *${pila(eq.disenador)}*, diseño gráfico.`);
   if (contenido && eq.editor) equipo.push(`– *${pila(eq.editor)}*, edición audiovisual.`);
+  // Pack Marca Real sin redes: quien diseña la marca.
+  const marcaReal = svc.has("marca_real") && !redes;
+  if (marcaReal && eq.disenador) equipo.push(`– *${pila(eq.disenador)}*, diseño: arma la identidad de tu marca.`);
   if (pauta && eq.mediaBuyer) {
     equipo.push(`– *${pila(eq.mediaBuyer)}*, campañas publicitarias: configura y sigue tus anuncios todos los días.`);
   }
@@ -140,6 +143,16 @@ export function mensajesDeBienvenida(e: EntradaBienvenida): string[] {
       `💻 Desarrollo web: relevamiento de lo que necesitás, propuesta de estructura para aprobar y arranque del desarrollo.`
     );
   }
+  if (marcaReal) {
+    if (arranque.length) arranque.push(``);
+    arranque.push(
+      `Así arranca tu Pack Marca Real 👇`,
+      ``,
+      `📍 Te mandamos el brief de marca: 10 preguntas cortas sobre tu negocio y lo que te gusta.`,
+      `📍 Con el brief completo, en 10 días hábiles: 2 propuestas de logo para elegir, la paleta y las tipografías, las plantillas para publicar, el perfil de Instagram armado, la plantilla de calendario y el manual de 30 ideas de contenido.`,
+      `📍 Sobre la propuesta que elijas hay 2 rondas de cambios.`
+    );
+  }
   if (svc.has("diseno_grafico") && !redes) {
     if (arranque.length) arranque.push(``);
     arranque.push(`🎨 Diseño gráfico: brief y referencias, manual de marca y producción de las piezas acordadas.`);
@@ -198,7 +211,10 @@ export function mensajesDeBienvenida(e: EntradaBienvenida): string[] {
   if (wsp) {
     pedidos.push(`📱 Acceso a tu WhatsApp Business: lo vinculamos como dispositivo, sin cambiar tu número.`);
   }
-  if (contenido || svc.has("diseno_grafico")) {
+  if (marcaReal) {
+    pedidos.push(`📝 El brief de marca completo (te lo mandamos por acá).`);
+    pedidos.push(`🎨 Tu logo actual si tenés uno, y 2 o 3 marcas cuyo estilo te guste.`);
+  } else if (contenido || svc.has("diseno_grafico")) {
     pedidos.push(`🎨 Tu logo en buena calidad (ideal vectorizado) y los colores o tipografías que ya uses.`);
     pedidos.push(`📂 Fotos y videos que ya tengas de la marca, los productos y el equipo.`);
   }

@@ -47,7 +47,7 @@ export default async function CampaignContactsPage({
 
   // Contactos de la campaña. Resiliente si todavía no se aplicó la 0130/0131.
   const COLS =
-    "id, empresa, contacto_nombre, contacto_rol, telefono, instagram, sitio_web, estado, asignado_a, notas, contactado_at, contactable, created_at";
+    "id, empresa, contacto_nombre, contacto_rol, telefono, instagram, sitio_web, estado, asignado_a, notas, contactado_at, contactable, created_at, reunion_fecha";
   const first = await admin
     .from("prospecting_contacts")
     .select(COLS)
@@ -60,7 +60,8 @@ export default async function CampaignContactsPage({
     const second = await admin
       .from("prospecting_contacts")
       .select(
-        COLS.replace(", contactado_at", "")
+        COLS.replace(", reunion_fecha", "")
+          .replace(", contactado_at", "")
           .replace(", instagram", "")
           .replace(", sitio_web", "")
           .replace(", contactable", "")

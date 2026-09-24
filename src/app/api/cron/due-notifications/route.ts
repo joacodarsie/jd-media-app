@@ -29,6 +29,7 @@ import { runOnboardingPendiente } from "@/lib/retencion/onboarding-pendiente-run
 import { runReunionesMensuales } from "@/lib/retencion/reunion-mensual-run";
 import { runReunionesDesdeCalendario } from "@/lib/retencion/reunion-calendario-run";
 import { runRutinasMensuales } from "@/lib/tareas/rutinas-mensuales-run";
+import { runRecordatorioReunionesHoy } from "@/lib/agenda/recordatorio-hoy-run";
 import { currentPeriod } from "@/lib/finanzas";
 import { hoyYmd } from "@/lib/dates";
 
@@ -178,6 +179,15 @@ export async function GET(req: NextRequest) {
     reunionesCalendario = await runReunionesDesdeCalendario(admin, currentPeriod());
   } catch (e) {
     reunionesCalendario = { error: e instanceof Error ? e.message : "falló" };
+  }
+
+  // Las reuniones de hoy de la Agenda (con prospectos y las demás): un aviso
+  // por persona a la mañana, en la plataforma y en el celular.
+  let reunionesHoy: unknown = null;
+  try {
+    reunionesHoy = await runRecordatorioReunionesHoy(admin);
+  } catch (e) {
+    reunionesHoy = { error: e instanceof Error ? e.message : "falló" };
   }
 
   // Las tareas de todos los meses (cobrar, cerrar el mes, pagar sueldos). El
@@ -445,6 +455,7 @@ export async function GET(req: NextRequest) {
     linksFaltantes,
     reuniones,
     reunionesCalendario,
+    reunionesHoy,
     rutinas,
     revision_creativa: revisionCreativa,
     aprobaciones,

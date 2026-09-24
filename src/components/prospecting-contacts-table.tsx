@@ -60,6 +60,8 @@ import {
   type ContactPatch,
 } from "@/app/(app)/prospeccion/actions";
 import { propuestaParaContacto } from "@/app/(app)/prospeccion/propuestas/actions";
+import { AgendarReunionDialog } from "@/components/agendar-reunion-dialog";
+import { cuandoReunion } from "@/lib/prospecting/reunion";
 
 export interface ContactRow {
   id: string;
@@ -76,6 +78,8 @@ export interface ContactRow {
   /** null = sin intentar · true = el dato sirve · false = no se pudo contactar. */
   contactable: boolean | null;
   created_at: string;
+  /** Día y hora de la reunión, si se agendó (0184). */
+  reunion_fecha?: string | null;
 }
 
 const NADIE = "__nadie__";
@@ -131,6 +135,8 @@ export function ProspectingContactsTable({
   // Modo despacho: recorrer los pendientes uno por uno sin volver a la tabla.
   const [despacho, setDespacho] = useState(false);
   const [saltados, setSaltados] = useState<Set<string>>(new Set());
+  // Contacto al que se le está poniendo día y hora de reunión.
+  const [agendando, setAgendando] = useState<ContactRow | null>(null);
   const [, startTransition] = useTransition();
   // Última versión persistida de cada fila, para saber si un campo cambió al blur.
   const persisted = useRef(new Map(initialContacts.map((c) => [c.id, { ...c }])));
@@ -389,6 +395,25 @@ export function ProspectingContactsTable({
       }
     });
     clearSel();
+  }
+
+  function reunionAgendada(id: string, inicio: string) {
+    setRows((prev) =>
+      prev.map((x) =>
+        x.id === id
+          ? {
+              ...x,
+              estado: "reunion",
+              contactable: true,
+              reunion_fecha: inicio,
+              contactado_at: x.contactado_at ?? new Date().toISOString(),
+              asignado_a: x.asignado_a ?? currentUserId,
+            }
+          : x
+      )
+    );
+    const snap = persisted.current.get(id);
+    if (snap) snap.estado = "reunion";
   }
 
   // ── Modo despacho ──────────────────────────────────────────────────────────
@@ -865,6 +890,9 @@ export function ProspectingContactsTable({
                       <select
                         value={r.estado}
                         onChange={(e) => {
+                          // Reunión: primero día y hora. El estado cambia recién
+                          // cuando se agenda, así no queda una reunión sin fecha.
+                          if (e.target.value === "reunion") return setAgendando(r);
                           setField(r.id, "estado", e.target.value);
                           persist(r.id, "estado", e.target.value);
                         }}
@@ -878,7 +906,17 @@ export function ProspectingContactsTable({
                           </option>
                         ))}
                       </select>
-                      {dias != null && (
+                      {r.estado === "reunion" && (
+                        <button
+                          type="button"
+                          onClick={() => setAgendando(r)}
+                          title="Cambiar día y hora"
+                          className="mt-0.5 block text-left text-[10px] font-medium text-violet-700 hover:underline dark:text-violet-300"
+                        >
+                          {r.reunion_fecha ? `📅 ${cuandoReunion(r.reunion_fecha)}` : "📅 Poner día y hora"}
+                        </button>
+                      )}
+                      {dias != null && r.estado !== "reunion" && (
                         <span className="mt-0.5 block text-[10px] text-muted-foreground">
                           {/* `<= 0` y no `=== 0`: la cuenta se hace en el
                               navegador contra una fecha sellada por el servidor,
@@ -1112,6 +1150,12 @@ export function ProspectingContactsTable({
           )}
         </DialogContent>
       </Dialog>
+
+      <AgendarReunionDialog
+        contacto={agendando}
+        onClose={() => setAgendando(null)}
+        onAgendada={reunionAgendada}
+      />
     </div>
   );
 }

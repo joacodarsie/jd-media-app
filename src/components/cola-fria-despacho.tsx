@@ -33,6 +33,7 @@ import {
 } from "@/lib/prospecting/shared";
 import { tieneWhatsapp, type ContactoFrio } from "@/lib/captacion/cola-fria";
 import { updateContact, bulkSetContactoEstado } from "@/app/(app)/prospeccion/actions";
+import { AgendarReunionDialog } from "@/components/agendar-reunion-dialog";
 
 /** Los escritos sin despachar sobreviven a un refresh o a cerrar la pestaña. */
 const LS_ESCRITOS = "cola-fria:escritos";
@@ -93,6 +94,8 @@ export function ColaFriaDespacho({
   // Escritos sin despachar: todavía no cuentan como contactados en la base.
   const [escritos, setEscritos] = useState<string[]>([]);
   const [despachando, startDespacho] = useTransition();
+  // Reunión: se pide día y hora antes de pasarla (24/9).
+  const [agendando, setAgendando] = useState<ContactoFrio | null>(null);
   const [, startTransition] = useTransition();
 
   // Recuperar los escritos guardados, solo los que siguen en la cola.
@@ -441,7 +444,7 @@ export function ColaFriaDespacho({
                     su métrica más importante. */}
                 <Button
                   variant="outline"
-                  onClick={() => marcar(actual, "reunion")}
+                  onClick={() => setAgendando(actual)}
                   className="h-10 min-w-0 border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-500/40 dark:text-violet-300 dark:hover:bg-violet-500/10"
                 >
                   <CalendarCheck className="mr-2 h-4 w-4 shrink-0" />
@@ -467,6 +470,15 @@ export function ColaFriaDespacho({
           )}
         </DialogContent>
       </Dialog>
+
+      <AgendarReunionDialog
+        contacto={agendando}
+        onClose={() => setAgendando(null)}
+        onAgendada={(id) => {
+          setHechos((p) => new Set(p).add(id));
+          setEscritos((p) => p.filter((x) => x !== id));
+        }}
+      />
 
       {/* ── Los que hay que volver a tocar ── */}
       {seguimientos.length > 0 && (

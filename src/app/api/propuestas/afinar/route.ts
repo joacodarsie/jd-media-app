@@ -92,6 +92,23 @@ No inventes SEO, LinkedIn, email marketing, influencers, prensa ni nada que no e
 7. Si lo que te pasan no alcanza para personalizar, devolvé igual el JSON con lo mejor que puedas del rubro, sin inventar datos del negocio.`;
 }
 
+/**
+ * Propuesta en FRÍO (24/9): sale desde el contacto de prospección, sin reunión
+ * previa. No hay nada que "devolverle" de una charla, así que la IA primero
+ * busca al negocio (su Instagram y su web, con la búsqueda web: Instagram no
+ * se deja leer desde el server) y el documento abre explicando cómo podemos
+ * ayudar, en lugar de sonar a un post-meet.
+ */
+const BLOQUE_FRIO = `
+
+# ESTA PROPUESTA ES EN FRÍO (no hubo reunión)
+Se la mandamos a un negocio que todavía no nos conoce: no hubo charla, no hay transcripción. Entonces:
+- **Antes de escribir, buscá al negocio con la búsqueda web**: su Instagram (el perfil y lo que dice su bio), su web y cómo aparece en Google. Hacé como mucho 3 búsquedas. Usalo para saber qué vende, dónde está y cómo se presenta, y nombrá algo concreto de eso.
+- **No inventes nada que no hayas visto** y no describas su feed ni cuánto publica: los buscadores muestran el perfil, no las publicaciones.
+- El "diagnostico" arranca por lo que el negocio TIENE (qué vende, dónde, a quién) y en una oración dice qué podemos sumar. Nunca le marques errores.
+- Agregá al JSON el campo **"valor"**: 2 o 3 oraciones que expliquen, para ESTE negocio, cómo lo ayudaríamos en concreto (qué contaríamos en sus redes, a quién le llegaríamos con la publicidad, qué se ordena). Es lo que reemplaza la reunión que no hubo, así que tiene que ser específico, no un folleto.
+- No uses frases de post-reunión ("como charlamos", "entendemos lo que nos contaste").`;
+
 export async function POST(req: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: "Falta ANTHROPIC_API_KEY." }, { status: 500 });
@@ -105,6 +122,8 @@ export async function POST(req: Request) {
     propuestaId?: string;
     notas?: string;
     images?: ImageInput[];
+    /** "frio": propuesta sin reunión, desde el contacto de prospección. */
+    modo?: string;
   };
   if (!body.propuestaId) {
     return NextResponse.json({ error: "Falta la propuesta." }, { status: 400 });
@@ -113,7 +132,7 @@ export async function POST(req: Request) {
   const admin = createAdmin();
   const { data: prop } = await admin
     .from("proposals")
-    .select("id, empresa, contacto_nombre, rubro_slug, rubro_texto, sitio_web, instagram, extras")
+    .select("id, empresa, contacto_nombre, rubro_slug, rubro_texto, sitio_web, instagram, extras, contacto_id, ia")
     .eq("id", body.propuestaId)
     .maybeSingle();
   if (!prop) return NextResponse.json({ error: "No existe esa propuesta." }, { status: 404 });
@@ -127,6 +146,8 @@ export async function POST(req: Request) {
     sitio_web: string | null;
     instagram: string | null;
     extras?: unknown;
+    contacto_id?: string | null;
+    ia?: { ocultas?: string[] | null } | null;
   };
 
   const imgs = imageBlocks(body.images);
@@ -136,9 +157,12 @@ export async function POST(req: Request) {
   // pelada no sirve de nada porque el modelo no puede abrirla.
   const web = await leerSitio(p.sitio_web);
 
+  // En frío no hay conversación: se busca al negocio en la web.
+  const frio = body.modo === "frio" || (!notas && imgs.length === 0 && !!p.contacto_id);
+
   // Con el sitio solo ya alcanza para escribir algo propio del negocio, así que
   // no se exige que además haya notas o capturas.
-  if (!notas && imgs.length === 0 && !web) {
+  if (!notas && imgs.length === 0 && !web && !frio) {
     return NextResponse.json(
       {
         error: p.sitio_web
@@ -177,12 +201,25 @@ export async function POST(req: Request) {
 
   let res: Anthropic.Message;
   try {
-    res = await client.messages.create({
-      model: MODEL,
-      max_tokens: 2000,
-      system: systemPrompt(serviciosTxt),
-      messages: [{ role: "user", content: [...imgs, { type: "text", text: contexto }] }],
-    });
+    const messages: Anthropic.MessageParam[] = [
+      { role: "user", content: [...imgs, { type: "text", text: contexto }] },
+    ];
+    const pedir = () =>
+      client.messages.create({
+        model: MODEL,
+        max_tokens: frio ? 3000 : 2000,
+        system: systemPrompt(serviciosTxt) + (frio ? BLOQUE_FRIO : ""),
+        messages,
+        ...(frio
+          ? { tools: [{ type: "web_search_20250305" as const, name: "web_search" as const, max_uses: 3 }] }
+          : {}),
+      });
+    res = await pedir();
+    // Con búsqueda web el modelo puede pausar el turno: se le deja seguir.
+    for (let i = 0; i < 2 && res.stop_reason === "pause_turn"; i++) {
+      messages.push({ role: "assistant", content: res.content });
+      res = await pedir();
+    }
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "No se pudo generar." },
@@ -199,7 +236,7 @@ export async function POST(req: Request) {
 
   // El modelo a veces envuelve el JSON en ```json … ```.
   const json = texto.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
-  let parsed: { titular?: string; diagnostico?: string; puntos?: string[]; ideas?: string[] };
+  let parsed: { titular?: string; diagnostico?: string; puntos?: string[]; ideas?: string[]; valor?: string };
   try {
     parsed = JSON.parse(json);
   } catch {
@@ -222,6 +259,10 @@ export async function POST(req: Request) {
       ? parsed.puntos.filter((x) => typeof x === "string" && x.trim()).slice(0, 5).map((x) => x.trim().slice(0, 400))
       : [],
     generado_at: new Date().toISOString(),
+    frio,
+    valor: frio && typeof parsed.valor === "string" ? parsed.valor.trim().slice(0, 900) : null,
+    // Las secciones que alguien sacó a mano siguen sacadas.
+    ocultas: Array.isArray(p.ia?.ocultas) ? p.ia!.ocultas : [],
   };
 
   await admin

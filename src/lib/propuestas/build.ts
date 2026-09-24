@@ -44,7 +44,24 @@ export interface BloqueIa {
   generado_at?: string | null;
   /** true si el último que lo tocó fue una persona, no la IA. */
   editado_a_mano?: boolean | null;
+  /**
+   * Propuesta en frío: se manda sin reunión previa (desde el contacto de
+   * prospección). Abre explicando cómo podemos ayudar, no como un post-meet.
+   */
+  frio?: boolean | null;
+  /** "Cómo te podemos ayudar": 2 o 3 oraciones, solo en frío. */
+  valor?: string | null;
+  /** Secciones que se sacaron del documento a mano (ver SECCIONES_OCULTABLES). */
+  ocultas?: string[] | null;
 }
+
+/** Secciones que se pueden sacar desde "Editar". */
+export const SECCIONES_OCULTABLES = [
+  { key: "puntos", label: "Lo que vamos a hacer" },
+  { key: "incluye", label: "Todo lo que incluye el abono" },
+  { key: "ideas", label: "Con qué arrancamos" },
+  { key: "mes1", label: "Qué se entrega el primer mes" },
+] as const;
 
 export interface PropuestaVista {
   empresa: string;
@@ -66,6 +83,9 @@ export interface PropuestaVista {
   packs: PackCatalogo[];
   packRecomendado: PackCatalogo | null;
   experiencia: string | null;
+  frio: boolean;
+  valor: string | null;
+  ocultas: string[];
 }
 
 export interface ArmarPropuestaInput {
@@ -120,6 +140,9 @@ export function armarPropuesta(input: ArmarPropuestaInput): PropuestaVista {
     packs,
     packRecomendado,
     experiencia: rubro.experiencia ?? null,
+    frio: !!ia?.frio,
+    valor: ia?.valor?.trim() || null,
+    ocultas: Array.isArray(ia?.ocultas) ? ia!.ocultas!.filter((x) => typeof x === "string") : [],
   };
 }
 

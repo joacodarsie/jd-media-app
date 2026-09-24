@@ -13,13 +13,26 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { guardarTextoPropuesta } from "@/app/(app)/prospeccion/propuestas/actions";
+import { guardarTextoPropuesta, ajustarPropuesta } from "@/app/(app)/prospeccion/propuestas/actions";
+import { SECCIONES_OCULTABLES } from "@/lib/propuestas/build";
+import { EXTRAS } from "@/lib/propuestas/extras";
 
 export interface TextoPropuesta {
   titular: string;
   diagnostico: string;
   puntos: string[];
   ideas: string[];
+  /** "Cómo te podemos ayudar" (propuesta en frío). */
+  valor: string;
+  frio: boolean;
+  ocultas: string[];
+}
+
+interface Ajustes {
+  packs: { slug: string; nombre: string }[];
+  packActual: string;
+  variasCuentas: boolean;
+  extras: { slug: string; precio: number }[];
 }
 
 /**
@@ -33,11 +46,12 @@ export function BarraPropuesta({
   propuestaId,
   texto,
   personalizada,
+  ...ajustes
 }: {
   propuestaId: string;
   texto: TextoPropuesta;
   personalizada: boolean;
-}) {
+} & Ajustes) {
   const [abierto, setAbierto] = useState(false);
 
   return (
@@ -64,6 +78,7 @@ export function BarraPropuesta({
         propuestaId={propuestaId}
         texto={texto}
         personalizada={personalizada}
+        ajustes={ajustes}
       />
     </>
   );
@@ -75,12 +90,14 @@ function EditorDialog({
   propuestaId,
   texto,
   personalizada,
+  ajustes,
 }: {
   abierto: boolean;
   onClose: () => void;
   propuestaId: string;
   texto: TextoPropuesta;
   personalizada: boolean;
+  ajustes: Ajustes;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -88,14 +105,34 @@ function EditorDialog({
   const [diagnostico, setDiagnostico] = useState(texto.diagnostico);
   const [puntos, setPuntos] = useState<string[]>(texto.puntos.length ? texto.puntos : []);
   const [ideas, setIdeas] = useState<string[]>(texto.ideas);
+  const [valor, setValor] = useState(texto.valor);
+  const [ocultas, setOcultas] = useState<string[]>(texto.ocultas);
+  const [pack, setPack] = useState(ajustes.packActual);
+  // Extras: slug → precio (texto del input).
+  const [extras, setExtras] = useState<Record<string, string>>(
+    Object.fromEntries(ajustes.extras.map((x) => [x.slug, String(x.precio)]))
+  );
   const [guardando, setGuardando] = useState(false);
 
   async function guardar() {
     setGuardando(true);
-    const r = await guardarTextoPropuesta(propuestaId, { titular, diagnostico, puntos, ideas });
+    const r = await guardarTextoPropuesta(propuestaId, {
+      titular,
+      diagnostico,
+      puntos,
+      ideas,
+      valor,
+      frio: texto.frio,
+      ocultas,
+    });
+    const r2 = await ajustarPropuesta(propuestaId, {
+      packSlug: ajustes.variasCuentas ? null : pack,
+      extras: Object.entries(extras).map(([slug, precio]) => ({ slug, precio: Number(precio) || 0 })),
+    });
     setGuardando(false);
-    if ("error" in r && r.error) {
-      toast.error(r.error);
+    const err = ("error" in r && r.error) || ("error" in r2 && r2.error);
+    if (err) {
+      toast.error(err);
       return;
     }
     toast.success("Guardado. Ya podés descargar el PDF.");
@@ -128,8 +165,8 @@ function EditorDialog({
 
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Lo que dejes vacío vuelve al texto general del rubro. Los precios y los
-            servicios no se editan acá: salen de la web.
+            Lo que dejes vacío vuelve al texto general del rubro. Los precios de los packs
+            salen de la web.
           </p>
 
           <Campo label="Titular" ayuda="La frase grande de la portada.">
@@ -143,6 +180,15 @@ function EditorDialog({
               onChange={(e) => setDiagnostico(e.target.value)}
             />
           </Campo>
+
+          {(texto.frio || valor) && (
+            <Campo
+              label="Cómo te podemos ayudar"
+              ayuda="Solo en las propuestas en frío (sin reunión): el recuadro de la primera hoja."
+            >
+              <Textarea rows={3} value={valor} onChange={(e) => setValor(e.target.value)} />
+            </Campo>
+          )}
 
           <Lista
             label="Cómo lo resolvemos en su caso"
@@ -159,6 +205,93 @@ function EditorDialog({
             onChange={setIdeas}
             placeholder="Ej: Recorrido en video de cada tipo de habitación"
           />
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="text-sm font-medium">Pack</label>
+              <p className="mb-1.5 text-xs text-muted-foreground">
+                {ajustes.variasCuentas
+                  ? "Con varias cuentas, el pack de cada una se cambia desde Propuestas."
+                  : "El que se recomienda y se cotiza."}
+              </p>
+              <select
+                value={pack}
+                onChange={(e) => setPack(e.target.value)}
+                disabled={ajustes.variasCuentas}
+                className="w-full rounded-md border bg-background px-2 py-2 text-sm [color-scheme:light] dark:[color-scheme:dark]"
+              >
+                {ajustes.packs.map((p) => (
+                  <option key={p.slug} value={p.slug}>
+                    {p.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Secciones</label>
+              <p className="mb-1.5 text-xs text-muted-foreground">Destildá las que no quieras mostrar.</p>
+              <div className="space-y-1">
+                {SECCIONES_OCULTABLES.map((sec) => (
+                  <label key={sec.key} className="flex cursor-pointer items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={!ocultas.includes(sec.key)}
+                      onChange={(e) =>
+                        setOcultas((prev) =>
+                          e.target.checked ? prev.filter((x) => x !== sec.key) : [...prev, sec.key]
+                        )
+                      }
+                      className="h-4 w-4 accent-primary"
+                    />
+                    {sec.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Extras para ofrecer</label>
+            <p className="mb-1.5 text-xs text-muted-foreground">
+              Aparecen como opcionales, con el total con y sin ellos.
+            </p>
+            <div className="space-y-1.5">
+              {EXTRAS.map((x) => {
+                const on = x.slug in extras;
+                return (
+                  <div key={x.slug} className="flex items-center gap-2">
+                    <label className="flex flex-1 cursor-pointer items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        onChange={(e) =>
+                          setExtras((prev) => {
+                            const n = { ...prev };
+                            if (e.target.checked) n[x.slug] = String(x.precioSugerido);
+                            else delete n[x.slug];
+                            return n;
+                          })
+                        }
+                        className="h-4 w-4 accent-primary"
+                      />
+                      {x.nombre}
+                    </label>
+                    {on && (
+                      <Input
+                        value={extras[x.slug]}
+                        onChange={(e) =>
+                          setExtras((prev) => ({ ...prev, [x.slug]: e.target.value.replace(/\D/g, "") }))
+                        }
+                        inputMode="numeric"
+                        className="h-8 w-28 text-right"
+                        aria-label={`Precio de ${x.nombre}`}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
           <div className="flex items-center justify-between gap-2 border-t pt-3">
             {personalizada ? (

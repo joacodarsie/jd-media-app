@@ -202,6 +202,36 @@ export default async function PropuestaPage({
 
   const hojas = 4;
 
+  // Qué secciones van: las vacías no se muestran (la de puntos salía con el
+  // título solo) y las que se sacaron desde "Editar" tampoco.
+  const oculta = new Set(p.ocultas);
+  const ver = {
+    puntos: p.puntosIa.length > 0 && !oculta.has("puntos"),
+    incluye: !oculta.has("incluye"),
+    ideas: p.ideas.length > 0 && !oculta.has("ideas"),
+    mes1: mes1.length > 0 && !oculta.has("mes1"),
+  };
+  // La numeración sigue a lo que se ve: sin huecos si se saca una sección.
+  let nSec = 0;
+  const num = () => String(++nSec).padStart(2, "0");
+  // El equipo va en la hoja 1 solo si la hoja 2 lleva extras: si no, la hoja 1
+  // se pasaba con textos de IA largos (Catch) y la 2 tenía lugar de sobra.
+  const equipoEnHoja1 = extras.lineas.length > 0;
+  const seccionEquipo = () => (
+    <section>
+      <div className="cab">
+        <span className="n">{num()}</span>
+        <h2>El equipo que te devuelve el tiempo</h2>
+      </div>
+      <p className="lead" style={{ marginTop: 0 }}>
+        <b>Community manager, diseñador gráfico, editor audiovisual y un especialista en Meta Ads</b>{" "}
+        asignados a la cuenta. Un director creativo revisa cada pieza y una project manager cuida los
+        tiempos. Grupo de WhatsApp con el equipo y la plataforma para aprobar el calendario.
+      </p>
+    </section>
+  );
+  const packActual = cuentas[0]?.packSlug ?? p.packRecomendado?.slug ?? "presencia";
+
   return (
     <div className="min-h-screen bg-[#0A0A0B] [color-scheme:dark]">
       <style>{CSS_PROPUESTA}</style>
@@ -217,7 +247,14 @@ export default async function PropuestaPage({
                 diagnostico: p.diagnostico,
                 puntos: p.puntosIa,
                 ideas: p.ideas,
+                valor: p.valor ?? "",
+                frio: p.frio,
+                ocultas: p.ocultas,
               }}
+              packs={packs.map((x) => ({ slug: x.slug, nombre: x.nombre }))}
+              packActual={packActual}
+              variasCuentas={variasCuentas}
+              extras={extras.lineas.map((x) => ({ slug: x.slug, precio: x.precio }))}
             />
           </div>
         )}
@@ -234,15 +271,26 @@ export default async function PropuestaPage({
           </p>
           <p className="lead">
             {p.diagnostico}{" "}
-            <b>Entendemos hacia dónde estás llevando la marca y queremos acompañarte en ese camino.</b>{" "}
-            Acá está cómo trabajaríamos, qué se entrega cada mes y cuál sería la inversión.
+            {p.frio ? (
+              <b>Nos gustaría acompañarte en lo que viene.</b>
+            ) : (
+              <b>Entendemos hacia dónde estás llevando la marca y queremos acompañarte en ese camino.</b>
+            )}
           </p>
+
+          {/* Sin reunión previa, esto reemplaza la charla: cómo lo ayudaríamos. */}
+          {p.frio && p.valor && (
+            <div className="aviso">
+              <b>Cómo te podemos ayudar:</b> {p.valor}
+            </div>
+          )}
 
           <div className="linea" />
 
+          {ver.puntos && (
           <section>
             <div className="cab">
-              <span className="n">01</span>
+              <span className="n">{num()}</span>
               <h2>Lo que vamos a hacer</h2>
             </div>
             <div className="pasos">
@@ -260,20 +308,9 @@ export default async function PropuestaPage({
               })}
             </div>
           </section>
+          )}
 
-          <section>
-            <div className="cab">
-              <span className="n">02</span>
-              <h2>El equipo que te devuelve el tiempo</h2>
-            </div>
-            <p className="lead" style={{ marginTop: 0 }}>
-              <b>Community manager, diseñador gráfico, editor audiovisual y un especialista en Meta Ads</b>{" "}
-              asignados a la cuenta. Un director creativo revisa cada pieza antes de que salga y una
-              project manager cuida que todo se publique en fecha. Grupo de WhatsApp directo con el
-              equipo, y acceso a la plataforma de JD MEDIA para aprobar el calendario y ver los
-              resultados cuando quieras.
-            </p>
-          </section>
+          {equipoEnHoja1 && seccionEquipo()}
 
           {pie(1, hojas)}
         </div>
@@ -282,9 +319,12 @@ export default async function PropuestaPage({
         <div className="hoja">
           {cabecera}
 
+          {!equipoEnHoja1 && seccionEquipo()}
+
+          {ver.incluye && (
           <section>
             <div className="cab">
-              <span className="n">03</span>
+              <span className="n">{num()}</span>
               <h2>Todo lo que incluye el abono</h2>
             </div>
             <div className="grupos">
@@ -299,11 +339,12 @@ export default async function PropuestaPage({
               ))}
             </div>
           </section>
+          )}
 
-          {p.ideas.length > 0 && (
+          {ver.ideas && (
             <section>
               <div className="cab">
-                <span className="n">04</span>
+                <span className="n">{num()}</span>
                 <h2>Con qué arrancamos</h2>
                 <span className="aside">Primeras piezas</span>
               </div>
@@ -344,9 +385,10 @@ export default async function PropuestaPage({
         <div className="hoja">
           {cabecera}
 
+          {!variasCuentas && (
           <section>
             <div className="cab">
-              <span className="n">05</span>
+              <span className="n">{num()}</span>
               <h2>{variasCuentas ? "Las cuentas" : "La cuenta"}</h2>
               {variasCuentas && <span className="aside">Precio por cuenta</span>}
             </div>
@@ -366,14 +408,16 @@ export default async function PropuestaPage({
             </div>
             <div className="aviso">
               <b>Publicamos también en Facebook y TikTok.</b> Son canales de tráfico orgánico que la
-              mayoría de las marcas está dejando sin usar, y el contenido ya está producido.
+              mayoría de las marcas está dejando sin usar, y el contenido ya está producido.{" "}
+              <b>¿Necesitás otro volumen?</b> Armamos un pack a medida.
             </div>
           </section>
+          )}
 
-          {mes1.length > 0 && (
+          {ver.mes1 && (
             <section>
               <div className="cab">
-                <span className="n">06</span>
+                <span className="n">{num()}</span>
                 <h2>Qué se entrega el primer mes</h2>
               </div>
               <div className="etapas">
@@ -412,6 +456,18 @@ export default async function PropuestaPage({
             </section>
           )}
 
+          {variasCuentas && (
+            <section>
+              <div className="claras">
+                {LETRA_CHICA.map((l) => (
+                  <div key={l.titulo}>
+                    <b>{l.titulo}.</b> {l.texto}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {pie(3, hojas)}
         </div>
 
@@ -421,7 +477,7 @@ export default async function PropuestaPage({
 
           <section>
             <div className="cab">
-              <span className="n">07</span>
+              <span className="n">{num()}</span>
               <h2>La inversión</h2>
               {variasCuentas && <span className="aside">Todas las cuentas</span>}
             </div>
@@ -433,7 +489,11 @@ export default async function PropuestaPage({
                     <div className="t">
                       {l.handle} — Pack {l.packNombre}
                     </div>
-                    {l.volumen && <div className="s">{l.volumen}</div>}
+                    {(l.volumen || (variasCuentas && l.nota)) && (
+                      <div className="s">
+                        {[l.volumen, variasCuentas ? l.nota : null].filter(Boolean).join(" · ")}
+                      </div>
+                    )}
                   </div>
                   <div className="m">{precioAr(l.precio)}</div>
                 </div>
@@ -505,13 +565,15 @@ export default async function PropuestaPage({
               </div>
             )}
 
-            <div className="claras">
-              {LETRA_CHICA.map((l) => (
-                <div key={l.titulo}>
-                  <b>{l.titulo}.</b> {l.texto}
-                </div>
-              ))}
-            </div>
+            {!variasCuentas && (
+              <div className="claras">
+                {LETRA_CHICA.map((l) => (
+                  <div key={l.titulo}>
+                    <b>{l.titulo}.</b> {l.texto}
+                  </div>
+                ))}
+              </div>
+            )}
 
             <p className="nota">
               <b>Cómo se cobra:</b> mes adelantado, del 1 al 5 de cada mes

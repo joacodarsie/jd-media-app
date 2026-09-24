@@ -148,7 +148,7 @@ export async function propuestaParaContacto(contactoId: string) {
 
   const { data: c } = await admin
     .from("prospecting_contacts")
-    .select("id, empresa, contacto_nombre, campaign_id")
+    .select("id, empresa, contacto_nombre, campaign_id, instagram, sitio_web")
     .eq("id", contactoId)
     .maybeSingle();
   if (!c) return { error: "No encontré ese contacto." };
@@ -157,25 +157,37 @@ export async function propuestaParaContacto(contactoId: string) {
     empresa: string;
     contacto_nombre: string | null;
     campaign_id: string | null;
+    instagram: string | null;
+    sitio_web: string | null;
   };
 
   let rubroTexto: string | null = null;
+  let ciudad: string | null = null;
   if (contacto.campaign_id) {
     const { data: camp } = await admin
       .from("prospecting_campaigns")
-      .select("rubro")
+      .select("rubro, ubicacion")
       .eq("id", contacto.campaign_id)
       .maybeSingle();
-    rubroTexto = (camp as { rubro: string | null } | null)?.rubro ?? null;
+    const cp = camp as { rubro: string | null; ubicacion: string | null } | null;
+    rubroTexto = cp?.rubro ?? null;
+    ciudad = cp?.ubicacion ?? null;
   }
 
-  return crearPropuesta({
+  // Con su Instagram y su web la IA puede buscarlo y escribir algo propio
+  // (propuesta en frío, 24/9). Sin eso quedaba el texto genérico del rubro.
+  const ig = contacto.instagram ? `@${contacto.instagram.replace(/^@/, "")}` : null;
+  const r = await crearPropuesta({
     empresa: contacto.empresa,
     contactoNombre: contacto.contacto_nombre,
     rubroTexto,
     contactoId: contacto.id,
     campaignId: contacto.campaign_id,
+    instagram: ig,
+    sitioWeb: contacto.sitio_web,
+    ciudad,
   });
+  return "ok" in r ? { ...r, nueva: true as const } : r;
 }
 
 export async function actualizarPropuesta(
@@ -207,7 +219,15 @@ export async function actualizarPropuesta(
  */
 export async function guardarTextoPropuesta(
   id: string,
-  texto: { titular?: string; diagnostico?: string; puntos?: string[]; ideas?: string[] },
+  texto: {
+    titular?: string;
+    diagnostico?: string;
+    puntos?: string[];
+    ideas?: string[];
+    valor?: string;
+    frio?: boolean;
+    ocultas?: string[];
+  },
 ) {
   const g = await gate();
   if ("error" in g) return g;
@@ -222,10 +242,19 @@ export async function guardarTextoPropuesta(
     ideas: limpiarLista(texto.ideas),
     generado_at: new Date().toISOString(),
     editado_a_mano: true,
+    frio: !!texto.frio,
+    valor: texto.valor?.trim().slice(0, 900) || null,
+    ocultas: (texto.ocultas ?? []).filter((x) => typeof x === "string").slice(0, 10),
   };
 
   // Todo vacío = volver al texto del rubro, sin dejar un jsonb fantasma.
-  const vacio = !ia.titular && !ia.diagnostico && ia.puntos.length === 0 && ia.ideas.length === 0;
+  const vacio =
+    !ia.titular &&
+    !ia.diagnostico &&
+    ia.puntos.length === 0 &&
+    ia.ideas.length === 0 &&
+    !ia.valor &&
+    ia.ocultas.length === 0;
 
   const { error } = await createAdmin()
     .from("proposals")
@@ -233,6 +262,49 @@ export async function guardarTextoPropuesta(
     .eq("id", id);
   if (error) return { error: error.message };
 
+  revalidatePath("/prospeccion/propuestas");
+  return { ok: true as const };
+}
+
+/**
+ * El pack y los extras desde "Editar" en la propia propuesta (24/9): la que
+ * sale desde el contacto se crea con el pack del rubro y sin extras.
+ */
+export async function ajustarPropuesta(
+  id: string,
+  patch: { packSlug?: string | null; extras?: { slug: string; precio: number }[] | null },
+) {
+  const g = await gate();
+  if ("error" in g) return g;
+  const admin = createAdmin();
+  const { data } = await admin
+    .from("proposals")
+    .select("empresa, instagram, cuentas")
+    .eq("id", id)
+    .maybeSingle();
+  if (!data) return { error: "No existe esa propuesta." };
+  const row = data as {
+    empresa: string;
+    instagram: string | null;
+    cuentas: { handle: string; packSlug: string; nota?: string | null }[] | null;
+  };
+
+  const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.packSlug) {
+    const cuentas = row.cuentas?.length
+      ? row.cuentas
+      : [{ handle: row.instagram?.trim() || row.empresa, packSlug: patch.packSlug, nota: null }];
+    // Con una sola cuenta el pack se cambia acá; con varias, desde el formulario.
+    if (cuentas.length === 1) cuentas[0] = { ...cuentas[0], packSlug: patch.packSlug };
+    update.cuentas = cuentas;
+    update.pack_sugerido = patch.packSlug;
+  }
+  if (patch.extras !== undefined) {
+    const x = normalizarExtras(patch.extras);
+    update.extras = x.length ? x : null;
+  }
+  const { error } = await admin.from("proposals").update(update).eq("id", id);
+  if (error) return { error: error.message };
   revalidatePath("/prospeccion/propuestas");
   return { ok: true as const };
 }

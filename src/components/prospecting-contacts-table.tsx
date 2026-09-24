@@ -1209,6 +1209,20 @@ function BotonPropuesta({ contactoId, empresa }: { contactoId: string; empresa: 
       toast.error(r.error);
       return;
     }
+    // Nueva: la IA la escribe para este negocio (lo busca en la web). Tarda
+    // unos segundos; si falla, queda el texto del rubro y se puede afinar después.
+    if ("nueva" in r && r.nueva && "id" in r && r.id) {
+      setCargando(true);
+      const t = toast.loading(`Escribiendo la propuesta de ${empresa}: buscamos su Instagram y su web…`);
+      const res = await fetch("/api/propuestas/afinar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ propuestaId: r.id, modo: "frio" }),
+      }).catch(() => null);
+      setCargando(false);
+      if (res?.ok) toast.dismiss(t);
+      else toast.error("La propuesta quedó con el texto del rubro: afinala desde Propuestas.", { id: t });
+    }
     if ("url" in r && r.url) {
       await navigator.clipboard.writeText(r.url).catch(() => {});
       setListo(true);

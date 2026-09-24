@@ -144,3 +144,26 @@ describe("formato", () => {
     );
   });
 });
+
+describe("propuesta en frío (sin reunión)", () => {
+  const base = { empresa: "Point", catalogo: CATALOGO, packs: PACKS };
+
+  it("pasa el 'cómo te podemos ayudar' y las secciones ocultas", () => {
+    const p = armarPropuesta({
+      ...base,
+      ia: { diagnostico: "Tienen X.", frio: true, valor: "Los ayudaríamos así.", ocultas: ["ideas"] },
+    });
+    expect(p.frio).toBe(true);
+    expect(p.valor).toBe("Los ayudaríamos así.");
+    expect(p.ocultas).toEqual(["ideas"]);
+  });
+
+  it("sin IA no es fría ni oculta nada", () => {
+    const p = armarPropuesta(base);
+    expect(p.frio).toBe(false);
+    expect(p.valor).toBeNull();
+    expect(p.ocultas).toEqual([]);
+    // Sin puntos de la IA la sección no tiene contenido: el documento la saca.
+    expect(p.puntosIa).toEqual([]);
+  });
+});

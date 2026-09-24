@@ -1197,7 +1197,7 @@ function Td({ children }: { children: React.ReactNode }) {
  * portapapeles, listo para pegar en el chat. La empresa, la persona y el rubro
  * salen del contacto y de su campaña: no hay nada que escribir.
  */
-function BotonPropuesta({ contactoId, empresa }: { contactoId: string; empresa: string }) {
+export function BotonPropuesta({ contactoId, empresa }: { contactoId: string; empresa: string }) {
   const [cargando, setCargando] = useState(false);
   const [listo, setListo] = useState(false);
 

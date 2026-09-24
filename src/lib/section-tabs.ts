@@ -103,6 +103,8 @@ export const comercialTabs: SectionTab[] = [
   { href: "/captacion", label: "🎯 Conseguir clientes" },
   { href: "/comercial/leads", label: "Leads" },
   { href: "/prospeccion", label: "Prospección" },
+  // Todas las reuniones con prospectos, de todas las campañas (pedido de Santi).
+  { href: "/comercial/reuniones", label: "Reuniones" },
   { href: "/comercial/post-meet", label: "Post-meet" },
 ];
 

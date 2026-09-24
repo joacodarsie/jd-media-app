@@ -29,7 +29,7 @@ export function AgendarReunionDialog({
   onAgendada,
 }: {
   /** null = cerrado. */
-  contacto: { id: string; empresa: string; reunion_fecha?: string | null } | null;
+  contacto: { id: string; empresa: string; reunion_fecha?: string | null; meet_link?: string | null } | null;
   onClose: () => void;
   onAgendada?: (id: string, inicioIso: string) => void;
 }) {
@@ -53,7 +53,7 @@ export function AgendarReunionDialog({
     const p = partesLocales(base);
     setDia(p.dia);
     setHora(p.hora);
-    setLink("");
+    setLink(contacto.meet_link ?? "");
   }, [contacto]);
 
   function guardar() {

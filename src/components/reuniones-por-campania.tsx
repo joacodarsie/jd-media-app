@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CalendarClock, MessageCircle, Video, X } from "lucide-react";
+import { CalendarClock, MessageCircle, Send, Video, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { cuandoReunion, diaAr } from "@/lib/prospecting/reunion";
@@ -25,12 +25,14 @@ export interface ReunionRow {
   campaniaId: string;
   campania: string;
   tienePropuesta: boolean;
+  /** Estado "Propuesta enviada": la reunión ya fue, falta su respuesta. */
+  propuestaEnviada: boolean;
 }
 
 /**
  * Las reuniones con prospectos de todas las campañas, en un solo lugar.
  * Dentro de cada campaña: primero las que ya pasaron y nadie resolvió, después
- * las próximas por fecha.
+ * las próximas por fecha y al final las que esperan respuesta a la propuesta.
  */
 export function ReunionesPorCampania({
   filas,
@@ -45,8 +47,19 @@ export function ReunionesPorCampania({
   const [reprogramar, setReprogramar] = useState<ReunionRow | null>(null);
   const [pending, start] = useTransition();
 
-  const pasada = (r: ReunionRow) => !!r.fecha && r.fecha < ahora && diaAr(r.fecha) !== hoy;
-  const orden = (r: ReunionRow) => (pasada(r) ? "0" : r.fecha ? `1${r.fecha}` : "2");
+  const pasada = (r: ReunionRow) =>
+    !r.propuestaEnviada &&
+    !!r.fecha &&
+    r.fecha < ahora &&
+    diaAr(r.fecha) !== hoy;
+  const orden = (r: ReunionRow) =>
+    r.propuestaEnviada
+      ? `3${r.fecha ?? ""}`
+      : pasada(r)
+        ? "0"
+        : r.fecha
+          ? `1${r.fecha}`
+          : "2";
 
   const grupos = new Map<string, { nombre: string; filas: ReunionRow[] }>();
   for (const r of filas) {
@@ -55,18 +68,30 @@ export function ReunionesPorCampania({
     grupos.set(r.campaniaId, g);
   }
   const lista = [...grupos.entries()]
-    .map(([id, g]) => ({ id, ...g, filas: g.filas.sort((a, b) => orden(a).localeCompare(orden(b))) }))
+    .map(([id, g]) => ({
+      id,
+      ...g,
+      filas: g.filas.sort((a, b) => orden(a).localeCompare(orden(b))),
+    }))
     .sort((a, b) => orden(a.filas[0]).localeCompare(orden(b.filas[0])));
 
-  const deHoy = filas.filter((r) => r.fecha && diaAr(r.fecha) === hoy).length;
-  const proximas = filas.filter((r) => r.fecha && !pasada(r)).length;
+  const agendadas = filas.filter((r) => !r.propuestaEnviada);
+  const deHoy = agendadas.filter(
+    (r) => r.fecha && diaAr(r.fecha) === hoy,
+  ).length;
+  const proximas = agendadas.filter((r) => r.fecha && !pasada(r)).length;
+  const esperando = filas.length - agendadas.length;
   const sinResolver = filas.filter(pasada).length;
 
-  function noAvanzo(r: ReunionRow) {
+  function pasarA(r: ReunionRow, estado: "propuesta" | "descartado") {
     start(async () => {
-      const res = await updateContact(r.id, { estado: "descartado" });
+      const res = await updateContact(r.id, { estado });
       if ("error" in res && res.error) return void toast.error(res.error);
-      toast.success(`${r.empresa} pasó a "No / Descartado".`);
+      toast.success(
+        estado === "propuesta"
+          ? `${r.empresa}: propuesta enviada.`
+          : `${r.empresa} pasó a "No / Descartado".`,
+      );
       router.refresh();
     });
   }
@@ -81,7 +106,12 @@ export function ReunionesPorCampania({
             : [
                 deHoy ? `${deHoy} hoy` : null,
                 `${proximas} por delante`,
-                sinResolver ? `${sinResolver} ya pasaron y falta decir cómo salieron` : null,
+                sinResolver
+                  ? `${sinResolver} ya pasaron y falta decir cómo salieron`
+                  : null,
+                esperando
+                  ? `${esperando} ${esperando === 1 ? "propuesta espera" : "propuestas esperan"} respuesta`
+                  : null,
               ]
                 .filter(Boolean)
                 .join(" · ")}
@@ -110,13 +140,26 @@ export function ReunionesPorCampania({
                     key={r.id}
                     className={cn(
                       "flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b px-4 py-3 last:border-0",
-                      ya && "bg-amber-50 dark:bg-amber-950/40"
+                      ya && "bg-amber-50 dark:bg-amber-950/40",
                     )}
                   >
                     <div className="w-28 shrink-0 text-sm">
                       {r.fecha ? (
-                        <span className={cn("font-medium", esHoy && "text-violet-600 dark:text-violet-300")}>
-                          {esHoy ? `Hoy, ${cuandoReunion(r.fecha).split(", ")[1]}` : cuandoReunion(r.fecha)}
+                        <span
+                          className={cn(
+                            "font-medium",
+                            esHoy &&
+                              !r.propuestaEnviada &&
+                              "text-violet-600 dark:text-violet-300",
+                            r.propuestaEnviada &&
+                              "font-normal text-muted-foreground",
+                          )}
+                        >
+                          {r.propuestaEnviada
+                            ? `Reunión ${cuandoReunion(r.fecha).split(",")[0]}`
+                            : esHoy
+                              ? `Hoy, ${cuandoReunion(r.fecha).split(", ")[1]}`
+                              : cuandoReunion(r.fecha)}
                         </span>
                       ) : (
                         <span className="text-muted-foreground">Sin día</span>
@@ -125,14 +168,31 @@ export function ReunionesPorCampania({
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{r.empresa}</p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {[r.contactoNombre, r.quien ? `la lleva ${r.quien}` : null, r.tienePropuesta ? "propuesta armada" : null]
+                        {[
+                          r.contactoNombre,
+                          r.quien ? `la lleva ${r.quien}` : null,
+                          r.tienePropuesta && !r.propuestaEnviada
+                            ? "propuesta armada"
+                            : null,
+                        ]
                           .filter(Boolean)
                           .join(" · ")}
-                        {ya && <span className="text-amber-700 dark:text-amber-300"> · ¿cómo salió?</span>}
+                        {ya && (
+                          <span className="text-amber-700 dark:text-amber-300">
+                            {" "}
+                            · ¿cómo salió?
+                          </span>
+                        )}
+                        {r.propuestaEnviada && (
+                          <span className="text-amber-700 dark:text-amber-300">
+                            {" "}
+                            · propuesta enviada
+                          </span>
+                        )}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
-                      {r.meetLink && !ya && (
+                      {r.meetLink && !ya && !r.propuestaEnviada && (
                         <a
                           href={r.meetLink}
                           target="_blank"
@@ -154,16 +214,28 @@ export function ReunionesPorCampania({
                           <MessageCircle className="h-4 w-4" />
                         </a>
                       )}
-                      <button
-                        onClick={() => setReprogramar(r)}
-                        title={r.fecha ? "Reprogramar" : "Ponerle día y hora"}
-                        className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-primary"
-                      >
-                        <CalendarClock className="h-4 w-4" />
-                      </button>
+                      {!r.propuestaEnviada && (
+                        <button
+                          onClick={() => setReprogramar(r)}
+                          title={r.fecha ? "Reprogramar" : "Ponerle día y hora"}
+                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-primary"
+                        >
+                          <CalendarClock className="h-4 w-4" />
+                        </button>
+                      )}
                       <BotonPropuesta contactoId={r.id} empresa={r.empresa} />
+                      {!r.propuestaEnviada && (
+                        <button
+                          onClick={() => pasarA(r, "propuesta")}
+                          disabled={pending}
+                          title="Propuesta enviada"
+                          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-amber-600 disabled:opacity-50"
+                        >
+                          <Send className="h-4 w-4" />
+                        </button>
+                      )}
                       <button
-                        onClick={() => noAvanzo(r)}
+                        onClick={() => pasarA(r, "descartado")}
                         disabled={pending}
                         title="No avanzó (pasa a descartado)"
                         className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-rose-600 disabled:opacity-50"

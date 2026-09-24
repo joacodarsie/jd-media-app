@@ -603,7 +603,7 @@ export interface ContactPatch {
   contactable?: boolean | null;
 }
 
-const CONTACT_ESTADOS_OK = ["nuevo", "contactado", "interesado", "reunion", "descartado"];
+const CONTACT_ESTADOS_OK = ["nuevo", "contactado", "interesado", "reunion", "propuesta", "descartado"];
 
 export async function updateContact(id: string, patch: ContactPatch) {
   const { supabase, userId } = await ctx();

@@ -11,8 +11,9 @@ const COMERCIAL_ROLES = ["admin", "coordinador", "comercial", "prospecting"];
 /**
  * Todas las reuniones con prospectos, agrupadas por campaña (pedido de Santi,
  * 24/9): hasta ahora había que entrar a cada campaña para ver cuáles tenía.
- * Muestra los contactos que siguen en "Reunión agendada"; los que ya pasaron
- * quedan arriba de su campaña hasta que se resuelve cómo salió.
+ * Muestra los contactos en "Reunión agendada" y "Propuesta enviada"; las
+ * reuniones que ya pasaron quedan arriba de su campaña hasta que se resuelve
+ * cómo salieron.
  */
 export default async function ReunionesPage() {
   const me = await requireUser();
@@ -25,12 +26,13 @@ export default async function ReunionesPage() {
   const { data: raw } = await admin
     .from("prospecting_contacts")
     .select(
-      "id, empresa, contacto_nombre, telefono, reunion_fecha, reunion_meeting_id, asignado_a, campaign_id, campania:prospecting_campaigns(id, nombre)"
+      "id, estado, empresa, contacto_nombre, telefono, reunion_fecha, reunion_meeting_id, asignado_a, campaign_id, campania:prospecting_campaigns(id, nombre)"
     )
-    .eq("estado", "reunion");
+    .in("estado", ["reunion", "propuesta"]);
 
   const contactos = (raw ?? []) as unknown as {
     id: string;
+    estado: string;
     empresa: string;
     contacto_nombre: string | null;
     telefono: string | null;
@@ -68,6 +70,7 @@ export default async function ReunionesPage() {
   const filas: ReunionRow[] = contactos.map((c) => ({
     id: c.id,
     empresa: c.empresa,
+    propuestaEnviada: c.estado === "propuesta",
     contactoNombre: c.contacto_nombre,
     telefono: c.telefono,
     fecha: c.reunion_fecha,

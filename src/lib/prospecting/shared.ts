@@ -66,6 +66,8 @@ export const CONTACTO_ESTADOS = [
   // La reunión es el paso que decide todo: es la perilla que medimos en el
   // tablero de la máquina de clientes (% de contactados que agenda).
   { value: "reunion", label: "Reunión agendada", badge: "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300" },
+  // Después de la reunión: se le mandó la propuesta y falta su respuesta.
+  { value: "propuesta", label: "Propuesta enviada", badge: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300" },
   { value: "descartado", label: "No / Descartado", badge: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300" },
 ] as const;
 

@@ -90,6 +90,7 @@ const FILTROS = [
   { value: "contactado", label: "Contactados" },
   { value: "interesado", label: "Interesados" },
   { value: "reunion", label: "Con reunión" },
+  { value: "propuesta", label: "Con propuesta" },
   { value: "descartado", label: "Descartados" },
 ] as const;
 
@@ -286,6 +287,7 @@ export function ProspectingContactsTable({
     contactados,
     interesados: rows.filter((r) => r.estado === "interesado").length,
     reuniones: rows.filter((r) => r.estado === "reunion").length,
+    propuestas: rows.filter((r) => r.estado === "propuesta").length,
     // Fijos sin otra vía: son los que parecen contactables y no lo son.
     fijos: rows.filter((r) => esProbableFijoAr(r.telefono)).length,
     descartados: rows.filter((r) => r.estado === "descartado").length,
@@ -302,7 +304,7 @@ export function ProspectingContactsTable({
   // Una reunión agendada es interés confirmado: cuenta en la tasa.
   const tasaInteres =
     alcanzados > 0
-      ? Math.round(((resumen.interesados + resumen.reuniones) / alcanzados) * 100)
+      ? Math.round(((resumen.interesados + resumen.reuniones + resumen.propuestas) / alcanzados) * 100)
       : null;
 
   const visibleRows = useMemo(() => {
@@ -314,6 +316,7 @@ export function ProspectingContactsTable({
         (filtro === "contactado" ||
           filtro === "interesado" ||
           filtro === "reunion" ||
+          filtro === "propuesta" ||
           filtro === "descartado") &&
         r.estado !== filtro
       )
@@ -993,7 +996,8 @@ export function ProspectingContactsTable({
             <Stat label="Sin contactar" valor={resumen.sinContactar} />
             <Stat label="Contactados" valor={resumen.contactados} destacado />
             <Stat label="Interesados" valor={resumen.interesados} tono="text-emerald-600 dark:text-emerald-400" />
-            <Stat label="Reuniones" valor={resumen.reuniones} tono="text-violet-600 dark:text-violet-400" />
+            {/* La propuesta viene después de la reunión: también tuvieron reunión. */}
+            <Stat label="Reuniones" valor={resumen.reuniones + resumen.propuestas} tono="text-violet-600 dark:text-violet-400" />
             <Stat
               label="Fijos (sin WA)"
               valor={resumen.fijos}

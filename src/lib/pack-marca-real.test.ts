@@ -48,3 +48,17 @@ describe("Pack Marca Real en la carta acuerdo", () => {
     expect(d).not.toContain("30 ideas");
   });
 });
+
+describe("gestión de redes sin pauta", () => {
+  it("la carta no promete la gestión de campañas si no está incluida", () => {
+    const con = getDeliverables(svc({ tipo: "gestion_redes", pack: "Presencia", facturacion: "mensual" }));
+    const sin = getDeliverables({
+      ...svc({ tipo: "gestion_redes", pack: "Presencia", facturacion: "mensual" }),
+      media_buyer_aplica: false,
+    } as ClientService);
+    expect(con.join("\n")).toContain("Gestión básica de campañas");
+    expect(con[7]).toContain("Gestión básica de campañas");
+    expect(sin.join("\n")).not.toContain("Gestión básica de campañas");
+    expect(sin.length).toBe(con.length - 1);
+  });
+});

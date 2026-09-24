@@ -1,5 +1,6 @@
 "use client";
 
+import { DEFAULT_AGENCY_SETTINGS } from "@/lib/coordinacion";
 import { MARCA_REAL, PACK_MARCA_REAL } from "@/lib/pack-marca-real";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -22,8 +23,7 @@ import {
 } from "@/lib/constants";
 import type { Client } from "@/lib/types";
 import { hoyYmd } from "@/lib/dates";
-import { cn } from "@/lib/utils";
-import { usersForPuesto, type TeamUserOpt } from "@/lib/role-options";
+import { personaDelArea, usersForPuesto, type TeamUserOpt } from "@/lib/role-options";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +45,15 @@ import {
 } from "@/components/ui/select";
 
 const NONE = "__none__";
+
+/** Lo que baja el abono de gestión de redes cuando no incluye la pauta (24/9). */
+const DESCUENTO_SIN_PAUTA = 50000;
+
+/** Precio de lista del pack (los mismos que la web y /coordinacion). */
+function precioDePack(pack: string, pauta: boolean): number | null {
+  const p = DEFAULT_AGENCY_SETTINGS.packs.find((x) => x.id === pack)?.precio;
+  return p == null ? null : p - (pauta ? 0 : DESCUENTO_SIN_PAUTA);
+}
 
 export function ClientFormDialog({
   mode,
@@ -83,18 +92,23 @@ export function ClientFormDialog({
   const [mediaBuyerId, setMediaBuyerId] = useState<string>(
     client?.media_buyer_id ?? NONE
   );
+  // Project manager (antes "coordinador/a de gestión de redes"): hoy Luz en
+  // todas las cuentas; en un alta se propone sola, por área.
   const [coordinadorId, setCoordinadorId] = useState<string>(
-    client?.coordinador_id ?? NONE
+    client?.coordinador_id ??
+      (mode === "create" ? personaDelArea(usersProp, "Coordinación") : null) ??
+      NONE
   );
-  // Los selects de puesto muestran solo la gente del rol correspondiente;
-  // "Ver todos" desactiva el filtro para asignaciones atípicas.
-  const [verTodos, setVerTodos] = useState(false);
+  // Los selects de puesto muestran solo la gente del rol correspondiente.
   const opciones = (puesto: Parameters<typeof usersForPuesto>[1], cur: string) =>
-    verTodos ? usersProp : usersForPuesto(usersProp, puesto, cur === NONE ? null : cur);
-  // Quién ATIENDE la cuenta: cobra la cartera todos los meses (0177). Arranca
-  // en quien la cerró, que es lo que pasa casi siempre.
+    usersForPuesto(usersProp, puesto, cur === NONE ? null : cur);
+  // Director creativo (24/9): es el campo `responsable_id`, el que cobra el 5%
+  // de la cartera (0177). Hoy es Santi en todas las cuentas: en un alta se
+  // propone solo, por área.
   const [responsableId, setResponsableId] = useState<string>(
-    client?.responsable_id ?? client?.cerrado_por_id ?? NONE
+    client?.responsable_id ??
+      (mode === "create" ? personaDelArea(usersProp, "Coordinación de Diseño") : null) ??
+      NONE
   );
   const [cerradoPorId, setCerradoPorId] = useState<string>(
     client?.cerrado_por_id ?? NONE
@@ -117,6 +131,8 @@ export function ClientFormDialog({
     monto: string;
     facturacion: Facturacion;
     responsables: string[];
+    /** Gestión de redes: ¿incluye la gestión de pauta? Sin pauta, $50.000 menos. */
+    pauta: boolean;
   };
   const [draftServices, setDraftServices] = useState<DraftService[]>([]);
 
@@ -135,9 +151,10 @@ export function ClientFormDialog({
       {
         tipo: "gestion_redes",
         pack: "Presencia",
-        monto: "",
+        monto: String(precioDePack("Presencia", true) ?? ""),
         facturacion: SERVICE_BILLING_DEFAULT["gestion_redes"],
         responsables: [],
+        pauta: true,
       },
     ]);
   }
@@ -168,10 +185,8 @@ export function ClientFormDialog({
     // liquidación no le paga la comisión a nadie: el contrato del comercial
     // queda en papel. Una propuesta todavía no tiene cerrador —se cierra
     // cuando paga—, así que solo se exige al pasar a activo.
-    if (estado === "activo" && cerradoPorId === NONE) {
-      toast.error("Falta quién cerró la cuenta: sin eso no se le paga la comisión.");
-      return;
-    }
+    // "Cerrado por" ya no es obligatorio (24/9): solo aplica cuando la cierra
+    // un comercial (Santi). Si la cerró el director, queda vacío.
     // En alta, el pack y el monto del cliente se DERIVAN de los servicios
     // (única carga). En edición se conservan los del header (legacy).
     let derivedPack = pack;
@@ -233,6 +248,7 @@ export function ClientFormDialog({
           moneda: "ARS",
           pack_detalle,
           responsables: s.responsables,
+          media_buyer_aplica: isRedes ? s.pauta : true,
           facturacion: s.facturacion,
         };
       });
@@ -324,22 +340,13 @@ export function ClientFormDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label>
-                Cerrado por (comercial)
-                {estado === "activo" && <span className="ml-1 text-red-600">*</span>}
-              </Label>
+              <Label>Cerrado por (comercial)</Label>
               <Select value={cerradoPorId} onValueChange={setCerradoPorId}>
-                <SelectTrigger
-                  className={cn(
-                    estado === "activo" && cerradoPorId === NONE && "border-red-400"
-                  )}
-                >
+                <SelectTrigger>
                   <SelectValue placeholder="—" />
                 </SelectTrigger>
                 <SelectContent>
-                  {/* "Sin asignar" solo existe mientras la cuenta no esté activa.
-                      En una activa es justamente lo que no puede pasar. */}
-                  {estado !== "activo" && <SelectItem value={NONE}>Sin asignar</SelectItem>}
+                  <SelectItem value={NONE}>Nadie / la cerró el director</SelectItem>
                   {opciones("comercial", cerradoPorId).map((u) => (
                     <SelectItem key={u.id} value={u.id}>
                       {u.nombre}
@@ -347,30 +354,8 @@ export function ClientFormDialog({
                   ))}
                 </SelectContent>
               </Select>
-              {estado === "activo" && cerradoPorId === NONE && (
-                <p className="text-xs text-red-600">
-                  De acá sale la comisión del comercial. Si queda vacío, no se le paga.
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>Responsable de la cuenta</Label>
-              <Select value={responsableId} onValueChange={setResponsableId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="—" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>Sin asignar</SelectItem>
-                  {opciones("comercial", responsableId).map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <p className="text-[11px] text-muted-foreground">
-                Quien la atiende hoy: da la reunión mensual y responde por que se quede.
-                Cobra la cartera todos los meses mientras el cliente siga y esté al día.
+                Solo si la cerró un comercial: de acá sale su comisión.
               </p>
             </div>
             {mode === "edit" && (
@@ -393,15 +378,6 @@ export function ClientFormDialog({
           <div className="rounded-lg border bg-muted/30 p-3">
             <div className="mb-2 flex items-center justify-between gap-2">
               <h4 className="text-sm font-semibold">Equipo asignado a esta cuenta</h4>
-              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <input
-                  type="checkbox"
-                  checked={verTodos}
-                  onChange={(e) => setVerTodos(e.target.checked)}
-                  className="h-3.5 w-3.5 accent-primary"
-                />
-                Ver todos
-              </label>
             </div>
             <p className="mb-3 text-xs text-muted-foreground">
               Quién lleva cada parte de la cuenta. El Community Manager, diseñador/a
@@ -467,7 +443,7 @@ export function ClientFormDialog({
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Coordinador/a de gestión de redes</Label>
+                <Label>Project manager</Label>
                 <Select value={coordinadorId} onValueChange={setCoordinadorId}>
                   <SelectTrigger>
                     <SelectValue placeholder="—" />
@@ -480,10 +456,25 @@ export function ClientFormDialog({
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label>Director creativo</Label>
+                <Select value={responsableId} onValueChange={setResponsableId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Sin asignar</SelectItem>
+                    {opciones("coordinacion", responsableId).map((u) => (
+                      <SelectItem key={u.id} value={u.id}>{u.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              El coordinador/a de la cuenta cobra la comisión de coordinación
-              recurrente sobre el abono de gestión de redes.
+              La project manager cobra la comisión de coordinación sobre el abono de
+              gestión de redes; el director creativo, el 5% de la cartera mientras el
+              cliente siga y esté al día.
             </p>
 
             {/* Un pase de cuenta cambia a quién se le paga. Si el cambio ya
@@ -617,11 +608,41 @@ export function ClientFormDialog({
                               </Select>
                             </div>
                             {isRedes && (
+                              <label className="flex cursor-pointer items-start gap-2 rounded-md border bg-muted/30 p-2 sm:col-span-2 sm:order-last">
+                                <input
+                                  type="checkbox"
+                                  checked={s.pauta}
+                                  onChange={(e) => {
+                                    const pauta = e.target.checked;
+                                    const actual = Number(s.monto);
+                                    // Sin pauta, el abono baja $50.000; al volver a tildarla, sube.
+                                    const monto = s.monto && !Number.isNaN(actual)
+                                      ? String(actual + (pauta ? DESCUENTO_SIN_PAUTA : -DESCUENTO_SIN_PAUTA))
+                                      : s.monto;
+                                    updateService(i, { pauta, monto });
+                                  }}
+                                  className="mt-0.5 h-4 w-4 accent-primary"
+                                />
+                                <span className="text-xs">
+                                  <b>Incluye la gestión de pauta en Meta</b>
+                                  <span className="block text-muted-foreground">
+                                    Si la destildás, el abono baja $50.000, la carta acuerdo no la
+                                    incluye y no se le paga gestor de pauta.
+                                  </span>
+                                </span>
+                              </label>
+                            )}
+                            {isRedes && (
                               <div className="space-y-1">
                                 <Label className="text-xs">Pack</Label>
                                 <Select
                                   value={s.pack}
-                                  onValueChange={(v) => updateService(i, { pack: v })}
+                                  onValueChange={(v) =>
+                                    updateService(i, {
+                                      pack: v,
+                                      monto: String(precioDePack(v, s.pauta) ?? s.monto),
+                                    })
+                                  }
                                 >
                                   <SelectTrigger>
                                     <SelectValue />

@@ -112,10 +112,19 @@ function gestionRedesDeliverables(svc: ClientService): string[] {
     "Rediseño y optimización de perfiles y biografías.",
     "Publicación del contenido + copys + reposteo a historias.",
     "Resubida de contenido a TikTok cuando aplique.",
-    "Gestión básica de campañas publicitarias en Meta (la inversión en pauta corre por cuenta del cliente).",
     "Reporte mensual de avances, métricas principales y próximos pasos.",
     "Grupo de WhatsApp entre cliente y equipo de JD Media.",
   ];
+
+  // Sin la gestión de pauta (media_buyer_aplica = false) el abono es más bajo
+  // y la carta no la promete.
+  if ((svc as { media_buyer_aplica?: boolean | null }).media_buyer_aplica !== false) {
+    out.splice(
+      7,
+      0,
+      "Gestión básica de campañas publicitarias en Meta (la inversión en pauta corre por cuenta del cliente)."
+    );
+  }
 
   // Pack_detalle puede tener piezas: posts, historias_dias, reels, carruseles
   const pd = (svc.pack_detalle ?? {}) as Record<string, unknown>;

@@ -35,6 +35,8 @@ export interface NewClientServiceInput {
   responsables: string[];
   /** 'mensual' (recurrente) | 'unico' (cobro de única vez). */
   facturacion: "mensual" | "unico";
+  /** Gestión de redes: ¿incluye la gestión de pauta? false = no se cobra ni se paga media buyer. */
+  media_buyer_aplica?: boolean;
 }
 
 export interface ClientInput {
@@ -184,6 +186,7 @@ export async function createClientRow(
       fecha_inicio: cleaned.fecha_inicio,
       activo: true,
       responsables: Array.from(new Set((s.responsables ?? []).filter(Boolean))),
+      media_buyer_aplica: s.tipo === "gestion_redes" ? s.media_buyer_aplica !== false : true,
     }));
     const { error: svcErr } = await supabase.from("client_services").insert(rows);
     if (svcErr) {

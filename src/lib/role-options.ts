@@ -12,6 +12,13 @@ export interface TeamUserOpt {
   nombre: string;
   rol?: UserRole;
   rol_secundario?: UserRole | null;
+  area?: string | null;
+  area_secundaria?: string | null;
+}
+
+/** Primera persona con esa área (principal o secundaria). */
+export function personaDelArea(users: TeamUserOpt[], area: string): string | null {
+  return users.find((u) => u.area === area || u.area_secundaria === area)?.id ?? null;
 }
 
 export type Puesto =

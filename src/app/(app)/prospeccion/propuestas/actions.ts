@@ -1,5 +1,6 @@
 "use server";
 
+import { normalizarExtras } from "@/lib/propuestas/extras";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -48,6 +49,8 @@ export interface CrearPropuestaInput {
   fechaInicio?: string | null;
   /** Descripción del negocio y transcripción: lo que la IA usa para escribir. */
   contexto?: string | null;
+  /** Extras que se suman al pack, con su precio (0185). */
+  extras?: { slug: string; precio: number }[] | null;
 }
 
 export async function crearPropuesta(input: CrearPropuestaInput) {
@@ -72,7 +75,7 @@ export async function crearPropuesta(input: CrearPropuestaInput) {
     ciudad: input.ciudad?.trim()?.slice(0, 120) || null,
     cuentas: cuentas.length ? cuentas : null,
     descuento_monto: Math.max(0, Math.round(input.descuentoMonto ?? 0)),
-    fecha_inicio: /^d{4}-d{2}-d{2}$/.test(input.fechaInicio ?? "") ? input.fechaInicio : null,
+    fecha_inicio: /^\d{4}-\d{2}-\d{2}$/.test(input.fechaInicio ?? "") ? input.fechaInicio : null,
     contexto: input.contexto?.trim()?.slice(0, 60000) || null,
   };
 
@@ -91,10 +94,11 @@ export async function crearPropuesta(input: CrearPropuestaInput) {
       creada_por_id: g.me.id,
   };
 
+  const extras = normalizarExtras(input.extras);
   const admin = createAdmin();
   let { data, error } = await admin
     .from("proposals")
-    .insert({ ...base, ...nuevas })
+    .insert({ ...base, ...nuevas, ...(extras.length ? { extras } : {}) })
     .select("id, token")
     .single();
 

@@ -19,6 +19,7 @@ import {
 } from "@/lib/propuestas/inversion";
 import { INCLUIDO_EN_TODOS, LETRA_CHICA } from "@/lib/propuestas/incluido";
 import { CSS_PROPUESTA } from "@/lib/propuestas/estilo";
+import { armarExtras } from "@/lib/propuestas/extras";
 import { PropuestaAcciones, BotonPdf } from "@/components/propuesta-acciones";
 import { BarraPropuesta } from "@/components/propuesta-editor";
 import { createClient } from "@/lib/supabase/server";
@@ -54,6 +55,8 @@ interface ProposalRow {
   descuento_monto: number | null;
   fecha_inicio: string | null;
   ciudad: string | null;
+  // ── 0185 ──
+  extras?: unknown;
 }
 
 const cargar = cache(async (token: string) => {
@@ -63,11 +66,18 @@ const cargar = cache(async (token: string) => {
   const campos =
     "id, token, empresa, contacto_nombre, rubro_slug, rubro_texto, pack_sugerido, servicios, instagram, ia, aperturas";
   let data: ProposalRow | null = null;
-  const conNuevas = await admin
+  let conNuevas = await admin
     .from("proposals")
-    .select(`${campos}, cuentas, descuento_monto, fecha_inicio, ciudad`)
+    .select(`${campos}, cuentas, descuento_monto, fecha_inicio, ciudad, extras`)
     .eq("token", token)
     .maybeSingle();
+  // Sin la 0185 (extras), se reintenta sin esa columna.
+  if (conNuevas.error)
+    conNuevas = await admin
+      .from("proposals")
+      .select(`${campos}, cuentas, descuento_monto, fecha_inicio, ciudad`)
+      .eq("token", token)
+      .maybeSingle();
   if (conNuevas.error) {
     const viejo = await admin.from("proposals").select(campos).eq("token", token).maybeSingle();
     data = viejo.data as ProposalRow | null;
@@ -159,6 +169,7 @@ export default async function PropuestaPage({
   const mes1 = volumenPrimerMes(inv.lineas);
   const prop = proporcionalPrimerMes(inv.total, row.fecha_inicio);
   const variasCuentas = inv.lineas.length > 1;
+  const extras = armarExtras(row.extras);
 
   const hoy = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" }).format(new Date());
   const waHref = `https://wa.me/${AGENCIA.whatsapp}?text=${encodeURIComponent(mensajeWhatsapp(p.empresa))}`;
@@ -304,6 +315,28 @@ export default async function PropuestaPage({
             </section>
           )}
 
+          {extras.lineas.length > 0 && (
+            <section>
+              <div className="cab">
+                <span className="n">+</span>
+                <h2>Para sumar, si querés</h2>
+                <span className="aside">Opcional</span>
+              </div>
+              <div className="grupos">
+                {extras.lineas.map((x) => (
+                  <div className="grupo" key={x.slug}>
+                    <h4>
+                      <span>✦</span>
+                      {x.nombre} · {precioAr(x.precio)}/mes
+                    </h4>
+                    {/* Con uno, el detalle; con varios, el resumen: si no, la hoja 2 se pasa. */}
+                    <p>{extras.lineas.length === 1 ? x.items.join(" ") : `${x.resumen}.`}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {pie(2, hojas)}
         </div>
 
@@ -424,11 +457,31 @@ export default async function PropuestaPage({
                 </>
               )}
 
+              {extras.lineas.length > 0 && (
+                <div className="fila sub">
+                  <div className="q">
+                    <div className="t">
+                      Opcional · {extras.lineas.map((x) => x.nombre).join(", ")}
+                    </div>
+                  </div>
+                  <div className="m">+ {precioAr(extras.total)}</div>
+                </div>
+              )}
+
               <div className="fila total">
                 <div className="q">
                   <div className="t">Total mensual</div>
                   <div className="s">
-                    {variasCuentas ? "Todas las cuentas, todo incluido. " : "Todo incluido. "}
+                    {extras.lineas.length > 0 ? (
+                      <>
+                        Con {extras.lineas.length === 1 ? "el opcional" : "los opcionales"}:{" "}
+                        <b>{precioAr(inv.total + extras.total)}</b>.{" "}
+                      </>
+                    ) : variasCuentas ? (
+                      "Todas las cuentas, todo incluido. "
+                    ) : (
+                      "Todo incluido. "
+                    )}
                     La inversión en pauta va aparte.
                   </div>
                 </div>
@@ -465,8 +518,7 @@ export default async function PropuestaPage({
               {prop ? "" : "; si se arranca un día distinto, el primer mes va proporcional a los días trabajados"}.{" "}
               <b>Para la pauta</b> te acompañamos a configurar Dólar App, así la publicidad no paga el
               recargo de impuestos.{" "}
-              <b>Aparte del abono:</b> {textoJornadas(row.ciudad)} Diseño gráfico, desarrollo web y
-              campañas de mayor escala se cotizan cuando hagan falta. Precios vigentes a {hoy},
+              <b>Aparte del abono:</b> {textoJornadas(row.ciudad)} Precios vigentes a {hoy},
               publicados en{" "}
               <a href={AGENCIA.web} target="_blank" rel="noreferrer">
                 {AGENCIA.webLabel}
@@ -478,10 +530,7 @@ export default async function PropuestaPage({
           <div className="cierre">
             <h2>Próximos pasos</h2>
             <p>
-              Con tu confirmación arrancamos: las dos primeras semanas son de{" "}
-              <b>diagnóstico, manual de marca, optimización de perfiles y el calendario</b> para que
-              lo apruebes, y el contenido empieza a salir después. Quedamos a disposición para
-              cualquier consulta o ajuste.
+              Con tu confirmación coordinamos la <b>reunión de onboarding</b> y arrancamos con las bases.
             </p>
             <div className="datos">
               {AGENCIA.whatsappLabel} · {AGENCIA.webLabel} · @{AGENCIA.instagram}

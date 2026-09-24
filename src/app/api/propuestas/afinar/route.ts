@@ -7,6 +7,7 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { rubroPorSlug } from "@/lib/propuestas/rubros";
 import { cargarCatalogoServicios } from "@/lib/prospecting/catalogo";
 import { leerSitio, bloqueDeContextoWeb } from "@/lib/propuestas/leer-sitio";
+import { armarExtras } from "@/lib/propuestas/extras";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -112,7 +113,7 @@ export async function POST(req: Request) {
   const admin = createAdmin();
   const { data: prop } = await admin
     .from("proposals")
-    .select("id, empresa, contacto_nombre, rubro_slug, rubro_texto, sitio_web, instagram")
+    .select("id, empresa, contacto_nombre, rubro_slug, rubro_texto, sitio_web, instagram, extras")
     .eq("id", body.propuestaId)
     .maybeSingle();
   if (!prop) return NextResponse.json({ error: "No existe esa propuesta." }, { status: 404 });
@@ -125,6 +126,7 @@ export async function POST(req: Request) {
     rubro_texto: string | null;
     sitio_web: string | null;
     instagram: string | null;
+    extras?: unknown;
   };
 
   const imgs = imageBlocks(body.images);
@@ -157,6 +159,12 @@ export async function POST(req: Request) {
     `Empresa: ${p.empresa}`,
     p.contacto_nombre ? `Persona: ${p.contacto_nombre}` : null,
     `Rubro: ${p.rubro_texto || ficha.nombre}`,
+    (() => {
+      const x = armarExtras(p.extras).lineas;
+      return x.length
+        ? `Además del pack le ofrecemos como opcional: ${x.map((l) => l.nombre).join(", ")}. Podés dedicar un punto a eso si tiene sentido para el negocio.`
+        : null;
+    })(),
     bloqueDeContextoWeb(web, p.instagram) || null,
     `Lo que solemos ver en el rubro (contexto nuestro, no lo repitas textual): ${ficha.diagnostico}`,
     notas

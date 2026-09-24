@@ -202,5 +202,9 @@ export const CSS_PROPUESTA = `
   .cab{ break-after:avoid; }
   .pasos, .grupos, .etapas, .claras{ grid-template-columns:1fr 1fr; }
   .claras{ grid-template-columns:1fr 1fr 1fr; }
+  /* Filas secundarias (descuento, extras) más bajas: con tres extras la hoja 4 se pasaba. */
+  .fila.sub{ padding-top:10px; padding-bottom:10px; }
+  .fila.total{ padding-top:16px; padding-bottom:16px; }
+  .cierre{ padding-top:16px; padding-bottom:16px; }
 }
 `;

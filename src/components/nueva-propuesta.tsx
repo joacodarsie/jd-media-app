@@ -1,5 +1,6 @@
 "use client";
 
+import { EXTRAS } from "@/lib/propuestas/extras";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -75,6 +76,8 @@ export function NuevaPropuesta({ rubros, packs }: { rubros: Opcion[]; packs: Opc
     { handle: "", packSlug: packBase, nota: "" },
   ]);
   const [descuento, setDescuento] = useState("");
+  // Extras que se suman al pack: slug → precio (texto del input).
+  const [extras, setExtras] = useState<Record<string, string>>({});
   const [fechaInicio, setFechaInicio] = useState("");
 
   // ── 3. Contexto ──
@@ -177,6 +180,7 @@ export function NuevaPropuesta({ rubros, packs }: { rubros: Opcion[]; packs: Opc
       fechaInicio: fechaInicio || null,
       contexto: contexto || null,
       packSugerido: cuentasOk[0].packSlug,
+      extras: Object.entries(extras).map(([slug, precio]) => ({ slug, precio: Number(precio) || 0 })),
     });
     if ("error" in r && r.error) {
       setCreando(false);
@@ -309,6 +313,47 @@ export function NuevaPropuesta({ rubros, packs }: { rubros: Opcion[]; packs: Opc
         >
           <Plus className="h-3.5 w-3.5" /> Agregar otra cuenta
         </button>
+      </div>
+
+      <div className="space-y-1.5 rounded-lg border bg-background p-3">
+        <p className="text-sm font-medium">Extras para ofrecer</p>
+        <p className="text-[11px] text-muted-foreground">
+          Se muestran como opcionales: el pack solo y el total con los extras, para que elija.
+        </p>
+        {EXTRAS.map((x) => {
+          const on = x.slug in extras;
+          return (
+            <div key={x.slug} className="flex items-center gap-2">
+              <label className="flex flex-1 cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={on}
+                  onChange={(e) =>
+                    setExtras((prev) => {
+                      const n = { ...prev };
+                      if (e.target.checked) n[x.slug] = String(x.precioSugerido);
+                      else delete n[x.slug];
+                      return n;
+                    })
+                  }
+                  className="h-4 w-4 accent-primary"
+                />
+                {x.nombre}
+              </label>
+              {on && (
+                <Input
+                  value={extras[x.slug]}
+                  onChange={(e) =>
+                    setExtras((prev) => ({ ...prev, [x.slug]: e.target.value.replace(/\D/g, "") }))
+                  }
+                  inputMode="numeric"
+                  className="h-8 w-28 text-right"
+                  aria-label={`Precio de ${x.nombre}`}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">

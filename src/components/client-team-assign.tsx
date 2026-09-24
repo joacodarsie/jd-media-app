@@ -17,6 +17,8 @@ import { assignClientTeam } from "@/app/(app)/clientes/[id]/onboarding/actions";
 import { usersForPuesto, type Puesto, type TeamUserOpt } from "@/lib/role-options";
 
 const NONE = "__none__";
+/** La cuenta no incluye la gestión de pauta: no hay gestor y el abono es $50.000 menor. */
+const SIN_PAUTA = "__sin_pauta__";
 
 type UserOpt = TeamUserOpt;
 
@@ -41,8 +43,12 @@ export function ClientTeamAssign({
     audiovisual_id: string | null;
     media_buyer_id?: string | null;
     coordinador_id?: string | null;
+    /** Director creativo (`responsable_id`). */
+    responsable_id?: string | null;
+    /** false = la gestión de redes no incluye la pauta. */
+    pautaIncluida?: boolean;
   };
-  /** true = suma coordinadora de la cuenta y gestor de pauta. */
+  /** true = suma project manager, director creativo y gestor de pauta. */
   full?: boolean;
   titulo?: string;
 }) {
@@ -51,16 +57,22 @@ export function ClientTeamAssign({
   const [cm, setCm] = useState(initial.cm_id ?? NONE);
   const [dis, setDis] = useState(initial.disenador_id ?? NONE);
   const [av, setAv] = useState(initial.audiovisual_id ?? NONE);
-  const [mb, setMb] = useState(initial.media_buyer_id ?? NONE);
+  const [mb, setMb] = useState(
+    initial.pautaIncluida === false ? SIN_PAUTA : (initial.media_buyer_id ?? NONE)
+  );
   const [coord, setCoord] = useState(initial.coordinador_id ?? NONE);
+  const [dc, setDc] = useState(initial.responsable_id ?? NONE);
+  // El gestor de pauta tiene una opción más: que la cuenta no incluya pauta.
+  const pautaInicial = initial.pautaIncluida === false ? SIN_PAUTA : (initial.media_buyer_id ?? NONE);
 
   const dirty =
     cm !== (initial.cm_id ?? NONE) ||
     dis !== (initial.disenador_id ?? NONE) ||
     av !== (initial.audiovisual_id ?? NONE) ||
     (full &&
-      (mb !== (initial.media_buyer_id ?? NONE) ||
-        coord !== (initial.coordinador_id ?? NONE)));
+      (mb !== pautaInicial ||
+        coord !== (initial.coordinador_id ?? NONE) ||
+        dc !== (initial.responsable_id ?? NONE)));
 
   function save() {
     start(async () => {
@@ -70,8 +82,13 @@ export function ClientTeamAssign({
         audiovisual_id: av === NONE ? null : av,
         ...(full
           ? {
-              media_buyer_id: mb === NONE ? null : mb,
+              media_buyer_id: mb === NONE || mb === SIN_PAUTA ? null : mb,
               coordinador_id: coord === NONE ? null : coord,
+              responsable_id: dc === NONE ? null : dc,
+              // Solo se manda si cambió: así no se toca el abono de más.
+              ...((mb === SIN_PAUTA) !== (pautaInicial === SIN_PAUTA)
+                ? { sinPauta: mb === SIN_PAUTA }
+                : {}),
             }
           : {}),
       });
@@ -90,9 +107,15 @@ export function ClientTeamAssign({
     ...(full
       ? [
           {
-            label: "Coordina la cuenta",
+            label: "Project manager",
             value: coord,
             set: setCoord,
+            puesto: "coordinacion" as Puesto,
+          },
+          {
+            label: "Director creativo",
+            value: dc,
+            set: setDc,
             puesto: "coordinacion" as Puesto,
           },
         ]
@@ -125,6 +148,9 @@ export function ClientTeamAssign({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={NONE}>Sin asignar</SelectItem>
+                {p.puesto === "pauta" && (
+                  <SelectItem value={SIN_PAUTA}>No incluye pauta (−$50.000)</SelectItem>
+                )}
                 {usersForPuesto(users, p.puesto, p.value === NONE ? null : p.value).map((u) => (
                   <SelectItem key={u.id} value={u.id}>
                     {u.nombre}

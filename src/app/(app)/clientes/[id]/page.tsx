@@ -618,6 +618,10 @@ export default async function ClientDetail({
                     audiovisual_id: (c as unknown as { audiovisual_id?: string | null }).audiovisual_id ?? null,
                     media_buyer_id: (c as unknown as { media_buyer_id?: string | null }).media_buyer_id ?? null,
                     coordinador_id: (c as unknown as { coordinador_id?: string | null }).coordinador_id ?? null,
+                    responsable_id: (c as unknown as { responsable_id?: string | null }).responsable_id ?? null,
+                    pautaIncluida: !((services ?? []) as { tipo: string; activo: boolean; media_buyer_aplica?: boolean | null }[]).some(
+                      (s) => s.tipo === "gestion_redes" && s.activo && s.media_buyer_aplica === false
+                    ),
                   }}
                 />
               ) : (c.cm || c.disenador || c.audiovisual) ? (

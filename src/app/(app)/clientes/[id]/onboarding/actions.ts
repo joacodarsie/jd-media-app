@@ -12,6 +12,10 @@ import { applyContractDiscount } from "@/lib/payment-reminder";
 import { calcularPrimerMes } from "@/lib/finanzas/primer-mes";
 import { COBRO_DESDE_DIA, VENTANA_COBRO_TEXTO } from "@/lib/finanzas/ciclo-cobro";
 import { mensajesDeBienvenida } from "@/lib/onboarding/bienvenida";
+import { anotarPaseDeCuenta, ROLES_CON_HISTORIAL } from "@/lib/payroll/asignaciones-run";
+
+/** Lo que baja el abono de gestión de redes sin la gestión de pauta (igual que en el alta). */
+const DESCUENTO_SIN_PAUTA = 50000;
 
 type StepKey =
   | "carta_enviada_at"
@@ -105,6 +109,10 @@ export async function assignClientTeam(
     audiovisual_id: string | null;
     media_buyer_id?: string | null;
     coordinador_id?: string | null;
+    /** Director creativo: es `responsable_id`, el que cobra su 5%. */
+    responsable_id?: string | null;
+    /** true = la gestión de redes NO incluye la pauta (−$50.000, sin gestor). */
+    sinPauta?: boolean;
   }
 ) {
   const me = await requireUser();
@@ -112,7 +120,7 @@ export async function assignClientTeam(
 
   const { data: client } = await admin
     .from("clients")
-    .select("coordinador_id")
+    .select("coordinador_id, cm_id, media_buyer_id, responsable_id, fecha_inicio, monto_mensual")
     .eq("id", clientId)
     .maybeSingle();
   if (!client) return { error: "Cliente no encontrado." };
@@ -140,8 +148,71 @@ export async function assignClientTeam(
     patch.coordinador_id = team.coordinador_id || null;
   }
 
+  const puedeCoordinar =
+    me.rol === "admin" || me.rol === "coordinador" || me.rol_secundario === "coordinador";
+  // El director creativo cobra un % de la cuenta: lo cambia solo la coordinación.
+  if (team.responsable_id !== undefined && puedeCoordinar) {
+    patch.responsable_id = team.responsable_id || null;
+  }
+  // Sin pauta no hay gestor que pagar.
+  if (team.sinPauta === true) patch.media_buyer_id = null;
+
+  const previo = client as {
+    cm_id: string | null;
+    media_buyer_id: string | null;
+    responsable_id: string | null;
+    fecha_inicio: string | null;
+    monto_mensual: number | null;
+  };
+
   const { error } = await admin.from("clients").update(patch).eq("id", clientId);
   if (error) return { error: error.message };
+
+  // Los puestos que se pagan por mes llevan historial: sin el pase fechado,
+  // cambiar a alguien acá le reescribía los sueldos de los meses ya cerrados.
+  for (const { rol, campo } of ROLES_CON_HISTORIAL) {
+    const nuevo = patch[campo];
+    if (nuevo === undefined) continue;
+    const viejo = previo[campo as "cm_id" | "media_buyer_id" | "responsable_id"];
+    if ((nuevo ?? null) === (viejo ?? null)) continue;
+    await anotarPaseDeCuenta(admin, {
+      clienteId: clientId,
+      rol,
+      nuevoUserId: nuevo ?? null,
+      anteriorUserId: viejo,
+      clienteDesde: previo.fecha_inicio,
+      nota: "pase desde el equipo de la cuenta",
+    });
+  }
+
+  // La pauta: se marca en la gestión de redes y el abono baja (o sube) $50.000,
+  // como en el alta. Solo si de verdad cambia, para no descontar dos veces.
+  if (team.sinPauta !== undefined && puedeCoordinar) {
+    const { data: svcs } = await admin
+      .from("client_services")
+      .select("id, monto_mensual, media_buyer_aplica")
+      .eq("cliente_id", clientId)
+      .eq("tipo", "gestion_redes")
+      .eq("activo", true);
+    let delta = 0;
+    for (const s of (svcs ?? []) as { id: string; monto_mensual: number | null; media_buyer_aplica: boolean | null }[]) {
+      const incluia = s.media_buyer_aplica !== false;
+      if (incluia === !team.sinPauta) continue;
+      const cambio = team.sinPauta ? -DESCUENTO_SIN_PAUTA : DESCUENTO_SIN_PAUTA;
+      const monto = s.monto_mensual == null ? null : Math.max(0, Number(s.monto_mensual) + cambio);
+      await admin
+        .from("client_services")
+        .update({ media_buyer_aplica: !team.sinPauta, monto_mensual: monto })
+        .eq("id", s.id);
+      if (s.monto_mensual != null) delta += cambio;
+    }
+    if (delta !== 0 && previo.monto_mensual != null) {
+      await admin
+        .from("clients")
+        .update({ monto_mensual: Math.max(0, Number(previo.monto_mensual) + delta) })
+        .eq("id", clientId);
+    }
+  }
 
   revalidatePath(`/clientes/${clientId}/onboarding/redes`);
   revalidatePath(`/clientes/${clientId}/onboarding`);

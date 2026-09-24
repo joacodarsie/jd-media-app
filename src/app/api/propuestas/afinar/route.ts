@@ -69,6 +69,9 @@ Te paso el contexto de un prospecto —lo que dijo por WhatsApp, la captura del 
 - **No le marques sus errores.** Nada de "tu perfil está desordenado", "hace meses que no publicás", "lo venías haciendo vos y ya estás cansado". Aunque sea cierto y lo haya dicho él, leerlo en un documento comercial incomoda. Se dice qué vamos a hacer, no qué está mal.
 - **Corto.** Cada punto, dos oraciones como máximo. Si una frase explica algo que ya se entiende, sacala.
 - **Sin cerrar con moraleja.** Las frases del tipo "y así dejás de perder oportunidades" sobran: el beneficio ya se entiende.
+- **No le ofrezcas lo que ya hace.** Si ya publica sus promos, ya manda precios por WhatsApp o ya sube placas, eso NO va como punto: se siente como pagarle a alguien por lo mismo que hace él. Ofrecé lo que le falta: marca, diferenciación, otras formas de comunicar, contenido que aporte valor.
+- **Si ya invierte en pauta sin resultados,** explicá que la pauta rinde en la medida en que lo que se pauta (el contenido y el perfil) está bien construido. Sin decirle que la suya no funciona.
+- **La marca antes que el producto.** El punto fuerte suele ser que el negocio pase a ser una marca reconocible en su zona, no solo un lugar donde comprar.
 
 # Si te paso el contenido del sitio del prospecto
 Es texto REAL bajado de su web. Usalo para saber qué vende, cómo se presenta y con qué palabras habla de lo suyo — y nombrá algo concreto de ahí en el diagnóstico o en las ideas, para que se note que lo miramos. No inventes nada que no esté en ese texto. Si te paso un Instagram, es solo el nombre de usuario: **no lo vimos**, así que no describas su feed ni cuánto publica.

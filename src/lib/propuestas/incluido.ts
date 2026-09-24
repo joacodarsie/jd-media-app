@@ -66,7 +66,7 @@ export const LETRA_CHICA: { titulo: string; texto: string }[] = [
   {
     titulo: "El presupuesto de pauta va aparte",
     texto:
-      "El abono cubre armar, configurar y optimizar tus campañas de Meta. La plata que se invierte en los anuncios la ponés vos y la definimos juntos según el objetivo. Google Ads y las campañas de mayor escala son nuestro servicio de Publicidad Online, que se cotiza por separado.",
+      "El abono incluye la gestión de pauta de base en Meta: armar, configurar y optimizar tus campañas. La plata que se invierte en los anuncios la ponés vos y la definimos juntos. Cuando la inversión crece, la pauta profesional (especialistas en Ads, campañas a medida, Google Ads) se cotiza aparte.",
   },
   {
     titulo: "Sin permanencia mínima",

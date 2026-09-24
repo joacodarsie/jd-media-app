@@ -257,10 +257,10 @@ export default async function PropuestaPage({
             </div>
             <p className="lead" style={{ marginTop: 0 }}>
               <b>Community manager, diseñador gráfico, editor audiovisual y un especialista en Meta Ads</b>{" "}
-              asignados a la cuenta, con dos coordinadoras arriba: una cuida la estética y que la
-              estrategia se cumpla, la otra que cada pieza salga en tiempo y forma. Grupo de WhatsApp
-              directo con el equipo, y acceso a la plataforma de JD MEDIA para aprobar el calendario y
-              ver los resultados cuando quieras.
+              asignados a la cuenta. Un director creativo revisa cada pieza antes de que salga y una
+              project manager cuida que todo se publique en fecha. Grupo de WhatsApp directo con el
+              equipo, y acceso a la plataforma de JD MEDIA para aprobar el calendario y ver los
+              resultados cuando quieras.
             </p>
           </section>
 
@@ -345,7 +345,7 @@ export default async function PropuestaPage({
               </div>
               <div className="etapas">
                 <div className="etapa">
-                  <div className="w">Primera semana</div>
+                  <div className="w">Semanas 1 y 2</div>
                   <h4>Se ordena, todavía no se publica</h4>
                   <ul>
                     <li>Reunión de onboarding con todo el equipo.</li>
@@ -356,7 +356,7 @@ export default async function PropuestaPage({
                   </ul>
                 </div>
                 <div className="etapa marcada">
-                  <div className="w">Semanas 2, 3 y 4</div>
+                  <div className="w">Semanas 3 y 4</div>
                   <h4>Sale el contenido</h4>
                   <ul>
                     {mes1.map((m) => (
@@ -371,8 +371,9 @@ export default async function PropuestaPage({
                 </div>
               </div>
               <div className="aviso">
-                <b>Por qué el primer mes entrega tres semanas:</b> la primera se usa para armar las
-                bases y no se publica; reemplaza el cargo de puesta en marcha, que no cobramos.{" "}
+                <b>Por qué el primer mes publica la mitad:</b> las dos primeras semanas se usan para
+                armar las bases y no se publica; reemplazan el cargo de puesta en marcha, que no
+                cobramos.{" "}
                 <b>Desde el segundo mes, {variasCuentas ? "los packs van completos" : "el pack va completo"}.</b>
               </div>
             </section>
@@ -446,7 +447,7 @@ export default async function PropuestaPage({
                 </div>
                 <div className="d">
                   {capitalizar(prop.mes)} va <b>proporcional a los días que quedan</b> ({prop.dias} de{" "}
-                  {prop.diasDelMes}). Después, <b>{precioAr(inv.total)} el 1° de cada mes</b>.
+                  {prop.diasDelMes}). Después, <b>{precioAr(inv.total)} del 1 al 5 de cada mes</b>.
                 </div>
               </div>
             )}
@@ -460,8 +461,10 @@ export default async function PropuestaPage({
             </div>
 
             <p className="nota">
-              <b>Cómo se cobra:</b> mes adelantado, el 1° de cada mes
+              <b>Cómo se cobra:</b> mes adelantado, del 1 al 5 de cada mes
               {prop ? "" : "; si se arranca un día distinto, el primer mes va proporcional a los días trabajados"}.{" "}
+              <b>Para la pauta</b> te acompañamos a configurar Dólar App, así la publicidad no paga el
+              recargo de impuestos.{" "}
               <b>Aparte del abono:</b> {textoJornadas(row.ciudad)} Diseño gráfico, desarrollo web y
               campañas de mayor escala se cotizan cuando hagan falta. Precios vigentes a {hoy},
               publicados en{" "}

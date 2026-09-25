@@ -160,7 +160,7 @@ export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
     comision_servicio_extra: 0.15,
     comision_lead_propio: 0,
     comision_coordinacion: 0.1,
-    comision_coord_general: 0.02,
+    comision_coord_general: 0,
     comision_coord_diseno: 0.05,
     comision_direccion_creativa: 0.05,
     diseno_standalone_disenador_pct: 0.4,

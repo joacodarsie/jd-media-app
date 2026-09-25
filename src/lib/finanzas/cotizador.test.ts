@@ -78,14 +78,14 @@ describe("resultadoDePrecio", () => {
   it("cobra las dos coordinaciones, que salen del precio", () => {
     const r = resultadoDePrecio(400_000, costo, rates);
     expect(r.coordinacion).toBe(40_000); // 10%
-    expect(r.coordGeneral).toBe(8_000); // 2% (cobranza de Leo, desde octubre de 2026)
-    expect(r.costoMensual).toBe(250_000);
-    expect(r.margen).toBe(150_000);
+    expect(r.coordGeneral).toBe(0); // Leo no cobra por ahora (24/9/2026)
+    expect(r.costoMensual).toBe(242_000);
+    expect(r.margen).toBe(158_000);
   });
 
   it("descuenta los fijos para mostrar lo que queda de verdad", () => {
     const r = resultadoDePrecio(400_000, costo, rates, { fijosProrrateados: 54_000 });
-    expect(r.margenNeto).toBe(96_000);
+    expect(r.margenNeto).toBe(104_000);
   });
 
   it("un precio por debajo del costo da margen negativo, no cero", () => {
@@ -125,7 +125,7 @@ describe("el arranque: lo que solo se paga el primer mes", () => {
     // manual 50.000 + 5% del manual para coordinación de diseño 2.500 +
     // comisión del comercial 40.000 (10% desde octubre de 2026) + plus 20.000
     expect(r.arranque).toBe(112_500);
-    expect(r.margenPrimerMes).toBe(37_500);
+    expect(r.margenPrimerMes).toBe(45_500);
   });
 
   it("si la venta la cerró el dueño, no hay comisión que pagar", () => {

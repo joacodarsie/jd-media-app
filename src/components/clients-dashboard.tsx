@@ -16,6 +16,11 @@ import { cn } from "@/lib/utils";
 import type { Client, TaskWithRels } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { TaskList } from "@/components/task-list";
+import { LINEAS, type LineaServicio } from "@/lib/clientes/linea-de-servicio";
+
+function fmtPesos(n: number): string {
+  return "$" + Math.round(n).toLocaleString("es-AR");
+}
 
 interface ClientRow extends Client {
   /** Baja marcada como recuperable (migración 0162). */
@@ -72,6 +77,8 @@ export function ClientsDashboard({
   tasks,
   upcomingPubs = [],
   teams = [],
+  lineas = {},
+  montos,
 }: {
   clients: ClientRow[];
   tasks: TaskWithRels[];
@@ -80,6 +87,10 @@ export function ClientsDashboard({
   canSeeFinancials?: boolean;
   /** Equipos de trabajo (para filtrar/agrupar la cartera por equipo). */
   teams?: { id: string; nombre: string }[];
+  /** Línea de negocio de cada cuenta: la lista se separa por esto. */
+  lineas?: Record<string, LineaServicio>;
+  /** Cuánto paga cada cuenta, mensual y único (solo staff). */
+  montos?: Record<string, { mensual: number; unico: number }>;
 }) {
   const [q, setQ] = useState("");
   const [quick, setQuick] = useState<Quick>("activos");
@@ -290,15 +301,42 @@ export function ClientsDashboard({
             );
           })
         ) : (
-          filtered.map((c) => (
-            <ClientCard
-              key={c.id}
-              client={c}
-              tasks={byClient.get(c.id) ?? []}
-              nextPub={pubByClient.get(c.id) ?? null}
-              pubsTotal={pubCountByClient.get(c.id) ?? 0}
-            />
-          ))
+          // Separado por línea de negocio (pedido del dueño, 25/9/2026): no es
+          // lo mismo una gestión de redes que solo publicidad o un pack de marca.
+          LINEAS.map((l) => {
+            const propios = filtered.filter((c) => (lineas[c.id] ?? "sin_servicio") === l.value);
+            if (propios.length === 0) return null;
+            const mensual = montos ? propios.reduce((s, c) => s + (montos[c.id]?.mensual ?? 0), 0) : 0;
+            const unico = montos ? propios.reduce((s, c) => s + (montos[c.id]?.unico ?? 0), 0) : 0;
+            return (
+              <div key={l.value} className="space-y-2 pt-1">
+                <h2 className="flex flex-wrap items-baseline gap-x-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <span>
+                    {l.label} · {propios.length}
+                  </span>
+                  {montos && (mensual > 0 || unico > 0) && (
+                    <span className="font-normal normal-case tracking-normal">
+                      {[
+                        mensual > 0 ? `${fmtPesos(mensual)} por mes` : null,
+                        unico > 0 ? `${fmtPesos(unico)} de pago único` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  )}
+                </h2>
+                {propios.map((c) => (
+                  <ClientCard
+                    key={c.id}
+                    client={c}
+                    tasks={byClient.get(c.id) ?? []}
+                    nextPub={pubByClient.get(c.id) ?? null}
+                    pubsTotal={pubCountByClient.get(c.id) ?? 0}
+                  />
+                ))}
+              </div>
+            );
+          })
         )}
         {showInternas && internas.length > 0 && (
           <Group title="Tareas internas (sin cliente)" tasks={internas} />

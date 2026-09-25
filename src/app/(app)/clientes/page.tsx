@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { ClientsDashboard } from "@/components/clients-dashboard";
 import { ClientFormDialog } from "@/components/client-form-dialog";
 import { missingTeam } from "@/lib/team-coverage";
+import { createAdmin } from "@/lib/supabase/admin";
+import { lineaDeServicio, type LineaServicio } from "@/lib/clientes/linea-de-servicio";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +62,31 @@ export default async function ClientesPage() {
             .eq("activo", true)
         : Promise.resolve({ data: [] as never[] }),
     ]);
+
+  // Línea de negocio de cada cuenta (redes, publicidad, branding…), para
+  // separar la lista. El tipo de servicio no es sensible: se lee con el admin
+  // para todos; los montos, solo los ve dirección (admin).
+  const { data: svcRaw } = await createAdmin()
+    .from("client_services")
+    .select("cliente_id, tipo, monto_mensual, facturacion")
+    .eq("activo", true);
+  const tiposPorCliente = new Map<string, string[]>();
+  const montoPorCliente: Record<string, { mensual: number; unico: number }> = {};
+  for (const sv of (svcRaw ?? []) as {
+    cliente_id: string;
+    tipo: string;
+    monto_mensual: number | null;
+    facturacion: string | null;
+  }[]) {
+    tiposPorCliente.set(sv.cliente_id, [...(tiposPorCliente.get(sv.cliente_id) ?? []), sv.tipo]);
+    const m = (montoPorCliente[sv.cliente_id] ??= { mensual: 0, unico: 0 });
+    if (sv.facturacion === "unico") m.unico += Number(sv.monto_mensual) || 0;
+    else m.mensual += Number(sv.monto_mensual) || 0;
+  }
+  const lineas: Record<string, LineaServicio> = {};
+  for (const c of (clients ?? []) as { id: string }[]) {
+    lineas[c.id] = lineaDeServicio(tiposPorCliente.get(c.id) ?? []);
+  }
 
   // Equipos de trabajo (si la migración 0126 no está, queda vacío).
   const { data: teamsRaw } = await supabase
@@ -184,6 +211,9 @@ export default async function ClientesPage() {
         upcomingPubs={visiblePubs as never}
         canSeeFinancials={isAdmin}
         teams={teams}
+        lineas={lineas}
+        // Lo que factura cada línea es número de dirección: coordinación no lo ve.
+        montos={me.rol === "admin" ? montoPorCliente : undefined}
       />
     </div>
   );

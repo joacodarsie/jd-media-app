@@ -234,11 +234,11 @@ export function payModelRules(settings: AgencySettings): PayRule[] {
     {
       key: "coord_general",
       label: PUESTO_LABEL.coord_general,
-      regla: `${pct(r.comision_coord_general ?? 0)} de lo que facturan los clientes, de cualquier servicio — salvo las cuentas con precio personalizado.`,
+      regla: `${pct(r.comision_coord_general ?? 0)} de lo que pagan los clientes y queda marcado cobrado del 1 al 5 del mes.`,
       detalles: [
-        "Es la comisión de la coordinación general (mano derecha de la dirección).",
-        "Se atribuye a quien tenga el área 'Coordinación General'.",
-        "Las cuentas con pack Personalizado (hoy Boxescar, La Azotea, Dr Dionisi y La Botineta) no suman a esta comisión.",
+        "Es la comisión de la cobranza (administración). Se atribuye a quien tenga el área 'Coordinación General'.",
+        "Lo que se marca cobrado después del 5, o no se marca, no suma: la regla es cobrar y registrar en fecha.",
+        "Rige desde octubre de 2026. Hasta septiembre era el 5% de toda la facturación, salvo las cuentas con pack Personalizado.",
       ],
     },
     {

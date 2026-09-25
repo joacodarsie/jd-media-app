@@ -12,6 +12,7 @@ import { SERVICE_TYPE_LABEL } from "./constants";
 import { splitJornada } from "./jornada";
 import { isClientPausedFor } from "./client-pause";
 import { cargarAsignaciones } from "./payroll/asignaciones-run";
+import { COBRANZA_DESDE, calcularCobranza, pctCoordGeneral, type FacturaCobrada } from "./payroll/cobranza";
 import { quienLlevaba } from "./payroll/asignaciones";
 import {
   computeAutoPayroll,
@@ -161,7 +162,7 @@ export async function buildPeriodPayroll(
       .gte("dg_aprobado_at", `${periodo}-01`)
       .lt("dg_aprobado_at", `${nextPeriod(periodo)}-01`),
     // Facturas del período: la cartera se paga solo si el cliente pagó.
-    admin.from("client_invoices").select("cliente_id, fecha_cobro").eq("periodo", periodo),
+    admin.from("client_invoices").select("cliente_id, fecha_cobro, monto, moneda").eq("periodo", periodo),
   ]);
 
   const settings: AgencySettings = mergeSettings(settingsRow);
@@ -376,14 +377,29 @@ export async function buildPeriodPayroll(
     }
   }
 
-  // Comisión de COORDINACIÓN GENERAL (Leo): % de TODO lo que facturan los
-  // clientes, de cualquier servicio. Se atribuye a quien tenga el área
-  // "Coordinación General". Los servicios de cobro único cuentan solo su mes.
-  const coordGeneralPct = settings.rates.comision_coord_general ?? 0;
+  // Comisión de COORDINACIÓN GENERAL (Leo). Se atribuye a quien tenga el área
+  // "Coordinación General".
+  //  · Desde octubre de 2026: % de lo que pagan los clientes y queda MARCADO
+  //    cobrado del 1 al 5 (ver payroll/cobranza.ts).
+  //  · Hasta septiembre: % de TODO lo que facturan los clientes, de cualquier
+  //    servicio. Los servicios de cobro único cuentan solo su mes.
+  const coordGeneralPct = pctCoordGeneral(periodo, settings.rates.comision_coord_general ?? 0);
   const coordGeneral = users.find(
     (u) => u.area === "Coordinación General" || u.area_secundaria === "Coordinación General"
   );
-  if (coordGeneralPct > 0 && coordGeneral) {
+  if (coordGeneralPct > 0 && coordGeneral && periodo >= COBRANZA_DESDE) {
+    const c = calcularCobranza((invoicesRaw ?? []) as FacturaCobrada[], periodo, coordGeneralPct);
+    if (c.monto > 0) {
+      if (!autoByUser.has(coordGeneral.id)) autoByUser.set(coordGeneral.id, []);
+      autoByUser.get(coordGeneral.id)!.push({
+        clienteId: null,
+        cliente: "—",
+        concepto: `Cobranza · ${Math.round(coordGeneralPct * 100)}% de lo cobrado del 1 al 5 (${c.enFecha} de ${c.total} facturas)`,
+        monto: c.monto,
+        kind: "coord_general",
+      });
+    }
+  } else if (coordGeneralPct > 0 && coordGeneral) {
     const clienteIds = new Set(clients.map((c) => c.id));
     // Cuentas con precio PERSONALIZADO (Boxescar, Azotea, Doctor, Botineta)
     // quedan afuera del 5% de coordinación general — modelo FNA: en esas

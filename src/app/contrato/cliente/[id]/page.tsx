@@ -18,6 +18,8 @@ interface ClientFull {
   contacto_email: string | null;
   contrato_numero: string | null;
   contrato_fecha_inicio: string | null;
+  // Si la carta no tiene fecha propia, vale la de arranque de la cuenta.
+  fecha_inicio: string | null;
   contrato_plazo_meses: number | null;
   contrato_dia_cobro: number | null;
   contrato_moneda: string | null;
@@ -41,7 +43,7 @@ export default async function CartaAcuerdoPage({
       supabase
         .from("clients")
         .select(
-          "id, nombre, contacto_nombre, contacto_dni_cuit, contacto_domicilio, contacto_email, contrato_numero, contrato_fecha_inicio, contrato_plazo_meses, contrato_dia_cobro, contrato_moneda, contrato_descuento_pct, contrato_descuento_monto, contrato_descuento_meses, contrato_observaciones"
+          "id, nombre, contacto_nombre, contacto_dni_cuit, contacto_domicilio, contacto_email, contrato_numero, contrato_fecha_inicio, fecha_inicio, contrato_plazo_meses, contrato_dia_cobro, contrato_moneda, contrato_descuento_pct, contrato_descuento_monto, contrato_descuento_meses, contrato_observaciones"
         )
         .eq("id", params.id)
         .maybeSingle(),
@@ -61,7 +63,7 @@ export default async function CartaAcuerdoPage({
 
   const model: ContractModel = {
     numero: c.contrato_numero,
-    fechaInicio: c.contrato_fecha_inicio,
+    fechaInicio: c.contrato_fecha_inicio ?? c.fecha_inicio,
     plazoMeses: c.contrato_plazo_meses ?? 3,
     diaCobro: c.contrato_dia_cobro ?? 1,
     moneda,

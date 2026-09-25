@@ -8,6 +8,7 @@ import { TaskRequestsPanel } from "@/components/task-requests-panel";
 import { BandejaCoordinacion } from "@/components/bandeja-coordinacion";
 import { pedidosPendientes } from "./pedidos-actions";
 import { madresQueFaltan, type RefMadre } from "@/lib/tareas/agrupar";
+import { hoyYmd } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -116,6 +117,17 @@ export default async function TareasPage({
   // quien puede resolverlos: la action devuelve vacío para el resto.
   const pedidos = await pedidosPendientes();
 
+  // Coordinación: el atajo a "Ponerse al día" con las vencidas de todo el equipo.
+  const hoy = hoyYmd();
+  const vencidasEquipo = isStaffUser(me)
+    ? tasks.filter(
+        (t) =>
+          ["pendiente", "en_progreso", "en_revision", "bloqueada"].includes(t.estado) &&
+          !!t.fecha_limite &&
+          t.fecha_limite < hoy
+      ).length
+    : 0;
+
   return (
     <div className="space-y-4">
       <TaskRequestsPanel
@@ -124,6 +136,19 @@ export default async function TareasPage({
       />
 
       <BandejaCoordinacion me={{ id: me.id, rol: me.rol }} />
+
+      {vencidasEquipo > 0 && (
+        <Link
+          href="/tareas/vencidas"
+          className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm hover:bg-red-100 dark:border-red-500/30 dark:bg-red-950/40 dark:hover:bg-red-950"
+        >
+          <span className="text-red-900 dark:text-red-200">
+            <b>{vencidasEquipo} tareas vencidas en el equipo.</b> Despejalas por persona: hecha, fecha
+            nueva o a otra persona.
+          </span>
+          <span className="shrink-0 font-medium text-red-700 dark:text-red-300">Ponerse al día →</span>
+        </Link>
+      )}
 
       {/* Solo para quien lleva cuentas: mirar el resto es opcional. */}
       {!esStaff && myClientIds.length > 0 && (

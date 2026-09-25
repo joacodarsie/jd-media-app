@@ -18,7 +18,7 @@ export default async function TareasVencidasPage() {
 
   const admin = createAdmin();
   const hoy = hoyYmd();
-  const [{ data: raw }, { data: users }, { data: clientes }] = await Promise.all([
+  const [{ data: raw }, { data: users }] = await Promise.all([
     admin
       .from("tasks")
       .select(
@@ -28,7 +28,6 @@ export default async function TareasVencidasPage() {
       .lt("fecha_limite", hoy)
       .limit(1000),
     admin.from("users").select("id, nombre").eq("activo", true).order("nombre"),
-    admin.from("clients").select("id, responsable_id"),
   ]);
 
   const filas = (raw ?? []) as unknown as (Omit<TareaVencidaInput, "madre_titulo"> & {
@@ -54,12 +53,6 @@ export default async function TareasVencidasPage() {
   const grupos = armarVencidas({
     tareas: filas.map((f) => ({ ...f, madre_titulo: f.parent_id ? tituloMadre.get(f.parent_id) ?? null : null })),
     personas,
-    responsablePorCliente: Object.fromEntries(
-      ((clientes ?? []) as { id: string; responsable_id: string | null }[]).map((c) => [
-        c.id,
-        c.responsable_id,
-      ])
-    ),
     hoy,
   }).map((g) => ({
     ...g,

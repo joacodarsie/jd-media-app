@@ -39,13 +39,6 @@ export interface Persona {
 export interface TareaVencida extends TareaVencidaInput {
   tipo: TipoVencida;
   diasAtraso: number;
-  /**
-   * A quién le corresponde según las reglas, si no es a quien la tiene hoy.
-   * Hoy solo aplica a la reunión mensual: desde el 22/9 la da el director
-   * creativo de la cuenta (`responsable_id`), y las de septiembre se crearon
-   * antes, a nombre de la PM.
-   */
-  sugerido: Persona | null;
 }
 
 export interface GrupoPersona {
@@ -79,21 +72,14 @@ const ABIERTAS = ["pendiente", "en_progreso", "en_revision", "bloqueada"];
 export function armarVencidas(input: {
   tareas: TareaVencidaInput[];
   personas: Persona[];
-  /** cliente_id → responsable_id (director creativo de la cuenta). */
-  responsablePorCliente: Record<string, string | null | undefined>;
   hoy: string;
 }): GrupoPersona[] {
-  const { tareas, personas, responsablePorCliente, hoy } = input;
+  const { tareas, personas, hoy } = input;
   const porId = new Map(personas.map((p) => [p.id, p]));
 
   const vencidas: TareaVencida[] = tareas
     .filter((t) => ABIERTAS.includes(t.estado) && t.fecha_limite < hoy)
-    .map((t) => {
-      const tipo = tipoDeTarea(t);
-      const resp = tipo === "reunion" && t.cliente_id ? responsablePorCliente[t.cliente_id] : null;
-      const sugerido = resp && resp !== t.asignado_a_id ? porId.get(resp) ?? null : null;
-      return { ...t, tipo, diasAtraso: diasEntre(t.fecha_limite, hoy), sugerido };
-    });
+    .map((t) => ({ ...t, tipo: tipoDeTarea(t), diasAtraso: diasEntre(t.fecha_limite, hoy) }));
 
   const grupos = new Map<string, GrupoPersona>();
   for (const t of vencidas) {

@@ -31,8 +31,8 @@ export interface ClienteParaReunion {
   /** Community manager de la cuenta, si tiene. */
   cm_id: string | null;
   /**
-   * Quien responde por la cuenta (acuerdo del 16/9/2026). Si lo hay, la
-   * reunión es suya: es lo que cobra con el 5% de cartera. Si no, la da la PM.
+   * El director creativo de la cuenta. Desde el 24/9/2026 la reunión la sigue
+   * dando la PM y él participa: queda siguiendo el ticket.
    */
   responsable_id?: string | null;
 }
@@ -47,6 +47,8 @@ export interface TareaDeReunion {
   descripcion: string;
   cliente_id: string;
   asignado_a_id: string;
+  /** Quien participa además de quien la da (el director creativo), si hay. */
+  participa_id: string | null;
   area: string;
   prioridad: string;
   fecha_limite: string;
@@ -88,9 +90,14 @@ function descripcion(
   nombre: string,
   periodo: string,
   clienteId: string,
-  cmNombre: string | null
+  cmNombre: string | null,
+  directorNombre: string | null = null
 ): string {
   return `La reunión de seguimiento de **${nombre}** por el período ${periodo}.${
+    directorNombre
+      ? `\n\nParticipa **${directorNombre}**, el director creativo de la cuenta: coordiná el día con él.`
+      : ""
+  }${
     cmNombre ? `\n\nEl CM de la cuenta es **${cmNombre}**: que te pase lo que haya que mostrar y esté en la reunión si hace falta.` : ""
   }
 
@@ -112,6 +119,12 @@ export function reunionesFaltantes(input: {
   registradas: ReunionRegistrada[];
   titulosExistentes: string[];
   /**
+   * Cuentas que ya tienen el ticket del período, por id. El título solo no
+   * alcanza: si se renombra el cliente (Impermax → Impertek, Nahuel → Nazar
+   * Hogar) el título cambia y se creaba una reunión duplicada.
+   */
+  clientesConTicket?: string[];
+  /**
    * Quién DA la reunión. Es la project manager, no el CM de cada cuenta:
    * decisión del user del 10/9 ("la reunión mensual la da Luz, con Guille y
    * Brisa presentes"). Va contra la tentación de repartirla entre los CM —
@@ -119,9 +132,9 @@ export function reunionesFaltantes(input: {
    * cuenta, y darle la reunión estratégica al CM reconstruye ese agujero.
    * El CM igual figura en la descripción: prepara el material y participa.
    *
-   * Desde el 16/9/2026 hay una excepción: si la cuenta tiene `responsable_id`,
-   * la reunión es de esa persona — es la que cobra el 5% de cartera por
-   * atenderla, y ese 5% depende justamente de que la reunión se dé.
+   * El 16/9 se probó dársela al responsable de la cuenta; el 24/9 el dueño lo
+   * corrigió: la sigue dando la PM y el director creativo (`responsable_id`)
+   * PARTICIPA — queda en `participa_id` y siguiendo el ticket.
    */
   responsable: string;
   /** id → nombre, para nombrar al CM en la descripción. */
@@ -132,26 +145,32 @@ export function reunionesFaltantes(input: {
   const periodo = periodoDe(hoy);
   const yaDada = new Set(registradas.filter((r) => r.periodo === periodo).map((r) => r.cliente_id));
   const yaPedida = new Set(titulosExistentes);
+  const conTicket = new Set(input.clientesConTicket ?? []);
   const fecha = fechaLimiteReunion(periodo, hoy);
 
   return clientes
     .filter((c) => c.estado === "activo" && !c.es_interno)
     .filter((c) => !yaDada.has(c.id))
-    .filter((c) => !yaPedida.has(tituloReunion(c.nombre, periodo)))
-    .map((c) => ({
+    .filter((c) => !conTicket.has(c.id) && !yaPedida.has(tituloReunion(c.nombre, periodo)))
+    .map((c) => {
+      const participa = c.responsable_id && c.responsable_id !== responsable ? c.responsable_id : null;
+      return {
       titulo: tituloReunion(c.nombre, periodo),
       descripcion: descripcion(
         c.nombre,
         periodo,
         c.id,
-        (c.cm_id && nombrePorId?.[c.cm_id]) || null
+        (c.cm_id && nombrePorId?.[c.cm_id]) || null,
+        (participa && nombrePorId?.[participa]) || null
       ),
       cliente_id: c.id,
-      asignado_a_id: c.responsable_id || responsable,
+      asignado_a_id: responsable,
+      participa_id: participa,
       area: "Coordinación",
       prioridad: "alta",
       fecha_limite: fecha,
-    }));
+      };
+    });
 }
 
 /**

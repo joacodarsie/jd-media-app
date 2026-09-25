@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { formatTicket } from "@/lib/tareas/tickets";
@@ -47,7 +47,6 @@ function Vista({ grupos, personas, hoy }: { grupos: Grupo[]; personas: Persona[]
     [grupos, resueltas]
   );
   const cuenta = (t: TipoVencida) => todas.filter((x) => x.tipo === t).length;
-  const sugeridas = todas.filter((t) => t.sugerido);
 
   const visibles = grupos
     .map((g) => ({
@@ -91,16 +90,6 @@ function Vista({ grupos, personas, hoy }: { grupos: Grupo[]; personas: Persona[]
     });
   }
 
-  function pasarSugeridas() {
-    const porPersona = new Map<string, { a: Persona; ids: string[] }>();
-    for (const t of sugeridas) {
-      const g = porPersona.get(t.sugerido!.id) ?? { a: t.sugerido!, ids: [] };
-      g.ids.push(t.id);
-      porPersona.set(t.sugerido!.id, g);
-    }
-    for (const { a, ids } of porPersona.values()) pasarA(ids, a);
-  }
-
   return (
     <div className="mx-auto max-w-4xl space-y-5">
       <div>
@@ -117,25 +106,6 @@ function Vista({ grupos, personas, hoy }: { grupos: Grupo[]; personas: Persona[]
             : `${todas.length} tareas vencidas. Cada una sale de la lista cuando está hecha, tiene fecha nueva o pasa a otra persona.`}
         </p>
       </div>
-
-      {sugeridas.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-violet-300 bg-violet-50 p-4 dark:border-violet-500/40 dark:bg-violet-950">
-          <p className="text-sm text-violet-900 dark:text-violet-200">
-            <b>
-              {sugeridas.length} {sugeridas.length === 1 ? "reunión mensual está" : "reuniones mensuales están"} a nombre
-              de quien no las da.
-            </b>{" "}
-            Desde el 22/9 la reunión la da el director creativo de cada cuenta.
-          </p>
-          <button
-            onClick={pasarSugeridas}
-            disabled={pending}
-            className="shrink-0 rounded-md bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
-          >
-            Pasárselas a {[...new Set(sugeridas.map((t) => t.sugerido!.nombre.split(" ")[0]))].join(" y ")}
-          </button>
-        </div>
-      )}
 
       {todas.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
@@ -225,16 +195,6 @@ function TarjetaPersona({
                 </p>
               </button>
               <div className="flex shrink-0 items-center gap-1">
-                {t.sugerido && (
-                  <button
-                    onClick={() => onPasar(t, t.sugerido!)}
-                    disabled={pending}
-                    title={`Pasársela a ${t.sugerido.nombre}`}
-                    className="inline-flex items-center gap-1 rounded-md border border-violet-300 px-2 py-1 text-xs text-violet-700 hover:bg-violet-50 disabled:opacity-50 dark:border-violet-500/40 dark:text-violet-300 dark:hover:bg-violet-950"
-                  >
-                    <ArrowRight className="h-3 w-3" /> {t.sugerido.nombre.split(" ")[0]}
-                  </button>
-                )}
                 <select
                   value=""
                   disabled={pending}

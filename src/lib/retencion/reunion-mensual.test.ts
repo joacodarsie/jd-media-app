@@ -31,14 +31,39 @@ const base = {
 };
 
 describe("quién da la reunión", () => {
-  it("la da el RESPONSABLE de la cuenta cuando lo hay: es quien cobra el 5% de cartera", () => {
-    const out = reunionesFaltantes({ ...base, clientes: [cli({ responsable_id: "santi" })] });
-    expect(out[0].asignado_a_id).toBe("santi");
+  it("la da la Project Manager y el director creativo participa (24/9)", () => {
+    const out = reunionesFaltantes({
+      ...base,
+      clientes: [cli({ responsable_id: "santi" })],
+      nombrePorId: { santi: "Santiago Reinaldi" },
+    });
+    expect(out[0].asignado_a_id).toBe(LUZ);
+    expect(out[0].participa_id).toBe("santi");
+    expect(out[0].descripcion).toContain("Participa **Santiago Reinaldi**");
   });
 
-  it("sin responsable, la da la Project Manager", () => {
+  it("sin director creativo, la da la Project Manager sola", () => {
     const out = reunionesFaltantes(base);
     expect(out[0].asignado_a_id).toBe(LUZ);
+    expect(out[0].participa_id).toBeNull();
+    expect(out[0].descripcion).not.toContain("Participa");
+  });
+
+  it("si el director creativo es la misma PM, no se suma dos veces", () => {
+    const out = reunionesFaltantes({ ...base, clientes: [cli({ responsable_id: LUZ })] });
+    expect(out[0].participa_id).toBeNull();
+  });
+});
+
+describe("no duplica", () => {
+  it("si el cliente se renombró, el ticket del período ya existe por su id", () => {
+    const out = reunionesFaltantes({
+      ...base,
+      clientes: [cli({ nombre: "Impertek" })],
+      titulosExistentes: ["Reunión mensual — Impermax — 2026-09"],
+      clientesConTicket: ["c1"],
+    });
+    expect(out).toHaveLength(0);
   });
 });
 

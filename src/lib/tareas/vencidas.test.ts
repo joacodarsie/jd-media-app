@@ -50,7 +50,6 @@ describe("armarVencidas", () => {
         t("vencida"),
       ],
       personas,
-      responsablePorCliente: {},
       hoy: HOY,
     });
     expect(r).toHaveLength(1);
@@ -65,7 +64,6 @@ describe("armarVencidas", () => {
         t("luz-vieja", { fecha_limite: "2026-08-01" }),
       ],
       personas,
-      responsablePorCliente: {},
       hoy: HOY,
     });
     expect(r.map((g) => g.persona?.nombre)).toEqual(["Luz", "Sol"]);
@@ -73,31 +71,10 @@ describe("armarVencidas", () => {
     expect(r[0].masVieja).toBe(54);
   });
 
-  it("sugiere pasar la reunión mensual al director creativo de la cuenta", () => {
-    const r = armarVencidas({
-      tareas: [
-        t("r1", { titulo: "Reunión mensual — Magic — 2026-09", cliente_id: "magic" }),
-        t("r2", { titulo: "Reunión mensual — Catch — 2026-09", cliente_id: "catch", asignado_a_id: "santi" }),
-        t("r3", { titulo: "Reunión mensual — Sin DC — 2026-09", cliente_id: "sindc" }),
-        t("otra", { cliente_id: "magic" }),
-      ],
-      personas,
-      responsablePorCliente: { magic: "santi", catch: "santi", sindc: null },
-      hoy: HOY,
-    });
-    const todas = r.flatMap((g) => g.tareas);
-    const s = (id: string) => todas.find((x) => x.id === id)?.sugerido?.nombre ?? null;
-    expect(s("r1")).toBe("Santiago");
-    expect(s("r2")).toBeNull(); // ya la tiene él
-    expect(s("r3")).toBeNull(); // la cuenta no tiene director creativo
-    expect(s("otra")).toBeNull(); // solo aplica a la reunión
-  });
-
   it("las que no tienen a nadie van en su propio grupo", () => {
     const r = armarVencidas({
       tareas: [t("x", { asignado_a_id: null })],
       personas,
-      responsablePorCliente: {},
       hoy: HOY,
     });
     expect(r[0].persona).toBeNull();

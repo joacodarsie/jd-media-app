@@ -36,13 +36,15 @@ export async function runReunionesMensuales(
     // Solo los títulos del período: alcanza para deduplicar y no trae la tabla
     // entera. Las archivadas también cuentan — si alguien archivó el ticket, no
     // hay que volver a crearlo el día siguiente.
-    admin.from("tasks").select("titulo").like("titulo", `Reunión mensual — %— ${periodo}`),
+    admin.from("tasks").select("titulo, cliente_id").like("titulo", `Reunión mensual — %— ${periodo}`),
     admin.from("users").select("id, nombre, email, rol").eq("activo", true),
   ]);
 
   const clientes = (clientesRes.data ?? []) as ClienteParaReunion[];
   const registradas = (meetingsRes.data ?? []) as ReunionRegistrada[];
-  const titulos = ((tasksRes.data ?? []) as { titulo: string }[]).map((t) => t.titulo);
+  const tickets = (tasksRes.data ?? []) as { titulo: string; cliente_id: string | null }[];
+  const titulos = tickets.map((t) => t.titulo);
+  const clientesConTicket = tickets.map((t) => t.cliente_id).filter(Boolean) as string[];
   const users = (usersRes.data ?? []) as {
     id: string;
     nombre: string;
@@ -61,6 +63,7 @@ export async function runReunionesMensuales(
     clientes,
     registradas,
     titulosExistentes: titulos,
+    clientesConTicket,
     responsable,
     nombrePorId,
     hoy,
@@ -68,7 +71,7 @@ export async function runReunionesMensuales(
 
   let creadas = 0;
   if (faltan.length > 0) {
-    const { error } = await admin.from("tasks").insert(
+    const { data: nuevas, error } = await admin.from("tasks").insert(
       faltan.map((t) => ({
         titulo: t.titulo,
         descripcion: t.descripcion,
@@ -80,8 +83,16 @@ export async function runReunionesMensuales(
         estado: "pendiente",
         fecha_limite: t.fecha_limite,
       }))
-    );
-    if (!error) creadas = faltan.length;
+    ).select("id, cliente_id");
+    if (!error) {
+      creadas = faltan.length;
+      // El director creativo participa: queda siguiendo el ticket.
+      const participa = new Map(faltan.map((t) => [t.cliente_id, t.participa_id]));
+      const watchers = ((nuevas ?? []) as { id: string; cliente_id: string }[])
+        .map((n) => ({ task_id: n.id, user_id: participa.get(n.cliente_id) ?? null }))
+        .filter((w): w is { task_id: string; user_id: string } => !!w.user_id);
+      if (watchers.length > 0) await admin.from("task_watchers").insert(watchers);
+    }
   }
 
   // ── Escalada al dueño, del 15 en adelante ──

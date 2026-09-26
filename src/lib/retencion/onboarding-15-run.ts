@@ -52,10 +52,14 @@ export async function runOnboarding15(
 
   // Ya está armado: no se duplica. Cuenta también el archivado — si alguien lo
   // archivó fue a propósito y volver a crearlo al día siguiente es pelearle.
+  // Se busca por CUENTA y no solo por título: al renombrar Nahuel → Nazar
+  // Hogar el título cambió y se armó un segundo arranque entero (26/9/2026).
   const { data: yaHay } = await admin
     .from("tasks")
     .select("id")
-    .eq("titulo", tituloMadre(c.nombre))
+    .or(
+      `titulo.eq.${JSON.stringify(tituloMadre(c.nombre))},and(cliente_id.eq.${clienteId},titulo.like.${JSON.stringify(tituloMadre("") + "%")})`
+    )
     .limit(1);
   if (yaHay?.length) return { creado: false, motivo: "ya_existe" };
 

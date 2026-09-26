@@ -1110,12 +1110,23 @@ export function ContractDocument({ model }: { model: ContractModel }) {
                 con aviso por escrito.
               </p>
             ) : (
-            <p>
-              Cualquiera de las partes puede rescindir el presente acuerdo con aviso
-              por escrito de 15 días. En caso de incumplimiento grave, incluyendo la
-              falta de pago, La Agencia podrá rescindir el contrato de manera
-              inmediata.
-            </p>
+            <>
+              <p>
+                Cualquiera de las partes puede dar por terminado el presente acuerdo
+                con aviso por escrito. El contenido se produce con{" "}
+                <strong>quince (15) días de anticipación</strong>, por lo que: si el
+                aviso llega <strong>hasta el día 15 del mes</strong>, ese mes es el
+                último del servicio; si llega <strong>después del día 15</strong>, el
+                Cliente abona también el mes siguiente, que ya está en producción, y
+                lo recibe completo.
+              </p>
+              <p>
+                Si al día 5 del mes el abono no fue acreditado, La Agencia podrá
+                pausar la producción hasta que se regularice. En caso de
+                incumplimiento grave, incluyendo la falta de pago, La Agencia podrá
+                rescindir el contrato de manera inmediata.
+              </p>
+            </>
             ))}
         </section>
 

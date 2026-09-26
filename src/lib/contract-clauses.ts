@@ -63,7 +63,7 @@ export const EDITABLE_CLAUSES: EditableClause[] = [
     key: "rescision",
     titulo: "Rescisión",
     default:
-      "Cualquiera de las partes puede rescindir el presente acuerdo con aviso por escrito de 15 días. En caso de incumplimiento grave, incluyendo la falta de pago, La Agencia podrá rescindir el contrato de manera inmediata.",
+      "Cualquiera de las partes puede dar por terminado el presente acuerdo con aviso por escrito. El contenido se produce con quince (15) días de anticipación, por lo que: si el aviso llega hasta el día 15 del mes, ese mes es el último del servicio; si llega después del día 15, el Cliente abona también el mes siguiente, que ya está en producción, y lo recibe completo.\n\nSi al día 5 del mes el abono no fue acreditado, La Agencia podrá pausar la producción hasta que se regularice. En caso de incumplimiento grave, incluyendo la falta de pago, La Agencia podrá rescindir el contrato de manera inmediata.",
   },
 ];
 

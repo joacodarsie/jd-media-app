@@ -196,6 +196,17 @@ export function planOnboarding(input: {
       "Community Manager",
       cm
     );
+    // El primer mes el cliente paga el abono entero y ve la mitad del contenido:
+    // la puesta en marcha va incluida (decisión del dueño, 26/9/2026). Si nadie
+    // le muestra lo que se hizo en estas dos semanas, siente que pagó y no vio
+    // nada, justo en los meses en que se fueron todas las bajas.
+    add(
+      15,
+      "Entrega del arranque al cliente",
+      `Reunión corta (20-30 minutos) con ${nombreCliente} para entregarle lo que se hizo en estas dos semanas: el diagnóstico, el manual de marca, el perfil optimizado con sus destacadas y el calendario aprobado. Contarle qué va a salir el resto del mes y agendar la primera reunión mensual. Participa el director creativo de la cuenta.`,
+      "Coordinación",
+      equipo.fallback
+    );
   }
 
   if (svc.has("paid_media")) {

@@ -36,6 +36,12 @@ describe("tituloMadre", () => {
 });
 
 describe("planOnboarding", () => {
+  it("la gestión de redes cierra con la entrega del arranque el día 15, a cargo de la PM", () => {
+    const entrega = plan(["gestion_redes"]).pasos.find((p) => p.titulo === "Entrega del arranque al cliente");
+    expect(entrega).toMatchObject({ dia: 15, asignado_a_id: "luz", area: "Coordinación" });
+    expect(plan(["paid_media"]).pasos.some((p) => p.titulo === "Entrega del arranque al cliente")).toBe(false);
+  });
+
   it("toda cuenta arranca con la reunión de diagnóstico el día 1", () => {
     const p = plan(["gestion_redes"]);
     expect(p.pasos[0].titulo).toBe("Reunión de diagnóstico");

@@ -2,6 +2,13 @@
 title: Novedades
 ---
 
+## 2026-09-26 — Cómo se cobra, cómo se da de baja un cliente y la entrega del día 15
+
+- 💵 **Los clientes pagan del 1 al 5 el mes en curso, y el equipo cobra el 7** lo del mes anterior. No cambia nada de eso.
+- ✋ **Baja de un cliente:** si avisa hasta el día 15, ese mes es el último. Si avisa después del 15, paga también el mes siguiente, que ya estamos produciendo, y lo recibe completo. Así ninguna pieza que armamos con 15 días de ventaja queda tirada. Ya figura en la carta acuerdo.
+- ⏸️ **Si al día 5 una cuenta no pagó**, se puede pausar la producción de lo que viene hasta que se regularice.
+- 🎁 **El arranque suma un paso: la entrega del día 15.** Una reunión corta con el cliente para mostrarle lo que se hizo en las dos primeras semanas (diagnóstico, manual de marca, perfil y destacadas, calendario aprobado) y agendar la primera reunión mensual. El primer mes paga el abono entero y ve la mitad del contenido: esta entrega es la que le muestra todo lo demás.
+- 🗂️ **Clientes se separa por servicio:** gestión de redes, publicidad, branding y diseño.
 ## 2026-09-22 — El arranque de una cuenta ahora se lee como un mapa
 
 - 🗺️ **Caminito de pasos** arriba de cada onboarding y en Arranques: los pasos hechos son nodos verdes unidos por una línea, lo que falta queda punteado y el paso actual late con su nombre a la vista. El último es una bandera. Tocá un nodo y baja al paso en la lista.

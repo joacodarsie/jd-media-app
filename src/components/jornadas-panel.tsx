@@ -306,7 +306,7 @@ function JornadaDialog({
                 onChange={(e) => setHoras(Number(e.target.value))}
               />
               <p className="mt-1 text-[11px] text-muted-foreground">
-                Se cobra <b>{fmt(monto)}</b> · $50.000 la 1ª hora + $25.000 cada extra.
+                Se cobra <b>{fmt(monto)}</b> · $70.000 la 1ª hora + $25.000 cada extra.
               </p>
             </div>
           </div>

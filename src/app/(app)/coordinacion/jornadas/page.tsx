@@ -58,7 +58,7 @@ export default async function JornadasPage() {
         <h1 className="text-2xl font-bold">Jornadas de producción</h1>
         <p className="text-muted-foreground">
           Filmaciones y producciones presenciales que cobra la agencia, dentro del
-          servicio de gestión de redes. <b>$50.000 la primera hora y $25.000 cada
+          servicio de gestión de redes. <b>$70.000 la primera hora y $25.000 cada
           hora extra</b>, más viáticos. El precio se reparte <b>50% quien dirige,
           30% el acompañante y 20% la agencia</b>; los viáticos van enteros a
           quienes fueron y se suman solos a la nómina del mes. Solo vos lo ves.

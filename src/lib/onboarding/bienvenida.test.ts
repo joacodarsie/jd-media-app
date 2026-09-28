@@ -43,7 +43,7 @@ describe("mensajesDeBienvenida — gestión de redes con campañas", () => {
 
   it("cuenta las quincenas y que las jornadas se cobran aparte, con precio", () => {
     expect(m[2]).toContain("por quincena, con dos semanas de ventaja");
-    expect(m[2]).toContain("se cobran aparte: $50.000 la primera hora y $25.000 cada hora adicional");
+    expect(m[2]).toContain("se cobran aparte: $70.000 la primera hora y $25.000 cada hora adicional");
   });
 
   it("pide los accesos de Meta y recomienda Dólar App", () => {

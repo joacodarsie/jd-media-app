@@ -181,7 +181,7 @@ export function volumenPrimerMes(lineas: LineaInversion[]): VolumenMes1[] {
  * costo que no le corresponde —no le van a cobrar traslado—, y a uno del
  * interior se la esconde entre paréntesis. Se dice lo que aplica a cada uno.
  */
-export function textoJornadas(ciudad: string | null | undefined, base = 50000, adicional = 25000): string {
+export function textoJornadas(ciudad: string | null | undefined, base = 70000, adicional = 25000): string {
   const p = (n: number) => `$${n.toLocaleString("es-AR")}`;
   if (esDeCordoba(ciudad)) {
     return `Sesión de producción en locación: ${p(base)} la hora y ${p(adicional)} cada hora adicional, sin cargo de traslado.`;

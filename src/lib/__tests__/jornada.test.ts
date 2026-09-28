@@ -7,24 +7,24 @@ import {
 } from "@/lib/jornada";
 
 describe("precioJornada", () => {
-  it("una hora son $50.000", () => {
-    expect(precioJornada(1)).toBe(50000);
+  it("una hora son $70.000", () => {
+    expect(precioJornada(1)).toBe(70000);
   });
 
   it("cada hora extra suma $25.000", () => {
-    expect(precioJornada(2)).toBe(75000);
-    expect(precioJornada(3)).toBe(100000);
-    expect(precioJornada(4)).toBe(125000);
+    expect(precioJornada(2)).toBe(95000);
+    expect(precioJornada(3)).toBe(120000);
+    expect(precioJornada(4)).toBe(145000);
   });
 
   it("media hora extra se cobra proporcional", () => {
-    expect(precioJornada(1.5)).toBe(62500);
+    expect(precioJornada(1.5)).toBe(82500);
   });
 
   it("una duración inválida se trata como una hora, no como cero", () => {
-    expect(precioJornada(0)).toBe(50000);
-    expect(precioJornada(-2)).toBe(50000);
-    expect(precioJornada(NaN)).toBe(50000);
+    expect(precioJornada(0)).toBe(70000);
+    expect(precioJornada(-2)).toBe(70000);
+    expect(precioJornada(NaN)).toBe(70000);
   });
 });
 
@@ -110,6 +110,6 @@ describe("computeJornadaSplit (jornadas viejas, viáticos adentro del monto)", (
   });
 
   it("el default del formulario es una hora de trabajo", () => {
-    expect(JORNADA_MONTO_DEFAULT).toBe(50000);
+    expect(JORNADA_MONTO_DEFAULT).toBe(70000);
   });
 });

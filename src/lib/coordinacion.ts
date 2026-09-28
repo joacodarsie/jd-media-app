@@ -144,7 +144,7 @@ export const DEFAULT_AGENCY_SETTINGS: AgencySettings = {
     { id: "chatter", nombre: "Chatter", precio: 50000, nota: "Responde y filtra las consultas antes de la venta." },
     { id: "branding", nombre: "Branding / manual de marca", precio: 400000, nota: "Pago único." },
     { id: "desarrollo_web", nombre: "Sitio web", precio: 300000, nota: "Pago único, según el alcance." },
-    { id: "jornada", nombre: "Jornada de producción", precio: 50000, nota: "La primera hora; cada hora extra $25.000 + viáticos." },
+    { id: "jornada", nombre: "Jornada de producción", precio: 70000, nota: "La primera hora; cada hora extra $25.000 + viáticos." },
   ],
   rates: {
     diseno_pieza: 8000,

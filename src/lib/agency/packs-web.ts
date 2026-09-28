@@ -130,13 +130,10 @@ export async function leerPacksDeLaWeb(): Promise<PackWeb[]> {
   if (!res.ok) throw new Error(`La página de packs respondió HTTP ${res.status}.`);
   const packs = parsearPacks(htmlATexto(await res.text()));
 
-  // Guarda: si no encontramos ni un pack con precio, algo cambió en la web y
-  // preferimos no tocar nada antes que guardar basura.
-  if (!packs.some((p) => p.precio_mensual !== null)) {
-    throw new Error(
-      "No se pudo leer ningún precio de la página de packs. Puede haber cambiado el diseño de la web: no se tocaron los precios."
-    );
-  }
+  // Sin precios no se toca nada. Desde el 18/9/2026 la web dice "A cotizar"
+  // a propósito (decisión del dueño): no es un error, así que no se registra
+  // como falla — antes tiraba un error todos los días.
+  if (!packs.some((p) => p.precio_mensual !== null)) return [];
   return packs;
 }
 

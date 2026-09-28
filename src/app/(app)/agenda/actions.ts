@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { requireUser } from "@/lib/auth";
 import { sendPushToUsers } from "@/lib/push";
+import { cuandoReunion } from "@/lib/prospecting/reunion";
 
 export interface MeetingInput {
   titulo: string;
@@ -35,13 +36,9 @@ async function notifyAttendees(
   action: "created" | "updated"
 ) {
   const admin = createAdmin();
-  const when = new Date(startsAt).toLocaleString("es-AR", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  // En hora de Argentina: el server de Vercel corre en UTC y sin fijar la zona
+  // una reunión de las 15 se avisaba "a las 18".
+  const when = cuandoReunion(startsAt);
 
   // Notificar a asistentes (menos el actor) + a admins (menos el actor) que no esten ya en asistentes.
   const recipients = new Set<string>(attendeeIds.filter((id) => id !== actorId));

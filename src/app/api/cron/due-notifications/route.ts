@@ -303,6 +303,17 @@ export async function GET(req: NextRequest) {
   let cobrosGenerados: unknown = null;
   let gastosGenerados: unknown = null;
   let cobroReminders: unknown = null;
+  // El resto de los días: solo las cuentas que arrancaron este mes (y los pagos
+  // únicos). Sin esto, una cuenta que arranca a mitad de mes no se facturaba
+  // nunca ese mes — pasó con Catch, Blasco y Nazar Hogar en septiembre de 2026.
+  if (!esPrimerDiaDeMes) {
+    const periodo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    try {
+      cobrosGenerados = await generateInvoicesForPeriod(admin, periodo, null, { soloAltas: true });
+    } catch (e) {
+      cobrosGenerados = { error: e instanceof Error ? e.message : String(e) };
+    }
+  }
   if (esPrimerDiaDeMes) {
     const periodo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     try {

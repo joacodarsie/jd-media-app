@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { montosDeAbono } from "./invoices";
+import { montosDeAbono, montoDelPeriodo, unicoVaEnEstePeriodo } from "./invoices";
 
 // Casos reales de agosto 2026, que fueron los que destaparon el bug: la factura
 // salía al precio de lista y el recordatorio de cobro pedía otro número.
@@ -94,5 +94,28 @@ describe("montosDeAbono", () => {
   it("ignora servicios de clientes que no están en la lista (pausados o inactivos)", () => {
     const m = montosDeAbono([{ id: "s1", cliente_id: "fantasma", monto_mensual: 350000 }], [magic], "2026-08");
     expect(m.has("s1")).toBe(false);
+  });
+});
+
+describe("montoDelPeriodo", () => {
+  it("el mes de arranque va proporcional a los días que quedan (Catch, 14/9)", () => {
+    // 600.000 / 30 × 17 días (del 14 al 30 inclusive)
+    expect(montoDelPeriodo(600_000, "2026-09-14", "2026-09")).toEqual({ monto: 340_000, proporcional: true });
+  });
+  it("si arranca el 1, va entero", () => {
+    expect(montoDelPeriodo(350_000, "2026-10-01", "2026-10")).toEqual({ monto: 350_000, proporcional: false });
+  });
+  it("los meses siguientes van enteros", () => {
+    expect(montoDelPeriodo(600_000, "2026-09-14", "2026-10")).toEqual({ monto: 600_000, proporcional: false });
+  });
+});
+
+describe("unicoVaEnEstePeriodo", () => {
+  it("un pago único se factura en el mes en que arranca", () => {
+    expect(unicoVaEnEstePeriodo({ fecha_inicio: "2026-09-24" }, "2026-09")).toBe(true);
+    expect(unicoVaEnEstePeriodo({ fecha_inicio: "2026-09-24" }, "2026-10")).toBe(false);
+  });
+  it("sin fecha de inicio usa la de alta", () => {
+    expect(unicoVaEnEstePeriodo({ fecha_inicio: null, created_at: "2026-09-11T10:00:00Z" }, "2026-09")).toBe(true);
   });
 });

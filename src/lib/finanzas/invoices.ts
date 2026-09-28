@@ -13,6 +13,31 @@ import { mergeSettings } from "@/lib/coordinacion";
 import { isClientPausedFor } from "@/lib/client-pause";
 import { applyContractDiscount } from "@/lib/payment-reminder";
 import { vencimientoDePeriodo } from "@/lib/finanzas/ciclo-cobro";
+import { calcularPrimerMes } from "@/lib/finanzas/primer-mes";
+
+/**
+ * Cuánto se factura de un abono ESTE período: el proporcional si la cuenta
+ * arrancó dentro del período (lo que dice la carta acuerdo), el monto completo
+ * si no. Antes la factura del primer mes salía siempre por el mes entero.
+ */
+export function montoDelPeriodo(
+  montoMensual: number,
+  fechaInicioCliente: string | null | undefined,
+  periodo: string
+): { monto: number; proporcional: boolean } {
+  const ini = (fechaInicioCliente ?? "").slice(0, 10);
+  if (ini.slice(0, 7) !== periodo) return { monto: montoMensual, proporcional: false };
+  const p = calcularPrimerMes(montoMensual, ini);
+  return { monto: p.montoEsteMes, proporcional: p.esProporcional };
+}
+
+/** Un servicio de pago único se factura en el mes en que arranca, una sola vez. */
+export function unicoVaEnEstePeriodo(
+  servicio: { fecha_inicio?: string | null; created_at?: string | null },
+  periodo: string
+): boolean {
+  return ((servicio.fecha_inicio ?? servicio.created_at ?? "").slice(0, 7)) === periodo;
+}
 
 export interface GeneratedInvoices {
   abonos: number;
@@ -90,7 +115,17 @@ export function montosDeAbono(
 export async function generateInvoicesForPeriod(
   admin: SupabaseClient,
   periodo: string,
-  creadoPorId: string | null
+  creadoPorId: string | null,
+  opts: {
+    /**
+     * Solo las cuentas que arrancaron en el período (y los pagos únicos). Es la
+     * corrida DIARIA: antes las facturas se armaban solo el día 1 y una cuenta
+     * que arrancaba a mitad de mes no se facturaba nunca ese mes (Catch,
+     * Blasco y Nazar Hogar en septiembre de 2026). No toca a las demás, para no
+     * volver a crear una factura del mes que alguien borró a propósito.
+     */
+    soloAltas?: boolean;
+  } = {}
 ): Promise<GeneratedInvoices> {
   const [{ data: clientsRaw }, { data: svcRaw }, { data: existingRaw }, { data: settingsRow }] =
     await Promise.all([
@@ -105,7 +140,7 @@ export async function generateInvoicesForPeriod(
         .eq("es_interno", false),
       admin
         .from("client_services")
-        .select("id, cliente_id, tipo, pack, monto_mensual, moneda, facturacion")
+        .select("id, cliente_id, tipo, pack, monto_mensual, moneda, facturacion, fecha_inicio, created_at")
         .eq("activo", true)
         .not("monto_mensual", "is", null),
       admin.from("client_invoices").select("service_id, cliente_id, concepto").eq("periodo", periodo),
@@ -133,8 +168,7 @@ export async function generateInvoicesForPeriod(
   }[];
   const invoicedServiceIds = new Set(existing.map((i) => i.service_id).filter(Boolean));
 
-  // ── Abonos mensuales: una factura por servicio recurrente con monto ──
-  const mensuales = ((svcRaw ?? []) as {
+  const servicios = (svcRaw ?? []) as {
     id: string;
     cliente_id: string;
     tipo: string;
@@ -142,7 +176,15 @@ export async function generateInvoicesForPeriod(
     monto_mensual: number;
     moneda: string | null;
     facturacion: string | null;
-  }[]).filter((s) => (s.facturacion ?? "mensual") === "mensual");
+    fecha_inicio: string | null;
+    created_at: string | null;
+  }[];
+  // La corrida diaria solo mira las cuentas que arrancaron en este período.
+  const esAlta = (clienteId: string) =>
+    (clientById.get(clienteId)?.fecha_inicio ?? "").slice(0, 7) === periodo;
+
+  // ── Abonos mensuales: una factura por servicio recurrente con monto ──
+  const mensuales = servicios.filter((s) => (s.facturacion ?? "mensual") === "mensual");
 
   const montoPorServicio = montosDeAbono(mensuales, clients, periodo);
 
@@ -150,24 +192,65 @@ export async function generateInvoicesForPeriod(
   for (const s of mensuales) {
     const cliente = clientById.get(s.cliente_id);
     if (!cliente) continue; // inactivo o interno
+    if (opts.soloAltas && !esAlta(s.cliente_id)) continue;
     if (invoicedServiceIds.has(s.id)) continue;
 
-    const monto = montoPorServicio.get(s.id) ?? Number(s.monto_mensual || 0);
+    const mensual = montoPorServicio.get(s.id) ?? Number(s.monto_mensual || 0);
+    // El mes de arranque se cobra proporcional a los días que quedan.
+    const { monto, proporcional } = montoDelPeriodo(mensual, cliente.fecha_inicio, periodo);
+    const desde = (cliente.fecha_inicio ?? "").slice(0, 10);
 
     const { error } = await admin.from("client_invoices").insert({
       cliente_id: s.cliente_id,
       service_id: s.id,
       periodo,
-      concepto: `${cliente.nombre} · ${s.tipo}${s.pack ? ` (${s.pack})` : ""} — ${periodo}`,
+      concepto: `${cliente.nombre} · ${s.tipo}${s.pack ? ` (${s.pack})` : ""} — ${periodo}${
+        proporcional ? ` (proporcional desde el ${desde.slice(8, 10)}/${desde.slice(5, 7)})` : ""
+      }`,
       monto,
       moneda: s.moneda ?? "ARS",
-      fecha_emision: `${periodo}-01`,
+      fecha_emision: proporcional ? desde : `${periodo}-01`,
       // Vence el 5: la ventana de cobro va del 1 al 5 del mes, para llegar con
-      // la plata a los sueldos del 7. Ver lib/finanzas/ciclo-cobro.
-      fecha_vencimiento: vencimientoDePeriodo(periodo),
+      // la plata a los sueldos del 7. Ver lib/finanzas/ciclo-cobro. El primer
+      // mes de una cuenta que arranca empezado el mes se paga al firmar.
+      fecha_vencimiento: proporcional ? desde : vencimientoDePeriodo(periodo),
       creado_por_id: creadoPorId,
     });
     if (!error) abonos++;
+  }
+
+  // ── Pagos únicos (Pack Marca Real, edición suelta, web…) ──
+  // Nunca se facturaban: la corrida solo miraba lo mensual. Van una sola vez,
+  // en el mes en que arranca el servicio, por el monto completo.
+  const unicos = servicios.filter(
+    (s) => s.facturacion === "unico" && clientById.has(s.cliente_id) && unicoVaEnEstePeriodo(s, periodo)
+  );
+  if (unicos.length > 0) {
+    const { data: yaFacturados } = await admin
+      .from("client_invoices")
+      .select("service_id")
+      .in(
+        "service_id",
+        unicos.map((s) => s.id)
+      );
+    const facturados = new Set(((yaFacturados ?? []) as { service_id: string }[]).map((i) => i.service_id));
+    for (const s of unicos) {
+      if (facturados.has(s.id)) continue;
+      const cliente = clientById.get(s.cliente_id)!;
+      const fecha = (s.fecha_inicio ?? s.created_at ?? `${periodo}-01`).slice(0, 10);
+      const { error } = await admin.from("client_invoices").insert({
+        cliente_id: s.cliente_id,
+        service_id: s.id,
+        periodo,
+        concepto: `${cliente.nombre} · ${s.tipo}${s.pack ? ` (${s.pack})` : ""} — pago único`,
+        monto: Number(s.monto_mensual || 0),
+        moneda: s.moneda ?? "ARS",
+        fecha_emision: fecha,
+        fecha_vencimiento: fecha,
+        creado_por_id: creadoPorId,
+      });
+      if (!error) abonos++;
+    }
   }
 
   // ── Puesta en marcha: pago único del PRIMER mes de cada cuenta nueva ──

@@ -7,6 +7,7 @@ import {
   ensureProspectingNudges,
   ensureRevisionCreativaNudges,
   ensureAprobacionNudges,
+  ensureIdeasParaAprobarNudges,
 } from "@/lib/notifications";
 import {
   runMonthEndCompliance,
@@ -133,6 +134,14 @@ export async function GET(req: NextRequest) {
     aprobaciones = await ensureAprobacionNudges(admin);
   } catch (e) {
     aprobaciones = { error: e instanceof Error ? e.message : "falló" };
+  }
+
+  // Calendarios que esperan al director creativo: nadie se lo avisaba (29/9).
+  let ideasParaAprobar: unknown = null;
+  try {
+    ideasParaAprobar = await ensureIdeasParaAprobarNudges(admin);
+  } catch (e) {
+    ideasParaAprobar = { error: e instanceof Error ? e.message : "falló" };
   }
 
   // Recordatorio a cada CM de las piezas que salieron sin el link del posteo.
@@ -470,6 +479,7 @@ export async function GET(req: NextRequest) {
     rutinas,
     revision_creativa: revisionCreativa,
     aprobaciones,
+    ideasParaAprobar,
     refill,
     tasks_archived: archivedRows?.length ?? 0,
     notifications_purged: (purgedNotifs?.length ?? 0) + purgadosCerrados,

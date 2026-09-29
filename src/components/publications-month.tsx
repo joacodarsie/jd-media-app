@@ -209,6 +209,11 @@ export function PublicationsMonth({
   const [clienteSearchOpen, setClienteSearchOpen] = useState(false);
 
   useEffect(() => {
+    // El aviso de calendarios para aprobar abre directo la bandeja.
+    if (new URLSearchParams(window.location.search).get("vista") === "aprobar") {
+      setMode("aprobar");
+      return;
+    }
     const v = localStorage.getItem("jd:contenidos:mode") as Mode | null;
     if (v === "mes" || v === "kanban" || v === "tabla") {
       setMode(v);

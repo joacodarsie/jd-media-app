@@ -13,6 +13,7 @@ import {
   type PiezaEnRevision,
 } from "./contenidos/revision-creativa";
 import { personasClave } from "./tareas/personas-clave";
+import { avisoIdeasParaAprobar, DIAS_ADELANTE, type CuentaActiva, type IdeaPendiente } from "./contenidos/ideas-para-aprobar";
 import { avisosDeAprobacionVencida, type TareaEsperando } from "./tareas/puerta";
 
 /** Roles de los que se espera que prospecten (los que reciben el aviso). */
@@ -456,4 +457,45 @@ export async function ensureAprobacionNudges(admin: SupabaseClient) {
     avisados++;
   }
   return { avisados, vencidas: avisos.length };
+}
+
+/**
+ * Los calendarios que esperan al director creativo: un aviso por día con las
+ * ideas de las próximas dos semanas sin aprobar. Ver lib/contenidos/ideas-para-aprobar.
+ */
+export async function ensureIdeasParaAprobarNudges(admin: SupabaseClient) {
+  const hoy = formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM-dd");
+  const inicioHoyCordoba = toZonedTime(new Date(hoy + "T00:00:00"), TIMEZONE);
+  const { directoraId } = await personasClave();
+  if (!directoraId) return { avisados: 0 };
+
+  const hasta = formatInTimeZone(new Date(Date.now() + (DIAS_ADELANTE + 1) * 86_400_000), TIMEZONE, "yyyy-MM-dd");
+  const [{ data: ideasRaw }, { data: cuentasRaw }] = await Promise.all([
+    admin
+      .from("publications")
+      .select("cliente_id, fecha_publicacion")
+      .eq("estado", "idea")
+      .gte("fecha_publicacion", hoy)
+      .lte("fecha_publicacion", hasta),
+    admin.from("clients").select("id, nombre, estado").eq("estado", "activo"),
+  ]);
+  const mensaje = avisoIdeasParaAprobar(
+    (ideasRaw ?? []) as IdeaPendiente[],
+    (cuentasRaw ?? []) as CuentaActiva[],
+    hoy
+  );
+  if (!mensaje) return { avisados: 0 };
+
+  const link = "/contenidos?vista=aprobar";
+  const { data: yaHay } = await admin
+    .from("notifications")
+    .select("id")
+    .eq("user_id", directoraId)
+    .eq("tipo", "recordatorio")
+    .eq("link", link)
+    .gte("created_at", inicioHoyCordoba.toISOString())
+    .limit(1);
+  if (yaHay?.length) return { avisados: 0 };
+  await admin.from("notifications").insert({ user_id: directoraId, tipo: "recordatorio", mensaje, link, task_id: null });
+  return { avisados: 1 };
 }

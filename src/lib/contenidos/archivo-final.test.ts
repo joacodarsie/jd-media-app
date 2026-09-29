@@ -117,3 +117,16 @@ describe("motivoParaNoCerrar", () => {
     expect(motivo).toContain("archivo final de la pieza");
   });
 });
+
+describe("mandar a aprobar pide el archivo siempre (29/9)", () => {
+  const tareaVieja = { area: "Diseño", creadaEn: VIEJA, publicationId: "p1" };
+  it("una tarea vieja sin archivo ya no puede ir a aprobación", () => {
+    expect(motivoParaNoCerrar(tareaVieja, pieza(), "en_revision")).toContain("falta subir el archivo final");
+  });
+  it("con el link del Drive o del Canva alcanza para mandarla a aprobar", () => {
+    expect(motivoParaNoCerrar(tareaVieja, pieza({ asset_url: "https://canva.com/x" }), "en_revision")).toBeNull();
+  });
+  it("cerrar del todo una tarea vieja sigue sin pedir nada", () => {
+    expect(motivoParaNoCerrar(tareaVieja, pieza(), "completada")).toBeNull();
+  });
+});

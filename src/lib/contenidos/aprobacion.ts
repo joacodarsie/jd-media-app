@@ -22,6 +22,8 @@ export interface PiezaParaAprobar {
   tipo?: string | null;
   asset_url?: string | null;
   link_instagram?: string | null;
+  /** El archivo final subido a la app ("Subir archivo final"). */
+  publish_media?: unknown[] | null;
 }
 
 /** Los tipos que produce edición y no diseño. */
@@ -50,9 +52,16 @@ export function destinoAlAprobar(p: PiezaParaAprobar): string | null {
   return null;
 }
 
-/** ¿La pieza tiene cargado el archivo final (Drive, Canva o el posteo)? */
+/**
+ * ¿La pieza tiene algo para ver: el archivo final subido a la app, o un link
+ * (Drive, Canva o el posteo)?
+ *
+ * El archivo subido cuenta (29/9/2026): era lo único que la app le exige a
+ * diseño para mandar a aprobar, y la aprobación no lo miraba. El director
+ * creativo recibía la pieza con el archivo adentro y la app le pedía un link.
+ */
 export function tieneArchivo(p: PiezaParaAprobar): boolean {
-  return !!(p.asset_url?.trim() || p.link_instagram?.trim());
+  return !!(p.asset_url?.trim() || p.link_instagram?.trim() || (p.publish_media?.length ?? 0) > 0);
 }
 
 /**
@@ -64,7 +73,7 @@ export function tieneArchivo(p: PiezaParaAprobar): boolean {
 export function motivoParaNoAprobar(p: PiezaParaAprobar): string | null {
   if (etapaDeAprobacion(p) === null) return "Esta pieza no está esperando una aprobación.";
   if (etapaDeAprobacion(p) === "pieza" && !tieneArchivo(p)) {
-    return "Cargá el link del Drive o del Canva donde está la pieza: sin eso no se puede aprobar ni mandársela al cliente.";
+    return "Esta pieza llegó sin el archivo: no hay nada para aprobar. Devolvela con una corrección (\"falta subir el archivo\") o cargá acá el link del Drive o del Canva si lo tenés.";
   }
   return null;
 }

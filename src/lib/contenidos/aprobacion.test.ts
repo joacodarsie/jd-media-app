@@ -126,3 +126,12 @@ describe("bandejaDeAprobacion", () => {
     expect(out.terminadas).toHaveLength(1);
   });
 });
+
+describe("el archivo subido a la app cuenta para aprobar (29/9)", () => {
+  it("una pieza con el archivo final subido se puede aprobar aunque no tenga link", () => {
+    expect(motivoParaNoAprobar({ estado: "revision_creativa", publish_media: [{ path: "a.jpg" }] })).toBeNull();
+  });
+  it("sin archivo ni link, el motivo le dice al director creativo que la devuelva", () => {
+    expect(motivoParaNoAprobar({ estado: "revision_creativa" })).toContain("Devolvela");
+  });
+});

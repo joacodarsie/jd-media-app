@@ -60,9 +60,13 @@ export function tieneArchivoFinal(pieza: PiezaDeLaTarea | null | undefined): boo
 }
 
 /** ¿A esta tarea le corresponde entregar un archivo? */
-export function entregaArchivo(tarea: TareaParaCerrar): boolean {
+export function entregaArchivo(tarea: TareaParaCerrar, estadoNuevo?: string): boolean {
   if (!tarea.publicationId) return false;
   if (!AREAS_QUE_ENTREGAN_ARCHIVO.includes(tarea.area ?? "")) return false;
+  // Mandar a aprobar pide el archivo SIEMPRE, sea vieja o nueva la tarea: la
+  // excepción por fecha dejaba llegar piezas vacías al director creativo, que
+  // no podía aprobarlas (29/9/2026, 5 de las 6 que esperaban a Santi).
+  if (estadoNuevo === "en_revision") return true;
   const creada = tarea.creadaEn?.slice(0, 10);
   return !!creada && creada >= ARCHIVO_OBLIGATORIO_DESDE;
 }
@@ -78,8 +82,10 @@ export function motivoParaNoCerrar(
   estadoNuevo: string
 ): string | null {
   if (!ESTADOS_DE_CIERRE.includes(estadoNuevo)) return null;
-  if (!entregaArchivo(tarea)) return null;
+  if (!entregaArchivo(tarea, estadoNuevo)) return null;
   if (tieneArchivoFinal(pieza)) return null;
+  // Para mandar a aprobar alcanza con que haya algo para ver: el link sirve.
+  if (estadoNuevo === "en_revision" && pieza?.asset_url?.trim()) return null;
 
   const conLink = !!pieza?.asset_url?.trim();
   const cual = pieza?.titulo?.trim() ? `"${pieza.titulo.trim()}"` : "la pieza";

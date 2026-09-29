@@ -193,7 +193,7 @@ export async function changePublicationStatus(
   const { data: pub } = await admin
     .from("publications")
     .select(
-      "cliente_id, estado, titulo, tipo, asset_url, fecha_publicacion, created_at, link_instagram"
+      "cliente_id, estado, titulo, tipo, asset_url, fecha_publicacion, created_at, link_instagram, publish_media"
     )
     .eq("id", id)
     .maybeSingle();
@@ -227,7 +227,7 @@ export async function changePublicationStatus(
   const motivoArchivo = motivoParaNoProgramar({
     estadoNuevo: estado,
     estadoAnterior: pub.estado as string,
-    pieza: pub as { estado: string; asset_url?: string | null; link_instagram?: string | null },
+    pieza: pub as { estado: string; asset_url?: string | null; link_instagram?: string | null; publish_media?: unknown[] | null },
     linkNuevo: linkPosteo,
   });
   if (motivoArchivo) return { error: motivoArchivo, faltaArchivo: true };
@@ -546,13 +546,14 @@ export async function bulkChangePublicationStatus(ids: string[], estado: string)
   if (estado === "aprobado") {
     const { data: piezas } = await writeDb()
       .from("publications")
-      .select("id, titulo, estado, asset_url, link_instagram")
+      .select("id, titulo, estado, asset_url, link_instagram, publish_media")
       .in("id", ids);
     const sinArchivo = ((piezas ?? []) as unknown as {
       titulo: string | null;
       estado: string;
       asset_url: string | null;
       link_instagram: string | null;
+      publish_media: unknown[] | null;
     }[]).filter(
       (x) =>
         motivoParaNoProgramar({
@@ -686,6 +687,7 @@ type PiezaDecidible = {
   cliente_id: string;
   asset_url: string | null;
   link_instagram: string | null;
+  publish_media: unknown[] | null;
   creado_por_id: string | null;
   audiovisual_id: string | null;
   task_id: string | null;
@@ -695,7 +697,7 @@ async function piezaParaDecidir(id: string) {
   const { data } = await writeDb()
     .from("publications")
     .select(
-      "id, estado, tipo, titulo, cliente_id, asset_url, link_instagram, creado_por_id, audiovisual_id, task_id"
+      "id, estado, tipo, titulo, cliente_id, asset_url, link_instagram, publish_media, creado_por_id, audiovisual_id, task_id"
     )
     .eq("id", id)
     .maybeSingle();

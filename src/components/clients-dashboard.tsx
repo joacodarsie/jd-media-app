@@ -17,6 +17,7 @@ import type { Client, TaskWithRels } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { TaskList } from "@/components/task-list";
 import { LINEAS, type LineaServicio } from "@/lib/clientes/linea-de-servicio";
+import { ORDENES, detalleFecha, ordenarClientes, type OrdenClientes } from "@/lib/clientes/orden";
 
 function fmtPesos(n: number): string {
   return "$" + Math.round(n).toLocaleString("es-AR");
@@ -98,14 +99,26 @@ export function ClientsDashboard({
   const [resp, setResp] = useState<string>("__all__");
   const [equipo, setEquipo] = useState<string>("__all__");
   const [porEquipo, setPorEquipo] = useState(false);
+  const [orden, setOrden] = useState<OrdenClientes>("nombre");
 
   useEffect(() => {
-    const v = localStorage.getItem("jd:clientes:quick") as Quick | null;
-    if (v && QUICK_LABEL[v]) setQuick(v);
+    try {
+      const v = localStorage.getItem("jd:clientes:quick") as Quick | null;
+      if (v && QUICK_LABEL[v]) setQuick(v);
+      const o = localStorage.getItem("jd:clientes:orden") as OrdenClientes | null;
+      if (o && ORDENES.some((x) => x.value === o)) setOrden(o);
+    } catch {}
   }, []);
   useEffect(() => {
-    localStorage.setItem("jd:clientes:quick", quick);
+    try {
+      localStorage.setItem("jd:clientes:quick", quick);
+    } catch {}
   }, [quick]);
+  useEffect(() => {
+    try {
+      localStorage.setItem("jd:clientes:orden", orden);
+    } catch {}
+  }, [orden]);
 
   const byClient = useMemo(() => {
     const m = new Map<string, TaskWithRels[]>();
@@ -150,7 +163,7 @@ export function ClientsDashboard({
   }, [realClients]);
 
   const filtered = useMemo(() => {
-    return realClients.filter((c) => {
+    const visibles = realClients.filter((c) => {
       // Los que firmaron y nunca pagaron ya no se mezclan en ningún lado: solo
       // aparecen si se pide "Todos". Ese caso hoy se maneja como propuesta.
       if (c.estado === "esperando_pago" && quick !== "todos") return false;
@@ -168,7 +181,8 @@ export function ClientsDashboard({
       if (q && !c.nombre.toLowerCase().includes(q.toLowerCase())) return false;
       return true;
     });
-  }, [realClients, quick, pack, resp, equipo, q]);
+    return ordenarClientes(visibles, orden);
+  }, [realClients, quick, pack, resp, equipo, q, orden]);
 
   const counts = useMemo(
     () => ({
@@ -237,6 +251,18 @@ export function ClientsDashboard({
             <option key={id} value={id}>{n}</option>
           ))}
         </select>
+        <select
+          value={orden}
+          onChange={(e) => setOrden(e.target.value as OrdenClientes)}
+          className="h-9 rounded-md border bg-background px-2 text-sm"
+          aria-label="Ordenar por"
+        >
+          {ORDENES.map((o) => (
+            <option key={o.value} value={o.value}>
+              Ordenar: {o.label}
+            </option>
+          ))}
+        </select>
         {teams.length > 0 && (
           <>
             <select
@@ -295,6 +321,7 @@ export function ClientsDashboard({
                     tasks={byClient.get(c.id) ?? []}
                     nextPub={pubByClient.get(c.id) ?? null}
                     pubsTotal={pubCountByClient.get(c.id) ?? 0}
+                    fecha={detalleFecha(c, orden)}
                   />
                 ))}
               </div>
@@ -332,6 +359,7 @@ export function ClientsDashboard({
                     tasks={byClient.get(c.id) ?? []}
                     nextPub={pubByClient.get(c.id) ?? null}
                     pubsTotal={pubCountByClient.get(c.id) ?? 0}
+                    fecha={detalleFecha(c, orden)}
                   />
                 ))}
               </div>
@@ -375,11 +403,14 @@ function ClientCard({
   tasks,
   nextPub,
   pubsTotal,
+  fecha,
 }: {
   client: ClientRow;
   tasks: TaskWithRels[];
   nextPub?: UpcomingPub | null;
   pubsTotal?: number;
+  /** "entró el 1 jun 2026" / "se fue el …", según el orden elegido. */
+  fecha?: string | null;
 }) {
   const activas = tasks.filter((t) => t.estado !== "completada");
   const vencidas = activas.filter(
@@ -430,6 +461,7 @@ function ClientCard({
           </div>
           <div className="mt-0.5 text-xs text-muted-foreground">
             {client.pack} · {client.cm?.nombre ?? "Sin CM"}
+            {fecha && <> · {fecha}</>}
           </div>
           {(nextPub || equipo.length > 0) && (
             <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">

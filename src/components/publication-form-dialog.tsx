@@ -31,6 +31,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { BriefPorSlides } from "@/components/brief-por-slides";
+import { usaSlides } from "@/lib/contenidos/estructura-pieza";
 import { AIContentSuggester } from "@/components/ai-content-suggester";
 import { PublicationAutoPublish } from "@/components/publication-auto-publish";
 import {
@@ -389,7 +391,11 @@ export function PublicationFormDialog({
             </div>
           )}
 
-          {needsDescription && (
+          {needsDescription && usaSlides(tipo) && (
+            <BriefPorSlides value={descripcion} onChange={setDescripcion} tipo={tipo} />
+          )}
+
+          {needsDescription && !usaSlides(tipo) && (
             <div className="space-y-2">
               <Label>Descripción de la idea</Label>
               <Textarea

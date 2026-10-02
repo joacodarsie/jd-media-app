@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { PUBLICATION_TYPE_HEX } from "@/lib/constants";
+import { DescripcionPieza } from "@/components/descripcion-pieza";
 
 /**
  * Calendario de contenidos del Cliente Portal.
@@ -445,7 +446,13 @@ function PubDetail({ pub, token, onClose }: { pub: PortalPub; token: string; onC
         )}
 
         {pub.descripcion && (
-          <p style={{ fontSize: 14, color: "#444", lineHeight: 1.6, marginTop: 14 }}>{pub.descripcion}</p>
+          <div style={{ marginTop: 14 }}>
+            <DescripcionPieza
+              texto={pub.descripcion}
+              portal
+              libre={<p style={{ fontSize: 14, color: "#444", lineHeight: 1.6 }}>{pub.descripcion}</p>}
+            />
+          </div>
         )}
 
         {pub.guion && (

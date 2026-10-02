@@ -53,18 +53,21 @@ NO propongas hashtags ni bloques de hashtags en ningún campo. Hoy no mueven alc
 
 # Detalle de diseño en cada tema (campo descripcion)
 La \`descripcion\` de cada tema es el brief que ejecuta el equipo de diseño/edición: tiene que ser concreta y accionable, no quedarse en el título.
-- **Carrusel** → desglosá PLACA POR PLACA, con **una placa por línea y un renglón vacío entre placa y placa**. Nunca en un solo párrafo corrido: el diseñador tiene que poder ver de un vistazo dónde termina una placa y empieza la otra. Formato exacto:
+- **Carrusel** → título, slide por slide (una por línea, numeradas), cierre y CTA. Nunca en un solo párrafo corrido: el diseñador tiene que ver de un vistazo qué va en cada slide. Formato EXACTO (la app lo lee y lo muestra ordenado):
 
 \`\`\`
-Placa 1: <el texto/dato que va ESCRITO en la placa>
-   Diseño: <qué se ve, jerarquía visual, ícono/foto/dato, por qué retiene>
+TÍTULO: <la frase de la portada: el gancho que frena el scroll>
 
-Placa 2: <texto>
-   Diseño: <...>
+SLIDES:
+1. <el texto que va ESCRITO en la slide>. Fondo: <qué se ve>
+2. <texto>. Fondo: <...>
+
+CIERRE: <la frase de la última slide>
+CTA: <la acción concreta>
 \`\`\`
 
-  Placa 1 = gancho que frena el scroll; última = CTA.
-- **Post** → el texto que va sobre la placa + una idea visual concreta (composición, foco, elemento de marca).
+  Entre 4 y 8 slides. Si hay algo general para diseño (paleta, clima visual), va al final en una línea "NOTAS: ...".
+- **Post** → el mismo formato con una sola slide: TÍTULO, SLIDES con "1. <texto>. Fondo: <qué se ve>" y CTA.
 - **Reel/video** → la idea y guion en líneas generales + concepto visual (gancho de los primeros segundos, planos, texto en pantalla).
 - **Historia** → qué muestra y el mecanismo de interacción (encuesta, pregunta, link, recordatorio).
 
@@ -158,7 +161,7 @@ export const SAVE_CONTENT_PLAN_TOOL = {
             descripcion: {
               type: "string",
               description:
-                "Brief de diseño/producción DETALLADO y accionable (no solo el título). CARRUSEL: desglose placa por placa, UNA PLACA POR LÍNEA y un renglón vacío entre placas — nunca un párrafo corrido. Formato: \"Placa 1: <texto de la placa>\n   Diseño: <idea visual>\n\nPlaca 2: ...\". Placa 1 = gancho, última = CTA. POST: texto sobre la placa + idea visual. REEL/VIDEO: idea + concepto visual con el gancho de los primeros segundos. HISTORIA: qué muestra + mecanismo de interacción. Pensado para que la pieza tenga potencial de viralizar.",
+                "Brief de diseño/producción DETALLADO y accionable (no solo el título). CARRUSEL: formato EXACTO \"TÍTULO: <gancho de la portada>\n\nSLIDES:\n1. <texto de la slide>. Fondo: <qué se ve>\n2. ...\n\nCIERRE: <frase final>\nCTA: <acción>\", una slide por línea, nunca un párrafo corrido. POST: el mismo formato con una sola slide. REEL/VIDEO: idea + concepto visual con el gancho de los primeros segundos. HISTORIA: qué muestra + mecanismo de interacción. Pensado para que la pieza tenga potencial de viralizar.",
             },
             hook: {
               type: "string",

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import type { MonthlyContentPlan, TemaDestacado } from "@/lib/content-plans/schema";
 import { suggestPublicationContent } from "@/app/(app)/contenidos/ai-actions";
+import { descripcionDesdeSugerencia } from "@/lib/contenidos/estructura-pieza";
 
 type ActionResult<T = unknown> = { ok: true; data?: T } | { ok: false; error: string };
 
@@ -197,17 +198,8 @@ async function autoFillCopyForPub(args: {
     // El brief de diseño: si es carrusel, las placas resueltas una por una —
     // que era justo lo que faltaba para que diseño no tuviera que interpretar.
     const s = res.suggestion;
-    const descripcion = [
-      s.slides.length > 0
-        ? s.slides
-            .map((sl) => `Placa ${sl.n}: ${sl.texto}\n   Diseño: ${sl.diseno}`)
-            .join("\n\n")
-        : "",
-      s.descripcion,
-      s.cta ? `CTA: ${s.cta}` : "",
-    ]
-      .filter(Boolean)
-      .join("\n\n");
+    // Carrusel y post, ordenados por slide (título, slides con fondo, CTA).
+    const descripcion = descripcionDesdeSugerencia(s, tipo);
 
     const admin = createAdmin();
     await admin

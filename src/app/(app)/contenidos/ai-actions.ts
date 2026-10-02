@@ -595,7 +595,7 @@ function buildPrompt(
   }
   if (tipo === "carrusel") {
     lines.push(
-      "Como es CARRUSEL, en 'descripcion' desglosá placa por placa (texto + idea de diseño de cada una)."
+      "Como es CARRUSEL, desglosá placa por placa en 'slides' (texto + fondo de cada una). En 'descripcion' va solo el concepto general: no repitas las placas."
     );
   }
   if (hint && hint.trim()) {

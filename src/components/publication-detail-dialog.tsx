@@ -34,6 +34,7 @@ import { PublicationFrenadoToggle } from "@/components/publication-frenado-toggl
 import { PublicationFinalFields } from "@/components/publication-final-fields";
 import { PublicationTiktokToggle } from "@/components/publication-tiktok-toggle";
 import { ClientPubComments } from "@/components/client-pub-comments";
+import { DescripcionPieza } from "@/components/descripcion-pieza";
 import {
   PublicationFormDialog,
   type ClientForPub,
@@ -165,7 +166,7 @@ export function PublicationDetailDialog({
           {p.descripcion && (
             <div className="rounded-md border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-900 dark:bg-blue-950/30">
               <h4 className="mb-1 font-semibold text-blue-900 dark:text-blue-200">Descripción de la idea</h4>
-              <Markdown>{p.descripcion}</Markdown>
+              <DescripcionPieza texto={p.descripcion} libre={<Markdown>{p.descripcion}</Markdown>} />
             </div>
           )}
 

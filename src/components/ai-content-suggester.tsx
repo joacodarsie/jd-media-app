@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { descripcionDesdeSugerencia } from "@/lib/contenidos/estructura-pieza";
 import {
   suggestPublicationContent,
   type AISuggestion,
@@ -76,18 +77,9 @@ export function AIContentSuggester({
 
   function applyIt() {
     if (!suggestion) return;
-    // Las placas van al brief de diseño, que es donde las busca quien produce.
-    const descripcion = [
-      suggestion.slides.length > 0
-        ? suggestion.slides
-            .map((s) => `Placa ${s.n}: ${s.texto}\n   Diseño: ${s.diseno}`)
-            .join("\n\n")
-        : "",
-      suggestion.descripcion,
-      suggestion.cta ? `CTA: ${suggestion.cta}` : "",
-    ]
-      .filter(Boolean)
-      .join("\n\n");
+    // Las placas van al brief de diseño, ordenadas por slide (título, slides
+    // con su fondo, CTA): es como diseño pidió recibirlas.
+    const descripcion = descripcionDesdeSugerencia(suggestion, tipo);
 
     onApply({
       copy: suggestion.copy,

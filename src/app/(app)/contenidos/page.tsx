@@ -9,6 +9,7 @@ import { PublicationsMonth } from "@/components/publications-month";
 import { HelpTrigger } from "@/components/help-trigger";
 import { DismissibleHint } from "@/components/dismissible-hint";
 import { computePuntualidadCuenta, clasificarPieza } from "@/lib/contenidos/puntualidad";
+import { sinIdeasParaProduccion } from "@/lib/contenidos/visibilidad";
 
 export const dynamic = "force-dynamic";
 
@@ -74,7 +75,8 @@ export default async function ContenidosPage({
   const teamByClient = new Map(
     ((teamClientsRaw ?? []) as { id: string; team_id: string }[]).map((c) => [c.id, c.team_id])
   );
-  let visiblePubs = pubs ?? [];
+  // Diseño y edición ven el calendario recién aprobado por el director creativo.
+  let visiblePubs = sinIdeasParaProduccion((pubs ?? []) as { estado: string }[], me) as NonNullable<typeof pubs>;
   if (equipoFiltro && teams.some((t) => t.id === equipoFiltro)) {
     clients = clients.filter((c) => teamByClient.get(c.id) === equipoFiltro);
     const ids = new Set(clients.map((c) => c.id));

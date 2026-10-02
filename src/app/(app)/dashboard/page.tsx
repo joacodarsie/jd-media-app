@@ -14,6 +14,7 @@ import {
   Video,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
+import { sinIdeasParaProduccion } from "@/lib/contenidos/visibilidad";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { ensureDueNotifications } from "@/lib/notifications";
@@ -258,7 +259,8 @@ export default async function DashboardPage() {
 
   const tasks = (taskData ?? []) as TaskWithRels[];
   tasks.sort((a, b) => PRIORITY_ORDER[a.prioridad] - PRIORITY_ORDER[b.prioridad]);
-  const pubsHoy = (clientPubsToday ?? []) as unknown as PublicationWithRels[];
+  // Diseño y edición no ven las ideas que el director creativo no aprobó.
+  const pubsHoy = sinIdeasParaProduccion((clientPubsToday ?? []) as unknown as PublicationWithRels[], user);
 
   // Archivada = fuera de la lista, igual que completada. Si no, el arrastre
   // viejo vuelve a aparecer como "atrasado" aunque ya se haya limpiado.
@@ -349,7 +351,7 @@ export default async function DashboardPage() {
   const todayYmd = now.toISOString().slice(0, 10);
   const myClientsList = (myClients ?? []) as ClientLite[];
   const allClientTasks = (clientTasksRaw ?? []) as unknown as ClientTaskLite[];
-  const allClientPubsWeek = (clientPubsWeekRaw ?? []) as unknown as ClientPubLite[];
+  const allClientPubsWeek = sinIdeasParaProduccion((clientPubsWeekRaw ?? []) as unknown as ClientPubLite[], user);
 
   type PerClientRow = {
     client: ClientLite;

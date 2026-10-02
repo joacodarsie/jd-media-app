@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireUser, getAccessibleClientIds } from "@/lib/auth";
+import { sinIdeasParaProduccion } from "@/lib/contenidos/visibilidad";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveClients, getActiveUsers } from "@/lib/cache";
 import {
@@ -140,7 +141,8 @@ export default async function GuionesPage({
     pubQuery,
     getActiveClients(),
   ]);
-  const pubs = (pubsRaw ?? []) as PubRow[];
+  // Diseño y edición ven el calendario recién aprobado por el director creativo.
+  const pubs = sinIdeasParaProduccion((pubsRaw ?? []) as PubRow[], me);
   const clientById = new Map(
     (allClients as ClientRow[]).map((c) => [c.id, c])
   );

@@ -35,8 +35,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { MeetingFormDialog } from "@/components/meeting-form-dialog";
 import type { InternalMeetingWithRels } from "@/lib/types";
+import { tipoDeReunion, type TipoEventoAgenda } from "@/lib/agenda/eventos";
+import { moverEventoAgenda, moverJornadaSuelta } from "@/app/(app)/agenda/actions";
 
 interface Connection {
   id: string;
@@ -94,6 +98,46 @@ interface CalendarEvent {
   _createdBy?: string;
   /** Datos crudos de la reunion interna para precargar el form al editar. */
   _meetingRaw?: InternalMeetingWithRels;
+  /** Qué es: define el color (reunión del equipo, con cliente, jornada). */
+  _tipo?: TipoEventoAgenda;
+  /** Jornada cargada a mano en /coordinacion/jornadas (sin evento propio). */
+  _sessionId?: string;
+}
+
+/** Una jornada registrada en Sueldos que no se agendó desde la Agenda. */
+export interface JornadaSuelta {
+  id: string;
+  fecha: string;
+  cliente: string | null;
+  horas: number | null;
+  lugar: string | null;
+}
+
+function jornadaToEvent(j: JornadaSuelta): CalendarEvent {
+  // Mediodía de Argentina: cae en el día correcto sea cual sea la zona.
+  const start = `${j.fecha}T15:00:00.000Z`;
+  return {
+    id: `jornada-${j.id}`,
+    summary: `Jornada${j.cliente ? ` · ${j.cliente}` : ""}`,
+    description: j.horas ? `${j.horas} h` : undefined,
+    start,
+    end: start,
+    isAllDay: true,
+    location: j.lugar ?? undefined,
+    status: "confirmed",
+    source_id: INTERNAL_SOURCE_ID,
+    source_label: "Jornadas",
+    source_email: "",
+    source_visibility: "shared",
+    _internal: true,
+    _tipo: "jornada",
+    _sessionId: j.id,
+  };
+}
+
+/** Se puede arrastrar: lo que vive en la app (no Google Calendar). */
+function esMovible(e: CalendarEvent): boolean {
+  return !!(e._meetingId || e._sessionId);
 }
 
 const INTERNAL_SOURCE_ID = "__internal_jd__";
@@ -122,14 +166,14 @@ function internalToEvent(m: InternalMeetingWithRels): CalendarEvent {
     _meetingId: m.id,
     _createdBy: m.created_by,
     _meetingRaw: m,
+    _tipo: tipoDeReunion(m),
   };
 }
 
 type ViewMode = "today" | "list" | "week" | "month";
 
+// Google Calendar: colores que no choquen con los de la app (abajo).
 const SOURCE_PALETTE = [
-  { soft: "bg-blue-500/15 text-blue-700 dark:text-blue-300", dot: "bg-blue-500" },
-  { soft: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300", dot: "bg-emerald-500" },
   { soft: "bg-amber-500/15 text-amber-800 dark:text-amber-300", dot: "bg-amber-500" },
   { soft: "bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-300", dot: "bg-fuchsia-500" },
   { soft: "bg-rose-500/15 text-rose-700 dark:text-rose-300", dot: "bg-rose-500" },
@@ -140,6 +184,21 @@ const INTERNAL_COLOR = {
   soft: "bg-primary/15 text-primary",
   dot: "bg-primary",
 };
+
+/**
+ * Colores por tipo (pedido de Luz, 2/10/2026): de un vistazo se ve qué es
+ * reunión del equipo, qué es con un cliente y qué es una jornada de producción.
+ */
+const TIPO_COLOR: Record<Exclude<TipoEventoAgenda, "google">, { soft: string; dot: string; label: string }> = {
+  reunion: { soft: "bg-violet-500/15 text-violet-700 dark:text-violet-300", dot: "bg-violet-500", label: "Reunión del equipo" },
+  reunion_cliente: { soft: "bg-blue-500/15 text-blue-700 dark:text-blue-300", dot: "bg-blue-500", label: "Reunión con cliente" },
+  jornada: { soft: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300", dot: "bg-emerald-500", label: "Jornada de producción" },
+};
+
+function colorDeEvento(connections: Connection[], e: CalendarEvent) {
+  if (e._tipo && e._tipo !== "google") return TIPO_COLOR[e._tipo];
+  return colorFor(connections, e.source_id);
+}
 
 function colorFor(connections: Connection[], sourceId: string) {
   if (sourceId === INTERNAL_SOURCE_ID) return INTERNAL_COLOR;
@@ -280,6 +339,7 @@ export function AgendaView({
   users = [],
   currentUserId = "",
   internalMeetings = [],
+  jornadasSueltas = [],
   isAdmin = false,
   initialEvents,
   initialFrom,
@@ -290,6 +350,8 @@ export function AgendaView({
   users?: { id: string; nombre: string }[];
   currentUserId?: string;
   internalMeetings?: InternalMeetingWithRels[];
+  /** Jornadas cargadas a mano en /coordinacion/jornadas. */
+  jornadasSueltas?: JornadaSuelta[];
   isAdmin?: boolean;
   initialEvents: CalendarEvent[];
   initialFrom: string;
@@ -310,11 +372,59 @@ export function AgendaView({
   const [googleEvents, setGoogleEvents] = useState<CalendarEvent[]>(
     initialEvents
   );
+  // Lo que se arrastró y todavía no volvió del server: se muestra ya en el día
+  // nuevo para que no "salte" de vuelta mientras guarda.
+  const [movidos, setMovidos] = useState<Map<string, { start: string; end: string }>>(new Map());
+  const router = useRouter();
+
   // Mergeamos siempre los internos (vienen del servidor todos, filtramos por rango client-side).
   const events = useMemo(() => {
     const internal = internalMeetings.map(internalToEvent);
-    return [...googleEvents, ...internal];
-  }, [googleEvents, internalMeetings]);
+    const jornadas = jornadasSueltas.map(jornadaToEvent);
+    return [...googleEvents, ...internal, ...jornadas].map((e) => {
+      const m = movidos.get(e.id);
+      return m ? { ...e, start: m.start, end: m.end } : e;
+    });
+  }, [googleEvents, internalMeetings, jornadasSueltas, movidos]);
+
+  const moverEvento = useCallback(
+    async (eventId: string, dia: string) => {
+      const ev = events.find((e) => e.id === eventId);
+      if (!ev || !esMovible(ev)) return;
+      if (dayKey(new Date(ev.start)) === dia) return;
+      // Corre el evento los mismos días en el cliente, con la misma hora.
+      const dias = Math.round(
+        (new Date(`${dia}T00:00:00`).getTime() - startOfDay(new Date(ev.start)).getTime()) / 86_400_000
+      );
+      const ms = dias * 86_400_000;
+      setMovidos((prev) =>
+        new Map(prev).set(ev.id, {
+          start: new Date(new Date(ev.start).getTime() + ms).toISOString(),
+          end: new Date(new Date(ev.end).getTime() + ms).toISOString(),
+        })
+      );
+      const res = ev._meetingId
+        ? await moverEventoAgenda(ev._meetingId, dia)
+        : await moverJornadaSuelta(ev._sessionId!, dia);
+      if (res?.error) {
+        toast.error("No se pudo mover: " + res.error);
+        setMovidos((prev) => {
+          const next = new Map(prev);
+          next.delete(ev.id);
+          return next;
+        });
+        return;
+      }
+      toast.success(`Movida al ${new Date(`${dia}T12:00:00`).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}`);
+      router.refresh();
+    },
+    [events, router]
+  );
+
+  // Cuando llegan los datos nuevos del server, se limpian los movidos.
+  useEffect(() => {
+    setMovidos(new Map());
+  }, [internalMeetings, jornadasSueltas]);
 
   const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -503,7 +613,7 @@ export function AgendaView({
   }, [goPrev, goNext, goToday]);
 
   const hasGoogle = connections.length > 0;
-  const hasInternal = internalMeetings.length > 0;
+  const hasInternal = internalMeetings.length > 0 || jornadasSueltas.length > 0;
 
   if (!hasGoogle && !hasInternal) {
     return (
@@ -593,6 +703,20 @@ export function AgendaView({
               }
             />
           )}
+          {currentUserId && (
+            <MeetingFormDialog
+              mode="create"
+              initialTipo="jornada"
+              users={users}
+              clients={clients.map((c) => ({ id: c.id, nombre: c.nombre }))}
+              currentUserId={currentUserId}
+              trigger={
+                <Button size="sm" variant="outline" className="shrink-0">
+                  <Plus className="mr-1 h-4 w-4" /> Jornada
+                </Button>
+              }
+            />
+          )}
           <div
             className="inline-flex rounded-md border bg-card p-0.5"
             role="tablist"
@@ -654,6 +778,17 @@ export function AgendaView({
             Equipo JD
           </button>
         )}
+        {hasInternal && (
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+            {Object.values(TIPO_COLOR).map((t) => (
+              <span key={t.label} className="inline-flex items-center gap-1">
+                <span className={`inline-block h-2 w-2 rounded-full ${t.dot}`} />
+                {t.label}
+              </span>
+            ))}
+            <span className="opacity-70">· Arrastrá para cambiar de día</span>
+          </span>
+        )}
         <span className="ml-auto text-xs text-muted-foreground">
           {filtered.length} reunión{filtered.length !== 1 ? "es" : ""}
           {hasConflicts && (
@@ -711,6 +846,7 @@ export function AgendaView({
             setSelectedDay(d);
             setView("list");
           }}
+          onMover={moverEvento}
         />
       ) : (
         <MonthView
@@ -723,6 +859,7 @@ export function AgendaView({
           users={users}
           clients={clients}
           currentUserId={currentUserId}
+          onMover={moverEvento}
         />
       )}
 
@@ -877,14 +1014,17 @@ function WeekView({
   connections,
   conflictDays,
   onSelectDay,
+  onMover,
 }: {
   cursor: Date;
   events: CalendarEvent[];
   connections: Connection[];
   conflictDays: Set<string>;
   onSelectDay: (d: Date) => void;
+  onMover: (eventId: string, dia: string) => void;
 }) {
   const ws = startOfWeek(cursor);
+  const [sobre, setSobre] = useState<string | null>(null);
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(ws, i)), [ws]);
 
   const byDay = useMemo(() => {
@@ -911,7 +1051,18 @@ function WeekView({
             key={k}
             role="gridcell"
             aria-current={isToday ? "date" : undefined}
-            className={`rounded-lg border bg-card p-2 ${isToday ? "border-primary" : ""}`}
+            className={`rounded-lg border bg-card p-2 ${isToday ? "border-primary" : ""} ${sobre === k ? "ring-2 ring-primary/60" : ""}`}
+            onDragOver={(ev) => {
+              ev.preventDefault();
+              if (sobre !== k) setSobre(k);
+            }}
+            onDragLeave={() => setSobre((x) => (x === k ? null : x))}
+            onDrop={(ev) => {
+              ev.preventDefault();
+              setSobre(null);
+              const id = ev.dataTransfer.getData("text/plain");
+              if (id) onMover(id, k);
+            }}
           >
             <button
               onClick={() => onSelectDay(day)}
@@ -940,11 +1091,13 @@ function WeekView({
                   .sort((a, b) => a.start.localeCompare(b.start))
                   .slice(0, 6)
                   .map((e) => {
-                    const color = colorFor(connections, e.source_id);
+                    const color = colorDeEvento(connections, e);
                     return (
                       <div
                         key={`${e.source_id}-${e.id}`}
-                        className={`truncate rounded px-1.5 py-0.5 text-[11px] ${color.soft}`}
+                        draggable={esMovible(e)}
+                        onDragStart={(ev) => ev.dataTransfer.setData("text/plain", e.id)}
+                        className={`truncate rounded px-1.5 py-0.5 text-[11px] ${color.soft} ${esMovible(e) ? "cursor-grab active:cursor-grabbing" : ""}`}
                         title={`${e.summary} · ${formatTimeRange(e.start, e.end, e.isAllDay)}`}
                       >
                         {!e.isAllDay && (
@@ -978,6 +1131,7 @@ function MonthView({
   users,
   clients,
   currentUserId,
+  onMover,
 }: {
   cursor: Date;
   events: CalendarEvent[];
@@ -988,8 +1142,10 @@ function MonthView({
   users: { id: string; nombre: string }[];
   clients: ClientLite[];
   currentUserId: string;
+  onMover: (eventId: string, dia: string) => void;
 }) {
   const monthStart = startOfMonth(cursor);
+  const [sobre, setSobre] = useState<string | null>(null);
   const gridStart = startOfWeek(monthStart);
   const days = useMemo(
     () => Array.from({ length: 42 }, (_, i) => addDays(gridStart, i)),
@@ -1032,7 +1188,18 @@ function MonthView({
               role="gridcell"
               aria-current={isToday ? "date" : undefined}
               onClick={() => onSelectDay(day)}
-              className={`group relative min-h-[88px] cursor-pointer border-b border-r p-1.5 text-left transition hover:bg-muted/30 sm:min-h-[100px] ${
+              onDragOver={(ev) => {
+                ev.preventDefault();
+                if (sobre !== k) setSobre(k);
+              }}
+              onDragLeave={() => setSobre((x) => (x === k ? null : x))}
+              onDrop={(ev) => {
+                ev.preventDefault();
+                setSobre(null);
+                const id = ev.dataTransfer.getData("text/plain");
+                if (id) onMover(id, k);
+              }}
+              className={`group relative min-h-[88px] cursor-pointer border-b border-r p-1.5 text-left transition hover:bg-muted/30 sm:min-h-[100px] ${sobre === k ? "bg-primary/15 ring-2 ring-inset ring-primary/60" : ""} ${
                 i % 7 === 6 ? "border-r-0" : ""
               } ${i >= 35 ? "border-b-0" : ""} ${
                 !isCurMonth ? "bg-muted/20 text-muted-foreground/60" : ""
@@ -1081,11 +1248,17 @@ function MonthView({
               </div>
               <div className="space-y-0.5">
                 {evs.slice(0, 3).map((e) => {
-                  const color = colorFor(connections, e.source_id);
+                  const color = colorDeEvento(connections, e);
                   return (
                     <div
                       key={`${e.source_id}-${e.id}`}
-                      className={`flex items-center gap-1 truncate rounded px-1 text-[10px] leading-tight ${color.soft}`}
+                      draggable={esMovible(e)}
+                      onDragStart={(ev) => {
+                        ev.stopPropagation();
+                        ev.dataTransfer.setData("text/plain", e.id);
+                      }}
+                      onClick={(ev) => ev.stopPropagation()}
+                      className={`flex items-center gap-1 truncate rounded px-1 text-[10px] leading-tight ${color.soft} ${esMovible(e) ? "cursor-grab active:cursor-grabbing" : ""}`}
                       title={`${e.summary} · ${formatTimeRange(e.start, e.end, e.isAllDay)}`}
                     >
                       <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${color.dot}`} />
@@ -1225,7 +1398,7 @@ function EventCard({
   const key = `${e.source_id}-${e.id}`;
   const isExpanded = expanded.has(key);
   const attendeesCount = e.attendees?.length ?? 0;
-  const color = colorFor(connections, e.source_id);
+  const color = colorDeEvento(connections, e);
   const canEditInternal =
     e._internal && (isAdmin || e._createdBy === currentUserId);
 
@@ -1336,6 +1509,7 @@ function EventCard({
                   client_id: e._meetingRaw.client_id,
                   attendee_ids: e._meetingRaw.attendees.map((a) => a.id),
                   created_by: e._meetingRaw.created_by,
+                  tipo: e._meetingRaw.tipo ?? "reunion",
                 }}
                 trigger={
                   <button

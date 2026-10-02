@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { precioJornada } from "@/lib/jornada";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
@@ -51,6 +52,7 @@ export interface MeetingFormInitial {
   client_id: string | null;
   attendee_ids: string[];
   created_by: string;
+  tipo?: "reunion" | "jornada" | null;
 }
 
 function toLocalInput(iso: string): string {
@@ -87,6 +89,7 @@ export function MeetingFormDialog({
   currentUserId,
   trigger,
   initialDate,
+  initialTipo,
 }: {
   mode: "create" | "edit";
   initial?: MeetingFormInitial;
@@ -96,11 +99,15 @@ export function MeetingFormDialog({
   trigger: React.ReactNode;
   /** Si se pasa, precarga la fecha del form en create (default 10:00). */
   initialDate?: Date;
+  /** Abre ya como jornada de producción. */
+  initialTipo?: "reunion" | "jornada";
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
 
+  const [tipo, setTipo] = useState<"reunion" | "jornada">(initial?.tipo === "jornada" ? "jornada" : initialTipo ?? "reunion");
+  const esJornada = tipo === "jornada";
   const [titulo, setTitulo] = useState(initial?.titulo ?? "");
   const [descripcion, setDescripcion] = useState(initial?.descripcion ?? "");
   const [startsLocal, setStartsLocal] = useState(
@@ -130,6 +137,7 @@ export function MeetingFormDialog({
     if (!open) return;
     // Reset al abrir en modo create
     if (mode === "create" && !initial) {
+      setTipo(initialTipo ?? "reunion");
       setTitulo("");
       setDescripcion("");
       setStartsLocal(defaultStart(initialDate));
@@ -139,7 +147,7 @@ export function MeetingFormDialog({
       setClienteId(NONE);
       setAttendees(new Set([currentUserId]));
     }
-  }, [open, mode, initial, currentUserId, initialDate]);
+  }, [open, mode, initial, currentUserId, initialDate, initialTipo]);
 
   function toggleAttendee(uid: string) {
     setAttendees((s) => {
@@ -153,6 +161,14 @@ export function MeetingFormDialog({
   function submit() {
     if (!titulo.trim()) {
       toast.error("Poné un título.");
+      return;
+    }
+    if (esJornada && clienteId === NONE) {
+      toast.error("Elegí de qué cliente es la jornada.");
+      return;
+    }
+    if (esJornada && attendees.size === 0) {
+      toast.error("Elegí quiénes van a la jornada.");
       return;
     }
     if (!startsLocal) {
@@ -173,6 +189,7 @@ export function MeetingFormDialog({
       meet_link: meetLink || null,
       client_id: clienteId === NONE ? null : clienteId,
       attendee_ids: [...attendees],
+      tipo,
     };
 
     start(async () => {
@@ -185,7 +202,13 @@ export function MeetingFormDialog({
         return;
       }
       toast.success(
-        mode === "create" ? "Reunión agendada" : "Reunión actualizada"
+        esJornada
+          ? mode === "create"
+            ? "Jornada agendada y registrada para Sueldos"
+            : "Jornada actualizada"
+          : mode === "create"
+          ? "Reunión agendada"
+          : "Reunión actualizada"
       );
       setOpen(false);
       router.refresh();
@@ -216,17 +239,54 @@ export function MeetingFormDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {mode === "create" ? "Nueva reunión" : "Editar reunión"}
+            {mode === "create"
+              ? esJornada
+                ? "Nueva jornada de producción"
+                : "Nueva reunión"
+              : esJornada
+              ? "Editar jornada de producción"
+              : "Editar reunión"}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
+          <div className="inline-flex rounded-md border bg-card p-0.5 text-sm">
+            {(
+              [
+                ["reunion", "Reunión"],
+                ["jornada", "Jornada de producción"],
+              ] as const
+            ).map(([v, l]) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => {
+                  setTipo(v);
+                  if (v === "jornada" && mode === "create") {
+                    // Quien agenda no va por defecto: los que van son los que cobran.
+                    setAttendees((a) => {
+                      const next = new Set(a);
+                      next.delete(currentUserId);
+                      return next;
+                    });
+                    setDurationMin((d) => (d < 60 ? 60 : d));
+                  }
+                }}
+                className={`rounded px-3 py-1 font-medium transition ${
+                  tipo === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="m-titulo">Título</Label>
             <Input
               id="m-titulo"
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}
-              placeholder="Daily, brainstorm cliente X, etc."
+              placeholder={esJornada ? "Ej: Grabación del mes" : "Daily, brainstorm cliente X, etc."}
             />
           </div>
 
@@ -254,6 +314,16 @@ export function MeetingFormDialog({
               />
             </div>
           </div>
+
+          {esJornada && (
+            <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-200">
+              {(() => {
+                const h = Math.max(1, Math.ceil(durationMin / 60));
+                return `${h} ${h === 1 ? "hora" : "horas"}: ${precioJornada(h).toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 })} + viáticos. `;
+              })()}
+              Se registra sola en Jornadas para Sueldos; los viáticos se cargan ahí después.
+            </p>
+          )}
 
           <div className="space-y-1.5">
             <Label htmlFor="m-desc">Descripción (opcional)</Label>
@@ -288,7 +358,7 @@ export function MeetingFormDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Cliente (opcional)</Label>
+            <Label>{esJornada ? "Cliente" : "Cliente (opcional)"}</Label>
             <Select value={clienteId} onValueChange={setClienteId}>
               <SelectTrigger>
                 <SelectValue />
@@ -305,7 +375,7 @@ export function MeetingFormDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Asistentes</Label>
+            <Label>{esJornada ? "Quiénes van" : "Asistentes"}</Label>
             <div className="max-h-44 space-y-1 overflow-y-auto rounded-md border bg-background p-2">
               {users.map((u) => {
                 const checked = attendees.has(u.id);
@@ -333,8 +403,9 @@ export function MeetingFormDialog({
               })}
             </div>
             <p className="text-xs text-muted-foreground">
-              Vos quedás como asistente automáticamente. Los asistentes reciben
-              notificación al crear/editar.
+              {esJornada
+                ? "Los que van cobran la jornada. Reciben aviso al agendarla."
+                : "Vos quedás como asistente automáticamente. Los asistentes reciben notificación al crear/editar."}
             </p>
           </div>
         </div>
@@ -362,7 +433,9 @@ export function MeetingFormDialog({
             {pending
               ? "Guardando..."
               : mode === "create"
-              ? "Agendar reunión"
+              ? esJornada
+                ? "Agendar jornada"
+                : "Agendar reunión"
               : "Guardar cambios"}
           </Button>
         </DialogFooter>

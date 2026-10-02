@@ -318,6 +318,10 @@ export interface InternalMeeting {
   created_by: string;
   created_at: string;
   updated_at: string;
+  /** "jornada" = jornada de producción (migración 0188). */
+  tipo?: "reunion" | "jornada" | null;
+  /** El registro de la jornada en Sueldos (production_sessions). */
+  production_session_id?: string | null;
 }
 
 export interface InternalMeetingWithRels extends InternalMeeting {

@@ -2,6 +2,14 @@
 title: Novedades
 ---
 
+## 2026-10-02 — Calendario aprobado, carruseles por slides y la agenda con colores
+
+- ✅ **Diseño y edición ven el calendario recién cuando Santi lo aprueba.** Las ideas sin aprobar ya no les aparecen en Contenidos, Guiones ni Mi día, y la tarea de diseño o edición nace en el momento en que se aprueba la idea (antes nacía al cargarla, aunque después se cambiara o se descartara).
+- 🧩 **Carruseles y posteos se cargan por slides:** título, una fila por slide con el texto y el fondo, cierre, CTA y notas para diseño. Así lo ve diseño, así lo ve el cliente en el portal y así lo escribe la IA (la sugerencia y el plan mensual). Las ideas viejas en texto libre siguen igual y tienen un botón para pasarlas a slides.
+- 🎨 **La agenda tiene colores:** violeta las reuniones del equipo, azul las reuniones con clientes y verde las jornadas de producción.
+- ↔️ **Se arrastra:** en la vista Mes o Semana, agarrá una reunión o una jornada y soltala en otro día. Mantiene la hora.
+- 🎬 **Las jornadas de producción se agendan en la Agenda** (botón «Jornada»): cliente, quiénes van y duración. Se registran solas en Jornadas para Sueldos con el precio por horas; los viáticos se cargan ahí después.
+
 ## 2026-09-26 — Cómo se cobra, cómo se da de baja un cliente y la entrega del día 15
 
 - 💵 **Los clientes pagan del 1 al 5 el mes en curso, y el equipo cobra el 7** lo del mes anterior. No cambia nada de eso.

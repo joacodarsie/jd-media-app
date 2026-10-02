@@ -2,7 +2,7 @@ import { requireUser, isStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { listEventsForUser } from "@/lib/google-calendar";
-import { AgendaView } from "@/components/agenda-view";
+import { AgendaView, type JornadaSuelta } from "@/components/agenda-view";
 import { HelpTrigger } from "@/components/help-trigger";
 import type { InternalMeetingWithRels } from "@/lib/types";
 
@@ -19,6 +19,7 @@ export default async function AgendaPage() {
     { data: clientsRaw },
     { data: usersRaw },
     { data: meetingsRaw },
+    { data: jornadasRaw },
   ] = await Promise.all([
     admin
       .from("google_calendar_connections")
@@ -38,10 +39,16 @@ export default async function AgendaPage() {
     supabase
       .from("internal_meetings")
       .select(
-        "id, titulo, descripcion, starts_at, ends_at, ubicacion, meet_link, client_id, created_by, created_at, updated_at, cliente:clients(id,nombre), creador:users!internal_meetings_created_by_fkey(id,nombre,avatar_url), asistentes:internal_meeting_attendees(user:users(id,nombre,avatar_url))"
+        "id, titulo, descripcion, starts_at, ends_at, ubicacion, meet_link, client_id, created_by, created_at, updated_at, tipo, production_session_id, cliente:clients(id,nombre), creador:users!internal_meetings_created_by_fkey(id,nombre,avatar_url), asistentes:internal_meeting_attendees(user:users(id,nombre,avatar_url))"
       )
       .gte("starts_at", sixMonthsAgo)
       .order("starts_at", { ascending: true }),
+    // Jornadas de producción registradas para Sueldos (las que se agendan acá
+    // también están, pero esas ya vienen como evento propio).
+    admin
+      .from("production_sessions")
+      .select("id, fecha, horas, lugar, cliente:clients(nombre)")
+      .gte("fecha", sixMonthsAgo.slice(0, 10)),
   ]);
 
   const connections = (conns ?? []).map((c) => ({
@@ -75,6 +82,27 @@ export default async function AgendaPage() {
         ),
     };
   });
+
+  const enlazadas = new Set(
+    internalMeetings.map((m) => m.production_session_id).filter((x): x is string => !!x)
+  );
+  const jornadasSueltas: JornadaSuelta[] = (
+    (jornadasRaw ?? []) as unknown as {
+      id: string;
+      fecha: string;
+      horas: number | null;
+      lugar: string | null;
+      cliente: { nombre: string } | null;
+    }[]
+  )
+    .filter((j) => !enlazadas.has(j.id))
+    .map((j) => ({
+      id: j.id,
+      fecha: j.fecha,
+      horas: j.horas,
+      lugar: j.lugar,
+      cliente: j.cliente?.nombre ?? null,
+    }));
 
   const users = (usersRaw ?? []).map((u) => ({
     id: u.id as string,
@@ -112,8 +140,8 @@ export default async function AgendaPage() {
           <HelpTrigger slug="agenda" label="Cómo usar Agenda" size="md" />
         </h1>
         <p className="text-muted-foreground">
-          Tus reuniones de Google Calendar y las reuniones internas del equipo
-          JD Media.
+          Las reuniones del equipo, las reuniones con clientes y las jornadas
+          de producción. Arrastrá cualquiera a otro día para moverla.
         </p>
       </div>
 
@@ -123,6 +151,7 @@ export default async function AgendaPage() {
         users={users}
         currentUserId={me.id}
         internalMeetings={internalMeetings}
+        jornadasSueltas={jornadasSueltas}
         isAdmin={isAdmin}
         initialEvents={initialEvents}
         initialFrom={from.toISOString()}

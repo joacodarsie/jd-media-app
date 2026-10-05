@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-10-05 — Objetivos del equipo
+
+- 🎯 **Cada uno tiene sus objetivos, medidos solos.** En Objetivos → **Objetivos del equipo**: comercial (leads contactados, reuniones, propuestas, cierres y conversión), CM (piezas publicadas contra lo que ya tenía que salir), diseño y edición (piezas terminadas contra lo que piden los packs de sus cuentas), PM (reuniones mensuales hechas) y dirección creativa (calendario aprobado). Esta semana y este mes, con la proyección «a este ritmo».
+- Cada uno ve los suyos; dirección y coordinación ven a todo el equipo y pueden poner metas a mano.
+
 ## 2026-10-05 — Prospección más ordenada y el calendario que no se frena
 
 - 🔎 **Campañas de prospección con buscador y «Ordenar por».** Arrancan por las usadas recientemente (la última vez que se abrieron o se trabajó un contacto), y se pueden ver por más nuevas, por nombre o en carpetas por rubro.

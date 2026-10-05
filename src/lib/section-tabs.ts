@@ -122,7 +122,10 @@ export function puedeVerMaquina(rol: UserRole, rolSecundario?: UserRole | null):
  * vende (y dirección); productividad si tiene la feature.
  */
 export function metricasTabs(showGlobal: boolean, showMaquina = false): SectionTab[] {
-  const tabs: SectionTab[] = [{ href: "/objetivos", label: "Objetivos" }];
+  const tabs: SectionTab[] = [
+    { href: "/objetivos/equipo", label: "Objetivos del equipo" },
+    { href: "/objetivos", label: "Objetivos de la agencia" },
+  ];
   if (showMaquina) tabs.push({ href: "/objetivos/maquina", label: "Máquina de clientes" });
   if (showGlobal) tabs.push({ href: "/global", label: "Productividad" });
   return tabs;

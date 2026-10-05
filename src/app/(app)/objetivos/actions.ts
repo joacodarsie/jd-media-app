@@ -128,3 +128,31 @@ export async function toggleIdea(id: string, ideaId: string): Promise<Result> {
 export async function removeIdea(id: string, ideaId: string): Promise<Result> {
   return mutateIdeas(id, (ideas) => ideas.filter((i) => i.id !== ideaId));
 }
+
+/**
+ * La meta a mano de una persona en una métrica (Objetivos del equipo).
+ * null = sin meta a mano: vuelve a la automática, si la métrica tiene.
+ */
+export async function guardarMetaPersona(input: {
+  userId: string;
+  metrica: string;
+  metaSemanal: number | null;
+  metaMensual: number | null;
+}): Promise<Result> {
+  await requireRole(["admin", "coordinador"]);
+  const limpia = (n: number | null) => (n == null || !Number.isFinite(n) || n < 0 ? null : Math.round(n));
+  const admin = createAdmin();
+  const { error } = await admin.from("objetivos_persona").upsert(
+    {
+      user_id: input.userId,
+      metrica: input.metrica,
+      meta_semanal: limpia(input.metaSemanal),
+      meta_mensual: limpia(input.metaMensual),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,metrica" }
+  );
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/objetivos/equipo");
+  return { ok: true };
+}

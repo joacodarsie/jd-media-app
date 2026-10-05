@@ -41,3 +41,23 @@ describe("avisoIdeasParaAprobar", () => {
     expect(m).toContain("y 1 cuenta más");
   });
 });
+
+import { avisoIdeasUrgentes } from "./ideas-para-aprobar";
+
+describe("avisoIdeasUrgentes", () => {
+  it("avisa solo lo que sale en los próximos 5 días, nombrando al director", () => {
+    const m = avisoIdeasUrgentes(
+      [idea("catch", "2026-10-01"), idea("catch", "2026-10-04"), idea("nazar", "2026-10-10")],
+      cuentas,
+      HOY,
+      "Santiago Reinaldi"
+    );
+    expect(m).toBe(
+      "⏰ 2 ideas salen en los próximos 5 días y Santiago todavía no las aprobó (CATCH 2). Sin aprobar, a diseño y edición no les llega la tarea: si no llega, aprobalas vos desde Aprobar."
+    );
+  });
+
+  it("nada urgente, nada que avisar", () => {
+    expect(avisoIdeasUrgentes([idea("nazar", "2026-10-12")], cuentas, HOY, null)).toBeNull();
+  });
+});

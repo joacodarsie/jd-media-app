@@ -2,6 +2,13 @@
 title: Novedades
 ---
 
+## 2026-10-05 — Prospección más ordenada y el calendario que no se frena
+
+- 🔎 **Campañas de prospección con buscador y «Ordenar por».** Arrancan por las usadas recientemente (la última vez que se abrieron o se trabajó un contacto), y se pueden ver por más nuevas, por nombre o en carpetas por rubro.
+- 📇 **Cada contacto que trae la búsqueda tiene que tener una forma de contacto que ande:** Instagram, un celular bien formado o un fijo con su web. Un fijo solo o una web sola ya no entran.
+- 🔁 **Menos repetidos:** el control de contactos repetidos miraba solo los primeros 1.000 y ya hay más de 2.000. Ahora mira todos, por teléfono, Instagram y nombre, también en el reabastecimiento de la noche.
+- ⏰ **Si una idea está a 5 días de su fecha y no se aprobó, a Luz le llega un aviso** y la puede aprobar desde Aprobar, para que a diseño y edición no se les frene la tarea.
+
 ## 2026-10-02 — Calendario aprobado, carruseles por slides y la agenda con colores
 
 - ✅ **Diseño y edición ven el calendario recién cuando Santi lo aprueba.** Las ideas sin aprobar ya no les aparecen en Contenidos, Guiones ni Mi día, y la tarea de diseño o edición nace en el momento en que se aprueba la idea (antes nacía al cargarla, aunque después se cambiara o se descartara).

@@ -1,11 +1,16 @@
 import Link from "next/link";
-import { Radar, ArrowRight, MapPin, Send, Clock, FolderOpen, ChevronDown } from "lucide-react";
+import { Radar, Clock, ChevronDown } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { equipoQueEscribe } from "@/lib/prospecting/equipo";
 import { createAdmin } from "@/lib/supabase/admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ProspectingCampaignDialog } from "@/components/prospecting-campaign-dialog";
+import {
+  ProspectingCampaignsBrowser,
+  type CampaniaCard,
+} from "@/components/prospecting-campaigns-browser";
+import { ultimoUso } from "@/lib/prospecting/campanias-lista";
 import {
   channelLabel,
   leadStats,
@@ -26,7 +31,7 @@ export default async function ProspeccionPage() {
 
   const { data: campaigns, error } = await admin
     .from("prospecting_campaigns")
-    .select("id, nombre, rubro, ubicacion, canal, estado, created_at")
+    .select("id, nombre, rubro, ubicacion, canal, estado, created_at, ultima_apertura_at")
     .order("created_at", { ascending: false });
 
   if (error && (error as { code?: string }).code === "42P01") {
@@ -41,20 +46,48 @@ export default async function ProspeccionPage() {
     canal: string;
     estado: string;
     created_at: string;
+    ultima_apertura_at?: string | null;
   }[];
 
   // Leads para conteos, métricas por campaña y "para seguir".
   const { data: leads } = await admin
     .from("prospecting_leads")
-    .select("id, empresa, campaign_id, estado, contactado_at");
+    .select("id, empresa, campaign_id, estado, contactado_at, created_at");
   type LeadLite = {
     id: string;
     empresa: string;
     campaign_id: string;
     estado: string;
     contactado_at: string | null;
+    created_at: string | null;
   };
   const leadRows = (leads ?? []) as LeadLite[];
+
+  // Lo último que se trabajó en cada campaña (contactos del modo rápido). Con
+  // los más recientes alcanza: lo que importa es encontrar la campaña en uso.
+  const { data: contactosRecientes } = await admin
+    .from("prospecting_contacts")
+    .select("campaign_id, updated_at, contactado_at")
+    .order("updated_at", { ascending: false })
+    .limit(1000);
+  const actividadBy = new Map<string, string[]>();
+  const anotar = (id: string | null, f: string | null | undefined) => {
+    if (!id || !f) return;
+    if (!actividadBy.has(id)) actividadBy.set(id, []);
+    actividadBy.get(id)!.push(f);
+  };
+  for (const ct of (contactosRecientes ?? []) as {
+    campaign_id: string | null;
+    updated_at: string | null;
+    contactado_at: string | null;
+  }[]) {
+    anotar(ct.campaign_id, ct.updated_at);
+    anotar(ct.campaign_id, ct.contactado_at);
+  }
+  for (const l of leadRows) {
+    anotar(l.campaign_id, l.created_at);
+    anotar(l.campaign_id, l.contactado_at);
+  }
 
   const totalBy = new Map<string, number>();
   const wonBy = new Map<string, number>();
@@ -66,6 +99,20 @@ export default async function ProspeccionPage() {
     estadosBy.get(l.campaign_id)!.push(l.estado);
   }
   const nombreCampaña = new Map(rows.map((c) => [c.id, c.nombre]));
+
+  const tarjetas: CampaniaCard[] = rows.map((c) => ({
+    id: c.id,
+    nombre: c.nombre,
+    rubro: c.rubro,
+    ubicacion: c.ubicacion,
+    created_at: c.created_at,
+    ultimoUso: ultimoUso(c.created_at, [c.ultima_apertura_at, ...(actividadBy.get(c.id) ?? [])]),
+    canalLabel: channelLabel(c.canal),
+    estado: c.estado,
+    total: totalBy.get(c.id) ?? 0,
+    ganados: wonBy.get(c.id) ?? 0,
+    tasaRespuesta: leadStats(estadosBy.get(c.id) ?? []).tasaRespuesta ?? null,
+  }));
 
   // "Para seguir": contactados sin respuesta hace ≥ SEGUIMIENTO_DIAS días.
   const paraSeguir = leadRows
@@ -81,63 +128,6 @@ export default async function ProspeccionPage() {
     .eq("active", true)
     .order("orden");
   const services = (svc ?? []) as { slug: string; name: string }[];
-
-  // Carpetas por SECTOR (rubro); adentro ordenadas por UBICACIÓN. Así, cuando hay
-  // muchas campañas, quedan agrupadas por nicho en vez de una lista plana.
-  const carpetas = new Map<string, typeof rows>();
-  for (const c of rows) {
-    const key = c.rubro?.trim() || "Sin rubro";
-    if (!carpetas.has(key)) carpetas.set(key, []);
-    carpetas.get(key)!.push(c);
-  }
-  const carpetaList = [...carpetas.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  for (const [, arr] of carpetaList)
-    arr.sort(
-      (a, b) =>
-        (a.ubicacion ?? "").localeCompare(b.ubicacion ?? "") ||
-        a.nombre.localeCompare(b.nombre)
-    );
-  // Con una sola carpeta no tiene sentido el acordeón: mostramos plano.
-  const usarCarpetas = carpetaList.length > 1;
-
-  const renderCard = (c: (typeof rows)[number]) => {
-    const total = totalBy.get(c.id) ?? 0;
-    const won = wonBy.get(c.id) ?? 0;
-    const stats = leadStats(estadosBy.get(c.id) ?? []);
-    return (
-      <Link
-        key={c.id}
-        href={`/prospeccion/${c.id}`}
-        className="group rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
-      >
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-semibold">{c.nombre}</h3>
-          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-        </div>
-        <p className="mt-0.5 text-sm text-muted-foreground">{c.rubro}</p>
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          {c.ubicacion && (
-            <span className="inline-flex items-center gap-1">
-              <MapPin className="h-3 w-3" /> {c.ubicacion}
-            </span>
-          )}
-          <span className="inline-flex items-center gap-1">
-            <Send className="h-3 w-3" /> {channelLabel(c.canal)}
-          </span>
-          {c.estado === "pausada" && <Badge className="bg-muted text-muted-foreground">pausada</Badge>}
-        </div>
-        <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm">
-          <span><b>{total}</b> leads</span>
-          {stats.tasaRespuesta != null && (
-            <span className="text-muted-foreground">
-              <b>{stats.tasaRespuesta}%</b> respuesta
-            </span>
-          )}
-          {won > 0 && <span className="text-emerald-600 dark:text-emerald-400"><b>{won}</b> ganados</span>}
-        </div>
-      </Link>
-    );
-  };
 
   return (
     <div className="space-y-5">
@@ -183,26 +173,26 @@ export default async function ProspeccionPage() {
       </div>
 
       {paraSeguir.length > 0 && (
-        <div className="rounded-xl border border-amber-300/60 bg-amber-50/50 p-4 dark:border-amber-500/30 dark:bg-amber-500/5">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-amber-800 dark:text-amber-200">
-            <Clock className="h-4 w-4" /> Para seguir ({paraSeguir.length})
-          </h2>
-          <p className="mb-3 text-xs text-muted-foreground">
-            Contactados hace {SEGUIMIENTO_DIAS}+ días sin respuesta. Mandales el
-            seguimiento (en la campaña, botón <b>Generar seguimiento</b>).
-          </p>
-          <ul className="divide-y divide-amber-200/60 dark:divide-amber-500/20">
+        // Plegado: ocupaba media pantalla y casi no se usaba (pedido del
+        // dueño, 5/10). Queda una línea que se abre si hace falta.
+        <details className="group rounded-lg border border-amber-300/60 bg-amber-50/50 px-3 py-2 text-sm dark:border-amber-500/30 dark:bg-amber-500/5">
+          <summary className="flex cursor-pointer list-none items-center gap-2 text-amber-800 dark:text-amber-200">
+            <Clock className="h-4 w-4" />
+            <span>
+              <b>{paraSeguir.length}</b> contactados hace {SEGUIMIENTO_DIAS}+ días sin respuesta
+            </span>
+            <ChevronDown className="ml-auto h-4 w-4 transition-transform group-open:rotate-180" />
+          </summary>
+          <ul className="mt-2 divide-y divide-amber-200/60 dark:divide-amber-500/20">
             {paraSeguir.map((l) => (
               <li key={l.id}>
                 <Link
                   href={`/prospeccion/${l.campaign_id}`}
-                  className="flex items-center justify-between gap-3 py-1.5 text-sm hover:opacity-80"
+                  className="flex items-center justify-between gap-3 py-1.5 hover:opacity-80"
                 >
                   <span className="min-w-0 truncate font-medium">{l.empresa}</span>
                   <span className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
-                    <span className="hidden truncate sm:inline">
-                      {nombreCampaña.get(l.campaign_id)}
-                    </span>
+                    <span className="hidden truncate sm:inline">{nombreCampaña.get(l.campaign_id)}</span>
                     <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
                       hace {l.dias}d
                     </Badge>
@@ -211,7 +201,10 @@ export default async function ProspeccionPage() {
               </li>
             ))}
           </ul>
-        </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            El seguimiento se manda desde la campaña, con el botón <b>Generar seguimiento</b>.
+          </p>
+        </details>
       )}
 
       {rows.length === 0 ? (
@@ -234,30 +227,8 @@ export default async function ProspeccionPage() {
             />
           </CardContent>
         </Card>
-      ) : usarCarpetas ? (
-        <div className="space-y-3">
-          {carpetaList.map(([rubro, arr]) => (
-            <details key={rubro} open className="group rounded-xl border bg-card/40">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 hover:bg-accent/40">
-                <span className="flex items-center gap-2 font-semibold">
-                  <FolderOpen className="h-4 w-4 text-primary" />
-                  {rubro}
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
-                    {arr.length}
-                  </span>
-                </span>
-                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
-              </summary>
-              <div className="grid gap-3 p-3 pt-0 sm:grid-cols-2 lg:grid-cols-3">
-                {arr.map(renderCard)}
-              </div>
-            </details>
-          ))}
-        </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {rows.map(renderCard)}
-        </div>
+        <ProspectingCampaignsBrowser campanias={tarjetas} />
       )}
     </div>
   );

@@ -37,6 +37,16 @@ export default async function CampaignDetailPage({
     .eq("id", params.id)
     .maybeSingle();
   if (!camp) notFound();
+  // Para el orden "usadas recientemente" de la lista de campañas. Si la 0189
+  // no está aplicada, falla en silencio y no frena la página.
+  await admin
+    .from("prospecting_campaigns")
+    .update({ ultima_apertura_at: new Date().toISOString() })
+    .eq("id", params.id)
+    .then(
+      () => undefined,
+      () => undefined
+    );
   const c = camp as {
     id: string;
     nombre: string;

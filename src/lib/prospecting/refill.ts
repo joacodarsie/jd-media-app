@@ -16,6 +16,8 @@
  * corriendo todos los días hábiles el gasto real es US$0.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { todosLosContactos } from "./contactos-db";
+import { IndiceContactos } from "./repetidos";
 import { searchPlaces, filtrarContactables, placesConfigured } from "./places";
 
 /** Si a una campaña le quedan menos que esto sin escribir, se reabastece. */
@@ -101,16 +103,19 @@ export async function runRefillContactos(
 ): Promise<RefillResultado> {
   if (!placesConfigured()) return { configurado: false, campanas: [], nuevos: 0 };
 
-  const [{ data: campRaw }, { data: contRaw }] = await Promise.all([
+  const [{ data: campRaw }, contactos] = await Promise.all([
     admin.from("prospecting_campaigns").select("id, nombre, rubro, ubicacion, estado"),
-    admin.from("prospecting_contacts").select("campaign_id, empresa, estado"),
+    // Todos, no los primeros 1.000: si no, el control de repetidos no ve la mitad.
+    todosLosContactos<{
+      campaign_id: string;
+      empresa: string;
+      estado: string | null;
+      telefono: string | null;
+      instagram: string | null;
+    }>(admin, "campaign_id, empresa, estado, telefono, instagram"),
   ]);
-
-  const contactos = (contRaw ?? []) as {
-    campaign_id: string;
-    empresa: string;
-    estado: string | null;
-  }[];
+  // Repetido por teléfono, Instagram o nombre, contra TODAS las campañas.
+  const indice = new IndiceContactos(contactos);
 
   const sinEscribir: Record<string, number> = {};
   for (const c of contactos) {
@@ -135,6 +140,8 @@ export async function runRefillContactos(
       const contactables = filtrarContactables(encontrados);
       let traidos = 0;
       for (const ct of contactables) {
+        if (indice.esRepetido(ct)) continue;
+        indice.agregar(ct);
         const row: Record<string, unknown> = {
           campaign_id: c.id,
           empresa: ct.empresa,
@@ -150,7 +157,7 @@ export async function runRefillContactos(
         }
         if (!err) {
           traidos++;
-          contactos.push({ campaign_id: c.id, empresa: ct.empresa, estado: "nuevo" });
+          contactos.push({ campaign_id: c.id, empresa: ct.empresa, estado: "nuevo", telefono: ct.telefono, instagram: null });
         }
       }
       out.campanas.push({ nombre: c.nombre ?? c.id, zona, traidos });

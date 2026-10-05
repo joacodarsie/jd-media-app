@@ -288,21 +288,39 @@ export function ensureHttp(url: string | null | undefined): string | null {
 }
 
 /**
+ * ¿El número da para un WhatsApp? Que tenga la cantidad de dígitos de un
+ * número real (Argentina: 549 + 10 dígitos) y que no parezca una línea fija.
+ */
+export function esCelularUsable(telefono: string | null | undefined): boolean {
+  if (!telefono?.trim()) return false;
+  const d = waDigits(telefono);
+  if (!d) return false;
+  if (d.startsWith("549")) {
+    if (d.length !== 13) return false;
+  } else if (d.length < 10 || d.length > 15) return false;
+  return !esProbableFijoAr(telefono);
+}
+
+/**
  * ¿Este contacto sirve para escribirle?
  *
  * Pedido del dueño (16/9/2026): *"si no tiene teléfono o Instagram, el contacto
- * no me sirve"*. Una búsqueda le devolvió filas con "sin teléfono" y solo un
- * link: para contactarlas hay que entrar a la web, buscar el número y recién
- * ahí escribir, y eso en volumen no lo hace nadie.
- *
- * La web sola NO alcanza. Un fijo sí cuenta —se puede llamar, aunque no tenga
- * WhatsApp—, pero la tabla lo marca para que el equipo lo sepa.
+ * no me sirve"*. Y el 5/10 lo afinó: seguían entrando filas con un número fijo
+ * (WhatsApp muerto) y sin Instagram ni web, o sea sin ninguna forma de contacto
+ * que funcione. Ahora tiene que haber al menos una que ande:
+ *  - un Instagram, o
+ *  - un celular con forma de número real, o
+ *  - un fijo, pero con web (desde ahí se encuentra otra vía).
+ * La web sola, o el fijo solo, no alcanzan.
  */
 export function esContactable(c: {
   telefono?: string | null;
   instagram?: string | null;
+  sitio_web?: string | null;
 }): boolean {
-  return !!c.telefono?.trim() || !!c.instagram?.trim();
+  if (c.instagram?.trim()) return true;
+  if (esCelularUsable(c.telefono)) return true;
+  return !!c.telefono?.trim() && !!c.sitio_web?.trim();
 }
 
 /**

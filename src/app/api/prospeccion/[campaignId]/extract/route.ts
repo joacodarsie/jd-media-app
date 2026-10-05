@@ -6,6 +6,7 @@ import { FUENTES_OK } from "@/lib/prospecting/shared";
 import { searchPlaces, filtrarContactables, placesConfigured } from "@/lib/prospecting/places";
 import { friendlyAiError } from "@/lib/ai/errors";
 import { IndiceContactos, claveEmpresa } from "@/lib/prospecting/repetidos";
+import { todosLosContactos } from "@/lib/prospecting/contactos-db";
 import { esContactable } from "@/lib/prospecting/shared";
 
 /** Quién puede sacar contactos de Google Places (no gasta tokens). */
@@ -77,15 +78,20 @@ export async function POST(
   // lo que "Hotel del Lago" y "HOTEL DEL LAGO S.R.L." entraban dos veces.
   // Escribirle dos veces a la misma empresa (peor: desde dos personas del
   // equipo) es el error más caro de la prospección en frío.
-  const { data: existing, error: exErr } = await admin
-    .from("prospecting_contacts")
-    .select("campaign_id, empresa, telefono, instagram");
+  // TODOS los contactos (de a 1.000): si no, el control de repetidos no ve la mitad.
+  let existing: Record<string, unknown>[] = [];
+  let exErr: { code?: string; message: string } | null = null;
+  try {
+    existing = await todosLosContactos<Record<string, unknown>>(admin, "campaign_id, empresa, telefono, instagram");
+  } catch (e) {
+    exErr = e as { code?: string; message: string };
+  }
   if (exErr && (exErr as { code?: string }).code === "42P01")
     return NextResponse.json(
       { error: "Falta aplicar la migración 0130 (contactos)." },
       { status: 400 }
     );
-  const todos = (existing ?? []) as {
+  const todos = existing as unknown as {
     campaign_id: string | null;
     empresa: string;
     telefono: string | null;

@@ -9,6 +9,7 @@
  * (misma regla dura de siempre: PROHIBIDO inventar).
  */
 import Anthropic from "@anthropic-ai/sdk";
+import { zonaConPais } from "./pais";
 import { AI_MODEL_FAST } from "@/lib/ai/models";
 import { trackAiUsage } from "@/lib/ai/usage";
 import { toHandle } from "./verify";
@@ -29,7 +30,8 @@ export interface ExtractContext {
 
 /** Estrategia de búsqueda según la fuente elegida. */
 function fuenteInstruction(fuente: string | undefined, ctx: ExtractContext): string {
-  const zona = ctx.ubicacion ?? "Argentina";
+  // Con el país al final: "Córdoba" a secas traía negocios de Córdoba, España.
+  const zona = zonaConPais(ctx.ubicacion);
   switch (fuente) {
     case "linkedin":
       return `DÓNDE BUSCAR: LINKEDIN.
@@ -90,7 +92,7 @@ function buildSystem(ctx: ExtractContext): string {
 
 CLUSTER OBJETIVO (campaña: "${ctx.nombre}")
 - Rubro / nicho: ${ctx.rubro}
-- Zona: ${ctx.ubicacion ?? "Argentina (priorizá esta zona)"}${yaTenemos}
+- Zona: ${zonaConPais(ctx.ubicacion)}. Solo negocios de ESA zona y de ese país: si aparece uno de una ciudad con el mismo nombre en otro país (ej: Córdoba, España), descartalo.${yaTenemos}
 
 ${fuenteInstruction(ctx.fuente, ctx)}
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { paisDeZona, telefonoDeOtroPais } from "@/lib/prospecting/pais";
 import { requireUser, canUseProspectingAi, userInRoles } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { extractContacts, type ExtractContext } from "@/lib/prospecting/extract";
@@ -181,6 +182,8 @@ export async function POST(
         // Última red: sin teléfono ni Instagram el contacto no se puede
         // trabajar, así que no se guarda aunque la IA lo haya devuelto.
         if (!esContactable(ct)) continue;
+        // Un teléfono de otro país es un negocio de otro país (la Córdoba de España).
+        if (telefonoDeOtroPais(ct.telefono, paisDeZona(c.ubicacion).codigo)) continue;
         deEstaCorrida.add(key);
         nombresDichos.push(ct.empresa);
         contactos.push(ct);

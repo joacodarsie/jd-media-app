@@ -12,6 +12,7 @@
  * el volumen de la agencia entra holgado en el tramo gratis.
  */
 import { createAdmin } from "@/lib/supabase/admin";
+import { paisDeZona, zonaConPais } from "./pais";
 import { esContactable, ordenarPorContactabilidad } from "./shared";
 
 const ENDPOINT = "https://places.googleapis.com/v1/places:searchText";
@@ -124,7 +125,8 @@ export async function searchPlaces(input: {
         `Si hace falta más, subí GOOGLE_PLACES_TOPE_MES en Vercel.`
     );
 
-  const zona = input.ubicacion?.trim() || "Argentina";
+  // Con el país al final, para no traer la Córdoba de España.
+  const zona = zonaConPais(input.ubicacion);
   const textQuery = `${input.rubro.trim()} en ${zona}`;
   const yaTengo = new Set(
     (input.excludeEmpresas ?? []).map((e) => e.toLowerCase().trim())
@@ -153,7 +155,7 @@ export async function searchPlaces(input: {
       body: JSON.stringify({
         textQuery,
         languageCode: "es",
-        regionCode: "AR",
+        ...(paisDeZona(input.ubicacion).pais === "Argentina" ? { regionCode: "AR" } : {}),
         pageSize: PAGE_SIZE,
         ...(pageToken ? { pageToken } : {}),
       }),

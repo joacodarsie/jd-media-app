@@ -31,7 +31,10 @@ import { runReunionesMensuales } from "@/lib/retencion/reunion-mensual-run";
 import { runReunionesDesdeCalendario } from "@/lib/retencion/reunion-calendario-run";
 import { runRutinasMensuales } from "@/lib/tareas/rutinas-mensuales-run";
 import { runRecordatorioReunionesHoy } from "@/lib/agenda/recordatorio-hoy-run";
-import { runAgendarReunionesCuentasNuevas } from "@/lib/retencion/cuentas-nuevas-run";
+import {
+  runAgendarReunionesCuentasNuevas,
+  runAvisoCuentasEnRiesgo,
+} from "@/lib/retencion/cuentas-nuevas-run";
 import { currentPeriod } from "@/lib/finanzas";
 import { hoyYmd } from "@/lib/dates";
 
@@ -199,6 +202,16 @@ export async function GET(req: NextRequest) {
     reunionesNuevas = await runAgendarReunionesCuentasNuevas(admin, hoyYmd());
   } catch (e) {
     reunionesNuevas = { error: e instanceof Error ? e.message : "falló" };
+  }
+
+  // Y el aviso de la mañana a la PM y a la dirección creativa: qué cuentas
+  // nuevas están en riesgo y por qué. Va después de agendar, así una reunión
+  // recién agendada ya no cuenta como faltante.
+  let cuentasEnRiesgo: unknown = null;
+  try {
+    cuentasEnRiesgo = await runAvisoCuentasEnRiesgo(admin, hoyYmd());
+  } catch (e) {
+    cuentasEnRiesgo = { error: e instanceof Error ? e.message : "falló" };
   }
 
   // Las reuniones de hoy de la Agenda (con prospectos y las demás): un aviso
@@ -488,6 +501,7 @@ export async function GET(req: NextRequest) {
     reunionesCalendario,
     reunionesHoy,
     reunionesNuevas,
+    cuentasEnRiesgo,
     rutinas,
     revision_creativa: revisionCreativa,
     aprobaciones,

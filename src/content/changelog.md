@@ -2,6 +2,10 @@
 title: Novedades
 ---
 
+## 2026-10-07 — Aviso diario de cuentas nuevas en riesgo
+
+- 🚦 **Cada mañana, si hay cuentas nuevas en riesgo, a Luz y a Santi les llega un aviso** (en la plataforma y en el celular) con qué está mal en cada una: arranque atrasado, nada publicado todavía, reunión sin registrar, cobro o equipo. Primero las más graves. Toca el aviso y abre **Cuentas nuevas**.
+
 ## 2026-10-06 — La encuesta del mes tiene responsable
 
 - 📝 **Todos los meses a Luz le aparece la tarea «Mandar la encuesta de satisfacción», con fecha el 26.** Se manda desde Clientes → Calidad del mes: cada cuenta tiene su botón de WhatsApp con el link y el mensaje ya armado. Son 3 preguntas.

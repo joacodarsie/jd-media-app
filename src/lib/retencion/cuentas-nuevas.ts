@@ -299,3 +299,44 @@ export function reunionesAAgendar(cuentas: CuentaNuevaCruda[], hoy: string): Reu
   }
   return out;
 }
+
+// ── El aviso de la mañana ──────────────────────────────────────────────────
+
+/** Cómo se nombra cada chequeo en el aviso (corto: va al celular). */
+const CORTO: Record<Chequeo["clave"], string> = {
+  arranque: "arranque",
+  pieza: "publicado",
+  reunion: "reunión",
+  cobro: "cobro",
+  equipo: "equipo",
+};
+
+export const PREFIJO_AVISO = "🚦 Cuentas nuevas en riesgo";
+
+/** Cuántas cuentas se nombran en el aviso antes de cortar con "y N más". */
+const MAX_EN_AVISO = 4;
+
+/**
+ * El aviso diario a la dirección creativa y a la PM: solo las cuentas en
+ * riesgo y solo lo que está mal de cada una, para que se lea en el celular.
+ * null = no hay ninguna en riesgo (ese día no se avisa nada).
+ */
+export function avisoCuentasEnRiesgo(filas: CuentaNueva[]): string | null {
+  // Primero las que tienen más cosas mal y, a igual cantidad, las más viejas:
+  // una cuenta de tres semanas sin nada publicado pesa más que un arranque
+  // atrasado de la primera semana.
+  const malas = (f: CuentaNueva) => f.chequeos.filter((c) => c.estado === "mal").length;
+  const mal = filas
+    .filter((f) => f.estado === "mal")
+    .sort((a, b) => malas(b) - malas(a) || b.dia - a.dia);
+  if (mal.length === 0) return null;
+  const partes = mal.slice(0, MAX_EN_AVISO).map((f) => {
+    const que = f.chequeos
+      .filter((c) => c.estado === "mal")
+      .map((c) => `${CORTO[c.clave]}: ${c.detalle.charAt(0).toLowerCase()}${c.detalle.slice(1)}`)
+      .join("; ");
+    return `${f.nombre} (día ${f.dia}) → ${que}`;
+  });
+  const resto = mal.length - MAX_EN_AVISO;
+  return `${PREFIJO_AVISO} (${mal.length}): ${partes.join(" · ")}${resto > 0 ? ` · y ${resto} más` : ""}.`;
+}

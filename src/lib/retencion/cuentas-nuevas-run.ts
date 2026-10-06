@@ -8,10 +8,16 @@ import { AREA_PM } from "@/lib/tareas/puerta";
 import { sumarDias } from "./onboarding-15";
 import {
   DIAS_CUENTA_NUEVA,
+  PREFIJO_AVISO,
+  avisoCuentasEnRiesgo,
   esCuentaNueva,
   reunionesAAgendar,
+  tableroCuentasNuevas,
   type CuentaNuevaCruda,
 } from "./cuentas-nuevas";
+import { arranquesPorCuenta, cargarPanoramaArranques } from "./onboarding-panorama-run";
+import { computeAccountHealth } from "@/lib/director/health";
+import { sendPushToUsers } from "@/lib/push";
 
 type Admin = SupabaseClient;
 
@@ -250,4 +256,68 @@ export async function runAgendarReunionesCuentasNuevas(
     });
   }
   return { agendadas: detalle.length, detalle };
+}
+
+/**
+ * El aviso de la mañana: si hay cuentas nuevas en riesgo, a la PM y a la
+ * dirección creativa de esas cuentas les llega un aviso (plataforma +
+ * celular) con qué está mal en cada una. Nació porque el tablero existía y
+ * había que acordarse de abrirlo; las reuniones mensuales se perdieron así.
+ * Idempotente: un aviso por persona por día.
+ */
+export async function runAvisoCuentasEnRiesgo(
+  admin: Admin,
+  hoy: string
+): Promise<{ enRiesgo: number; avisados: number }> {
+  const { filas } = await cargarPanoramaArranques(admin, hoy);
+  const salud = await computeAccountHealth(admin).catch(() => null);
+  const { cuentas, equipo } = await cargarCuentasNuevas(admin, hoy, {
+    arranques: arranquesPorCuenta(filas),
+    salud: new Map((salud?.cuentas ?? []).map((c) => [c.id, { semaforo: c.semaforo, alertas: c.alertas }])),
+  });
+  const tablero = tableroCuentasNuevas(cuentas, hoy);
+  const mensaje = avisoCuentasEnRiesgo(tablero);
+  const enRiesgo = tablero.filter((f) => f.estado === "mal");
+  if (!mensaje) return { enRiesgo: 0, avisados: 0 };
+
+  const { data: usersRaw } = await admin
+    .from("users")
+    .select("id, rol, area, area_secundaria")
+    .eq("activo", true);
+  const users = (usersRaw ?? []) as { id: string; rol: string; area: string | null; area_secundaria: string | null }[];
+  const activos = new Set(users.map((u) => u.id));
+  const pm = users.find((u) => u.area === AREA_PM || u.area_secundaria === AREA_PM)?.id;
+  const destinatarios = [
+    ...new Set(
+      [pm, ...enRiesgo.map((f) => equipo.get(f.id)?.responsable)].filter(
+        (x): x is string => !!x && activos.has(x)
+      )
+    ),
+  ];
+  if (destinatarios.length === 0) {
+    const dueno = users.find((u) => u.rol === "admin")?.id;
+    if (dueno) destinatarios.push(dueno);
+  }
+
+  const inicioDia = new Date(`${hoy}T00:00:00-03:00`).toISOString();
+  const { data: ya } = await admin
+    .from("notifications")
+    .select("user_id")
+    .in("user_id", destinatarios)
+    .gte("created_at", inicioDia)
+    .like("mensaje", `${PREFIJO_AVISO}%`);
+  const yaAvisado = new Set(((ya ?? []) as { user_id: string }[]).map((n) => n.user_id));
+  const nuevos = destinatarios.filter((u) => !yaAvisado.has(u));
+  if (nuevos.length === 0) return { enRiesgo: enRiesgo.length, avisados: 0 };
+
+  await admin.from("notifications").insert(
+    nuevos.map((user_id) => ({ user_id, task_id: null, tipo: "recordatorio", mensaje, link: "/onboarding" }))
+  );
+  await sendPushToUsers(nuevos, {
+    title: `${enRiesgo.length} cuenta${enRiesgo.length === 1 ? "" : "s"} nueva${enRiesgo.length === 1 ? "" : "s"} en riesgo`,
+    body: mensaje.replace(`${PREFIJO_AVISO} (${enRiesgo.length}): `, ""),
+    url: "/onboarding",
+    tag: `cuentas-riesgo-${hoy}`,
+  });
+  return { enRiesgo: enRiesgo.length, avisados: nuevos.length };
 }

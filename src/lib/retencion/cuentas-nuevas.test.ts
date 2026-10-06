@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   armarCuentaNueva,
+  avisoCuentasEnRiesgo,
   esCuentaNueva,
   reunionesAAgendar,
   tableroCuentasNuevas,
@@ -144,5 +145,42 @@ describe("reunionesAAgendar", () => {
       "2026-10-06"
     );
     expect(r).toHaveLength(1);
+  });
+});
+
+describe("avisoCuentasEnRiesgo", () => {
+  it("solo las cuentas en riesgo y solo lo que está mal", () => {
+    const filas = tableroCuentasNuevas(
+      [
+        base({ id: "a", nombre: "Nazar", fechaInicio: "2026-09-16", primeraPublicada: null, ideasSinAprobar: 16 }),
+        base({ id: "b", nombre: "Bien" }),
+      ],
+      "2026-10-06"
+    );
+    expect(avisoCuentasEnRiesgo(filas)).toBe(
+      "🚦 Cuentas nuevas en riesgo (1): Nazar (día 21) → publicado: todavía nada, día 21 · 16 sin aprobar."
+    );
+  });
+
+  it("sin cuentas en riesgo no hay aviso", () => {
+    expect(avisoCuentasEnRiesgo(tableroCuentasNuevas([base()], "2026-10-06"))).toBeNull();
+  });
+
+  it("primero la que tiene más cosas mal", () => {
+    const filas = tableroCuentasNuevas(
+      [
+        base({ id: "n", nombre: "Nueva", fechaInicio: "2026-10-01", cmId: null }),
+        base({ id: "v", nombre: "Vieja", fechaInicio: "2026-09-14", cmId: null, primeraPublicada: null }),
+      ],
+      "2026-10-07"
+    );
+    expect(avisoCuentasEnRiesgo(filas)!.indexOf("Vieja")).toBeLessThan(avisoCuentasEnRiesgo(filas)!.indexOf("Nueva"));
+  });
+
+  it("corta en cuatro", () => {
+    const muchas = ["A", "B", "C", "D", "E", "F"].map((n) => base({ id: n, nombre: n, cmId: null }));
+    const t = avisoCuentasEnRiesgo(tableroCuentasNuevas(muchas, "2026-10-06"))!;
+    expect(t).toContain("(6)");
+    expect(t.endsWith("· y 2 más.")).toBe(true);
   });
 });

@@ -2,6 +2,13 @@
 title: Novedades
 ---
 
+## 2026-10-07 — Seguimiento en Prospección: insistir con los que no contestaron
+
+- 🔁 **A los 3 días de escribirle a un negocio que no contestó, la tabla de contactos marca «Toca seguimiento 1»** y el botón de WhatsApp ya trae escrito el Seguimiento 1 de la campaña. Tres días después, el Seguimiento 2. Después de dos, se deja.
+- Al tocar el WhatsApp (o el cartelito amarillo, si le escribiste por otro lado) queda registrado, y no se lo vuelve a ofrecer hasta que toque el siguiente.
+- En la portada de Prospección: **«Hoy toca insistir con N contactos»**, por campaña, con el link directo a los que tocan. Hoy son 870.
+- Casi nadie contesta el primer mensaje: el segundo y el tercero son los que traen respuestas.
+
 ## 2026-10-07 — Quién aprueba el calendario y quién cuida los tiempos
 
 - ✅ **El calendario lo aprueba Santi. Los tiempos son de Luz:** ella lo apura y, si por algo Santi no puede, es su suplente y aprueba ella.

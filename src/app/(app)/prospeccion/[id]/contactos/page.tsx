@@ -13,8 +13,10 @@ const ALLOWED = ["admin", "coordinador", "comercial", "prospecting"];
 
 export default async function CampaignContactsPage({
   params,
+  searchParams,
 }: {
   params: { id: string };
+  searchParams?: { f?: string };
 }) {
   const me = await requireRole(ALLOWED);
   const admin = createAdmin();
@@ -32,6 +34,8 @@ export default async function CampaignContactsPage({
   // y el botón de copiar de cada fila. Resiliente si falta la 0132.
   let primerMensaje: string | null = null;
   let mensajeLabel: string | null = null;
+  let seguimiento1: string | null = null;
+  let seguimiento2: string | null = null;
   const mp = await admin
     .from("prospecting_campaigns")
     .select("mensajes_plantilla")
@@ -43,11 +47,13 @@ export default async function CampaignContactsPage({
     const elegido = mensajeElegido(tpl);
     primerMensaje = elegido?.texto ?? null;
     mensajeLabel = elegido?.label ?? null;
+    seguimiento1 = tpl?.seguimiento_1?.trim() || null;
+    seguimiento2 = tpl?.seguimiento_2?.trim() || null;
   }
 
   // Contactos de la campaña. Resiliente si todavía no se aplicó la 0130/0131.
   const COLS =
-    "id, empresa, contacto_nombre, contacto_rol, telefono, instagram, sitio_web, estado, asignado_a, notas, contactado_at, contactable, created_at, reunion_fecha";
+    "id, empresa, contacto_nombre, contacto_rol, telefono, instagram, sitio_web, estado, asignado_a, notas, contactado_at, contactable, created_at, reunion_fecha, seguimientos, seguimiento_at";
   const first = await admin
     .from("prospecting_contacts")
     .select(COLS)
@@ -60,7 +66,8 @@ export default async function CampaignContactsPage({
     const second = await admin
       .from("prospecting_contacts")
       .select(
-        COLS.replace(", reunion_fecha", "")
+        COLS.replace(", seguimientos, seguimiento_at", "")
+          .replace(", reunion_fecha", "")
           .replace(", contactado_at", "")
           .replace(", instagram", "")
           .replace(", sitio_web", "")
@@ -144,6 +151,9 @@ export default async function CampaignContactsPage({
           currentUserId={me.id}
           primerMensaje={primerMensaje}
           mensajeLabel={mensajeLabel}
+          seguimiento1={seguimiento1}
+          seguimiento2={seguimiento2}
+          filtroInicial={searchParams?.f === "seguir" ? "seguir" : undefined}
         />
       )}
     </div>

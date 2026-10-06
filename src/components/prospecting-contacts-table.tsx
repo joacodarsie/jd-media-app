@@ -53,6 +53,7 @@ import {
 } from "@/lib/prospecting/shared";
 import {
   updateContact,
+  marcarSeguimiento,
   deleteContact,
   bulkSetContactoEstado,
   bulkSetContactable,
@@ -62,6 +63,7 @@ import {
 import { propuestaParaContacto } from "@/app/(app)/prospeccion/propuestas/actions";
 import { AgendarReunionDialog } from "@/components/agendar-reunion-dialog";
 import { cuandoReunion } from "@/lib/prospecting/reunion";
+import { seguimientoQueToca } from "@/lib/prospecting/seguimiento";
 
 export interface ContactRow {
   id: string;
@@ -80,6 +82,9 @@ export interface ContactRow {
   created_at: string;
   /** Día y hora de la reunión, si se agendó (0184). */
   reunion_fecha?: string | null;
+  /** Seguimientos mandados después del primer mensaje y cuándo el último (0192). */
+  seguimientos?: number | null;
+  seguimiento_at?: string | null;
 }
 
 const NADIE = "__nadie__";
@@ -88,6 +93,7 @@ const FILTROS = [
   { value: "todos", label: "Todos" },
   { value: "sin", label: "Sin contactar" },
   { value: "contactado", label: "Contactados" },
+  { value: "seguir", label: "Toca seguimiento" },
   { value: "interesado", label: "Interesados" },
   { value: "reunion", label: "Con reunión" },
   { value: "propuesta", label: "Con propuesta" },
@@ -104,6 +110,9 @@ export function ProspectingContactsTable({
   currentUserId,
   primerMensaje,
   mensajeLabel,
+  seguimiento1,
+  seguimiento2,
+  filtroInicial,
 }: {
   campaignId: string;
   campaignNombre: string;
@@ -120,6 +129,11 @@ export function ProspectingContactsTable({
   primerMensaje?: string | null;
   /** Nombre del bloque elegido ("Alternativa (otro ángulo)"), para mostrarlo. */
   mensajeLabel?: string | null;
+  /** Los mensajes de seguimiento de la campaña (0192): a los 3 días sin respuesta. */
+  seguimiento1?: string | null;
+  seguimiento2?: string | null;
+  /** Filtro con el que abre (el link "Toca seguimiento" de Prospección). */
+  filtroInicial?: string;
 }) {
   const router = useRouter();
   const [rows, setRows] = useState<ContactRow[]>(initialContacts);
@@ -128,7 +142,7 @@ export function ProspectingContactsTable({
   const [cantidad, setCantidad] = useState("50");
   // Sin permiso de IA, la única fuente disponible es Places (0 tokens).
   const [fuente, setFuente] = useState(canUseAi ? "mix" : "places");
-  const [filtro, setFiltro] = useState<string>("todos");
+  const [filtro, setFiltro] = useState<string>(filtroInicial ?? "todos");
   const [soloMios, setSoloMios] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [sel, setSel] = useState<Set<string>>(new Set());
@@ -165,11 +179,38 @@ export function ProspectingContactsTable({
    * saludo con nombre para que no quede "Hola [NOMBRE]". Es lo que evita tener
    * que copiar, pegar y editar uno por uno.
    */
+  /** El seguimiento que le toca hoy, si la campaña tiene ese mensaje. */
+  function seguimientoDe(r: ContactRow): 1 | 2 | null {
+    const n = seguimientoQueToca(r);
+    if (n === 1 && seguimiento1) return 1;
+    if (n === 2 && seguimiento2) return 2;
+    return null;
+  }
+
   function mensajeDe(r: ContactRow): string {
-    if (!primerMensaje) return "";
-    return personalizarMensaje(primerMensaje, {
+    // A quien no contestó, el WhatsApp le precarga el seguimiento que toca.
+    const seg = seguimientoDe(r);
+    const texto = seg === 1 ? seguimiento1 : seg === 2 ? seguimiento2 : primerMensaje;
+    if (!texto) return "";
+    return personalizarMensaje(texto, {
       empresa: r.empresa,
       contacto: r.contacto_nombre,
+    });
+  }
+
+  /** Registra el seguimiento mandado y lo refleja en la fila sin recargar. */
+  function mandarSeguimiento(id: string) {
+    startTransition(async () => {
+      const res = await marcarSeguimiento(id);
+      if ("error" in res) {
+        toast.error(res.error);
+        return;
+      }
+      setRows((prev) =>
+        prev.map((x) =>
+          x.id === id ? { ...x, seguimientos: res.seguimientos, seguimiento_at: res.seguimiento_at } : x
+        )
+      );
     });
   }
 
@@ -293,10 +334,8 @@ export function ProspectingContactsTable({
     descartados: rows.filter((r) => r.estado === "descartado").length,
     noSePudo: rows.filter((r) => r.contactable === false).length,
     mios: rows.filter((r) => r.asignado_a === currentUserId).length,
-    // Contactados hace 3+ días sin pasar a interesado: hay que insistir.
-    paraSeguir: rows.filter(
-      (r) => r.estado === "contactado" && (diasDesde(r.contactado_at) ?? 0) >= 3
-    ).length,
+    // A los que les toca hoy el seguimiento 1 o 2 (0192).
+    paraSeguir: rows.filter((r) => seguimientoQueToca(r) !== null).length,
   };
   // Efectividad sobre los que SÍ se pudieron contactar (los datos malos no
   // cuentan como fracaso comercial).
@@ -312,6 +351,10 @@ export function ProspectingContactsTable({
     return rows.filter((r) => {
       if (soloMios && r.asignado_a !== currentUserId) return false;
       if (filtro === "sin" && r.estado !== "nuevo") return false;
+      if (filtro === "seguir") {
+        const n = seguimientoQueToca(r);
+        if (!((n === 1 && seguimiento1) || (n === 2 && seguimiento2))) return false;
+      }
       if (
         (filtro === "contactado" ||
           filtro === "interesado" ||
@@ -327,7 +370,7 @@ export function ProspectingContactsTable({
       }
       return true;
     });
-  }, [rows, busqueda, soloMios, filtro, currentUserId]);
+  }, [rows, busqueda, soloMios, filtro, currentUserId, seguimiento1, seguimiento2]);
 
   const visibleIds = visibleRows.map((r) => r.id);
   const allSelected = visibleIds.length > 0 && visibleIds.every((id) => sel.has(id));
@@ -730,6 +773,7 @@ export function ProspectingContactsTable({
               )}
               {visibleRows.map((r) => {
                 const wa = intlWhatsappLink(r.telefono, mensajeDe(r));
+                const seg = seguimientoDe(r);
                 const ig = instagramUrl(r.instagram);
                 const web = ensureHttp(r.sitio_web);
                 // Un fijo pasado a wa.me abre un chat muerto: hay que avisarlo.
@@ -809,18 +853,25 @@ export function ProspectingContactsTable({
                             href={wa}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={() => {
+                              if (seg) mandarSeguimiento(r.id);
+                            }}
                             title={
                               esFijo
                                 ? "Parece un teléfono FIJO: lo más probable es que no tenga WhatsApp. Probá por Instagram o entrá a la web a buscar el celular."
-                                : primerMensaje
-                                  ? "Abrir WhatsApp con el mensaje de la campaña ya escrito"
-                                  : "Abrir WhatsApp"
+                                : seg
+                                  ? `Abrir WhatsApp con el Seguimiento ${seg} ya escrito (queda registrado)`
+                                  : primerMensaje
+                                    ? "Abrir WhatsApp con el mensaje de la campaña ya escrito"
+                                    : "Abrir WhatsApp"
                             }
                             className={cn(
                               "shrink-0 rounded p-0.5 hover:bg-accent",
                               esFijo
                                 ? "text-muted-foreground/50 hover:text-muted-foreground"
-                                : "text-emerald-600 hover:text-emerald-500"
+                                : seg
+                                  ? "text-amber-600 hover:text-amber-500"
+                                  : "text-emerald-600 hover:text-emerald-500"
                             )}
                           >
                             <MessageCircle className="h-4 w-4" />
@@ -888,6 +939,20 @@ export function ProspectingContactsTable({
                           {r.estado !== "nuevo" ? "sí" : "no"}
                         </span>
                       </label>
+                      {seg ? (
+                        <button
+                          type="button"
+                          onClick={() => mandarSeguimiento(r.id)}
+                          title={`Ya le mandé el Seguimiento ${seg} (por WhatsApp, Instagram o donde sea)`}
+                          className="mt-0.5 rounded bg-amber-100 px-1 text-[10px] font-semibold text-amber-800 hover:bg-amber-200 dark:bg-amber-950 dark:text-amber-300"
+                        >
+                          Toca seguimiento {seg}
+                        </button>
+                      ) : (r.seguimientos ?? 0) > 0 ? (
+                        <div className="text-[10px] text-muted-foreground">
+                          {r.seguimientos} seguimiento{r.seguimientos === 1 ? "" : "s"}
+                        </div>
+                      ) : null}
                     </Td>
                     <Td>
                       <select

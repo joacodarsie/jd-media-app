@@ -686,6 +686,31 @@ export async function updateContact(id: string, patch: ContactPatch) {
   return { ok: true as const };
 }
 
+/**
+ * Registra que se le mandó un seguimiento a un contacto (0192): suma uno y
+ * sella la fecha, así la tabla deja de ofrecerlo por 3 días y después ofrece
+ * el siguiente. Si nadie lo tenía asignado, queda a nombre de quien lo mandó.
+ */
+export async function marcarSeguimiento(id: string) {
+  const { supabase, userId } = await ctx();
+  const { data: prev, error } = await supabase
+    .from("prospecting_contacts")
+    .select("seguimientos, asignado_a, campaign_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !prev) return { error: error?.message ?? "No encontré el contacto." };
+  const p = prev as { seguimientos: number | null; asignado_a: string | null; campaign_id: string };
+  const seguimientos = Math.min(2, (p.seguimientos ?? 0) + 1);
+  const seguimiento_at = new Date().toISOString();
+  const { error: upErr } = await supabase
+    .from("prospecting_contacts")
+    .update({ seguimientos, seguimiento_at, ...(p.asignado_a ? {} : { asignado_a: userId }) })
+    .eq("id", id);
+  if (upErr) return { error: upErr.message };
+  revalidatePath(`/prospeccion/${p.campaign_id}/contactos`);
+  return { ok: true as const, seguimientos, seguimiento_at };
+}
+
 /** Marca el estado de VARIOS contactos de una (selección múltiple en la tabla). */
 export async function bulkSetContactoEstado(ids: string[], estado: string) {
   const { supabase, userId } = await ctx();

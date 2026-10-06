@@ -11,11 +11,10 @@ import {
   type CampaniaCard,
 } from "@/components/prospecting-campaigns-browser";
 import { ultimoUso } from "@/lib/prospecting/campanias-lista";
+import { paraSeguirPorCampania } from "@/lib/prospecting/seguimiento";
 import {
   channelLabel,
   leadStats,
-  diasDesde,
-  SEGUIMIENTO_DIAS,
 } from "@/lib/prospecting/shared";
 
 export const dynamic = "force-dynamic";
@@ -114,13 +113,29 @@ export default async function ProspeccionPage() {
     tasaRespuesta: leadStats(estadosBy.get(c.id) ?? []).tasaRespuesta ?? null,
   }));
 
-  // "Para seguir": contactados sin respuesta hace ≥ SEGUIMIENTO_DIAS días.
-  const paraSeguir = leadRows
-    .filter((l) => l.estado === "contactado")
-    .map((l) => ({ ...l, dias: diasDesde(l.contactado_at) }))
-    .filter((l) => l.dias != null && l.dias >= SEGUIMIENTO_DIAS)
-    .sort((a, b) => (b.dias ?? 0) - (a.dias ?? 0))
-    .slice(0, 12);
+  // "Toca seguimiento" (0192): contactos que no contestaron y a los que hoy
+  // les toca el seguimiento 1 o 2. Se pagina: PostgREST corta en 1.000 filas.
+  const contactados: {
+    campaign_id: string;
+    estado: string;
+    contactado_at: string | null;
+    seguimientos: number | null;
+    seguimiento_at: string | null;
+    asignado_a: string | null;
+  }[] = [];
+  for (let desde = 0; desde < 20_000; desde += 1000) {
+    const { data, error: e } = await admin
+      .from("prospecting_contacts")
+      .select("campaign_id, estado, contactado_at, seguimientos, seguimiento_at, asignado_a")
+      .eq("estado", "contactado")
+      .range(desde, desde + 999);
+    if (e || !data?.length) break;
+    contactados.push(...(data as typeof contactados));
+    if (data.length < 1000) break;
+  }
+  const paraSeguir = paraSeguirPorCampania(contactados, new Date(), me.id);
+  const totalSeguir = paraSeguir.reduce((a, c) => a + c.total, 0);
+  const misSeguir = paraSeguir.reduce((a, c) => a + c.mios, 0);
 
   const { data: svc } = await admin
     .from("services")
@@ -172,37 +187,37 @@ export default async function ProspeccionPage() {
         </div>
       </div>
 
-      {paraSeguir.length > 0 && (
-        // Plegado: ocupaba media pantalla y casi no se usaba (pedido del
-        // dueño, 5/10). Queda una línea que se abre si hace falta.
+      {totalSeguir > 0 && (
+        // Plegado: ocupaba media pantalla (pedido del dueño, 5/10). Queda una
+        // línea; adentro, cada campaña con su link directo a los que tocan.
         <details className="group rounded-lg border border-amber-300/60 bg-amber-50/50 px-3 py-2 text-sm dark:border-amber-500/30 dark:bg-amber-500/5">
           <summary className="flex cursor-pointer list-none items-center gap-2 text-amber-800 dark:text-amber-200">
             <Clock className="h-4 w-4" />
             <span>
-              <b>{paraSeguir.length}</b> contactados hace {SEGUIMIENTO_DIAS}+ días sin respuesta
+              Hoy toca insistir con <b>{totalSeguir}</b> contacto{totalSeguir === 1 ? "" : "s"} que no
+              contestaron{misSeguir > 0 ? ` (${misSeguir} tuyos)` : ""}
             </span>
             <ChevronDown className="ml-auto h-4 w-4 transition-transform group-open:rotate-180" />
           </summary>
           <ul className="mt-2 divide-y divide-amber-200/60 dark:divide-amber-500/20">
-            {paraSeguir.map((l) => (
-              <li key={l.id}>
+            {paraSeguir.map((c) => (
+              <li key={c.campaignId}>
                 <Link
-                  href={`/prospeccion/${l.campaign_id}`}
+                  href={`/prospeccion/${c.campaignId}/contactos?f=seguir`}
                   className="flex items-center justify-between gap-3 py-1.5 hover:opacity-80"
                 >
-                  <span className="min-w-0 truncate font-medium">{l.empresa}</span>
-                  <span className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
-                    <span className="hidden truncate sm:inline">{nombreCampaña.get(l.campaign_id)}</span>
-                    <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                      hace {l.dias}d
-                    </Badge>
-                  </span>
+                  <span className="min-w-0 truncate font-medium">{nombreCampaña.get(c.campaignId) ?? "Campaña"}</span>
+                  <Badge className="shrink-0 bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                    {c.total}
+                  </Badge>
                 </Link>
               </li>
             ))}
           </ul>
           <p className="mt-2 text-xs text-muted-foreground">
-            El seguimiento se manda desde la campaña, con el botón <b>Generar seguimiento</b>.
+            Casi nadie contesta el primer mensaje: el segundo y el tercero son los que traen
+            respuestas. En la tabla, el botón de WhatsApp ya trae el seguimiento escrito y queda
+            registrado.
           </p>
         </details>
       )}

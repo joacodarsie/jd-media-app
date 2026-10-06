@@ -9,6 +9,10 @@ import {
   type PasoCrudo,
 } from "@/lib/retencion/onboarding-panorama";
 import { OnboardingPanorama } from "@/components/onboarding-panorama";
+import { CuentasNuevasTablero } from "@/components/cuentas-nuevas-tablero";
+import { computeAccountHealth } from "@/lib/director/health";
+import { cargarCuentasNuevas } from "@/lib/retencion/cuentas-nuevas-run";
+import { resumenCuentasNuevas, tableroCuentasNuevas } from "@/lib/retencion/cuentas-nuevas";
 
 export const dynamic = "force-dynamic";
 
@@ -101,6 +105,32 @@ export default async function OnboardingPage() {
   const filas = panoramaDeArranques(crudos, hoy);
   const resumen = resumenDeArranques(filas);
 
+  // El tablero de los primeros 90 días cruza el arranque con el semáforo de
+  // salud, la primera pieza, la reunión del mes y el cobro.
+  // Si una cuenta tiene dos arranques (pasó con un cambio de nombre), manda el
+  // que sigue abierto.
+  const arranquesPorCuenta = new Map<
+    string,
+    { hechos: number; total: number; atrasados: number; terminado: boolean }
+  >();
+  for (const f of filas) {
+    const ya = arranquesPorCuenta.get(f.clienteId);
+    if (ya && !ya.terminado) continue;
+    arranquesPorCuenta.set(f.clienteId, {
+      hechos: f.hechos,
+      total: f.total,
+      atrasados: f.atrasados,
+      terminado: f.terminado,
+    });
+  }
+  const salud = await computeAccountHealth(admin).catch(() => null);
+  const { cuentas } = await cargarCuentasNuevas(admin, hoy, {
+    arranques: arranquesPorCuenta,
+    salud: new Map((salud?.cuentas ?? []).map((c) => [c.id, { semaforo: c.semaforo, alertas: c.alertas }])),
+  });
+  const tablero = tableroCuentasNuevas(cuentas, hoy);
+  const resTablero = resumenCuentasNuevas(tablero);
+
   // Cuentas activas recientes que todavía no tienen su ticket: no debería
   // pasar (el cron lo arma solo), pero si pasa hay que verlo acá y no en la
   // base. Es el mismo problema que estuvo escondido tres meses.
@@ -127,13 +157,34 @@ export default async function OnboardingPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">Arranques</h1>
+        <h1 className="text-2xl font-bold">Cuentas nuevas</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Los {DIAS_ONBOARDING} primeros días de cada cuenta nueva, todos juntos. Es donde se
-          decide si la cuenta se queda: ninguna de las bajas de los últimos meses pasó de 3,2
-          meses.
+          Los primeros 90 días de cada cuenta. Es donde se decide si se queda: ninguna de las
+          bajas de la agencia pasó de 3,2 meses.
         </p>
       </div>
+
+      {tablero.length > 0 && (
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full border bg-card px-3 py-1">
+            <b>{resTablero.total}</b> cuentas nuevas
+          </span>
+          {resTablero.mal > 0 && (
+            <span className="rounded-full border border-red-500/50 px-3 py-1 text-red-700 dark:text-red-300">
+              <b>{resTablero.mal}</b> en riesgo
+            </span>
+          )}
+          {resTablero.atento > 0 && (
+            <span className="rounded-full border border-amber-500/50 px-3 py-1 text-amber-800 dark:text-amber-300">
+              <b>{resTablero.atento}</b> para mirar
+            </span>
+          )}
+        </div>
+      )}
+
+      <CuentasNuevasTablero filas={tablero} />
+
+      <h2 className="pt-4 text-lg font-semibold">Arranque de {DIAS_ONBOARDING} días</h2>
 
       {filas.length > 0 && (
         <div className="flex flex-wrap gap-2 text-xs">

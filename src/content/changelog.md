@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-10-06 — Cuentas nuevas: los primeros 90 días en un tablero
+
+- 🚦 **«Arranques» ahora se llama «Cuentas nuevas»** y arriba tiene una tarjeta por cada cuenta en sus primeros 90 días, la que más riesgo tiene primero. Cada una responde cinco preguntas: ¿terminó el arranque de 15 días?, ¿ya vio publicada su primera pieza?, ¿tiene la reunión del mes dada o agendada?, ¿pagó?, ¿tiene el equipo completo? Es la ventana donde se fueron todas las bajas de la agencia.
+- 📅 **La reunión de cada cuenta nueva se agenda sola** en la Agenda: la de cierre del primer mes hacia el día 28 de la cuenta y, en los meses 2 y 3, la mensual el día 10. Queda con la PM, el director creativo y la CM, y a Luz le llega un aviso para confirmar el día con el cliente. Si pide otro, se arrastra.
+
 ## 2026-10-05 — Objetivos del equipo
 
 - 🎯 **Cada uno tiene sus objetivos, medidos solos.** En Objetivos → **Objetivos del equipo**: comercial (leads contactados, reuniones, propuestas, cierres y conversión), CM (piezas publicadas contra lo que ya tenía que salir), diseño y edición (piezas terminadas contra lo que piden los packs de sus cuentas), PM (reuniones mensuales hechas) y dirección creativa (calendario aprobado). Esta semana y este mes, con la proyección «a este ritmo».

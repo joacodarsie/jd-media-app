@@ -31,6 +31,7 @@ import { runReunionesMensuales } from "@/lib/retencion/reunion-mensual-run";
 import { runReunionesDesdeCalendario } from "@/lib/retencion/reunion-calendario-run";
 import { runRutinasMensuales } from "@/lib/tareas/rutinas-mensuales-run";
 import { runRecordatorioReunionesHoy } from "@/lib/agenda/recordatorio-hoy-run";
+import { runAgendarReunionesCuentasNuevas } from "@/lib/retencion/cuentas-nuevas-run";
 import { currentPeriod } from "@/lib/finanzas";
 import { hoyYmd } from "@/lib/dates";
 
@@ -188,6 +189,16 @@ export async function GET(req: NextRequest) {
     reunionesCalendario = await runReunionesDesdeCalendario(admin, currentPeriod());
   } catch (e) {
     reunionesCalendario = { error: e instanceof Error ? e.message : "falló" };
+  }
+
+  // Cuentas nuevas (primeros 90 días): la reunión del mes se agenda sola en la
+  // Agenda y la PM recibe un aviso para confirmar el día con el cliente. Va
+  // antes del recordatorio de hoy, que así también la incluye.
+  let reunionesNuevas: unknown = null;
+  try {
+    reunionesNuevas = await runAgendarReunionesCuentasNuevas(admin, hoyYmd());
+  } catch (e) {
+    reunionesNuevas = { error: e instanceof Error ? e.message : "falló" };
   }
 
   // Las reuniones de hoy de la Agenda (con prospectos y las demás): un aviso
@@ -476,6 +487,7 @@ export async function GET(req: NextRequest) {
     reuniones,
     reunionesCalendario,
     reunionesHoy,
+    reunionesNuevas,
     rutinas,
     revision_creativa: revisionCreativa,
     aprobaciones,

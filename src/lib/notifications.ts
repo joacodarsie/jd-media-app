@@ -13,9 +13,11 @@ import {
   type PiezaEnRevision,
 } from "./contenidos/revision-creativa";
 import { personasClave } from "./tareas/personas-clave";
+import { sendPushToUsers } from "./push";
 import {
   avisoIdeasParaAprobar,
   avisoIdeasUrgentes,
+  avisoUrgenteDirector,
   DIAS_ADELANTE,
   type CuentaActiva,
   type IdeaPendiente,
@@ -472,7 +474,7 @@ export async function ensureAprobacionNudges(admin: SupabaseClient) {
 export async function ensureIdeasParaAprobarNudges(admin: SupabaseClient) {
   const hoy = formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM-dd");
   const inicioHoyCordoba = toZonedTime(new Date(hoy + "T00:00:00"), TIMEZONE);
-  const { directoraId, directoraNombre, pmId } = await personasClave();
+  const { directoraId, directoraNombre, pmId, pmNombre } = await personasClave();
   if (!directoraId && !pmId) return { avisados: 0 };
 
   const hasta = formatInTimeZone(new Date(Date.now() + (DIAS_ADELANTE + 1) * 86_400_000), TIMEZONE, "yyyy-MM-dd");
@@ -490,7 +492,7 @@ export async function ensureIdeasParaAprobarNudges(admin: SupabaseClient) {
   const link = "/contenidos?vista=aprobar";
 
   // Un aviso por persona y por día.
-  async function avisar(userId: string | null, mensaje: string | null): Promise<number> {
+  async function avisar(userId: string | null, mensaje: string | null, urgente = false): Promise<number> {
     if (!userId || !mensaje) return 0;
     const { data: yaHay } = await admin
       .from("notifications")
@@ -502,13 +504,28 @@ export async function ensureIdeasParaAprobarNudges(admin: SupabaseClient) {
       .limit(1);
     if (yaHay?.length) return 0;
     await admin.from("notifications").insert({ user_id: userId, tipo: "recordatorio", mensaje, link, task_id: null });
+    // Lo urgente va también al celular: es lo que frena a diseño y edición.
+    if (urgente) {
+      await sendPushToUsers([userId], {
+        title: "Ideas sin aprobar",
+        body: mensaje,
+        url: link,
+        tag: `ideas-urgentes-${hoy}`,
+      }).catch(() => undefined);
+    }
     return 1;
   }
 
   // Al director creativo, todo lo de las próximas dos semanas. A la PM, solo lo
   // que sale en 5 días y sigue sin aprobar (pedido del dueño, 5/10/2026): para
   // que el calendario no se frene si él no llega. Si es la misma persona, uno.
-  let avisados = await avisar(directoraId, avisoIdeasParaAprobar(ideas, cuentas, hoy));
-  if (pmId && pmId !== directoraId) avisados += await avisar(pmId, avisoIdeasUrgentes(ideas, cuentas, hoy, directoraNombre));
+  // Regla del dueño (7/10/2026): aprueba siempre el director creativo; los
+  // tiempos son de la PM, que lo apura y es su suplente si él no puede.
+  const urgenteDirector = avisoUrgenteDirector(ideas, cuentas, hoy, pmNombre);
+  const general = avisoIdeasParaAprobar(ideas, cuentas, hoy);
+  const alDirector = [urgenteDirector, general].filter(Boolean).join("\n\n") || null;
+  let avisados = await avisar(directoraId, alDirector, !!urgenteDirector);
+  if (pmId && pmId !== directoraId)
+    avisados += await avisar(pmId, avisoIdeasUrgentes(ideas, cuentas, hoy, directoraNombre), true);
   return { avisados };
 }

@@ -42,7 +42,7 @@ describe("avisoIdeasParaAprobar", () => {
   });
 });
 
-import { avisoIdeasUrgentes } from "./ideas-para-aprobar";
+import { avisoIdeasUrgentes, avisoUrgenteDirector } from "./ideas-para-aprobar";
 
 describe("avisoIdeasUrgentes", () => {
   it("avisa solo lo que sale en los próximos 5 días, nombrando al director", () => {
@@ -53,8 +53,15 @@ describe("avisoIdeasUrgentes", () => {
       "Santiago Reinaldi"
     );
     expect(m).toBe(
-      "⏰ 2 ideas salen en los próximos 5 días y Santiago todavía no las aprobó (CATCH 2). Sin aprobar, a diseño y edición no les llega la tarea: si no llega, aprobalas vos desde Aprobar."
+      "⏰ 2 ideas salen en los próximos 5 días y Santiago todavía no las aprobó (CATCH 2). Apurá a Santiago para que las apruebe hoy; si no puede, aprobalas vos como suplente desde Aprobar."
     );
+  });
+
+  it("al director le dice que la PM es su suplente", () => {
+    expect(avisoUrgenteDirector([idea("catch", "2026-10-04")], cuentas, HOY, "Luz Torres")).toBe(
+      "⏰ Urgente: 1 idea sale en los próximos 5 días sin tu OK (CATCH 1). Si hoy no llegás, avisale a Luz: es tu suplente y la aprueba ella."
+    );
+    expect(avisoUrgenteDirector([idea("nazar", "2026-10-12")], cuentas, HOY, "Luz Torres")).toBeNull();
   });
 
   it("nada urgente, nada que avisar", () => {

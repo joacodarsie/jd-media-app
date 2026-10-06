@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-10-07 — Quién aprueba el calendario y quién cuida los tiempos
+
+- ✅ **El calendario lo aprueba Santi. Los tiempos son de Luz:** ella lo apura y, si por algo Santi no puede, es su suplente y aprueba ella.
+- ⏰ Cuando hay ideas que salen en 5 días sin aprobar, **a Santi le llega un aviso urgente** (que dice que Luz es su suplente) y **a Luz uno para apurarlo**, los dos también al celular.
+
 ## 2026-10-07 — Aviso diario de cuentas nuevas en riesgo
 
 - 🚦 **Cada mañana, si hay cuentas nuevas en riesgo, a Luz y a Santi les llega un aviso** (en la plataforma y en el celular) con qué está mal en cada una: arranque atrasado, nada publicado todavía, reunión sin registrar, cobro o equipo. Primero las más graves. Toca el aviso y abre **Cuentas nuevas**.

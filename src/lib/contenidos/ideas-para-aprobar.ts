@@ -64,6 +64,10 @@ export function avisoIdeasParaAprobar(
 /**
  * Cuántos días antes de la fecha se le avisa también a la PM.
  *
+ * Cómo se reparten (dueño, 7/10/2026): **el calendario lo aprueba siempre el
+ * director creativo; los tiempos son de la PM.** Ella lo apura y, si por algo
+ * él no puede, es su suplente y las aprueba ella.
+ *
  * Pedido del dueño (5/10/2026): desde que la tarea de diseño nace al aprobar la
  * idea (0187), si el director creativo no llega a aprobar, a diseño y edición
  * no les llega nada. Ese día había 30 ideas que salían en la semana sin
@@ -71,13 +75,8 @@ export function avisoIdeasParaAprobar(
  */
 export const DIAS_URGENTE = 5;
 
-/** El aviso a la PM con las ideas que salen ya y siguen sin aprobar, o null. */
-export function avisoIdeasUrgentes(
-  ideas: IdeaPendiente[],
-  cuentas: CuentaActiva[],
-  hoy: string,
-  director: string | null
-): string | null {
+/** Las ideas que salen en los próximos DIAS_URGENTE días, por cuenta. */
+function urgentes(ideas: IdeaPendiente[], cuentas: CuentaActiva[], hoy: string) {
   const hasta = sumarDias(hoy, DIAS_URGENTE);
   const activas = new Map(cuentas.filter((c) => c.estado === "activo").map((c) => [c.id, c.nombre]));
   const porCuenta = new Map<string, number>();
@@ -95,6 +94,38 @@ export function avisoIdeasUrgentes(
     .map(([n, c]) => `${n} ${c}`)
     .join(", ");
   const resto = orden.length > 4 ? ` y ${orden.length - 4} cuenta${orden.length - 4 === 1 ? "" : "s"} más` : "";
-  const quien = director ? director.split(" ")[0] : "el director creativo";
-  return `⏰ ${total} idea${total === 1 ? "" : "s"} sale${total === 1 ? "" : "n"} en los próximos ${DIAS_URGENTE} días y ${quien} todavía no ${total === 1 ? "la" : "las"} aprobó (${lista}${resto}). Sin aprobar, a diseño y edición no les llega la tarea: si no llega, aprobalas vos desde Aprobar.`;
+  return { total, detalle: `${lista}${resto}` };
+}
+
+const primerNombre = (n: string | null, si: string) => (n ? n.split(" ")[0] : si);
+
+/** El aviso a la PM con las ideas que salen ya y siguen sin aprobar, o null. */
+export function avisoIdeasUrgentes(
+  ideas: IdeaPendiente[],
+  cuentas: CuentaActiva[],
+  hoy: string,
+  director: string | null
+): string | null {
+  const u = urgentes(ideas, cuentas, hoy);
+  if (!u) return null;
+  const quien = primerNombre(director, "el director creativo");
+  const las = u.total === 1 ? "la" : "las";
+  return `⏰ ${u.total} idea${u.total === 1 ? "" : "s"} sale${u.total === 1 ? "" : "n"} en los próximos ${DIAS_URGENTE} días y ${quien} todavía no ${las} aprobó (${u.detalle}). Apurá a ${quien} para que ${las} apruebe hoy; si no puede, aprobalas vos como suplente desde Aprobar.`;
+}
+
+/**
+ * Lo urgente, para el director creativo: va arriba de su aviso de cada día
+ * cuando hay ideas que salen en 5 días sin su OK. Le dice que la PM es su
+ * suplente, así sabe a quién pasarle la posta si no llega.
+ */
+export function avisoUrgenteDirector(
+  ideas: IdeaPendiente[],
+  cuentas: CuentaActiva[],
+  hoy: string,
+  pm: string | null
+): string | null {
+  const u = urgentes(ideas, cuentas, hoy);
+  if (!u) return null;
+  const quien = primerNombre(pm, "la PM");
+  return `⏰ Urgente: ${u.total} idea${u.total === 1 ? "" : "s"} sale${u.total === 1 ? "" : "n"} en los próximos ${DIAS_URGENTE} días sin tu OK (${u.detalle}). Si hoy no llegás, avisale a ${quien}: es tu suplente y ${u.total === 1 ? "la" : "las"} aprueba ella.`;
 }

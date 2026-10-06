@@ -10,6 +10,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { rutinasDelMes, type GenteRutina } from "./rutinas-mensuales";
+import { AREA_PM } from "./puerta";
 
 const AREA_COORD_GENERAL = "Coordinación General";
 
@@ -35,6 +36,7 @@ export async function runRutinasMensuales(
   const gente: GenteRutina = {
     coordGeneralId: porArea(AREA_COORD_GENERAL),
     adminId: users.find((u) => u.rol === "admin")?.id ?? null,
+    pmId: porArea(AREA_PM),
   };
 
   const tareas = rutinasDelMes(periodo, gente);

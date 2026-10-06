@@ -25,6 +25,8 @@ export interface GenteRutina {
   coordGeneralId: string | null;
   /** El dueño. Es el último recurso: una tarea sin responsable no existe. */
   adminId: string | null;
+  /** Project manager (Coordinación): lleva la ronda de calidad con los clientes. */
+  pmId?: string | null;
 }
 
 export interface TareaRutina {
@@ -112,6 +114,21 @@ export function rutinasDelMes(periodo: string, gente: GenteRutina): TareaRutina[
     asignado_a_id: gente.adminId ?? finanzas,
     cliente_id: null,
     fecha_limite: fechaDe(periodo, 7),
+  });
+
+  // La encuesta de satisfacción existe desde junio y nunca la contestó nadie:
+  // el aviso le llegaba al dueño y no tenía responsable ni fecha (6/10/2026).
+  // Ahora es una tarea de la PM, que es quien habla con los clientes.
+  out.push({
+    rutina_key: `${periodo}:encuesta`,
+    titulo: `Mandar la encuesta de satisfacción de ${mes}`,
+    descripcion:
+      "En **Clientes → Calidad del mes**, el botón de WhatsApp de cada cuenta manda el link de la encuesta (3 preguntas) con el mensaje ya armado. Lo que contestan alimenta el semáforo de cada cuenta: un 1 o un 2 es para hablar ese mismo día.",
+    area: "Coordinación",
+    prioridad: "media",
+    asignado_a_id: gente.pmId ?? gente.adminId,
+    cliente_id: null,
+    fecha_limite: fechaDe(periodo, 26),
   });
 
   // Solo las que tienen a quién asignarse: una tarea sin responsable no le

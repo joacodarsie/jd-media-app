@@ -4,13 +4,22 @@ import { rutinasDelMes, mesLabel, type GenteRutina } from "./rutinas-mensuales";
 const gente: GenteRutina = { coordGeneralId: "leo", adminId: "joaco" };
 
 describe("rutinasDelMes", () => {
-  it("son las tres que se repiten todos los meses", () => {
+  it("son las cuatro que se repiten todos los meses", () => {
     const out = rutinasDelMes("2026-10", gente);
     expect(out.map((t) => t.rutina_key)).toEqual([
       "2026-10:cobrar",
       "2026-10:cerrar-mes",
       "2026-10:sueldos",
+      "2026-10:encuesta",
     ]);
+  });
+
+  it("la encuesta es de la PM, el 26; sin PM le queda al dueño", () => {
+    const con = rutinasDelMes("2026-10", { ...gente, pmId: "luz" }).find((t) => t.rutina_key === "2026-10:encuesta")!;
+    expect(con.asignado_a_id).toBe("luz");
+    expect(con.fecha_limite).toBe("2026-10-26");
+    const sin = rutinasDelMes("2026-10", gente).find((t) => t.rutina_key === "2026-10:encuesta")!;
+    expect(sin.asignado_a_id).toBe("joaco");
   });
 
   it("las fechas son las del calendario de la plata: cobros el 5, sueldos el 7", () => {

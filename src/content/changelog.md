@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-10-06 — La encuesta del mes tiene responsable
+
+- 📝 **Todos los meses a Luz le aparece la tarea «Mandar la encuesta de satisfacción», con fecha el 26.** Se manda desde Clientes → Calidad del mes: cada cuenta tiene su botón de WhatsApp con el link y el mensaje ya armado. Son 3 preguntas.
+- El recordatorio del 25 de quién falta contestar ahora le llega a la PM (antes le llegaba al dueño).
+
 ## 2026-10-06 — De dónde vino cada cliente
 
 - 🧭 **Cada cliente dice de dónde vino:** referido, pauta, prospección, nos escribió por redes, web, contacto propio u otro. Si es un referido, se anota quién lo recomendó. Se elige en «Nueva propuesta» y en la ficha del cliente → Editar.

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { AREA_PM } from "@/lib/tareas/puerta";
 import { createAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -62,12 +63,15 @@ async function recordarEncuestas(
     const pendientes = clientes.filter((c) => !yaRespondio.has(c.id));
     if (pendientes.length === 0) return vacio;
 
-    const { data: admins } = await admin
+    // Le llega a la PM, que es quien tiene la tarea del mes (rutina
+    // "encuesta"); solo si no hay PM, al dueño.
+    const { data: gente } = await admin
       .from("users")
-      .select("id")
-      .eq("rol", "admin")
+      .select("id, rol, area, area_secundaria")
       .eq("activo", true);
-    const adminIds = ((admins ?? []) as { id: string }[]).map((a) => a.id);
+    const lista = (gente ?? []) as { id: string; rol: string; area: string | null; area_secundaria: string | null }[];
+    const pm = lista.find((u) => u.area === AREA_PM || u.area_secundaria === AREA_PM);
+    const adminIds = pm ? [pm.id] : lista.filter((u) => u.rol === "admin").map((u) => u.id);
     if (adminIds.length === 0) return { pendientes: pendientes.length, notified: 0 };
 
     const prefix = "📝 Encuesta del mes:";
@@ -88,7 +92,7 @@ async function recordarEncuestas(
       nombres.length <= 3
         ? nombres.join(", ")
         : `${nombres.slice(0, 3).join(", ")} y ${nombres.length - 3} más`;
-    const mensaje = `${prefix} pasale el link a ${preview}. Lo copiás desde la ficha del cliente (Estado del servicio → Link de encuesta).`;
+    const mensaje = `${prefix} falta que contesten ${preview}. En Clientes → Calidad del mes cada cuenta tiene el botón de WhatsApp con el link.`;
 
     const rows = adminIds
       .filter((id) => !notificados.has(id))
@@ -97,7 +101,7 @@ async function recordarEncuestas(
         tipo: "recordatorio" as const,
         mensaje,
         leida: false,
-        link: "/clientes",
+        link: "/clientes/calidad",
       }));
     if (rows.length === 0) return { pendientes: pendientes.length, notified: 0 };
 

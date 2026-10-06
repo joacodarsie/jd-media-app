@@ -15,6 +15,9 @@ import {
 
 type Admin = SupabaseClient;
 
+/** Horarios en que se agendan las reuniones de cuentas nuevas, en orden. */
+const HORARIOS = ["11:00", "12:00", "15:00", "16:00", "17:00"];
+
 interface ClienteFila {
   id: string;
   nombre: string;
@@ -163,7 +166,7 @@ export async function cargarCuentasNuevas(
 
 /**
  * El cron: a cada cuenta nueva sin reunión del mes le agenda una en la Agenda
- * (11 a 11:45, con la PM, el director creativo y la CM) y le avisa a la PM una
+ * (45 minutos desde las 11 en el primer horario libre, con la PM, el director creativo y la CM) y le avisa a la PM una
  * sola vez con la lista, para que confirme el día con cada cliente o la mueva.
  * Idempotente: una cuenta con una reunión agendada este mes no se toca.
  */
@@ -186,16 +189,41 @@ export async function runAgendarReunionesCuentasNuevas(
   if (!pm) return { agendadas: 0, detalle: ["sin PM"] };
   const activos = new Set(users.map((u) => u.id));
 
+  // Varias el mismo día no pueden pisarse: todas tienen a la PM. Se reparten
+  // en los horarios libres, contando lo que ya hay en la Agenda ese día.
+  const dias = [...new Set(faltan.map((r) => r.fecha))];
+  const { data: ocupadosRaw } = await admin
+    .from("internal_meetings")
+    .select("starts_at")
+    .gte("starts_at", `${dias.sort()[0]}T00:00:00-03:00`)
+    .lte("starts_at", `${dias.sort()[dias.length - 1]}T23:59:59-03:00`);
+  const ocupado = new Set(
+    ((ocupadosRaw ?? []) as { starts_at: string }[]).map((m) => {
+      const d = new Date(m.starts_at);
+      const dia = d.toLocaleDateString("en-CA", { timeZone: "America/Argentina/Cordoba" });
+      const hora = d.toLocaleTimeString("en-GB", { timeZone: "America/Argentina/Cordoba", hour: "2-digit", minute: "2-digit" });
+      return `${dia} ${hora}`;
+    })
+  );
+  const horario = (fecha: string): string => {
+    const libre = HORARIOS.find((h) => !ocupado.has(`${fecha} ${h}`)) ?? HORARIOS[HORARIOS.length - 1];
+    ocupado.add(`${fecha} ${libre}`);
+    return libre;
+  };
+
   const detalle: string[] = [];
   for (const r of faltan) {
+    const hora = horario(r.fecha);
+    const [hh, mm] = hora.split(":").map(Number);
+    const fin = `${String(hh + (mm + 45 >= 60 ? 1 : 0)).padStart(2, "0")}:${String((mm + 45) % 60).padStart(2, "0")}`;
     const { data: m, error } = await admin
       .from("internal_meetings")
       .insert({
         titulo: r.titulo,
         descripcion:
           "Agendada sola por la app (cuenta nueva). Confirmá el día con el cliente; si pide otro, arrastrala en la Agenda. Se da desde la ficha del cliente → Reunión.",
-        starts_at: `${r.fecha}T11:00:00-03:00`,
-        ends_at: `${r.fecha}T11:45:00-03:00`,
+        starts_at: `${r.fecha}T${hora}:00-03:00`,
+        ends_at: `${r.fecha}T${fin}:00-03:00`,
         client_id: r.clienteId,
         created_by: pm,
         tipo: "reunion",

@@ -22,6 +22,7 @@ import {
   type Facturacion,
 } from "@/lib/constants";
 import type { Client } from "@/lib/types";
+import { OrigenSelect } from "@/components/origen-select";
 import { hoyYmd } from "@/lib/dates";
 import { personaDelArea, usersForPuesto, type TeamUserOpt } from "@/lib/role-options";
 import {
@@ -123,6 +124,8 @@ export function ClientFormDialog({
   const [contactoEmail, setContactoEmail] = useState(client?.contacto_email ?? "");
   const [contactoTel, setContactoTel] = useState(client?.contacto_telefono ?? "");
   const [notas, setNotas] = useState(client?.notas ?? "");
+  const [origen, setOrigen] = useState<string | null>(client?.origen ?? null);
+  const [origenDetalle, setOrigenDetalle] = useState(client?.origen_detalle ?? "");
 
   // Servicios cargados desde el alta (solo modo create).
   type DraftService = {
@@ -228,6 +231,8 @@ export function ClientFormDialog({
       coordinador_id: coordinadorId === NONE ? null : coordinadorId,
       cerrado_por_id: cerradoPorId === NONE ? null : cerradoPorId,
       responsable_id: responsableId === NONE ? null : responsableId,
+      origen,
+      origen_detalle: origenDetalle,
     };
     const servicesPayload: NewClientServiceInput[] = draftServices
       .filter((s) => s.tipo)
@@ -339,6 +344,12 @@ export function ClientFormDialog({
                 onChange={(e) => setFechaInicio(e.target.value)}
               />
             </div>
+            <OrigenSelect
+              origen={origen}
+              detalle={origenDetalle}
+              onOrigen={setOrigen}
+              onDetalle={setOrigenDetalle}
+            />
             <div className="space-y-2">
               <Label>Cerrado por (comercial)</Label>
               <Select value={cerradoPorId} onValueChange={setCerradoPorId}>

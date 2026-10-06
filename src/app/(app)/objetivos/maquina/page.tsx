@@ -8,6 +8,7 @@ import {
   Wallet,
   AlertTriangle,
   ArrowRight,
+  Compass,
 } from "lucide-react";
 import { requireUser, userHas } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -16,6 +17,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { fmtARS } from "@/lib/finanzas";
 import { fmtDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { resumenOrigenes } from "@/lib/clientes/origen";
 import { puedeVerMaquina } from "@/lib/section-tabs";
 import {
   computeMachineKpis,
@@ -61,7 +63,7 @@ export default async function MaquinaPage() {
     admin
       .from("clients")
       .select(
-        "id, nombre, estado, monto_mensual, fecha_inicio, fecha_activado, fecha_inactivado, es_interno, cerrado_por_id, created_at"
+        "id, nombre, estado, monto_mensual, fecha_inicio, fecha_activado, fecha_inactivado, es_interno, cerrado_por_id, created_at, origen"
       ),
     admin.from("users").select("id, nombre"),
     admin.from("ai_usage").select("costo_usd, ruta, created_at").gte("created_at", inicioMes),
@@ -78,6 +80,14 @@ export default async function MaquinaPage() {
     costoIaMesUsd,
     ahora,
   });
+
+  // De dónde vienen las cuentas activas (0191).
+  const origenes = resumenOrigenes(
+    ((clientesRaw ?? []) as { estado: string; es_interno: boolean | null; origen: string | null; monto_mensual: number | null }[])
+      .filter((c) => c.estado === "activo" && !c.es_interno)
+  );
+  const sinOrigen = origenes.find((o) => o.origen === null)?.cuentas ?? 0;
+  const maxOrigen = Math.max(1, ...origenes.filter((o) => o.origen).map((o) => o.monto));
 
   const pctMeta = Math.round((k.meta.activos / k.meta.objetivo) * 100);
   const tono: Record<typeof k.meta.semaforo, string> = {
@@ -228,6 +238,48 @@ export default async function MaquinaPage() {
               muted
             />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* ── De dónde vienen ──────────────────────────────────────────────── */}
+      <Card>
+        <CardContent className="space-y-3 p-5">
+          <div>
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
+              <Compass className="h-4 w-4 text-muted-foreground" /> De dónde vienen los clientes
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Las cuentas activas por canal y lo que facturan. Es lo que dice dónde conviene
+              poner la plata y el tiempo.
+            </p>
+          </div>
+          <div className="space-y-2">
+            {origenes
+              .filter((o) => o.origen)
+              .map((o) => (
+                <div key={o.label}>
+                  <div className="flex justify-between gap-2 text-sm">
+                    <span>
+                      <b>{o.label}</b> · {o.cuentas} cuenta{o.cuentas === 1 ? "" : "s"}
+                    </span>
+                    <span className="tabular-nums">{fmtARS(o.monto)}</span>
+                  </div>
+                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary"
+                      style={{ width: `${Math.round((o.monto / maxOrigen) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+          </div>
+          {sinOrigen > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {sinOrigen} cuenta{sinOrigen === 1 ? "" : "s"} sin dato: se carga en la ficha del
+              cliente → Editar → «¿De dónde vino?». Las nuevas que nacen de Prospección o de la web
+              lo traen solo.
+            </p>
+          )}
         </CardContent>
       </Card>
 

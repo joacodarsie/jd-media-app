@@ -171,6 +171,9 @@ export interface Client {
   cerrado_por_id: string | null;
   /** Quién atiende la cuenta hoy: cobra la cartera todos los meses (0177). */
   responsable_id?: string | null;
+  /** De dónde vino (0191): ver lib/clientes/origen. */
+  origen?: string | null;
+  origen_detalle?: string | null;
   created_at: string;
   updated_at: string;
 }

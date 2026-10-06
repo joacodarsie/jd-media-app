@@ -1,6 +1,7 @@
 "use server";
 
 import { hoyYmd } from "@/lib/dates";
+import { esOrigen, origenDeLead } from "@/lib/clientes/origen";
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -176,6 +177,7 @@ export async function convertLeadToClient(leadId: string) {
       contacto_telefono: lead.telefono,
       monto_mensual: lead.monto_estimado,
       notas: lead.notas,
+      origen: origenDeLead(lead.origen),
       fecha_inicio: hoyYmd(),
     })
     .select("id")
@@ -257,6 +259,7 @@ export async function createProposalFromLead(leadId: string) {
       monto_mensual: lead.monto_estimado,
       notas: lead.notas,
       cerrado_por_id: lead.asignado_a_id,
+      origen: origenDeLead(lead.origen),
       // La fecha de inicio (primer mes) se setea al ACTIVAR, no ahora.
       fecha_inicio: null,
     })
@@ -305,6 +308,9 @@ export interface DirectProposalInput {
   monto_estimado: number | null;
   cerrado_por_id: string | null;
   coordinador_id: string | null; // coordinador/a del servicio (asigna puestos después)
+  /** De dónde vino (0191). */
+  origen?: string | null;
+  origen_detalle?: string | null;
 }
 
 /**
@@ -333,6 +339,8 @@ export async function createDirectProposal(input: DirectProposalInput) {
       monto_mensual: input.monto_estimado,
       cerrado_por_id: input.cerrado_por_id || me.id,
       coordinador_id: input.coordinador_id || null,
+      origen: esOrigen(input.origen) ? input.origen : null,
+      origen_detalle: input.origen_detalle?.trim() || null,
       fecha_inicio: null,
     })
     .select("id")

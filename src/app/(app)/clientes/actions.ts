@@ -1,6 +1,7 @@
 "use server";
 
 import { PACK_MARCA_REAL } from "@/lib/pack-marca-real";
+import { esOrigen } from "@/lib/clientes/origen";
 import { hoyYmd } from "@/lib/dates";
 
 import { revalidatePath } from "next/cache";
@@ -67,6 +68,9 @@ export interface ClientInput {
   cerrado_por_id: string | null;
   /** Quién atiende la cuenta hoy: cobra la cartera (0177). */
   responsable_id?: string | null;
+  /** De dónde vino (0191). undefined = no tocar. */
+  origen?: string | null;
+  origen_detalle?: string | null;
 }
 
 function clean(input: ClientInput) {
@@ -100,6 +104,12 @@ function clean(input: ClientInput) {
     coordinador_id: input.coordinador_id || null,
     cerrado_por_id: input.cerrado_por_id || null,
     responsable_id: input.responsable_id || null,
+    ...(input.origen !== undefined
+      ? {
+          origen: esOrigen(input.origen) ? input.origen : null,
+          origen_detalle: input.origen_detalle?.trim() || null,
+        }
+      : {}),
   };
 }
 

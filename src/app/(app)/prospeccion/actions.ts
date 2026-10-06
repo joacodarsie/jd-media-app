@@ -566,6 +566,7 @@ export async function convertLeadToProposal(id: string) {
       contacto_email: l.email,
       contacto_telefono: l.telefono,
       cerrado_por_id: userId,
+      origen: "prospeccion",
       fecha_inicio: null,
     })
     .select("id")

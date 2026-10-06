@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createDirectProposal } from "@/app/(app)/comercial/actions";
+import { OrigenSelect } from "@/components/origen-select";
 import { CLIENT_PACK_LABEL } from "@/lib/constants";
 
 const NONE = "__none__";
@@ -57,6 +58,8 @@ export function NewProposalDialog({
   const [pack, setPack] = useState("Presencia");
   const [monto, setMonto] = useState("");
   const [cerradoPor, setCerradoPor] = useState(NONE);
+  const [origen, setOrigen] = useState<string | null>(null);
+  const [origenDetalle, setOrigenDetalle] = useState("");
   const [coordinador, setCoordinador] = useState(defaultCoordinadorId ?? NONE);
 
   function submit() {
@@ -71,6 +74,8 @@ export function NewProposalDialog({
         pack: servicio === "gestion_redes" ? pack : null,
         monto_estimado: monto ? Number(monto) : null,
         cerrado_por_id: cerradoPor === NONE ? null : cerradoPor,
+        origen,
+        origen_detalle: origenDetalle,
         coordinador_id: coordinador === NONE ? null : coordinador,
       });
       if ("error" in res) return void toast.error(res.error);
@@ -156,6 +161,12 @@ export function NewProposalDialog({
               <Input type="number" inputMode="numeric" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="$" />
             </div>
           </div>
+          <OrigenSelect
+            origen={origen}
+            detalle={origenDetalle}
+            onOrigen={setOrigen}
+            onDetalle={setOrigenDetalle}
+          />
           <div>
             <Label>Cerrado por (comercial)</Label>
             <Select value={cerradoPor} onValueChange={setCerradoPor}>

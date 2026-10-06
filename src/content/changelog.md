@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-10-06 — De dónde vino cada cliente
+
+- 🧭 **Cada cliente dice de dónde vino:** referido, pauta, prospección, nos escribió por redes, web, contacto propio u otro. Si es un referido, se anota quién lo recomendó. Se elige en «Nueva propuesta» y en la ficha del cliente → Editar.
+- 🤖 **Los que nacen de Prospección o de un lead de la web lo traen solo.**
+- 📊 En Objetivos → **Máquina de clientes** hay un cuadro nuevo con las cuentas activas por canal y lo que factura cada uno: para saber dónde conviene poner la plata.
+
 ## 2026-10-06 — Cuentas nuevas: los primeros 90 días en un tablero
 
 - 🚦 **«Arranques» ahora se llama «Cuentas nuevas»** y arriba tiene una tarjeta por cada cuenta en sus primeros 90 días, la que más riesgo tiene primero. Cada una responde cinco preguntas: ¿terminó el arranque de 15 días?, ¿ya vio publicada su primera pieza?, ¿tiene la reunión del mes dada o agendada?, ¿pagó?, ¿tiene el equipo completo? Es la ventana donde se fueron todas las bajas de la agencia.

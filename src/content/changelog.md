@@ -2,6 +2,10 @@
 title: Novedades
 ---
 
+## 2026-10-07 — Registrar en un clic una reunión que ya se hizo
+
+- 📌 En **Cuentas nuevas**, si una reunión agendada ya pasó y nadie la registró, la tarjeta muestra **«Se hizo»** (queda registrada con ese día) y **«Reprogramar»** (va a la Agenda). Así una reunión que sí se hizo deja de figurar como faltante.
+
 ## 2026-10-07 — Seguimiento en Prospección: insistir con los que no contestaron
 
 - 🔁 **A los 3 días de escribirle a un negocio que no contestó, la tabla de contactos marca «Toca seguimiento 1»** y el botón de WhatsApp ya trae escrito el Seguimiento 1 de la campaña. Tres días después, el Seguimiento 2. Después de dos, se deja.

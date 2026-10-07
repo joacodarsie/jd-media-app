@@ -88,6 +88,7 @@ describe("armarCuentaNueva", () => {
   it("una reunión agendada que pasó sin registrarse es mal", () => {
     const c = armarCuentaNueva(base({ reunionAgendada: "2026-10-03" }), "2026-10-06");
     expect(c.chequeos.find((x) => x.clave === "reunion")!.estado).toBe("mal");
+    expect(c.chequeos.find((x) => x.clave === "reunion")!.reunionSinRegistrar).toBe("2026-10-03");
   });
 
   it("no repite la alerta de reunión del semáforo", () => {

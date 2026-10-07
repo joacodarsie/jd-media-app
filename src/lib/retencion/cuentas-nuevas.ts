@@ -68,6 +68,8 @@ export interface Chequeo {
   label: string;
   estado: Estado;
   detalle: string;
+  /** Reunión agendada que pasó sin registrarse: el día, para registrarla en un clic. */
+  reunionSinRegistrar?: string;
 }
 
 export interface CuentaNueva {
@@ -155,6 +157,7 @@ function chequeoReunion(c: CuentaNuevaCruda, dia: number, hoy: string): Chequeo 
       detalle: vencida
         ? `Era el ${fechaCorta(c.reunionAgendada)} y no se registró`
         : `Agendada el ${fechaCorta(c.reunionAgendada)}`,
+      ...(vencida ? { reunionSinRegistrar: c.reunionAgendada } : {}),
     };
   }
   // Mes 1: la de cierre, hacia el día 28. Después: la mensual, que vence el 10.

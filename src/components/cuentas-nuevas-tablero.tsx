@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CuentaNueva, Estado } from "@/lib/retencion/cuentas-nuevas";
 import { cn } from "@/lib/utils";
+import { ReunionSeDioBoton } from "@/components/reunion-se-dio-boton";
 
 /**
  * Las cuentas en sus primeros 90 días, una tarjeta por cuenta, la peor arriba.
@@ -57,10 +58,15 @@ export function CuentasNuevasTablero({ filas }: { filas: CuentaNueva[] }) {
           </div>
           <ul className="mt-3 space-y-1.5">
             {f.chequeos.map((c) => (
-              <li key={c.clave} className="flex items-baseline gap-2 text-sm">
-                <span className={cn("mt-1 h-2 w-2 shrink-0 rounded-full", PUNTO[c.estado])} />
-                <span className="text-muted-foreground">{c.label}:</span>
-                <span className={cn(c.estado === "mal" && "font-medium")}>{c.detalle}</span>
+              <li key={c.clave} className="text-sm">
+                <div className="flex items-baseline gap-2">
+                  <span className={cn("mt-1 h-2 w-2 shrink-0 rounded-full", PUNTO[c.estado])} />
+                  <span className="text-muted-foreground">{c.label}:</span>
+                  <span className={cn(c.estado === "mal" && "font-medium")}>{c.detalle}</span>
+                </div>
+                {c.reunionSinRegistrar && (
+                  <ReunionSeDioBoton clienteId={f.id} fecha={c.reunionSinRegistrar} />
+                )}
               </li>
             ))}
           </ul>

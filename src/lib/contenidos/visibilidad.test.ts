@@ -14,6 +14,14 @@ describe("sinIdeasParaProduccion", () => {
     expect(ids(sinIdeasParaProduccion(pubs, { rol: "audiovisual" }))).toEqual(["2", "3"]);
   });
 
+  it("en la cuenta donde es la CM asignada, ve las ideas aunque sea diseño", () => {
+    const conCuenta = [
+      { id: "1", estado: "idea", cliente_id: "jd" },
+      { id: "2", estado: "idea", cliente_id: "otro" },
+    ];
+    expect(ids(sinIdeasParaProduccion(conCuenta, { rol: "diseno" }, ["jd"]))).toEqual(["1"]);
+  });
+
   it("los que arman y aprueban el calendario ven todo", () => {
     expect(ids(sinIdeasParaProduccion(pubs, { rol: "community_manager" }))).toHaveLength(3);
     expect(ids(sinIdeasParaProduccion(pubs, { rol: "coordinador" }))).toHaveLength(3);

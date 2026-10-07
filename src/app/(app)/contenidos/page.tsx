@@ -76,7 +76,14 @@ export default async function ContenidosPage({
     ((teamClientsRaw ?? []) as { id: string; team_id: string }[]).map((c) => [c.id, c.team_id])
   );
   // Diseño y edición ven el calendario recién aprobado por el director creativo.
-  let visiblePubs = sinIdeasParaProduccion((pubs ?? []) as { estado: string }[], me) as NonNullable<typeof pubs>;
+  // Las cuentas donde es la CM asignada: ahí edita el calendario y ve las ideas
+  // aunque su rol sea otro.
+  const cuentasPropias = allClients.filter((c) => c.cm_id === me.id).map((c) => c.id);
+  let visiblePubs = sinIdeasParaProduccion(
+    (pubs ?? []) as { estado: string; cliente_id: string | null }[],
+    me,
+    cuentasPropias
+  ) as NonNullable<typeof pubs>;
   if (equipoFiltro && teams.some((t) => t.id === equipoFiltro)) {
     clients = clients.filter((c) => teamByClient.get(c.id) === equipoFiltro);
     const ids = new Set(clients.map((c) => c.id));
@@ -269,7 +276,10 @@ export default async function ContenidosPage({
         users={users}
         unseenByPub={unseenByPub}
         defaultClientId={clienteFiltro}
-        canEdit={userInRoles(me, ["admin", "coordinador", "community_manager"])}
+        canEdit={userInRoles(me, ["admin", "coordinador", "community_manager"]) || cuentasPropias.length > 0}
+        clientesEditables={
+          userInRoles(me, ["admin", "coordinador", "community_manager"]) ? undefined : cuentasPropias
+        }
       />
     </div>
   );

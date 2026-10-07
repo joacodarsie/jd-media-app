@@ -102,6 +102,7 @@ export function PublicationsMonth({
   defaultClientId,
   unseenByPub,
   canEdit = true,
+  clientesEditables,
 }: {
   publications: PublicationWithRels[];
   clients: ClientForPub[];
@@ -110,6 +111,8 @@ export function PublicationsMonth({
   unseenByPub?: Record<string, number>;
   /** Solo CM/coordinación/admin editan (crear, mover fecha, borrar). */
   canEdit?: boolean;
+  /** Si viene, solo puede crear en estas cuentas (es la CM asignada, no por rol). */
+  clientesEditables?: string[];
 }) {
   const router = useRouter();
   const [, startMove] = useTransition();
@@ -550,7 +553,7 @@ export function PublicationsMonth({
           {canEdit && (
           <PublicationFormDialog
             mode="create"
-            clients={clients}
+            clients={clientesEditables ? clients.filter((c) => clientesEditables.includes(c.id)) : clients}
             users={users}
             defaultClientId={defaultClientId}
             trigger={

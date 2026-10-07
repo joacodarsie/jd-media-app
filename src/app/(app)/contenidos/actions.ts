@@ -73,12 +73,27 @@ async function updateTolerandoSello<T>(
 // Se mira con userInRoles (rol Y rol_secundario) para que coincida EXACTO con el
 // gate de la UI (`canEdit` en /contenidos): si no, alguien con el CM como rol
 // secundario ve los botones y el server se los rechaza.
+//
+// Además, quien está ASIGNADO como CM de una cuenta puede editar el calendario
+// de esa cuenta aunque su rol sea otro (7/10/2026: Brisa es diseñadora y lleva
+// la cuenta propia de JD MEDIA como CM; no podía cargar su calendario).
 const CALENDAR_EDITORS = ["admin", "coordinador", "community_manager"];
-async function ensureCalendarEditor(): Promise<string | null> {
+const NO_EDITA =
+  "Solo el CM de la cuenta, la coordinación o la dirección pueden editar el calendario. Vos podés comentar y marcar el contenido como hecho.";
+async function ensureCalendarEditor(clienteIds: (string | null | undefined)[] = []): Promise<string | null> {
   const me = await requireUser();
-  return userInRoles(me, CALENDAR_EDITORS)
-    ? null
-    : "Solo el CM, la coordinación o la dirección pueden editar el calendario. Vos podés comentar y marcar el contenido como hecho.";
+  if (userInRoles(me, CALENDAR_EDITORS)) return null;
+  const ids = [...new Set(clienteIds.filter((x): x is string => !!x))];
+  if (ids.length === 0) return NO_EDITA;
+  const { data } = await createAdmin().from("clients").select("id").in("id", ids).eq("cm_id", me.id);
+  return (data ?? []).length === ids.length ? null : NO_EDITA;
+}
+
+/** Las cuentas de unas publicaciones, para el permiso por cuenta. */
+async function cuentasDe(pubIds: string[]): Promise<string[]> {
+  if (!pubIds.length) return [];
+  const { data } = await createAdmin().from("publications").select("cliente_id").in("id", pubIds);
+  return ((data ?? []) as { cliente_id: string | null }[]).map((p) => p.cliente_id ?? "__sin__");
 }
 
 export interface PublicationInput {
@@ -130,7 +145,7 @@ function invalidate(clienteId?: string | null) {
 }
 
 export async function createPublication(input: PublicationInput) {
-  const gate = await ensureCalendarEditor();
+  const gate = await ensureCalendarEditor([input.cliente_id]);
   if (gate) return { error: gate };
   const { supabase, userId } = await ctx();
   const { data, error } = await writeDb()
@@ -166,7 +181,7 @@ export async function createPublication(input: PublicationInput) {
 }
 
 export async function updatePublication(id: string, input: PublicationInput) {
-  const gate = await ensureCalendarEditor();
+  const gate = await ensureCalendarEditor([input.cliente_id, ...(await cuentasDe([id]))]);
   if (gate) return { error: gate };
   const payload: Record<string, unknown> = clean(input);
   if (input.estado) Object.assign(payload, { estado: input.estado }, selloDeRevision(input.estado));
@@ -319,7 +334,7 @@ async function userOnClientTeam(clienteId: string | null): Promise<boolean> {
  * date debe venir en YYYY-MM-DD (o null para "sin fecha").
  */
 export async function updatePublicationDate(id: string, date: string | null) {
-  const gate = await ensureCalendarEditor();
+  const gate = await ensureCalendarEditor(await cuentasDe([id]));
   if (gate) return { error: gate };
   const { supabase } = await ctx();
   let fechaIso: string | null = null;
@@ -471,7 +486,7 @@ async function removePublications(
 }
 
 export async function deletePublication(id: string) {
-  const gate = await ensureCalendarEditor();
+  const gate = await ensureCalendarEditor(await cuentasDe([id]));
   if (gate) return { error: gate };
   const admin = writeDb();
   const { data: pub } = await admin
@@ -487,7 +502,7 @@ export async function deletePublication(id: string) {
 
 export async function bulkDeletePublications(ids: string[]) {
   if (!ids.length) return { ok: true, deleted: 0 };
-  const gate = await ensureCalendarEditor();
+  const gate = await ensureCalendarEditor(await cuentasDe(ids));
   if (gate) return { error: gate };
   const res = await removePublications(writeDb(), ids);
   if (res.error) return { error: res.error };
@@ -498,7 +513,7 @@ export async function bulkDeletePublications(ids: string[]) {
 
 export async function bulkChangePublicationStatus(ids: string[], estado: string) {
   if (!ids.length) return { ok: true };
-  const gate = await ensureCalendarEditor();
+  const gate = await ensureCalendarEditor(await cuentasDe(ids));
   if (gate) return { error: gate };
 
   // Marcar "publicado" en bloque no puede ser la puerta de atrás del link: si

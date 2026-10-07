@@ -199,3 +199,21 @@ describe("avisoAtrasadas", () => {
     expect(avisoAtrasadas([cli()], "2026-09")).toContain("1 cuenta (");
   });
 });
+
+import { ticketsDeMesesPasados } from "./reunion-mensual";
+
+describe("ticketsDeMesesPasados", () => {
+  it("solo los abiertos de meses que ya terminaron", () => {
+    const t = [
+      { titulo: "Reunión mensual — Magic — 2026-09", estado: "pendiente" },
+      { titulo: "Reunión mensual — Magic — 2026-09", estado: "completada" },
+      { titulo: "Reunión mensual — Magic — 2026-10", estado: "pendiente" },
+      { titulo: "Reunión mensual — Catch — 2026-08", estado: "en_progreso" },
+      { titulo: "Otra cosa", estado: "pendiente" },
+    ];
+    expect(ticketsDeMesesPasados(t, "2026-10").map((x) => x.titulo)).toEqual([
+      "Reunión mensual — Magic — 2026-09",
+      "Reunión mensual — Catch — 2026-08",
+    ]);
+  });
+});

@@ -14,6 +14,7 @@ import {
   reunionesAtrasadas,
   avisoAtrasadas,
   periodoDe,
+  ticketsDeMesesPasados,
   type ClienteParaReunion,
   type ReunionRegistrada,
 } from "./reunion-mensual";
@@ -23,7 +24,7 @@ type Admin = SupabaseClient;
 export async function runReunionesMensuales(
   admin: Admin,
   hoyYmd?: string
-): Promise<{ creadas: number; atrasadas: number; avisados: number; periodo: string }> {
+): Promise<{ creadas: number; atrasadas: number; avisados: number; archivadas: number; periodo: string }> {
   const hoy = hoyYmd ?? formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM-dd");
   const periodo = periodoDe(hoy);
 
@@ -39,6 +40,23 @@ export async function runReunionesMensuales(
     admin.from("tasks").select("titulo, cliente_id").like("titulo", `Reunión mensual — %— ${periodo}`),
     admin.from("users").select("id, nombre, email, rol").eq("activo", true),
   ]);
+
+  // Los tickets de meses cerrados que siguen abiertos se archivan: la reunión
+  // de un mes que terminó ya no se puede dar, y el del mes nuevo la reemplaza.
+  let archivadas = 0;
+  const { data: viejosRaw } = await admin
+    .from("tasks")
+    .select("id, titulo, estado")
+    .like("titulo", "Reunión mensual — %")
+    .in("estado", ["pendiente", "en_progreso", "en_revision"]);
+  const viejos = ticketsDeMesesPasados((viejosRaw ?? []) as { id: string; titulo: string; estado: string }[], periodo);
+  if (viejos.length > 0) {
+    const { error: archErr } = await admin
+      .from("tasks")
+      .update({ estado: "archivada" })
+      .in("id", viejos.map((t) => t.id));
+    if (!archErr) archivadas = viejos.length;
+  }
 
   const clientes = (clientesRes.data ?? []) as ClienteParaReunion[];
   const registradas = (meetingsRes.data ?? []) as ReunionRegistrada[];
@@ -56,7 +74,7 @@ export async function runReunionesMensuales(
   // (decisión de la reunión del 13/9). Si no está, cae en el primer admin.
   const pm = users.find((u) => u.rol === "coordinador" && u.email === "luz@jdmedia.com");
   const responsable = (pm ?? users.find((u) => u.rol === "admin"))?.id;
-  if (!responsable) return { creadas: 0, atrasadas: 0, avisados: 0, periodo };
+  if (!responsable) return { creadas: 0, atrasadas: 0, avisados: 0, archivadas, periodo };
   const nombrePorId = Object.fromEntries(users.map((u) => [u.id, u.nombre]));
 
   const faltan = reunionesFaltantes({
@@ -122,5 +140,5 @@ export async function runReunionesMensuales(
     }
   }
 
-  return { creadas, atrasadas: atrasadas.length, avisados, periodo };
+  return { creadas, atrasadas: atrasadas.length, avisados, archivadas, periodo };
 }

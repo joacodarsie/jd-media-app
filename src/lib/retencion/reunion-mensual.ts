@@ -198,3 +198,23 @@ export function avisoAtrasadas(pendientes: ClienteParaReunion[], periodo: string
   const resto = n > 4 ? ` y ${n - 4} más` : "";
   return `⚠️ Reuniones de ${periodo} sin dar: ${n} cuenta${n === 1 ? "" : "s"} (${nombres}${resto}). Es el mes que el cliente no vio su trabajo.`;
 }
+
+/**
+ * Los tickets de reunión de meses que ya terminaron y siguen abiertos.
+ *
+ * Al 7/10/2026 había 16 de septiembre pendientes al lado de los 16 de octubre:
+ * cada persona veía la misma reunión dos veces y la de un mes cerrado ya no se
+ * puede dar. Se archivan cuando arranca el mes siguiente (no se completan:
+ * completar registraría una reunión que no pasó).
+ */
+export function ticketsDeMesesPasados<T extends { titulo: string; estado: string }>(
+  tickets: T[],
+  periodoActual: string
+): T[] {
+  const ABIERTA = new Set(["pendiente", "en_progreso", "en_revision"]);
+  return tickets.filter((t) => {
+    if (!ABIERTA.has(t.estado)) return false;
+    const m = /— (\d{4}-\d{2})$/.exec(t.titulo);
+    return !!m && m[1] < periodoActual;
+  });
+}

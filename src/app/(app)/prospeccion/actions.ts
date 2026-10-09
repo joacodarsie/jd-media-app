@@ -15,6 +15,7 @@ import {
 } from "@/lib/prospecting/message";
 import { verifyInstagramOne, toHandle } from "@/lib/prospecting/verify";
 import { cargarCatalogoServicios } from "@/lib/prospecting/catalogo";
+import { normalizarCanales } from "@/lib/prospecting/shared";
 import {
   MENSAJE_BLOQUES,
   type CampaignMessages,
@@ -85,7 +86,7 @@ export async function createCampaign(input: CampaignInput) {
       ubicacion: input.ubicacion?.trim() || null,
       servicio: input.servicio || null,
       angulo: input.angulo?.trim() || null,
-      canal: input.canal || "whatsapp",
+      canal: normalizarCanales(input.canal),
       idioma: input.idioma || "es_ar",
       // Por defecto la escribe quien la crea: es lo que pasa casi siempre.
       escribe_id: input.escribe_id ?? userId,
@@ -108,7 +109,7 @@ export async function updateCampaign(id: string, input: CampaignInput) {
       ubicacion: input.ubicacion?.trim() || null,
       servicio: input.servicio || null,
       angulo: input.angulo?.trim() || null,
-      canal: input.canal || "whatsapp",
+      canal: normalizarCanales(input.canal),
       idioma: input.idioma || "es_ar",
       ...(input.escribe_id !== undefined ? { escribe_id: input.escribe_id } : {}),
     })

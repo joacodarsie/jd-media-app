@@ -10,6 +10,7 @@ import {
   resumirActividad,
   type ContactoActividad,
 } from "@/lib/prospecting/actividad";
+import { todosLosContactos } from "@/lib/prospecting/contactos-db";
 import { MetaProspeccionInput } from "@/components/meta-prospeccion-input";
 
 export const dynamic = "force-dynamic";
@@ -33,8 +34,10 @@ export default async function ActividadProspeccionPage() {
 
   const COLS_USERS = "id, nombre, email, rol, rol_secundario";
 
-  const [{ data: contactosRaw }, usersRes] = await Promise.all([
-    admin.from("prospecting_contacts").select("asignado_a, contactado_at, estado, reunion_at"),
+  // Paginado: la base corta en 1.000 filas y los contactos más nuevos (los de
+  // Mati, oct-2026) quedaban afuera: le decía que no escribía a nadie.
+  const [contactosRaw, usersRes] = await Promise.all([
+    todosLosContactos<ContactoActividad>(admin, "asignado_a, contactado_at, estado, reunion_at"),
     admin.from("users").select(`${COLS_USERS}, meta_prospeccion`).eq("activo", true),
   ]);
 

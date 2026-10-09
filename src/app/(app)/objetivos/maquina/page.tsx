@@ -18,6 +18,7 @@ import { fmtARS } from "@/lib/finanzas";
 import { fmtDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { resumenOrigenes } from "@/lib/clientes/origen";
+import { todosLosContactos } from "@/lib/prospecting/contactos-db";
 import { puedeVerMaquina } from "@/lib/section-tabs";
 import {
   computeMachineKpis,
@@ -40,24 +41,13 @@ export default async function MaquinaPage() {
   const ahora = new Date();
   const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString();
 
-  // Contactos: la 0139 (reunion_at) puede no estar aplicada todavía.
-  let contactos: ContactoRow[] = [];
-  let falta0139 = false;
-  const conReunion = await admin
-    .from("prospecting_contacts")
-    .select("id, estado, contactable, created_at, contactado_at, reunion_at, asignado_a");
-  if (conReunion.error) {
-    falta0139 = (conReunion.error as { code?: string }).code === "42703";
-    const sinReunion = await admin
-      .from("prospecting_contacts")
-      .select("id, estado, contactable, created_at, contactado_at, asignado_a");
-    contactos = ((sinReunion.data ?? []) as Omit<ContactoRow, "reunion_at">[]).map((c) => ({
-      ...c,
-      reunion_at: null,
-    }));
-  } else {
-    contactos = (conReunion.data ?? []) as ContactoRow[];
-  }
+  // Paginado: la base corta en 1.000 filas y con más de 2.000 contactos la
+  // mitad (los más nuevos) no contaba en el embudo.
+  const contactos = await todosLosContactos<ContactoRow>(
+    admin,
+    "id, estado, contactable, created_at, contactado_at, reunion_at, asignado_a"
+  );
+  const falta0139 = false;
 
   const [{ data: clientesRaw }, { data: usersRaw }, aiRes] = await Promise.all([
     admin

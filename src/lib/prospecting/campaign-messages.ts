@@ -11,6 +11,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { AI_MODEL_SMART } from "@/lib/ai/models";
 import { AGENCY } from "@/lib/agency";
 import { trackAiUsage } from "@/lib/ai/usage";
+import { canalDelMensaje } from "./shared";
 import {
   bloqueServiciosParaPrompt,
   cargarCatalogoServicios,
@@ -103,7 +104,7 @@ ${bloqueServiciosParaPrompt(catalogo, ctx.servicioSlug)}
 OBJETIVO REAL DEL MENSAJE
 Conseguir una REUNIÓN CORTA POR GOOGLE MEET (15-20 minutos). Las ventas de JD Media se cierran en esa reunión, no por chat. Todo el mensaje empuja ahí.
 
-${channelInstruction(ctx.canal, autor)}
+${channelInstruction(canalDelMensaje(ctx.canal), autor)}
 ${langInstruction(ctx.idioma)}
 
 REGLAS DURAS (se cumplen SÍ o SÍ)

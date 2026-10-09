@@ -23,7 +23,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PROSPECTING_CHANNELS, PROSPECTING_LANGS } from "@/lib/prospecting/shared";
+import {
+  PROSPECTING_CHANNELS,
+  PROSPECTING_LANGS,
+  canalesDe,
+  normalizarCanales,
+} from "@/lib/prospecting/shared";
+import { cn } from "@/lib/utils";
 import { AudioATexto } from "@/components/audio-a-texto";
 import type { CampaniaSugerida } from "@/lib/prospecting/campania-desde-texto";
 import {
@@ -86,7 +92,11 @@ export function ProspectingCampaignDialog({
   const [ubicacion, setUbicacion] = useState(campaign?.ubicacion ?? "");
   const [servicio, setServicio] = useState(campaign?.servicio ?? NONE);
   const [angulo, setAngulo] = useState(campaign?.angulo ?? "");
-  const [canal, setCanal] = useState(campaign?.canal ?? "whatsapp");
+  const [canales, setCanales] = useState<string[]>(canalesDe(campaign?.canal));
+  const toggleCanal = (v: string) =>
+    setCanales((prev) =>
+      prev.includes(v) ? (prev.length > 1 ? prev.filter((x) => x !== v) : prev) : [...prev, v]
+    );
   const [idioma, setIdioma] = useState(campaign?.idioma ?? "es_ar");
   // Quién firma los mensajes. Al crear, arranca en quien está usando la app.
   const [escribe, setEscribe] = useState(campaign?.escribe_id ?? yoId ?? NONE);
@@ -117,7 +127,7 @@ export function ProspectingCampaignDialog({
       setUbicacion(c.ubicacion ?? "");
       setServicio(c.servicio ?? NONE);
       setAngulo(c.angulo ?? "");
-      setCanal(c.canal);
+      setCanales(canalesDe(c.canal));
       setIdioma(c.idioma);
       setSuggestions([]);
       toast.success("Campos completados. Revisalos antes de crear.");
@@ -166,7 +176,7 @@ export function ProspectingCampaignDialog({
       ubicacion: ubicacion || null,
       servicio: servicio === NONE ? null : servicio,
       angulo: angulo || null,
-      canal,
+      canal: normalizarCanales(canales),
       idioma,
       escribe_id: escribe === NONE ? null : escribe,
     };
@@ -337,19 +347,29 @@ export function ProspectingCampaignDialog({
               </Select>
             </div>
             <div>
-              <Label>Canal de contacto</Label>
-              <Select value={canal} onValueChange={setCanal}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PROSPECTING_CHANNELS.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
+              <Label>Canales de contacto</Label>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {PROSPECTING_CHANNELS.map((c) => {
+                  const on = canales.includes(c.value);
+                  return (
+                    <button
+                      key={c.value}
+                      type="button"
+                      onClick={() => toggleCanal(c.value)}
+                      aria-pressed={on}
+                      className={cn(
+                        "rounded-full border px-3 py-1 text-xs transition-colors",
+                        on
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-input text-muted-foreground hover:bg-muted"
+                      )}
+                    >
                       {c.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">Podés elegir varios.</p>
             </div>
           </div>
           <div>

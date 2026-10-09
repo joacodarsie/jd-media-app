@@ -1,3 +1,5 @@
+import { ymdEnZona } from "@/lib/dates";
+
 /**
  * ¿Quién está prospectando de verdad y cuánto?
  *
@@ -130,7 +132,8 @@ export function resumirActividad(
 
   const filas: FilaActividad[] = personas.map((p) => {
     const mios = contactos.filter((c) => c.asignado_a === p.id && c.contactado_at);
-    const dias = mios.map((c) => c.contactado_at!.slice(0, 10));
+    // En hora de Córdoba: cortando el UTC, lo escrito después de las 21:00 caía al día siguiente.
+    const dias = mios.map((c) => ymdEnZona(c.contactado_at) ?? c.contactado_at!.slice(0, 10));
     const ultimoDia = dias.length ? dias.sort().at(-1)! : null;
     const meta = metaDe(p.email, p.metaProspeccion);
     return {

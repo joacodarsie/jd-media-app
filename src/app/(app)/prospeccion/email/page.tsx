@@ -3,6 +3,7 @@ import { hoyYmd } from "@/lib/dates";
 import Link from "next/link";
 import { requireUser, userInRoles } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
+import { todosLosContactos } from "@/lib/prospecting/contactos-db";
 import { coldEmailConfig, leerCierre } from "@/lib/email/cold-sender";
 import { diasParaCubrir, topeDelDia } from "@/lib/prospecting/cold-email";
 import { ColdEmailPanel, type CampanaEmail } from "@/components/cold-email-panel";
@@ -30,7 +31,10 @@ export default async function ColdEmailPage() {
       .from("prospecting_campaigns")
       .select("id, nombre, rubro, mensajes_plantilla")
       .order("created_at", { ascending: false }),
-    admin.from("prospecting_contacts").select("campaign_id, email, sitio_web, estado"),
+    todosLosContactos(admin, "campaign_id, email, sitio_web, estado").then(
+      (data) => ({ data, error: null as unknown }),
+      (error: unknown) => ({ data: [] as unknown[], error })
+    ),
     admin.from("cold_email_sends").select("campaign_id, email, estado, enviado_at, asunto"),
     admin.from("cold_email_optouts").select("email"),
     leerCierre(),

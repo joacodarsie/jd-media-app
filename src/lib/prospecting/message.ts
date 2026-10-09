@@ -11,6 +11,7 @@ import { AI_MODEL_SMART } from "@/lib/ai/models";
 import { AGENCY } from "@/lib/agency";
 import { trackAiUsage } from "@/lib/ai/usage";
 import { bloqueServiciosParaPrompt, type ServicioAgencia } from "./catalogo";
+import { canalDelMensaje } from "./shared";
 
 const client = new Anthropic();
 
@@ -78,7 +79,7 @@ ${bloqueServiciosParaPrompt(ctx.catalogo ?? [], ctx.servicioSlug)}
 
 OBJETIVO REAL: que acepte una REUNIÓN CORTA POR GOOGLE MEET (15-20 min). Ahí se cierran las ventas.
 
-${channelInstruction(ctx.canal, autor)}
+${channelInstruction(canalDelMensaje(ctx.canal), autor)}
 ${langInstruction(ctx.idioma)}
 
 ESTRUCTURA (clave para que respondan)

@@ -170,8 +170,42 @@ export function leadStats(estados: string[]) {
 // romper los imports existentes de prospección.
 export { diasDesde } from "@/lib/dates";
 
+/**
+ * Una campaña puede salir por varios canales a la vez (pedido de Mati, 9/10/2026:
+ * "pongamos varios canales de contacto"). Se guardan en la misma columna
+ * `canal`, separados por coma: "whatsapp,instagram". Las campañas viejas con
+ * un solo canal siguen valiendo igual.
+ */
+export function canalesDe(v: string | null | undefined): string[] {
+  const validos = PROSPECTING_CHANNELS.map((c) => c.value as string);
+  const out = (v ?? "")
+    .split(",")
+    .map((x) => x.trim())
+    .filter((x, i, a) => validos.includes(x) && a.indexOf(x) === i);
+  return out.length ? out : ["whatsapp"];
+}
+
+/** Lo que se guarda: los canales en el orden de la lista, sin repetir. */
+export function normalizarCanales(v: string | string[] | null | undefined): string {
+  const lista = canalesDe(Array.isArray(v) ? v.join(",") : v);
+  return PROSPECTING_CHANNELS.map((c) => c.value as string)
+    .filter((c) => lista.includes(c))
+    .join(",");
+}
+
+/**
+ * Para qué canal se escribe el mensaje base. Si hay chat (WhatsApp o DM), el
+ * mensaje se escribe como chat: sirve igual para los dos. Email solo si es el único.
+ */
+export function canalDelMensaje(v: string | null | undefined): string {
+  const l = canalesDe(v);
+  return l.find((c) => c !== "email") ?? "email";
+}
+
 export const channelLabel = (v: string) =>
-  PROSPECTING_CHANNELS.find((c) => c.value === v)?.label ?? v;
+  canalesDe(v)
+    .map((x) => PROSPECTING_CHANNELS.find((c) => c.value === x)?.label ?? x)
+    .join(" · ");
 export const langLabel = (v: string) =>
   PROSPECTING_LANGS.find((c) => c.value === v)?.label ?? v;
 export const estadoMeta = (v: string) =>

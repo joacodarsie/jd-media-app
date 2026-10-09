@@ -12,6 +12,7 @@ import {
   type CuentaParaRevision,
   type PiezaEnRevision,
 } from "./contenidos/revision-creativa";
+import { todosLosContactos } from "./prospecting/contactos-db";
 import { personasClave } from "./tareas/personas-clave";
 import { sendPushToUsers } from "./push";
 import {
@@ -202,9 +203,10 @@ export async function ensureProspectingNudges(admin: SupabaseClient) {
   const hoy = formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM-dd");
   const inicioHoyCordoba = toZonedTime(new Date(hoy + "T00:00:00"), TIMEZONE);
 
-  const [{ data: usersRaw }, { data: contactosRaw }] = await Promise.all([
+  const [{ data: usersRaw }, contactosRaw] = await Promise.all([
     admin.from("users").select("id, nombre, email, rol, rol_secundario").eq("activo", true),
-    admin.from("prospecting_contacts").select("asignado_a, contactado_at, estado, reunion_at"),
+    // Paginado: sin esto, pasados los 1.000 contactos el aviso decía "0 mensajes" a quien sí escribía.
+    todosLosContactos<ContactoActividad>(admin, "asignado_a, contactado_at, estado, reunion_at"),
   ]);
 
   type URow = {

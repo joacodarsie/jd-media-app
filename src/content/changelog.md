@@ -2,6 +2,19 @@
 title: Novedades
 ---
 
+## 2026-10-10 — Ticket de portada para cada reel
+
+- 🖼️ **Al cargar un reel hay un campo nuevo: «Portada (frame + copy)»**. Ej: *FRAME DEL VIDEO NAHUEL CON TELA + "ELEGÍ LA TELA DE TU SILLÓN"*.
+- **Cuando se aprueba un reel, a diseño le llega un ticket «Portada: …»** con ese texto, aparte del de edición. Va al diseñador/a de la portada del reel (por defecto, el de la cuenta) y vence 2 días antes de la publicación.
+- Si el campo está vacío el ticket igual se crea y avisa que falta el copy; cuando la CM lo completa, el ticket se actualiza. También sigue solo la fecha y el diseñador/a del reel.
+- Ya se crearon los tickets de portada de los 44 reels aprobados que todavía no salieron.
+
+## 2026-10-09 — Prospección: ahora cuenta bien los mensajes, y varias vías por campaña
+
+- 🐛 **«¿Quién está escribiendo?» y el aviso diario no veían los contactos más nuevos** (la base corta en 1.000 y hay más de 2.400). Por eso le decía a Mati que no había mandado nada. También se corrigió en el embudo de Objetivos y en Email.
+- 📲 **Una campaña puede tener varios canales de contacto** (WhatsApp, Instagram y Email): se marcan todos los que van al crearla o editarla.
+- Lo que se escribe después de las 21 h ahora cuenta para ese día, no para el siguiente.
+
 ## 2026-10-07 — Registrar en un clic una reunión que ya se hizo
 
 - 📌 En **Cuentas nuevas**, si una reunión agendada ya pasó y nadie la registró, la tarjeta muestra **«Se hizo»** (queda registrada con ese día) y **«Reprogramar»** (va a la Agenda). Así una reunión que sí se hizo deja de figurar como faltante.

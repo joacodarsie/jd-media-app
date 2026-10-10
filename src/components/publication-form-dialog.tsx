@@ -386,8 +386,7 @@ export function PublicationFormDialog({
                 placeholder={`Ej: FRAME DEL VIDEO NAHUEL CON TELA + "ELEGÍ LA TELA DE TU SILLÓN"`}
               />
               <p className="text-[10px] text-muted-foreground">
-                Si lo completás, al aprobarse el reel le llega a diseño un ticket con la portada.
-                Vacío = sin portada.
+                Al aprobarse el reel, a diseño le llega un ticket de portada con este texto.
               </p>
             </div>
           )}

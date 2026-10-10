@@ -110,6 +110,8 @@ export interface PublicationInput {
   referencia_url: string | null;
   audiovisual_id: string | null;
   disenador_id: string | null;
+  /** Reel: qué lleva la portada. Completo, le crea a diseño su ticket (0193). */
+  portada_copy?: string | null;
   task_id: string | null;
   notas_revision?: string | null;
   estado?: string;
@@ -132,6 +134,10 @@ function clean(input: PublicationInput) {
     referencia_url: input.referencia_url?.trim() || null,
     audiovisual_id: input.audiovisual_id || null,
     disenador_id: input.disenador_id || null,
+    // Solo si vino: los formularios que no lo muestran no lo borran.
+    ...(input.portada_copy !== undefined
+      ? { portada_copy: input.portada_copy?.trim() || null }
+      : {}),
     task_id: input.task_id || null,
     notas_revision: input.notas_revision?.trim() || null,
 

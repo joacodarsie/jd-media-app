@@ -272,6 +272,9 @@ export interface Publication {
   creado_por_id: string | null;
   audiovisual_id: string | null;
   disenador_id: string | null;
+  /** Reel: qué lleva la portada (0193). Opcional para tolerar la DB vieja. */
+  portada_copy?: string | null;
+  portada_task_id?: string | null;
   estado: PublicationStatus;
   task_id: string | null;
   notas_revision: string | null;

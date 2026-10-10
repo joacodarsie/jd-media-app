@@ -125,6 +125,7 @@ export function PublicationFormDialog({
     publication?.disenador_id ?? NONE
   );
   const [portadaTouched, setPortadaTouched] = useState(false);
+  const [portadaCopy, setPortadaCopy] = useState(publication?.portada_copy ?? "");
   const [estado, setEstado] = useState<string>(publication?.estado ?? "idea");
 
   const selectedClient = useMemo(
@@ -181,6 +182,7 @@ export function PublicationFormDialog({
       audiovisual_id: audiovisual === NONE ? null : audiovisual,
       disenador_id:
         isReel && portadaDisenador !== NONE ? portadaDisenador : null,
+      portada_copy: isReel ? portadaCopy : null,
       task_id: publication?.task_id ?? null,
       estado: mode === "edit" ? estado : undefined,
     };
@@ -372,6 +374,21 @@ export function PublicationFormDialog({
                   la hace otra persona.
                 </p>
               )}
+            </div>
+          )}
+          {isReel && (
+            <div className="space-y-2">
+              <Label>Portada (frame + copy)</Label>
+              <Textarea
+                rows={2}
+                value={portadaCopy}
+                onChange={(e) => setPortadaCopy(e.target.value)}
+                placeholder={`Ej: FRAME DEL VIDEO NAHUEL CON TELA + "ELEGÍ LA TELA DE TU SILLÓN"`}
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Si lo completás, al aprobarse el reel le llega a diseño un ticket con la portada.
+                Vacío = sin portada.
+              </p>
             </div>
           )}
 

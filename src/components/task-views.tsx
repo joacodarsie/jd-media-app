@@ -138,7 +138,9 @@ export function TaskViews({
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
-  const monthApplies = quick === "mias" || quick === "todas";
+  // El calendario navega sus propios meses: si el filtro de mes aplicara, al
+  // pasar a noviembre se vería vacío.
+  const monthApplies = (quick === "mias" || quick === "todas") && view !== "calendario";
   const [q, setQ] = useState("");
   const [estado, setEstado] = useState(ALL);
   const [prioridad, setPrioridad] = useState(ALL);

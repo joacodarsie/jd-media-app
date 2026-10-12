@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   addDays,
   addMonths,
@@ -20,6 +21,8 @@ import { hoyYmd } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { TaskWithRels } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { TareaPeekProvider, useTareaPeek } from "@/components/tarea-peek";
+import { bulkSetDueDate } from "@/app/(app)/tareas/actions";
 
 const DOW = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
@@ -49,6 +52,47 @@ const primerNombre = (n?: string | null) => (n ?? "").trim().split(/\s+/)[0] || 
 type Modo = "mes" | "semana";
 
 export function TaskCalendar({ tasks }: { tasks: TaskWithRels[] }) {
+  return (
+    <TareaPeekProvider>
+      <Calendario tasks={tasks} />
+    </TareaPeekProvider>
+  );
+}
+
+function Calendario({ tasks: tasksProp }: { tasks: TaskWithRels[] }) {
+  const router = useRouter();
+  const { abrir } = useTareaPeek();
+  const [, start] = useTransition();
+  // Fechas movidas acá que todavía no volvieron del servidor (se ven al instante).
+  const [movidas, setMovidas] = useState<Record<string, string>>({});
+  const [arrastrando, setArrastrando] = useState<string | null>(null);
+  const [sobre, setSobre] = useState<string | null>(null);
+  const tasks = useMemo(
+    () =>
+      tasksProp.map((t) => (movidas[t.id] ? { ...t, fecha_limite: movidas[t.id] } : t)),
+    [tasksProp, movidas]
+  );
+
+  function mover(id: string, dia: string) {
+    const t = tasks.find((x) => x.id === id);
+    if (!t || t.fecha_limite?.slice(0, 10) === dia) return;
+    setMovidas((m) => ({ ...m, [id]: dia }));
+    start(async () => {
+      const res = await bulkSetDueDate([id], dia);
+      if ("error" in res && res.error) {
+        setMovidas((m) => {
+          const n = { ...m };
+          delete n[id];
+          return n;
+        });
+        toast.error("No se pudo mover: " + res.error);
+        return;
+      }
+      toast.success(`Movida al ${format(new Date(dia + "T12:00:00"), "EEEE d", { locale: es })}`);
+      router.refresh();
+    });
+  }
+
   const [cursor, setCursor] = useState(new Date());
   const [modo, setModo] = useState<Modo>("mes");
   const [abierto, setAbierto] = useState<string | null>(null);
@@ -111,7 +155,7 @@ export function TaskCalendar({ tasks }: { tasks: TaskWithRels[] }) {
   }, [tasks, days, modo, cursor]);
 
   const sinFecha = tasks.filter((t) => !t.fecha_limite && t.estado !== "completada").length;
-  const mover = (n: number) =>
+  const navegar = (n: number) =>
     setCursor((c) => (modo === "semana" ? addDays(c, 7 * n) : addMonths(c, n)));
 
   const titulo =
@@ -138,13 +182,13 @@ export function TaskCalendar({ tasks }: { tasks: TaskWithRels[] }) {
               </button>
             ))}
           </div>
-          <Button variant="outline" size="icon" onClick={() => mover(-1)} aria-label="Anterior">
+          <Button variant="outline" size="icon" onClick={() => navegar(-1)} aria-label="Anterior">
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button variant="outline" onClick={() => setCursor(new Date())}>
             Hoy
           </Button>
-          <Button variant="outline" size="icon" onClick={() => mover(1)} aria-label="Siguiente">
+          <Button variant="outline" size="icon" onClick={() => navegar(1)} aria-label="Siguiente">
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -192,8 +236,25 @@ export function TaskCalendar({ tasks }: { tasks: TaskWithRels[] }) {
             return (
               <div
                 key={key}
+                onDragOver={(e) => {
+                  if (!arrastrando) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  if (sobre !== key) setSobre(key);
+                }}
+                onDragLeave={() => {
+                  if (sobre === key) setSobre(null);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const id = e.dataTransfer.getData("text/plain") || arrastrando;
+                  setSobre(null);
+                  setArrastrando(null);
+                  if (id) mover(id, key);
+                }}
                 className={cn(
-                  "bg-card p-1.5",
+                  "bg-card p-1.5 transition-colors",
+                  sobre === key && "bg-primary/15 ring-2 ring-inset ring-primary",
                   modo === "semana" ? "min-h-64" : "min-h-24",
                   modo === "mes" && !isSameMonth(day, cursor) && "bg-muted/40 text-muted-foreground"
                 )}
@@ -214,22 +275,36 @@ export function TaskCalendar({ tasks }: { tasks: TaskWithRels[] }) {
                     const hecha = t.estado === "completada";
                     const vencida = !hecha && key < hoy;
                     return (
-                      <Link
+                      <button
                         key={t.id}
-                        href={`/tareas/${t.id}`}
+                        type="button"
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData("text/plain", t.id);
+                          e.dataTransfer.effectAllowed = "move";
+                          setArrastrando(t.id);
+                        }}
+                        onDragEnd={() => {
+                          setArrastrando(null);
+                          setSobre(null);
+                        }}
+                        onClick={() => abrir(t.id)}
                         className={cn(
-                          "block rounded px-1.5 py-0.5 text-[11px] leading-tight",
+                          "block w-full cursor-grab rounded px-1.5 py-0.5 text-left text-[11px] leading-tight active:cursor-grabbing",
                           colorDe(t.asignado?.id),
                           hecha && "line-through opacity-50",
-                          vencida && "ring-1 ring-red-500"
+                          vencida && "border-l-[3px] border-red-500",
+                          arrastrando === t.id && "opacity-40"
                         )}
                         title={`${t.titulo} · ${t.asignado?.nombre ?? "Sin asignar"}${
                           t.cliente ? ` · ${t.cliente.nombre}` : ""
                         }${vencida ? " · VENCIDA" : ""}`}
                       >
                         <span className="font-semibold">{primerNombre(t.asignado?.nombre)}</span>{" "}
-                        <span className={cn(modo === "mes" && "line-clamp-1")}>{t.titulo}</span>
-                      </Link>
+                        <span className={cn("block", modo === "mes" && "line-clamp-1")}>
+                          {t.titulo}
+                        </span>
+                      </button>
                     );
                   })}
                   {modo === "mes" && dayTasks.length > 4 && (
@@ -247,8 +322,9 @@ export function TaskCalendar({ tasks }: { tasks: TaskWithRels[] }) {
         </div>
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Cada tarea va en su fecha límite, con el color de quien la tiene. Borde rojo = vencida,
-        tachada = terminada. Los filtros de arriba (persona, cliente, área) también aplican acá.
+        Cada tarea va en su fecha límite, con el color de quien la tiene. Tocala para verla sin
+        salir; arrastrala a otro día para cambiarle la fecha. Raya roja = vencida, tachada =
+        terminada. Los filtros de arriba también aplican acá.
       </p>
     </div>
   );

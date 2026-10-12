@@ -2,6 +2,13 @@
 title: Novedades
 ---
 
+## 2026-10-12 — Aprobar piezas desde la bandeja, sin entrar a cada tarea
+
+- ✅ **«Para aprobar» ahora trae los botones en cada fila: «Ver archivo», «Aprobar» y «Pedir cambios»**. Las piezas del calendario van primero, ordenadas por fecha de publicación, y marca en rojo las que ya debían haber salido.
+- 🔗 **Aprobar desde la tarea y aprobar desde Contenidos ahora es lo mismo**: antes, aprobar la tarea dejaba la pieza trabada en «revisión creativa». Ahora se mueven las dos juntas.
+- Si una pieza no tiene el archivo cargado, lo avisa y no deja aprobarla hasta que diseño o edición lo suba.
+- «¿Hace falta jornada de producción?» del arranque ya no pasa por la aprobación de la dirección creativa: es una decisión, no una pieza.
+
 ## 2026-10-12 — Calendario de tareas del equipo
 
 - 📅 En **Tareas**, el botón **«Calendario»** muestra cada tarea en su fecha límite **con el color de quien la tiene**, para ver de un vistazo qué tiene cada uno.

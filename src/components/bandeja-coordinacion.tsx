@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { CheckCircle2, Clock, Inbox } from "lucide-react";
+import { Inbox } from "lucide-react";
 import { createAdmin } from "@/lib/supabase/admin";
 import { personasClave } from "@/lib/tareas/personas-clave";
 import { formatTicket } from "@/lib/tareas/tickets";
 import { AREAS_DE_LA_PM, estadoAprobacion } from "@/lib/tareas/puerta";
-import { cn } from "@/lib/utils";
+import { tieneArchivo } from "@/lib/contenidos/aprobacion";
+import { ymdEnZona } from "@/lib/dates";
+import { BandejaAprobar, type ItemAprobar } from "@/components/bandeja-aprobar";
 
 interface Fila {
   id: string;
@@ -57,7 +59,7 @@ export async function BandejaCoordinacion({ me }: { me: { id: string; rol: strin
           .eq("estado", "en_revision")
           .eq("aprobador_id", clave.directoraId)
           .order("revision_desde", { ascending: true })
-          .limit(30)
+          .limit(100)
       : Promise.resolve({ data: [], error: null }),
   ]);
 
@@ -67,36 +69,59 @@ export async function BandejaCoordinacion({ me }: { me: { id: string; rol: strin
   const aprobar = (aprobarRes.data ?? []) as unknown as Fila[];
   if (!repartir.length && !aprobar.length) return null;
 
+  // La pieza del calendario de cada ticket: fecha de salida y archivo, para
+  // decidir sin entrar a la tarea.
+  const { data: pubsRaw } = aprobar.length
+    ? await admin
+        .from("publications")
+        .select("task_id, estado, fecha_publicacion, asset_url, link_instagram, publish_media")
+        .in("task_id", aprobar.map((f) => f.id))
+    : { data: [] };
+  type Pub = {
+    task_id: string;
+    estado: string;
+    fecha_publicacion: string | null;
+    asset_url: string | null;
+    link_instagram: string | null;
+    publish_media: unknown[] | null;
+  };
+  const pubDe = new Map(((pubsRaw ?? []) as Pub[]).map((p) => [p.task_id, p]));
+  const items: ItemAprobar[] = aprobar.map((f) => {
+    const p = pubDe.get(f.id);
+    const reloj = f.revision_desde ? estadoAprobacion(f.revision_desde) : null;
+    return {
+      id: f.id,
+      ticket: formatTicket(f.numero) ?? null,
+      titulo: f.titulo,
+      cliente: f.cliente?.nombre ?? null,
+      persona: f.asignado?.nombre ?? null,
+      reloj: reloj ? { texto: reloj.texto, vencida: reloj.vencida } : null,
+      pieza: p
+        ? {
+            sale: ymdEnZona(p.fecha_publicacion),
+            archivo: p.asset_url || p.link_instagram || null,
+            tieneArchivo: tieneArchivo({ ...p, estado: "revision_creativa" }),
+          }
+        : null,
+    };
+  });
+  // Lo que sale antes, arriba; lo que no es del calendario, al final.
+  items.sort((a, b) => {
+    const sa = a.pieza?.sale ?? "9999";
+    const sb = b.pieza?.sale ?? "9999";
+    return sa.localeCompare(sb);
+  });
+
   const pm = clave.pmNombre?.split(" ")[0] ?? "la PM";
   const directora = clave.directoraNombre?.split(" ")[0] ?? "la dirección creativa";
 
   return (
     <div className="grid gap-3 md:grid-cols-2">
       {aprobar.length > 0 && (
-        <Bandeja
-          icono={<CheckCircle2 className="h-4 w-4 text-amber-600" />}
+        <BandejaAprobar
           titulo={soyDirectora ? "Para aprobar" : `Esperando aprobación de ${directora}`}
-          ayuda="Aprobá o pedí cambios dentro de las 24 horas hábiles."
-          filas={aprobar}
-          render={(f) => {
-            const e = f.revision_desde ? estadoAprobacion(f.revision_desde) : null;
-            return (
-              <>
-                <span className="truncate text-muted-foreground">{f.asignado?.nombre ?? "—"}</span>
-                {e && (
-                  <span
-                    className={cn(
-                      "inline-flex shrink-0 items-center gap-1 text-xs",
-                      e.vencida ? "font-medium text-red-600" : "text-amber-700"
-                    )}
-                  >
-                    <Clock className="h-3 w-3" />
-                    {e.texto}
-                  </span>
-                )}
-              </>
-            );
-          }}
+          items={items}
+          puedeDecidir={soyDirectora || soyAdmin}
         />
       )}
       {repartir.length > 0 && (

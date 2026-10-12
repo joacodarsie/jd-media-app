@@ -6,6 +6,27 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { personasClave } from "@/lib/tareas/personas-clave";
 import { motivoParaNoCerrarTareas } from "@/lib/contenidos/archivo-final-db";
 import { puedeRepartir, vaPorLaPm } from "@/lib/tareas/puerta";
+import { aprobarPieza, corregirPieza } from "@/app/(app)/contenidos/actions";
+
+/**
+ * La pieza del calendario detrás del ticket, si está esperando la aprobación
+ * del diseño final.
+ *
+ * Por qué (12/10/2026): aprobar desde el ticket cerraba la tarea pero dejaba la
+ * pieza trabada en "revisión creativa" para siempre, y aprobar desde Contenidos
+ * hacía lo contrario. Había 15 piezas así y Santi decía "esto ya lo aprobé".
+ * Ahora, si hay pieza, la decisión se toma sobre la pieza y la tarea la sigue
+ * sola (trigger jd_sync_pub_to_task).
+ */
+async function piezaEnRevision(taskId: string) {
+  const { data } = await createAdmin()
+    .from("publications")
+    .select("id, estado")
+    .eq("task_id", taskId)
+    .eq("estado", "revision_creativa")
+    .maybeSingle();
+  return (data as { id: string; estado: string } | null) ?? null;
+}
 
 async function sesion() {
   const supabase = createClient();
@@ -78,11 +99,16 @@ export async function aprobarTarea(id: string) {
   if (!puedeAprobar(t, actor, clave.directoraId)) {
     return { error: "Solo la dirección creativa puede aprobar este ticket." };
   }
-  const bloqueo = await motivoParaNoCerrarTareas(createAdmin(), [id], "completada");
-  if (bloqueo) return { error: bloqueo };
-
-  const { error } = await supabase.from("tasks").update({ estado: "completada" }).eq("id", id);
-  if (error) return { error: error.message };
+  const pieza = await piezaEnRevision(id);
+  if (pieza) {
+    const r = await aprobarPieza(pieza.id);
+    if (r && "error" in r && r.error) return { error: r.error };
+  } else {
+    const bloqueo = await motivoParaNoCerrarTareas(createAdmin(), [id], "completada");
+    if (bloqueo) return { error: bloqueo };
+    const { error } = await supabase.from("tasks").update({ estado: "completada" }).eq("id", id);
+    if (error) return { error: error.message };
+  }
 
   await supabase
     .from("comments")
@@ -107,8 +133,14 @@ export async function pedirCambios(id: string, detalle: string) {
     return { error: "Solo la dirección creativa puede pedir cambios en este ticket." };
   }
 
-  const { error } = await supabase.from("tasks").update({ estado: "en_progreso" }).eq("id", id);
-  if (error) return { error: error.message };
+  const pieza = await piezaEnRevision(id);
+  if (pieza) {
+    const r = await corregirPieza(pieza.id, texto);
+    if (r && "error" in r && r.error) return { error: r.error };
+  } else {
+    const { error } = await supabase.from("tasks").update({ estado: "en_progreso" }).eq("id", id);
+    if (error) return { error: error.message };
+  }
 
   await supabase
     .from("comments")

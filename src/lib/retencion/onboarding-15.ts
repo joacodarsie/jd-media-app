@@ -151,7 +151,9 @@ export function planOnboarding(input: {
       6,
       "¿Hace falta jornada de producción?",
       `Definir con ${nombreCliente} si se hace jornada. Si sí: fecha, locación, lista de tomas y briefing. Si no, queda cerrado y no se vuelve a preguntar.`,
-      "Edición Audiovisual",
+      // Coordinación y no Edición: es una decisión, no una pieza. Con el área de
+      // edición caía en la aprobación de la dirección creativa (12/10/2026).
+      "Coordinación",
       av
     );
     add(

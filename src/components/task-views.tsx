@@ -526,7 +526,7 @@ export function TaskViews({
           <ViewBtn icon={List} label="Lista" active={view === "lista"} onClick={() => setView("lista")} />
           <ViewBtn icon={TableIcon} label="Tabla" active={view === "tabla"} onClick={() => setView("tabla")} />
           <ViewBtn icon={Kanban} label="Kanban" active={view === "kanban"} onClick={() => setView("kanban")} />
-          <ViewBtn icon={CalendarDays} label="Cal" active={view === "calendario"} onClick={() => setView("calendario")} />
+          <ViewBtn icon={CalendarDays} label="Calendario" active={view === "calendario"} onClick={() => setView("calendario")} />
         </div>
       </div>
 

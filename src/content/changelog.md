@@ -2,6 +2,13 @@
 title: Novedades
 ---
 
+## 2026-10-12 — Calendario de tareas del equipo
+
+- 📅 En **Tareas**, el botón **«Calendario»** muestra cada tarea en su fecha límite **con el color de quien la tiene**, para ver de un vistazo qué tiene cada uno.
+- Arriba, **cuántas pendientes tiene cada persona** en el mes (o en la semana).
+- Vista **Mes** o **Semana** (en la semana se ven todas las tareas de cada día). En el mes, «+N más» abre el día completo.
+- Borde rojo = vencida; tachada = terminada. Los filtros de persona, cliente y área también aplican.
+
 ## 2026-10-10 — Ticket de portada para cada reel
 
 - 🖼️ **Al cargar un reel hay un campo nuevo: «Portada (frame + copy)»**. Ej: *FRAME DEL VIDEO NAHUEL CON TELA + "ELEGÍ LA TELA DE TU SILLÓN"*.

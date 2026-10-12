@@ -2,6 +2,13 @@
 title: Novedades
 ---
 
+## 2026-10-12 — Efemérides: las fechas importantes, con 30 días de aviso
+
+- 🎉 **En Mi día, «Fechas que se vienen»**: las efemérides de los próximos 30 días, para quienes arman calendarios. Las de **todas las cuentas** (Navidad, Día de la Madre, feriados…) siempre; las **de rubro** (Día del Médico, Black Friday, Día del Maestro…) solo si le sirven a alguna de tus cuentas, y te dice a cuáles.
+- 📅 **En el calendario de Contenidos** aparecen marcadas en su día las que afectan a todas las cuentas.
+- 🗓️ **Contenidos → Efemérides**: el año completo, mes por mes, con a qué cuentas le sirve cada una.
+- Hot Sale y Cyber Monday figuran como aproximadas: la fecha exacta la anuncia la CACE cada año.
+
 ## 2026-10-12 — Cómo te ve la dirección
 
 - 🧭 **Cada coordinador tiene en Mi día su tarjeta «Cómo te ve la dirección»**: los números con los que Joaquín sigue su puesto, con semáforo. Se calculan solos con lo que se hace en la plataforma.

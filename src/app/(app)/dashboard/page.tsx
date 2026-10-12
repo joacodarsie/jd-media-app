@@ -28,6 +28,7 @@ import { TaskList } from "@/components/task-list";
 import { HelpTrigger } from "@/components/help-trigger";
 import { DashboardAvisos } from "@/components/dashboard-avisos";
 import { MiTarjetaDireccion } from "@/components/mi-tarjeta-direccion";
+import { EfemeridesProximas } from "@/components/efemerides-proximas";
 
 export const dynamic = "force-dynamic";
 
@@ -501,6 +502,11 @@ export default async function DashboardPage() {
       {/* Coordinadores: su tarjeta de la dirección (no frena el resto de la página). */}
       <Suspense fallback={null}>
         <MiTarjetaDireccion userId={user.id} />
+      </Suspense>
+
+      {/* Efemérides de los próximos 30 días, para quienes arman calendarios. */}
+      <Suspense fallback={null}>
+        <EfemeridesProximas user={user} />
       </Suspense>
 
       {/* Avisos importantes del Portal sin leer */}

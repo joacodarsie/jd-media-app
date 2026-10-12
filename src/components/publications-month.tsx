@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState, useEffect, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -28,6 +29,7 @@ import {
   PUBLICATION_TYPE_LABEL,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { efemeridesEntre } from "@/lib/efemerides/argentina";
 import type {
   AppUser,
   PublicationStatus,
@@ -388,6 +390,18 @@ export function PublicationsMonth({
     }
     return arr;
   }, [cursor]);
+
+  // Efemérides que afectan a todas las cuentas, marcadas en su día (12/10/2026).
+  // Las de rubro viven en Mi día y en /contenidos/efemerides.
+  const efemeridesPorDia = useMemo(() => {
+    const m = new Map<string, string[]>();
+    if (!cells.length) return m;
+    for (const e of efemeridesEntre(ymd(cells[0]), ymd(cells[cells.length - 1]))) {
+      if (e.alcance !== "todas") continue;
+      m.set(e.fecha, [...(m.get(e.fecha) ?? []), e.nombre]);
+    }
+    return m;
+  }, [cells]);
 
   const monthLabel = cursor.toLocaleDateString("es-AR", {
     month: "long",
@@ -772,6 +786,16 @@ export function PublicationsMonth({
                         />
                       )}
                     </div>
+                    {(efemeridesPorDia.get(key) ?? []).map((n) => (
+                      <Link
+                        key={n}
+                        href="/contenidos/efemerides"
+                        title={`Efeméride: ${n}`}
+                        className="mb-1 block truncate rounded bg-pink-100 px-1.5 py-0.5 text-[10px] font-medium text-pink-800 hover:underline dark:bg-pink-950 dark:text-pink-200"
+                      >
+                        🎉 {n}
+                      </Link>
+                    ))}
                     <div className="space-y-1">
                       {items.slice(0, 3).map((p) => (
                         <PubChip

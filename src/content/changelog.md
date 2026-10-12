@@ -2,6 +2,15 @@
 title: Novedades
 ---
 
+## 2026-10-12 — Cómo te ve la dirección
+
+- 🧭 **Cada coordinador tiene en Mi día su tarjeta «Cómo te ve la dirección»**: los números con los que Joaquín sigue su puesto, con semáforo. Se calculan solos con lo que se hace en la plataforma.
+  - **Luz (PM):** tareas vencidas del equipo, pedidos sin repartir y cuentas nuevas en riesgo.
+  - **Santi (dirección creativa):** piezas esperando su aprobación (y cuántas pasaron las 24 h) e ideas sin aprobar que salen pronto.
+  - **Mati (comercial):** mensajes de la semana contra la meta y reuniones conseguidas.
+  - **Brisa (cuenta de JD Media):** lo publicado en el mes contra lo previsto y las piezas atrasadas.
+- Todos: sus tareas vencidas y **lo que les pidió la dirección**, con las fechas.
+
 ## 2026-10-12 — Aprobar piezas desde la bandeja, sin entrar a cada tarea
 
 - ✅ **«Para aprobar» ahora trae los botones en cada fila: «Ver archivo», «Aprobar» y «Pedir cambios»**. Las piezas del calendario van primero, ordenadas por fecha de publicación, y marca en rojo las que ya debían haber salido.

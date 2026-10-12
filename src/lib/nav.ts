@@ -31,6 +31,9 @@ export const NAV_GROUPS: NavGroup[] = [
     label: null,
     items: [
       { href: "/dashboard", label: "Mi día", icon: "Sun" },
+      // Coordinar a los coordinadores (12/10/2026). Cada coordinador ve su
+      // tarjeta en Mi día; la página entera es de la dirección.
+      { href: "/direccion", label: "Dirección", icon: "Compass", roles: ["admin"] },
       { href: "/tareas", label: "Tareas", icon: "ListChecks" },
       { href: "/contenidos", label: "Contenidos", icon: "Calendar" },
       {

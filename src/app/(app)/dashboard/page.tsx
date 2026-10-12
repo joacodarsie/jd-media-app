@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -26,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { TaskList } from "@/components/task-list";
 import { HelpTrigger } from "@/components/help-trigger";
 import { DashboardAvisos } from "@/components/dashboard-avisos";
+import { MiTarjetaDireccion } from "@/components/mi-tarjeta-direccion";
 
 export const dynamic = "force-dynamic";
 
@@ -495,6 +497,11 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Coordinadores: su tarjeta de la dirección (no frena el resto de la página). */}
+      <Suspense fallback={null}>
+        <MiTarjetaDireccion userId={user.id} />
+      </Suspense>
 
       {/* Avisos importantes del Portal sin leer */}
       <DashboardAvisos

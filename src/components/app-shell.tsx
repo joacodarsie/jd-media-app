@@ -36,6 +36,7 @@ import {
   Rocket,
   TrendingUp,
   Goal,
+  Compass,
   Menu,
   LogOut,
   ChevronDown,
@@ -98,6 +99,7 @@ const ICONS: Record<string, LucideIcon> = {
   Clapperboard,
   TrendingUp,
   Goal,
+  Compass,
 };
 
 function initials(nombre: string) {

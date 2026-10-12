@@ -17,6 +17,7 @@ title: Novedades
   - **Mati (comercial):** mensajes de la semana contra la meta y reuniones conseguidas.
   - **Brisa (cuenta de JD Media):** lo publicado en el mes contra lo previsto y las piezas atrasadas.
 - Todos: sus tareas vencidas y **lo que les pidió la dirección**, con las fechas.
+- **Leo (coordinación general):** cobros del mes sin marcar. **Guille (pauta):** cuentas con pauta conectada a la app y con campañas publicadas.
 
 ## 2026-10-12 — Aprobar piezas desde la bandeja, sin entrar a cada tarea
 

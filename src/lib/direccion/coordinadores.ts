@@ -12,13 +12,23 @@
 
 export type Semaforo = "ok" | "atento" | "mal";
 
-export type Puesto = "pm" | "direccion_creativa" | "comercial" | "cuenta_jd";
+export type Puesto =
+  | "pm"
+  | "direccion_creativa"
+  | "coord_general"
+  | "paid_media"
+  | "comercial"
+  | "cuenta_jd"
+  | "coordinacion";
 
 export const PUESTO_LABEL: Record<Puesto, string> = {
   pm: "Project Manager",
   direccion_creativa: "Dirección creativa",
   comercial: "Comercial",
   cuenta_jd: "Cuenta de JD Media",
+  coord_general: "Coordinación general",
+  paid_media: "Coordinación de pauta",
+  coordinacion: "Coordinación",
 };
 
 export interface Indicador {
@@ -238,6 +248,64 @@ export function tarjetaCuentaJd(
     ],
     c
   );
+}
+
+export function tarjetaPaidMedia(
+  p: { id: string; nombre: string },
+  d: { conPauta: number; conectadas: number; conCampanas: number },
+  c: Comunes
+): Tarjeta {
+  return tarjeta(
+    p,
+    "paid_media",
+    [
+      {
+        label: "Cuentas con pauta conectada a la app",
+        valor: `${d.conectadas} de ${d.conPauta}`,
+        detalle: "Con datos de Meta en los últimos 7 días: sin eso no se mide nada",
+        estado: porMeta(d.conectadas, d.conPauta),
+        href: "/paid-media",
+      },
+      {
+        label: "Cuentas con campañas publicadas",
+        valor: `${d.conCampanas} de ${d.conPauta}`,
+        detalle: "Marcadas como publicadas en el arranque de pauta",
+        estado: porMeta(d.conCampanas, d.conPauta),
+        href: "/paid-media",
+      },
+    ],
+    c
+  );
+}
+
+export function tarjetaCoordGeneral(
+  p: { id: string; nombre: string },
+  d: { sinCobrar: number; montoSinCobrar: number; total: number; diaDelMes: number },
+  c: Comunes
+): Tarjeta {
+  const fueraDePlazo = d.diaDelMes > 5;
+  return tarjeta(
+    p,
+    "coord_general",
+    [
+      {
+        label: "Cobros del mes sin marcar",
+        valor: `${d.sinCobrar} de ${d.total}`,
+        detalle: d.sinCobrar
+          ? `${Math.round(d.montoSinCobrar).toLocaleString("es-AR")} ${fueraDePlazo ? "fuera del plazo del 1 al 5" : "(plazo del 1 al 5)"}`
+          : "Todo cobrado",
+        // Antes del 5 todavía están en plazo: no pesa.
+        estado: fueraDePlazo ? porTope(d.sinCobrar, 2) : null,
+        href: "/cobros",
+      },
+    ],
+    c
+  );
+}
+
+/** Una coordinación sin números propios todavía: lo común a todos. */
+export function tarjetaGenerica(p: { id: string; nombre: string }, c: Comunes): Tarjeta {
+  return tarjeta(p, "coordinacion", [], c);
 }
 
 /** Días hábiles (lun-vie) de la semana de `hoy` que ya empezaron, hoy incluido. */

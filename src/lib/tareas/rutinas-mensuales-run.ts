@@ -11,6 +11,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { rutinasDelMes, type GenteRutina } from "./rutinas-mensuales";
 import { AREA_PM } from "./puerta";
+import { AREA_DIRECCION, puestaAPunto, rutinasDeDireccion } from "@/lib/direccion/rutina";
+import { hoyYmd } from "@/lib/dates";
 
 const AREA_COORD_GENERAL = "Coordinación General";
 
@@ -39,7 +41,10 @@ export async function runRutinasMensuales(
     pmId: porArea(AREA_PM),
   };
 
-  const tareas = rutinasDelMes(periodo, gente);
+  // La rutina de la dirección (ronda semanal, RRHH, objetivos, trimestre) va
+  // al dueño: quien ocupa Estrategia/Dirección (12/10/2026).
+  const duenoId = porArea(AREA_DIRECCION) ?? gente.adminId;
+  const tareas = [...rutinasDelMes(periodo, gente), ...rutinasDeDireccion(hoyYmd(), duenoId), ...puestaAPunto(duenoId)];
   if (tareas.length === 0) return { periodo, creadas: 0, yaEstaban: 0 };
 
   // Las que ya existen no se tocan: puede que alguien les haya cambiado la

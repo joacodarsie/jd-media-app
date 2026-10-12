@@ -6,6 +6,8 @@ import {
   porTope,
   tarjetaComercial,
   tarjetaCuentaJd,
+  tarjetaCoordGeneral,
+  tarjetaPaidMedia,
   tarjetaDireccionCreativa,
   tarjetaPm,
 } from "./coordinadores";
@@ -83,6 +85,21 @@ describe("tarjetas", () => {
     const a = tarjetaCuentaJd({ id: "a", nombre: "A" }, { publicadas: 1, previstasAHoy: 1, atrasadas: 0, diaDelMes: 12 }, limpio);
     const b = tarjetaPm({ id: "b", nombre: "B" }, { vencidasEquipo: 99, sinRepartir: 0, cuentasEnRiesgo: 0, cuentasNuevas: 0 }, limpio);
     expect(ordenarTarjetas([a, b]).map((t) => t.personaId)).toEqual(["b", "a"]);
+  });
+});
+
+describe("Leo y Guille", () => {
+  it("cobros: antes del 5 no pesa; después, 3 o más sin marcar es rojo", () => {
+    const antes = tarjetaCoordGeneral(p, { sinCobrar: 12, montoSinCobrar: 2975000, total: 25, diaDelMes: 3 }, limpio);
+    expect(antes.estado).toBe("ok");
+    const despues = tarjetaCoordGeneral(p, { sinCobrar: 12, montoSinCobrar: 2975000, total: 25, diaDelMes: 12 }, limpio);
+    expect(despues.estado).toBe("mal");
+    expect(despues.indicadores[0].detalle).toContain("2.975.000");
+  });
+  it("pauta: conectadas contra las cuentas que tienen pauta", () => {
+    const t = tarjetaPaidMedia(p, { conPauta: 17, conectadas: 5, conCampanas: 4 }, limpio);
+    expect(t.indicadores[0].valor).toBe("5 de 17");
+    expect(t.estado).toBe("mal");
   });
 });
 

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { personasClave } from "@/lib/tareas/personas-clave";
+import { AREA_DIRECCION } from "./rutina";
 import { AREAS_DE_LA_PM, estadoAprobacion } from "@/lib/tareas/puerta";
 import { todosLosContactos } from "@/lib/prospecting/contactos-db";
 import { metaDe, resumirActividad, type ContactoActividad } from "@/lib/prospecting/actividad";
@@ -13,7 +14,11 @@ import {
   tarjetaCuentaJd,
   tarjetaDireccionCreativa,
   tarjetaPm,
+  tarjetaPaidMedia,
+  tarjetaCoordGeneral,
+  tarjetaGenerica,
   type Comunes,
+  type Puesto,
   type Tarjeta,
 } from "./coordinadores";
 
@@ -24,6 +29,7 @@ type TareaAbierta = {
   asignado_a_id: string | null;
   creado_por_id: string | null;
   cliente_id: string | null;
+  rutina_key: string | null;
   fecha_limite: string | null;
   estado: string;
   area: string | null;
@@ -49,7 +55,7 @@ async function tareasAbiertas(admin: SupabaseClient): Promise<TareaAbierta[]> {
   for (let desde = 0; ; desde += 1000) {
     const { data, error } = await admin
       .from("tasks")
-      .select("id, titulo, numero, asignado_a_id, creado_por_id, cliente_id, fecha_limite, estado, area, created_at")
+      .select("id, titulo, numero, asignado_a_id, creado_por_id, cliente_id, rutina_key, fecha_limite, estado, area, created_at")
       .not("estado", "in", "(completada,archivada)")
       .order("id")
       .range(desde, desde + 999);
@@ -72,7 +78,7 @@ export async function cargarTablero(
   const ahora = new Date();
   const [clave, { data: usersRaw }, { data: internas }, tareas] = await Promise.all([
     personasClave(),
-    admin.from("users").select("id, nombre, email, rol, meta_prospeccion").eq("activo", true),
+    admin.from("users").select("id, nombre, email, rol, area, area_secundaria, meta_prospeccion").eq("activo", true),
     admin.from("clients").select("id, cm_id").eq("es_interno", true),
     tareasAbiertas(admin),
   ]);
@@ -81,22 +87,37 @@ export async function cargarTablero(
     nombre: string;
     email: string | null;
     rol: string;
+    area: string | null;
+    area_secundaria: string | null;
     meta_prospeccion: number | null;
   }[];
   const nombre = (id: string) => users.find((u) => u.id === id)?.nombre ?? "—";
-  const direccion = new Set(users.filter((u) => u.rol === "admin").map((u) => u.id));
+  // La dirección es quien ocupa Estrategia/Dirección (el dueño); si no hay, los admin.
+  const duenos = users.filter((u) => u.area === AREA_DIRECCION);
+  const direccion = new Set((duenos.length ? duenos : users.filter((u) => u.rol === "admin")).map((u) => u.id));
+  const tieneArea = (u: (typeof users)[number], a: string) => u.area === a || u.area_secundaria === a;
 
   // Quiénes son los coordinadores. Una persona, una tarjeta (la primera que le toque).
-  const puestos: { id: string; puesto: "pm" | "direccion_creativa" | "comercial" | "cuenta_jd" }[] = [];
+  const puestos: { id: string; puesto: Puesto }[] = [];
   const sumar = (id: string | null | undefined, puesto: (typeof puestos)[number]["puesto"]) => {
     if (id && !puestos.some((p) => p.id === id)) puestos.push({ id, puesto });
   };
   sumar(clave.pmId, "pm");
   sumar(clave.directoraId, "direccion_creativa");
+  // Todos los roles de coordinación (pedido del 12/10: sumar a Leo y a Guille).
+  for (const u of users.filter((x) => tieneArea(x, "Coordinación General"))) sumar(u.id, "coord_general");
+  for (const u of users.filter((x) => tieneArea(x, "Coordinación de Paid Media"))) sumar(u.id, "paid_media");
   for (const u of users.filter((x) => x.rol === "comercial" || x.rol === "prospecting")) sumar(u.id, "comercial");
   const cuentaJd = (internas ?? [])[0] as { id: string; cm_id: string | null } | undefined;
   const idsInternos = new Set(((internas ?? []) as { id: string }[]).map((c) => c.id));
   sumar(cuentaJd?.cm_id, "cuenta_jd");
+  // Cualquier otra coordinación que aparezca, con lo común a todos.
+  for (const u of users.filter(
+    (x) => !direccion.has(x.id) && ((x.area ?? "").startsWith("Coordinación") || (x.area_secundaria ?? "").startsWith("Coordinación"))
+  ))
+    sumar(u.id, "coordinacion");
+  // El dueño no se sigue a sí mismo.
+  for (let i = puestos.length - 1; i >= 0; i--) if (direccion.has(puestos[i].id) && duenos.length) puestos.splice(i, 1);
 
   const elegidos = soloPersona ? puestos.filter((p) => p.id === soloPersona) : puestos;
   if (!elegidos.length) return { tarjetas: [], pedidos: {} };
@@ -114,6 +135,7 @@ export async function cargarTablero(
           t.creado_por_id &&
           direccion.has(t.creado_por_id) &&
           t.creado_por_id !== id &&
+          !t.rutina_key &&
           (!t.cliente_id || idsInternos.has(t.cliente_id))
       )
       .sort((a, b) => (a.fecha_limite ?? "9999").localeCompare(b.fecha_limite ?? "9999"));
@@ -202,6 +224,9 @@ export async function cargarTablero(
           comunesDe(id)
         )
       );
+    } else if (puesto === "paid_media" || puesto === "coord_general" || puesto === "coordinacion") {
+      const t = await tarjetaExtra(admin, persona, puesto, hoy, comunesDe(id));
+      if (t) tarjetas.push(t);
     } else if (puesto === "cuenta_jd" && cuentaJd) {
       const inicioMes = `${hoy.slice(0, 7)}-01T03:00:00Z`;
       const hace30 = new Date(ahora.getTime() - 30 * 86_400_000).toISOString();
@@ -229,4 +254,58 @@ export async function cargarTablero(
   }
 
   return { tarjetas: ordenarTarjetas(tarjetas), pedidos };
+}
+
+async function tarjetaExtra(
+  admin: SupabaseClient,
+  persona: { id: string; nombre: string },
+  puesto: Puesto,
+  hoy: string,
+  comunes: Comunes
+): Promise<Tarjeta | null> {
+  if (puesto === "paid_media") {
+    const hace7 = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
+    const { data: cs } = await admin
+      .from("clients")
+      .select("id")
+      .eq("estado", "activo")
+      .eq("es_interno", false)
+      .not("media_buyer_id", "is", null);
+    const ids = ((cs ?? []) as { id: string }[]).map((c) => c.id);
+    const [{ data: snaps }, { data: onb }] = ids.length
+      ? await Promise.all([
+          admin.from("paid_media_snapshots").select("cliente_id").in("cliente_id", ids).gte("fecha", hace7),
+          admin.from("client_ads_onboarding").select("cliente_id").in("cliente_id", ids).not("campanas_publicadas_at", "is", null),
+        ])
+      : [{ data: [] }, { data: [] }];
+    return tarjetaPaidMedia(
+      persona,
+      {
+        conPauta: ids.length,
+        conectadas: new Set(((snaps ?? []) as { cliente_id: string }[]).map((x) => x.cliente_id)).size,
+        conCampanas: new Set(((onb ?? []) as { cliente_id: string }[]).map((x) => x.cliente_id)).size,
+      },
+      comunes
+    );
+  }
+  if (puesto === "coord_general") {
+    const { data: inv } = await admin
+      .from("client_invoices")
+      .select("monto, fecha_cobro")
+      .eq("periodo", hoy.slice(0, 7));
+    const lista = (inv ?? []) as { monto: number | string; fecha_cobro: string | null }[];
+    const pendientes = lista.filter((x) => !x.fecha_cobro);
+    return tarjetaCoordGeneral(
+      persona,
+      {
+        sinCobrar: pendientes.length,
+        montoSinCobrar: pendientes.reduce((a, x) => a + Number(x.monto || 0), 0),
+        total: lista.length,
+        diaDelMes: Number(hoy.slice(8, 10)),
+      },
+      comunes
+    );
+  }
+  if (puesto === "coordinacion") return tarjetaGenerica(persona, comunes);
+  return null;
 }

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { createTask } from "@/app/(app)/tareas/actions";
+import { AREA_DIRECCION } from "@/lib/direccion/rutina";
 
 /**
  * La dirección le pide algo a un coordinador: es una tarea normal, asignada a
@@ -11,7 +12,7 @@ import { createTask } from "@/app/(app)/tareas/actions";
  */
 export async function pedirACoordinador(personaId: string, titulo: string, fecha: string) {
   const me = await requireUser();
-  if (me.rol !== "admin") return { error: "Solo la dirección puede pedir desde acá." };
+  if (me.area !== AREA_DIRECCION) return { error: "Solo la dirección puede pedir desde acá." };
   const texto = titulo.trim();
   if (texto.length < 4) return { error: "Escribí qué le pedís." };
   const r = await createTask({

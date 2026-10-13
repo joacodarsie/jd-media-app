@@ -9,6 +9,8 @@ import { AREA_DIRECCION, cadenciaDe, type Cadencia } from "@/lib/direccion/rutin
 import { TarjetaCoordinador } from "@/components/tarjeta-coordinador";
 import { formatTicket } from "@/lib/tareas/tickets";
 import { cn } from "@/lib/utils";
+import { Suspense } from "react";
+import { DireccionWeb } from "@/components/direccion-web";
 
 export const dynamic = "force-dynamic";
 
@@ -81,7 +83,7 @@ export default async function DireccionPage() {
         <h1 className="text-2xl font-bold">{esDireccion ? "Dirección" : "Cómo te ve la dirección"}</h1>
         <p className="text-muted-foreground">
           {esDireccion
-            ? "Tu lugar de trabajo: arriba lo que te toca a vos, abajo cómo viene cada coordinador."
+            ? "Tu lugar de trabajo, solo lo ves vos: arriba lo que te toca, después cómo viene cada coordinador y cómo anda la web."
             : "Estos son los números con los que Joaquín sigue tu puesto. Se calculan solos con lo que hacés en la plataforma."}
         </p>
       </div>
@@ -150,6 +152,12 @@ export default async function DireccionPage() {
           />
         ))}
       </div>
+
+      {esDireccion && (
+        <Suspense fallback={null}>
+          <DireccionWeb />
+        </Suspense>
+      )}
 
       {esDireccion && (
         <section className="rounded-xl border bg-card">

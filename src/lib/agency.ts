@@ -9,6 +9,8 @@ export const AGENCY = {
   domicilio: "Azor Grimaut 2963, Córdoba, Argentina",
   representante: "Joaquín Darsie",
   rol_representante: "Dirección",
+  /** Para pedir reseñas en el Perfil de Negocio de Google (12/10/2026). */
+  resena_google: "https://g.page/r/CbfZnUkNWAtNECE/review",
   jurisdiccion: "tribunales de Córdoba, Argentina",
   bank: {
     nombre: "Mercado Pago",

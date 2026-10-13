@@ -2,6 +2,13 @@
 title: Novedades
 ---
 
+## 2026-10-12 — Reseñas en Google
+
+- ⭐ **JD Media ya está en Google** (Perfil de Negocio). Para sumar reseñas:
+  - En **Clientes → Calidad del mes**, a las cuentas que puntuaron 4 o 5 en la encuesta les aparece **«Pedir reseña»**: abre WhatsApp con el pedido y el link ya escritos.
+  - Al responder la encuesta con 4 o 5, al cliente le aparece el pedido de reseña ahí mismo.
+  - El link corto para compartir: **jdmedia.com.ar/resena**.
+
 ## 2026-10-12 — Lo que salió en Instagram, y seguimiento de WhatsApp y Google Ads
 
 - 📸 **Contenidos → «Lo que salió»**: un calendario con la miniatura de cada publicación de las cuentas conectadas, día por día. Se filtra por cuenta y se toca para verla en Instagram.

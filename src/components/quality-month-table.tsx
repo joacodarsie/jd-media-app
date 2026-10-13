@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { buildSurveyMessage, surveyUrl } from "@/lib/clientes/encuesta";
 import { whatsappLink } from "@/lib/payment-reminder";
+import { corresponderPedirResena, mensajeResena } from "@/lib/clientes/resena";
 import { registrarReunionMensual } from "@/app/(app)/clientes/actions";
 
 export interface QualityRow {
@@ -76,6 +77,16 @@ export function QualityMonthTable({
     const msg = mensajeDe(f);
     if (!msg) return void toast.error("Esta cuenta no tiene portal generado.");
     const link = whatsappLink(f.contactoTelefono, msg);
+    if (!link) return void toast.error("Esta cuenta no tiene un teléfono usable.");
+    window.open(link, "_blank", "noopener,noreferrer");
+  }
+
+  /** Al cliente que puntuó 4 o 5: la reseña en Google, con el mensaje armado. */
+  function pedirResena(f: QualityRow) {
+    const link = whatsappLink(
+      f.contactoTelefono,
+      mensajeResena({ contactoNombre: f.contactoNombre, deParte: miNombre })
+    );
     if (!link) return void toast.error("Esta cuenta no tiene un teléfono usable.");
     window.open(link, "_blank", "noopener,noreferrer");
   }
@@ -185,6 +196,17 @@ export function QualityMonthTable({
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex items-center justify-end gap-1">
+                      {puedeWa && corresponderPedirResena(f.puntaje) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 border-amber-400 text-xs text-amber-800 hover:bg-amber-50 dark:text-amber-300"
+                          onClick={() => pedirResena(f)}
+                          title="Puntuó alto: pedile la reseña en Google"
+                        >
+                          <Star className="h-3.5 w-3.5" /> Pedir reseña
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="outline"

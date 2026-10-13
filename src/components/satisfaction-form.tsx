@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Loader2, Star, CheckCircle2 } from "lucide-react";
 import { submitSatisfaction } from "@/app/encuesta/[token]/actions";
+import { AGENCY } from "@/lib/agency";
 
 const CARAS: { valor: number; label: string }[] = [
   { valor: 1, label: "Muy mal" },
@@ -41,6 +42,24 @@ export function SatisfactionForm({
           La tenemos en cuenta para el mes que viene. Si querés agregar algo, escribinos
           cuando quieras.
         </p>
+        {/* Al que está contento, en el momento en que está contento: la reseña
+            en Google (12/10/2026). A un 1-3 no se le pide. */}
+        {puntaje != null && puntaje >= 4 && (
+          <div className="mt-5 rounded-xl bg-amber-50 p-4 dark:bg-amber-950/40">
+            <p className="text-sm font-medium">¿Nos ayudás con una reseña en Google?</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Es un minuto y a nosotros nos ayuda muchísimo a que otras marcas nos conozcan.
+            </p>
+            <a
+              href={AGENCY.resena_google}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
+            >
+              <Star className="h-4 w-4" /> Dejar la reseña
+            </a>
+          </div>
+        )}
       </div>
     );
   }

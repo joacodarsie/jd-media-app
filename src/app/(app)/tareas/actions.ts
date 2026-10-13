@@ -61,10 +61,17 @@ function estadoConAprobacion(
   };
 }
 
+/** Sin repetidos ni el responsable (ya está como responsable). */
+function limpiarColaboradores(ids: string[], responsable: string | null): string[] {
+  return Array.from(new Set(ids.filter((x) => x && x !== responsable)));
+}
+
 export async function createTask(input: {
   titulo: string;
   descripcion: string;
   asignado_a_id: string | null;
+  /** Los que también la hacen, además del responsable (0199). */
+  colaboradores?: string[];
   cliente_id: string | null;
   area: string;
   prioridad: string;
@@ -145,6 +152,7 @@ export async function createTask(input: {
       titulo: input.titulo,
       descripcion: input.descripcion || null,
       asignado_a_id: input.asignado_a_id || null,
+      ...(input.colaboradores?.length ? { colaboradores: limpiarColaboradores(input.colaboradores, input.asignado_a_id) } : {}),
       creado_por_id: userId,
       cliente_id: input.cliente_id || null,
       area: input.area,
@@ -405,6 +413,8 @@ export async function updateTask(
     titulo: string;
     descripcion: string;
     asignado_a_id: string | null;
+    /** undefined = no tocar. */
+    colaboradores?: string[];
     cliente_id: string | null;
     area: string;
     prioridad: string;
@@ -451,6 +461,9 @@ export async function updateTask(
       titulo: input.titulo,
       descripcion: input.descripcion || null,
       asignado_a_id: input.asignado_a_id || null,
+      ...(input.colaboradores !== undefined
+        ? { colaboradores: limpiarColaboradores(input.colaboradores, input.asignado_a_id) }
+        : {}),
       cliente_id: input.cliente_id || null,
       area: input.area,
       prioridad: input.prioridad,

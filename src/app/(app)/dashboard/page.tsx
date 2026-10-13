@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { filtroDePersona } from "@/lib/tareas/colaboradores";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -124,7 +125,8 @@ export default async function DashboardPage() {
       .select(
         "*, cliente:clients(id,nombre), asignado:users!tasks_asignado_a_id_fkey(id,nombre,avatar_url)"
       )
-      .eq("asignado_a_id", user.id)
+      // Las suyas y en las que colabora (0199).
+      .or(filtroDePersona(user.id))
       .order("fecha_limite", { ascending: true, nullsFirst: false }),
     admin
       .from("google_calendar_connections")

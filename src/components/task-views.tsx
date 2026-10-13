@@ -60,6 +60,7 @@ import {
 } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { TaskFormDialog } from "@/components/task-form-dialog";
+import { esDe } from "@/lib/tareas/colaboradores";
 import { TaskStatusSelect } from "@/components/task-status-select";
 import { DeleteTaskButton } from "@/components/delete-task-button";
 import { SkeletonBlock } from "@/components/skeleton-block";
@@ -191,12 +192,12 @@ export function TaskViews({
       if (estado === ALL && (t.estado === "completada" || t.estado === "archivada"))
         return false;
       // Quick filter
-      if (quick === "mias" && t.asignado_a_id !== currentUserId) return false;
+      if (quick === "mias" && !esDe(t, currentUserId)) return false;
       if (quick === "vencidas" || quick === "vencidas_equipo") {
         if (t.estado === "completada") return false;
         if (!t.fecha_limite || t.fecha_limite.slice(0, 10) >= today) return false;
         // "Vencidas" son las tuyas; "del equipo" son las de todos (coordinación).
-        if (quick === "vencidas" && t.asignado_a_id !== currentUserId) return false;
+        if (quick === "vencidas" && !esDe(t, currentUserId)) return false;
       }
       if (quick === "sin_fecha" && t.fecha_limite) return false;
       if (quick === "hoy") {
@@ -218,7 +219,7 @@ export function TaskViews({
       if (q && !t.titulo.toLowerCase().includes(q.toLowerCase())) return false;
       if (estado !== ALL && t.estado !== estado) return false;
       if (prioridad !== ALL && t.prioridad !== prioridad) return false;
-      if (asignado !== ALL && t.asignado_a_id !== asignado) return false;
+      if (asignado !== ALL && !esDe(t, asignado)) return false;
       if (cliente !== ALL && t.cliente_id !== cliente) return false;
       if (area !== ALL && t.area !== area) return false;
       return true;
@@ -277,14 +278,14 @@ export function TaskViews({
     return {
       todas: tasks.filter((t) => inMonth(t) && isOpen(t)).length,
       mias: tasks.filter(
-        (t) => t.asignado_a_id === currentUserId && inMonth(t) && isOpen(t)
+        (t) => esDe(t, currentUserId) && inMonth(t) && isOpen(t)
       ).length,
       vencidas: tasks.filter(
         (t) =>
           isOpen(t) &&
           t.fecha_limite &&
           t.fecha_limite.slice(0, 10) < today &&
-          t.asignado_a_id === currentUserId
+          esDe(t, currentUserId)
       ).length,
       vencidasEquipo: tasks.filter(
         (t) => isOpen(t) && t.fecha_limite && t.fecha_limite.slice(0, 10) < today
@@ -984,7 +985,10 @@ function TaskRow({
           <span className={cn("rounded-full px-2 py-0.5 font-medium", PRIORITY_BADGE[t.prioridad])}>
             {PRIORITY_LABEL[t.prioridad]}
           </span>
-          <span>{t.asignado?.nombre ?? "Sin asignar"}</span>
+          <span>
+            {t.asignado?.nombre ?? "Sin asignar"}
+            <MasPersonas t={t} />
+          </span>
           {t.cliente && <span>· {t.cliente.nombre}</span>}
           <span>· {t.area}</span>
           {t.fecha_limite && (
@@ -1188,6 +1192,7 @@ function TaskTableRow({
       <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">{t.area}</td>
       <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
         {t.asignado?.nombre ?? "Sin asignar"}
+        <MasPersonas t={t} />
       </td>
       <td className="whitespace-nowrap px-3 py-2.5">
         <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", PRIORITY_BADGE[t.prioridad])}>
@@ -1229,5 +1234,16 @@ function TaskTableRow({
         </div>
       </td>
     </tr>
+  );
+}
+
+/** «+2» al lado del responsable cuando hay colaboradores (0199). */
+function MasPersonas({ t }: { t: TaskWithRels }) {
+  const n = (t.colaboradores ?? []).length;
+  if (!n) return null;
+  return (
+    <span className="ml-1 rounded-full bg-muted px-1.5 py-px text-[10px] font-semibold text-foreground" title={`Y ${n} ${n === 1 ? "persona más" : "personas más"}`}>
+      +{n}
+    </span>
   );
 }

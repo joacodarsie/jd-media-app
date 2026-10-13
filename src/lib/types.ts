@@ -188,6 +188,8 @@ export interface Task {
   titulo: string;
   descripcion: string | null;
   asignado_a_id: string | null;
+  /** Los que también la hacen, además del responsable (0199). */
+  colaboradores?: string[];
   creado_por_id: string | null;
   cliente_id: string | null;
   area: string;

@@ -29,6 +29,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ColaboradoresPicker } from "@/components/colaboradores-picker";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -115,6 +116,7 @@ export function TaskFormDialog({
   const [titulo, setTitulo] = useState<string>(task?.titulo ?? "");
   const [descripcion, setDescripcion] = useState<string>(task?.descripcion ?? "");
   const [asignado, setAsignado] = useState<string>(task?.asignado_a_id ?? NONE);
+  const [colaboradores, setColaboradores] = useState<string[]>(task?.colaboradores ?? []);
   const [cliente, setCliente] = useState<string>(parent?.cliente_id ?? task?.cliente_id ?? NONE);
   const [area, setArea] = useState<string>(parent?.area ?? task?.area ?? "Community Manager");
   const [prioridad, setPrioridad] = useState<string>(parent?.prioridad ?? task?.prioridad ?? "media");
@@ -154,6 +156,7 @@ export function TaskFormDialog({
     setTitulo("");
     setDescripcion("");
     setAsignado(NONE);
+    setColaboradores([]);
     setCliente(parent?.cliente_id ?? NONE);
     setFecha("");
     setMadre(NONE);
@@ -240,6 +243,8 @@ export function TaskFormDialog({
         titulo: titulo.trim(),
         descripcion,
         asignado_a_id: asignado === NONE ? null : asignado,
+        // Si la pantalla no trajo los colaboradores, no se tocan (no se borran).
+        colaboradores: !task || task.colaboradores !== undefined ? colaboradores : undefined,
         cliente_id: cliente === NONE ? null : cliente,
         area,
         prioridad,
@@ -554,6 +559,17 @@ export function TaskFormDialog({
               ) : (
                 selectUsuarios(asignado, setAsignado, "Sin asignar")
               )}
+            </div>
+            <div className="space-y-2">
+              <Label>
+                También la hacen <span className="font-normal text-muted-foreground">(opcional)</span>
+              </Label>
+              <ColaboradoresPicker
+                value={colaboradores}
+                onChange={setColaboradores}
+                users={users}
+                responsableId={asignado === NONE ? null : asignado}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="fecha">

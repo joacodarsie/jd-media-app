@@ -9,11 +9,12 @@ import { BandejaCoordinacion } from "@/components/bandeja-coordinacion";
 import { pedidosPendientes } from "./pedidos-actions";
 import { madresQueFaltan, type RefMadre } from "@/lib/tareas/agrupar";
 import { hoyYmd } from "@/lib/dates";
+import { filtroDePersona } from "@/lib/tareas/colaboradores";
 
 export const dynamic = "force-dynamic";
 
 const TASK_SELECT =
-  "id,titulo,numero,parent_id,estado,prioridad,area,fecha_limite,asignado_a_id,cliente_id,created_at,descripcion,creado_por_id,fecha_completada,links,updated_at,cliente:clients(id,nombre),asignado:users!tasks_asignado_a_id_fkey(id,nombre,avatar_url)";
+  "id,titulo,numero,parent_id,estado,prioridad,area,fecha_limite,asignado_a_id,colaboradores,cliente_id,created_at,descripcion,creado_por_id,fecha_completada,links,updated_at,cliente:clients(id,nombre),asignado:users!tasks_asignado_a_id_fkey(id,nombre,avatar_url)";
 
 // Cuántas tareas archivadas (completadas hace +30 días) traer. Crecen sin
 // techo con el tiempo y están ocultas por defecto, así que sólo cargamos las
@@ -48,7 +49,7 @@ export default async function TareasPage({
     ? null
     : verCuentas
       ? [
-          `asignado_a_id.eq.${me.id}`,
+          filtroDePersona(me.id),
           `creado_por_id.eq.${me.id}`,
           ...(myClientIds.length ? [`cliente_id.in.(${myClientIds.join(",")})`] : []),
         ].join(",")
@@ -59,7 +60,8 @@ export default async function TareasPage({
         // genera solo la tarea de diseño y la de historia, y queda esa persona
         // como creadora. Carlos cargaba las piezas y le volvían encima las
         // tareas de Milena y de Darío de cada una.
-        `asignado_a_id.eq.${me.id}`;
+        // (o en lo que colabora: 0199).
+        filtroDePersona(me.id);
 
   // Activas/recientes (todo lo no-archivado) en una query, y las archivadas
   // recientes acotadas en otra; se mergean. El working set no se recorta:

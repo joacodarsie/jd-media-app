@@ -2,6 +2,10 @@
 title: Novedades
 ---
 
+## 2026-10-13 — Tareas con más de una persona
+
+- 👥 **Una tarea puede tener varias personas.** Al crearla o editarla, debajo de **Responsable** está **«También la hacen»**: sumá a quien haga falta. Le llega el aviso, la ve en **Mis tareas** y en su día, y la puede mover. El responsable sigue siendo uno: el que responde por la tarea.
+
 ## 2026-10-13 — Programa de referidos y reunión semanal
 
 - 🎁 **Programa de referidos.** Cada cliente que lleva 2 meses o más tiene en su plataforma el botón **«Recomendanos»**, con su link y el mensaje listo para WhatsApp. La marca que llega recomendada tiene **10% en su primer mes**, y el cliente que la recomendó **10% en su próxima factura** (cuando la nueva paga su 2.º mes). Todo se aplica solo.

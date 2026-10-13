@@ -1,4 +1,5 @@
 import { formatInTimeZone, toZonedTime } from "date-fns-tz";
+import { filtroDePersona } from "@/lib/tareas/colaboradores";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { TIMEZONE } from "./constants";
 import {
@@ -50,7 +51,8 @@ export async function ensureDueNotifications(
   const { data: misTareas } = await supabase
     .from("tasks")
     .select("id, titulo, fecha_limite")
-    .eq("asignado_a_id", userId)
+    // También en las que colabora (0199): vencen igual para todos.
+    .or(filtroDePersona(userId))
     .not("estado", "in", "(completada,archivada)")
     .not("fecha_limite", "is", null);
 

@@ -344,7 +344,12 @@ export default async function TaskDetail({
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Info label="Asignada a" value={t.asignado?.nombre ?? "Sin asignar"} />
+        <Info
+          label="Asignada a"
+          value={
+            [t.asignado?.nombre ?? "Sin asignar", ...((t.colaboradores ?? []) as string[]).map((id) => (users ?? []).find((u) => u.id === id)?.nombre).filter(Boolean)].join(", ")
+          }
+        />
         <Info label="Creada por" value={t.creador?.nombre ?? "—"} />
         {/* Quien no tiene la guía igual ve en qué anda la aprobación. */}
         {reloj && !guia ? (

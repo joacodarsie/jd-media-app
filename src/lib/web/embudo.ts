@@ -22,6 +22,8 @@ export function fuenteDe(utmSource: string | null | undefined, referrer: string 
     if (/whats|wa\b/.test(u)) return "WhatsApp";
     if (/tiktok/.test(u)) return "TikTok";
     if (/linkedin/.test(u)) return "LinkedIn";
+    // Link de un cliente (jdmedia.com.ar/?ref=…): la web lo manda así (13/10/2026).
+    if (/^recomend/.test(u)) return "Recomendación";
     return "Otra campaña";
   }
   let host = "";

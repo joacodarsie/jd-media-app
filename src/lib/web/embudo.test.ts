@@ -5,6 +5,7 @@ describe("de dónde vino la visita", () => {
   it("manda el utm_source (link de la bio, pauta)", () => {
     expect(fuenteDe("ig", "https://l.instagram.com/")).toBe("Instagram");
     expect(fuenteDe("facebook", null)).toBe("Facebook");
+    expect(fuenteDe("recomendacion", null)).toBe("Recomendación");
     expect(fuenteDe("gbp", null)).toBe("Google");
     expect(fuenteDe("newsletter", null)).toBe("Otra campaña");
   });

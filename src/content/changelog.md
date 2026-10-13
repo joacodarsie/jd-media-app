@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-10-12 — Contactos que llegan desde la web
+
+- 📥 **Quien descarga un recurso gratuito de jdmedia.com.ar deja su nombre y mail, y entra solo como contacto en Comercial** (origen «web»), con qué descargó. Si ya estaba, se le suma la descarga.
+- 🖼️ La web muestra **trabajo real**: lo último que publicamos en el Instagram de las cuentas conectadas (solo desde que trabajan con nosotros). Se actualiza solo.
+
 ## 2026-10-12 — Mi día según tu puesto
 
 - 🧭 **Los coordinadores tienen arriba de Mi día «Lo de tu puesto»**: la lista concreta de qué hacer hoy, con un clic para resolver cada cosa, al lado de su tarjeta «Cómo te ve la dirección».

@@ -16,6 +16,8 @@ const PUBLIC_PATHS = [
   "/aprobacion",
   "/c/",
   "/api/c/",
+  // La web pública (jdmedia.com.ar): trabajo real y descargas de recursos.
+  "/api/web/",
   // Encuesta de satisfacción del cliente: usa el mismo token del portal, que se
   // valida contra la base en la página y en la action antes de escribir nada.
   "/encuesta/",

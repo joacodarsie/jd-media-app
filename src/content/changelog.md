@@ -2,6 +2,14 @@
 title: Novedades
 ---
 
+## 2026-10-13 — Programa de referidos y reunión semanal
+
+- 🎁 **Programa de referidos.** Cada cliente que lleva 2 meses o más tiene en su plataforma el botón **«Recomendanos»**, con su link y el mensaje listo para WhatsApp. La marca que llega recomendada tiene **10% en su primer mes**, y el cliente que la recomendó **10% en su próxima factura** (cuando la nueva paga su 2.º mes). Todo se aplica solo.
+  - **Cuando entra una cuenta recomendada:** en la ficha o en la propuesta, «¿De dónde vino?» → **Referido**, y elegí de la lista el cliente que la recomendó. Con eso salen solos los dos descuentos.
+  - El que entra a la web con un link de recomendación escribe por WhatsApp con «Me recomendó X (código …)»: así sabés quién fue.
+- 🔗 **Link de la plataforma en el arranque.** Cada cuenta nueva trae el paso «Mandarle al cliente el link de su plataforma», con el mensaje listo.
+- 📅 **Reunión semanal de Luz con la dirección**, los martes a las 10, agendada sola.
+
 ## 2026-10-12 — Reseñas en Google
 
 - ⭐ **JD Media ya está en Google** (Perfil de Negocio). Para sumar reseñas:

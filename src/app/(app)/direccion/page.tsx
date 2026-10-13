@@ -11,6 +11,7 @@ import { formatTicket } from "@/lib/tareas/tickets";
 import { cn } from "@/lib/utils";
 import { Suspense } from "react";
 import { DireccionWeb } from "@/components/direccion-web";
+import { DireccionReferidos } from "@/components/direccion-referidos";
 
 export const dynamic = "force-dynamic";
 
@@ -83,7 +84,7 @@ export default async function DireccionPage() {
         <h1 className="text-2xl font-bold">{esDireccion ? "Dirección" : "Cómo te ve la dirección"}</h1>
         <p className="text-muted-foreground">
           {esDireccion
-            ? "Tu lugar de trabajo, solo lo ves vos: arriba lo que te toca, después cómo viene cada coordinador y cómo anda la web."
+            ? "Tu lugar de trabajo, solo lo ves vos: arriba lo que te toca, después cómo viene cada coordinador, cómo anda la web y los referidos."
             : "Estos son los números con los que Joaquín sigue tu puesto. Se calculan solos con lo que hacés en la plataforma."}
         </p>
       </div>
@@ -156,6 +157,12 @@ export default async function DireccionPage() {
       {esDireccion && (
         <Suspense fallback={null}>
           <DireccionWeb />
+        </Suspense>
+      )}
+
+      {esDireccion && (
+        <Suspense fallback={null}>
+          <DireccionReferidos />
         </Suspense>
       )}
 

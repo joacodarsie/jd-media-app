@@ -30,6 +30,7 @@ import { runOnboardingPendiente } from "@/lib/retencion/onboarding-pendiente-run
 import { runReunionesMensuales } from "@/lib/retencion/reunion-mensual-run";
 import { runReunionesDesdeCalendario } from "@/lib/retencion/reunion-calendario-run";
 import { runRutinasMensuales } from "@/lib/tareas/rutinas-mensuales-run";
+import { actualizarReferidos, aplicarDescuentos, asegurarDescuentoNuevo } from "@/lib/referidos/run";
 import { runRecordatorioReunionesHoy } from "@/lib/agenda/recordatorio-hoy-run";
 import {
   runAgendarReunionesCuentasNuevas,
@@ -232,6 +233,9 @@ export async function GET(req: NextRequest) {
   } catch (e) {
     rutinas = { error: e instanceof Error ? e.message : "falló" };
   }
+  // El 10% del primer mes de los recomendados que arrancaron: antes de armar
+  // las facturas, para que la primera ya salga con el descuento.
+  await asegurarDescuentoNuevo(admin).catch(() => null);
 
   // Reabastecimiento de contactos: si a una campaña activa le quedan pocos sin
   // escribir, trae más de Google Places. A 100 mensajes por día cualquier lista
@@ -488,6 +492,18 @@ export async function GET(req: NextRequest) {
     accountAlerts = { error: e instanceof Error ? e.message : String(e) };
   }
 
+  // Referidos (13/10/2026): el que pagó su 2.º mes gana el descuento para quien
+  // lo recomendó, y ese descuento sale en la primera factura del mes siguiente.
+  let referidos: unknown = null;
+  try {
+    const r1 = await actualizarReferidos(admin);
+    // Va después de armar las facturas del mes: el descuento se suma a ellas.
+    const r2 = await aplicarDescuentos(admin, `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+    referidos = { ...r1, ...r2 };
+  } catch (e) {
+    referidos = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   return NextResponse.json({
     ok: true,
     users: ids.length,
@@ -512,6 +528,7 @@ export async function GET(req: NextRequest) {
     month_end: monthEnd,
     month_start: monthStart,
     cobros_generados: cobrosGenerados,
+    referidos,
     gastos_fijos_generados: gastosGenerados,
     cobro_reminders: cobroReminders,
     paid_media: paidMedia,

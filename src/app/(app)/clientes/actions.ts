@@ -2,6 +2,7 @@
 
 import { PACK_MARCA_REAL } from "@/lib/pack-marca-real";
 import { esOrigen } from "@/lib/clientes/origen";
+import { sincronizarReferido } from "@/lib/referidos/run";
 import { hoyYmd } from "@/lib/dates";
 
 import { revalidatePath, revalidateTag } from "next/cache";
@@ -171,6 +172,8 @@ export async function createClientRow(
   if (error) return { error: error.message };
 
   const clienteId = data.id as string;
+  // Si lo recomendó un cliente, queda anotado para su 10% (13/10/2026).
+  await sincronizarReferido(createAdmin(), clienteId, input.origen, input.origen_detalle);
 
   // Servicios cargados desde el alta (opcional).
   const notified = new Set<string>();
@@ -330,6 +333,7 @@ export async function updateClientRow(
   const patch = clean(input);
   const { error } = await supabase.from("clients").update(patch).eq("id", id);
   if (error) return { error: error.message };
+  await sincronizarReferido(createAdmin(), id, input.origen, input.origen_detalle);
 
   if (antes) {
     const previo = antes as {

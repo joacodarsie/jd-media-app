@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { currentPeriod, periodLabel, fmtCurrency } from "@/lib/finanzas";
 import { reminderAmount, normalizePhone } from "@/lib/payment-reminder";
+import { descuentosParaRecordatorio } from "@/lib/referidos/run";
 import { isClientPausedFor } from "@/lib/client-pause";
 import { whatsappApiConfigured, sendPaymentReminderTemplate } from "@/lib/meta/whatsapp";
 import { AGENCY } from "@/lib/agency";
@@ -107,13 +108,18 @@ export async function GET(req: NextRequest) {
   let enviados = 0;
   const fallidos: { cliente: string; motivo: string }[] = [];
 
+  // Los descuentos por recomendar: el WhatsApp tiene que pedir lo mismo que Cobros.
+  const porReferidos = await descuentosParaRecordatorio(admin, periodo).catch(() => new Map<string, (m: number) => number>());
+
   for (const c of clients) {
     const telefono = normalizePhone(c.contacto_telefono);
     if (!telefono) {
       fallidos.push({ cliente: c.nombre, motivo: "sin teléfono" });
       continue;
     }
-    const { monto, moneda } = reminderAmount(c, periodo);
+    const base = reminderAmount(c, periodo);
+    const moneda = base.moneda;
+    const monto = porReferidos.get(c.id)?.(base.monto) ?? base.monto;
     if (monto <= 0) {
       fallidos.push({ cliente: c.nombre, motivo: "sin monto_mensual cargado" });
       continue;

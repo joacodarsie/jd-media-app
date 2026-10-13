@@ -6,8 +6,8 @@
  * Puro: entra lo que mandó la web, sale lo que ve el dueño en Dirección.
  */
 
-export type TipoEvento = "visita" | "whatsapp" | "resena" | "recurso";
-export const TIPOS_EVENTO: TipoEvento[] = ["visita", "whatsapp", "resena", "recurso"];
+export type TipoEvento = "visita" | "whatsapp" | "resena" | "recurso" | "referido";
+export const TIPOS_EVENTO: TipoEvento[] = ["visita", "whatsapp", "resena", "recurso", "referido"];
 
 /**
  * De dónde vino la visita, en palabras: primero el utm_source (los links de la

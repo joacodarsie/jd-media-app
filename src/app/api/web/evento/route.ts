@@ -16,7 +16,8 @@ export async function OPTIONS(req: Request) {
 
 export async function POST(req: Request) {
   const headers = corsHeaders(req.headers.get("origin"));
-  let body: { tipo?: string; pagina?: string; utm?: string; ref?: string } = {};
+  // `ref` es el sitio anterior; `codigo`, el del link de recomendación (?ref=).
+  let body: { tipo?: string; pagina?: string; utm?: string; ref?: string; codigo?: string } = {};
   try {
     body = JSON.parse(await req.text());
   } catch {
@@ -29,7 +30,8 @@ export async function POST(req: Request) {
     .insert({
       tipo,
       pagina: (body.pagina ?? "").slice(0, 120) || null,
-      fuente: fuenteDe(body.utm?.slice(0, 60), body.ref?.slice(0, 300)),
+      fuente: tipo === "referido" ? "Recomendación" : fuenteDe(body.utm?.slice(0, 60), body.ref?.slice(0, 300)),
+      ...(body.codigo ? { ref: String(body.codigo).toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12) || null } : {}),
     });
   return new NextResponse(null, { status: 204, headers });
 }

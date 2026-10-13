@@ -16,6 +16,7 @@ import { isClientPausedFor } from "@/lib/client-pause";
 import { AREA_DIRECCION, puestaAPunto, rutinasDeDireccion } from "@/lib/direccion/rutina";
 import { hoyYmd } from "@/lib/dates";
 import { agendarReunionPm } from "@/lib/direccion/reunion-pm-run";
+import { tareasContarReferidos } from "@/lib/referidos/referidos";
 
 const AREA_COORD_GENERAL = "Coordinación General";
 
@@ -67,8 +68,16 @@ export async function runRutinasMensuales(
     .filter((x) => x.clients?.estado === "activo" && !x.clients.es_interno && !isClientPausedFor(x.clients.pausas, periodo))
     .map((x) => ({ clienteId: x.cliente_id, nombre: x.clients!.nombre, tipo: x.tipo }));
 
+  // Referidos (13/10/2026): al cumplir 2 meses, la PM le cuenta el programa.
+  const { data: activas } = await admin
+    .from("clients")
+    .select("id, nombre, fecha_inicio")
+    .eq("estado", "activo")
+    .eq("es_interno", false);
+
   const tareas = [
     ...rutinasDelMes(periodo, gente),
+    ...tareasContarReferidos((activas ?? []) as { id: string; nombre: string; fecha_inicio: string | null }[], hoyYmd(), gente.pmId ?? null),
     ...rutinasDeDireccion(hoyYmd(), duenoId),
     ...puestaAPunto(duenoId),
     ...rutinasDeServicios(periodo, hoyYmd(), conServicio, {

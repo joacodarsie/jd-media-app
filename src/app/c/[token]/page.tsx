@@ -39,6 +39,11 @@ interface UpcomingPub {
   asset_url: string | null;
 }
 
+// Programa de referidos (13/10/2026).
+import { PortalRecomendar } from "@/components/portal-recomendar";
+import { labelEstado, puedeRecomendar, type EstadoReferido } from "@/lib/referidos/referidos";
+import { hoyYmd } from "@/lib/dates";
+
 export default async function PortalPage({ params }: { params: { token: string } }) {
   const admin = createAdmin();
 
@@ -183,6 +188,23 @@ export default async function PortalPage({ params }: { params: { token: string }
   }>;
 
   // Cadencia consolidada (red principal)
+  // «Recomendanos»: solo a quien ya lleva 2 meses (ya sabe cómo trabajamos).
+  // Si la migración 0198 no está, no se muestra.
+  const { data: refRow } = await admin.from("clients").select("ref_code, fecha_inicio").eq("id", cliente_id).maybeSingle();
+  const ref = refRow as { ref_code: string | null; fecha_inicio: string | null } | null;
+  const mostrarRecomendar = !!ref?.ref_code && puedeRecomendar(ref.fecha_inicio, hoyYmd());
+  const { data: misReferidos } = mostrarRecomendar
+    ? await admin
+        .from("referidos")
+        .select("estado, nuevo:clients!referidos_nuevo_id_fkey(nombre)")
+        .eq("recomienda_id", cliente_id)
+        .order("created_at")
+    : { data: [] };
+  const recomendados = ((misReferidos ?? []) as unknown as { estado: EstadoReferido; nuevo: { nombre: string } | null }[]).map((r) => ({
+    nombre: r.nuevo?.nombre ?? "Una marca",
+    estado: labelEstado(r.estado),
+  }));
+
   const principal = planContent?.mix_por_red?.find((m) => m.rol === "principal") ?? planContent?.mix_por_red?.[0];
   const cadencia = (principal?.cadencia ?? {}) as Record<string, number>;
   const redes = planContent?.mix_por_red?.map((m) => m.red) ?? [];
@@ -574,6 +596,8 @@ export default async function PortalPage({ params }: { params: { token: string }
             <PortalContent pubs={upcoming} token={params.token} />
           </div>
         )}
+
+        {mostrarRecomendar && ref?.ref_code && <PortalRecomendar code={ref.ref_code} recomendados={recomendados} />}
 
         <div className="footer">
           {AGENCY.brand} · {AGENCY.legal_name}

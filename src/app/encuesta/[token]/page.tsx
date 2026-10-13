@@ -3,6 +3,8 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { AGENCY } from "@/lib/agency";
 import { currentPeriod } from "@/lib/finanzas";
 import { SatisfactionForm } from "@/components/satisfaction-form";
+import { puedeRecomendar } from "@/lib/referidos/referidos";
+import { hoyYmd } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -34,10 +36,13 @@ export default async function EncuestaPage({ params }: { params: { token: string
 
   const { data: client } = await admin
     .from("clients")
-    .select("nombre")
+    .select("nombre, ref_code, fecha_inicio")
     .eq("id", t.cliente_id)
     .maybeSingle();
-  const nombre = (client as { nombre?: string } | null)?.nombre ?? "";
+  const cli = client as { nombre?: string; ref_code?: string | null; fecha_inicio?: string | null } | null;
+  const nombre = cli?.nombre ?? "";
+  // Al contento también se le cuenta lo de recomendar (si ya lleva 2 meses).
+  const refCode = cli?.ref_code && puedeRecomendar(cli.fecha_inicio, hoyYmd()) ? cli.ref_code : null;
 
   // ¿Ya respondió este mes? (si falta la migración, tratamos como "no respondió")
   const periodo = currentPeriod();
@@ -67,6 +72,7 @@ export default async function EncuestaPage({ params }: { params: { token: string
         token={params.token}
         yaRespondio={previo != null}
         puntajePrevio={previo}
+        refCode={refCode}
       />
 
       <p className="mt-6 text-center text-xs text-muted-foreground">

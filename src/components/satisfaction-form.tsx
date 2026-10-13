@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Loader2, Star, CheckCircle2 } from "lucide-react";
 import { submitSatisfaction } from "@/app/encuesta/[token]/actions";
 import { AGENCY } from "@/lib/agency";
+import { PCT_RECOMENDADO, PCT_REFERIDO, linkWhatsappReferido } from "@/lib/referidos/referidos";
 
 const CARAS: { valor: number; label: string }[] = [
   { valor: 1, label: "Muy mal" },
@@ -21,10 +22,13 @@ export function SatisfactionForm({
   token,
   yaRespondio,
   puntajePrevio,
+  refCode = null,
 }: {
   token: string;
   yaRespondio: boolean;
   puntajePrevio: number | null;
+  /** Su código de recomendación, si ya puede recomendar (2 meses o más). */
+  refCode?: string | null;
 }) {
   const [puntaje, setPuntaje] = useState<number | null>(puntajePrevio);
   const [valoran, setValoran] = useState("");
@@ -57,6 +61,24 @@ export function SatisfactionForm({
               className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
             >
               <Star className="h-4 w-4" /> Dejar la reseña
+            </a>
+          </div>
+        )}
+        {/* Y el programa de referidos, en el mismo momento (13/10/2026). */}
+        {puntaje != null && puntaje >= 4 && refCode && (
+          <div className="mt-3 rounded-xl border p-4">
+            <p className="text-sm font-medium">¿Conocés a alguien que necesite lo mismo?</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Con tu link tiene {PCT_RECOMENDADO}% de descuento en su primer mes, y vos {PCT_REFERIDO}% en tu próxima
+              factura por cada marca que se sume.
+            </p>
+            <a
+              href={linkWhatsappReferido(refCode)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold hover:bg-accent"
+            >
+              Recomendarnos por WhatsApp
             </a>
           </div>
         )}

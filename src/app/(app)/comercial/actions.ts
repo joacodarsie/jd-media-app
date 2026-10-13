@@ -2,6 +2,7 @@
 
 import { hoyYmd } from "@/lib/dates";
 import { esOrigen, origenDeLead } from "@/lib/clientes/origen";
+import { sincronizarReferido } from "@/lib/referidos/run";
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -348,6 +349,7 @@ export async function createDirectProposal(input: DirectProposalInput) {
   if (cErr || !created) {
     return { error: "No se pudo crear la propuesta: " + (cErr?.message ?? "") };
   }
+  await sincronizarReferido(admin, created.id as string, input.origen, input.origen_detalle);
 
   if (input.servicio) {
     const { error: csErr } = await admin.from("client_services").insert({

@@ -197,7 +197,7 @@ export function tarjetaDireccionCreativa(
         estado: porTope(d.ideasUrgentes, 5),
         href: "/contenidos",
       },
-      ...indicadorServicio("Gestión de WhatsApp de este mes", d.wpp, "/tareas"),
+      ...indicadorServicio("WhatsApp y chatter de este mes", d.wpp, "/tareas"),
     ],
     c
   );

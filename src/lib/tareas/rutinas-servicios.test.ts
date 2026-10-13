@@ -9,11 +9,16 @@ const cuentas = [
 ];
 
 describe("tareas del mes de los servicios aparte", () => {
-  it("una por cuenta y servicio: WhatsApp a Santi, Google Ads a Guille; el chatter no entra", () => {
-    const t = rutinasDeServicios("2026-11", "2026-11-01", cuentas, { gestion_whatsapp: "santi", google_ads: "guille" });
+  it("una por cuenta y servicio: WhatsApp y chatter a Santi, Google Ads a Guille", () => {
+    const t = rutinasDeServicios("2026-11", "2026-11-01", cuentas, {
+      gestion_whatsapp: "santi",
+      chatter: "santi",
+      google_ads: "guille",
+    });
     expect(t.map((x) => [x.rutina_key, x.asignado_a_id, x.cliente_id])).toEqual([
       ["2026-11:wpp:fr", "santi", "fr"],
       ["2026-11:wpp:nz", "santi", "nz"],
+      ["2026-11:chat:nz", "santi", "nz"],
       ["2026-11:gads:wa", "guille", "wa"],
     ]);
     expect(t[0].titulo).toBe("WhatsApp de Freedom: gestión del mes");
@@ -34,6 +39,7 @@ describe("tareas del mes de los servicios aparte", () => {
   it("se reconoce el servicio por la clave", () => {
     expect(servicioDeRutina("2026-10:wpp:fr")).toBe("wpp");
     expect(servicioDeRutina("2026-10:gads:wa")).toBe("gads");
+    expect(servicioDeRutina("2026-10:chat:nz")).toBe("chat");
     expect(servicioDeRutina("2026-10:cobrar")).toBeNull();
   });
 });

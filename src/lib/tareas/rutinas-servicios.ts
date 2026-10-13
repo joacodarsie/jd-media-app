@@ -13,7 +13,7 @@
  */
 import type { TareaRutina } from "./rutinas-mensuales";
 
-export type ServicioSeguido = "gestion_whatsapp" | "google_ads";
+export type ServicioSeguido = "gestion_whatsapp" | "chatter" | "google_ads";
 
 export const SERVICIOS_SEGUIDOS: Record<
   ServicioSeguido,
@@ -25,6 +25,13 @@ export const SERVICIOS_SEGUIDOS: Record<
     area: "Comercial",
     descripcion:
       "Lo que el cliente paga como **gestión de WhatsApp**, hecho y a la vista:\n\n- Catálogo, respuestas rápidas, mensaje de bienvenida y de ausencia al día.\n- Etiquetas de los chats ordenadas (nuevo, en conversación, cliente).\n- Una difusión o campaña del mes, si estaba acordada.\n- Un resumen corto para el cliente: qué se hizo y cuántas consultas entraron.\n\nCuando lo terminás, cerrá la tarea: así la dirección ve que se hizo.",
+  },
+  chatter: {
+    clave: "chat",
+    titulo: (c) => `Chatter de ${c}: respuesta de mensajes del mes`,
+    area: "Comercial",
+    descripcion:
+      "Lo que el cliente paga como **chatter** (respuesta de mensajes), hecho y a la vista:\n\n- Mensajes y comentarios respondidos a tiempo (DM, WhatsApp, comentarios).\n- Consultas que se volvieron venta o turno: pasárselas al cliente.\n- Preguntas que se repiten: sumarlas a las respuestas rápidas.\n- Un resumen corto para el cliente: cuántas consultas entraron y cómo se respondieron.\n\nCuando lo terminás, cerrá la tarea: así la dirección ve que se hizo.",
   },
   google_ads: {
     clave: "gads",
@@ -82,5 +89,5 @@ export function rutinasDeServicios(
 /** La clave del servicio de una tarea de rutina ("2026-10:wpp:<id>" → "wpp"). */
 export function servicioDeRutina(rutinaKey: string | null | undefined): string | null {
   const partes = (rutinaKey ?? "").split(":");
-  return partes.length === 3 && (partes[1] === "wpp" || partes[1] === "gads") ? partes[1] : null;
+  return partes.length === 3 && ["wpp", "chat", "gads"].includes(partes[1]) ? partes[1] : null;
 }

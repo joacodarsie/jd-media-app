@@ -39,13 +39,13 @@ export type PanelPuesto =
 async function bloqueServicio(
   admin: SupabaseClient,
   hoy: string,
-  clave: string,
+  claves: string[],
   titulo: string
 ): Promise<Bloque | null> {
   const { data } = await admin
     .from("tasks")
     .select("id, titulo, estado, fecha_limite")
-    .like("rutina_key", `${hoy.slice(0, 7)}:${clave}:%`)
+    .or(claves.map((c) => `rutina_key.like.${hoy.slice(0, 7)}:${c}:%`).join(","))
     .order("fecha_limite");
   const todas = (data ?? []) as { id: string; titulo: string; estado: string; fecha_limite: string | null }[];
   if (todas.length === 0) return null;
@@ -92,7 +92,7 @@ export async function cargarPanelPuesto(
       fecha_publicacion: string;
       cliente: { nombre: string } | null;
     }[];
-    const wpp = await bloqueServicio(admin, hoy, "wpp", "WhatsApp de tus cuentas");
+    const wpp = await bloqueServicio(admin, hoy, ["wpp", "chat"], "WhatsApp y chatter de tus cuentas");
     return {
       puesto,
       aprobar,
@@ -306,7 +306,7 @@ export async function cargarPanelPuesto(
     const conCampanas = new Set(((onb ?? []) as { cliente_id: string }[]).map((x) => x.cliente_id));
     const sinConectar = cuentas.filter((c) => !conectadas.has(c.id));
     const sinCampanas = cuentas.filter((c) => !conCampanas.has(c.id));
-    const gads = await bloqueServicio(admin, hoy, "gads", "Google Ads de este mes");
+    const gads = await bloqueServicio(admin, hoy, ["gads"], "Google Ads de este mes");
     return {
       puesto,
       bloques: [

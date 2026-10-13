@@ -52,7 +52,7 @@ export async function runRutinasMensuales(
     .from("client_services")
     .select("cliente_id, tipo, clients!inner(nombre, estado, es_interno, pausas)")
     .eq("activo", true)
-    .in("tipo", ["gestion_whatsapp", "google_ads"]);
+    .in("tipo", ["gestion_whatsapp", "chatter", "google_ads"]);
   const conServicio: CuentaConServicio[] = (
     (svRaw ?? []) as unknown as {
       cliente_id: string;
@@ -69,6 +69,8 @@ export async function runRutinasMensuales(
     ...puestaAPunto(duenoId),
     ...rutinasDeServicios(periodo, hoyYmd(), conServicio, {
       gestion_whatsapp: porArea(AREA_DIRECTORA),
+      // El chatter (respuesta de mensajes) también lo da Santi (12/10/2026).
+      chatter: porArea(AREA_DIRECTORA),
       google_ads: porArea("Coordinación de Paid Media"),
     }),
   ];

@@ -68,11 +68,11 @@ async function tareasAbiertas(admin: SupabaseClient): Promise<TareaAbierta[]> {
 }
 
 /** Cuántas tareas del mes de un servicio aparte se hicieron (rutina "<periodo>:<clave>:<cliente>"). */
-async function avanceServicio(admin: SupabaseClient, hoy: string, clave: string): Promise<AvanceServicio> {
+async function avanceServicio(admin: SupabaseClient, hoy: string, claves: string[]): Promise<AvanceServicio> {
   const { data } = await admin
     .from("tasks")
     .select("estado, fecha_limite")
-    .like("rutina_key", `${hoy.slice(0, 7)}:${clave}:%`);
+    .or(claves.map((c) => `rutina_key.like.${hoy.slice(0, 7)}:${c}:%`).join(","));
   const lista = (data ?? []) as { estado: string; fecha_limite: string | null }[];
   const abierta = (t: { estado: string }) => t.estado !== "completada" && t.estado !== "archivada";
   return {
@@ -208,7 +208,7 @@ export async function cargarTablero(
           .lte("fecha_publicacion", en5),
       ]);
       const r = (revision ?? []) as { revision_desde: string | null }[];
-      const wpp = await avanceServicio(admin, hoy, "wpp");
+      const wpp = await avanceServicio(admin, hoy, ["wpp", "chat"]);
       tarjetas.push(
         tarjetaDireccionCreativa(
           persona,
@@ -296,7 +296,7 @@ async function tarjetaExtra(
           admin.from("client_ads_onboarding").select("cliente_id").in("cliente_id", ids).not("campanas_publicadas_at", "is", null),
         ])
       : [{ data: [] }, { data: [] }];
-    const gads = await avanceServicio(admin, hoy, "gads");
+    const gads = await avanceServicio(admin, hoy, ["gads"]);
     return tarjetaPaidMedia(
       persona,
       {

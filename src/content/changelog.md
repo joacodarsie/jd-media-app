@@ -5,7 +5,7 @@ title: Novedades
 ## 2026-10-12 — Lo que salió en Instagram, y seguimiento de WhatsApp y Google Ads
 
 - 📸 **Contenidos → «Lo que salió»**: un calendario con la miniatura de cada publicación de las cuentas conectadas, día por día. Se filtra por cuenta y se toca para verla en Instagram.
-- 💬 **Gestión de WhatsApp (Santi) y Google Ads (Guille)**: cada mes se crea sola una tarea por cuenta que tiene el servicio (vence el 10), con lo que hay que hacer. Aparece en su Mi día y en su tarjeta de la dirección («X de N hechas»).
+- 💬 **Gestión de WhatsApp y chatter (Santi) y Google Ads (Guille)**: cada mes se crea sola una tarea por cuenta que tiene el servicio (vence el 10), con lo que hay que hacer. Aparece en su Mi día y en su tarjeta de la dirección («X de N hechas»).
 
 ## 2026-10-12 — Cobros: el día real en que te pagaron
 

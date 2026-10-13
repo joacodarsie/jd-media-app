@@ -114,9 +114,14 @@ describe("planOnboarding", () => {
     expect(plan(["gestion_redes"]).madre.dia).toBe(DIAS_ONBOARDING);
   });
 
-  it("una cuenta sin servicios reconocidos igual tiene la reunión de diagnóstico y el logo", () => {
+  it("una cuenta sin servicios reconocidos igual tiene el diagnóstico, el logo y el link de su plataforma", () => {
     const p = plan([]);
-    expect(p.pasos.map((x) => x.titulo)).toEqual(["Reunión de diagnóstico", "Subir el logo de la cuenta a su ficha"]);
+    expect(p.pasos.map((x) => x.titulo)).toEqual([
+      "Reunión de diagnóstico",
+      "Subir el logo de la cuenta a su ficha",
+      "Mandarle al cliente el link de su plataforma",
+    ]);
+    expect(p.pasos.find((x) => x.titulo.includes("link"))?.asignado_a_id).toBe("luz");
   });
 });
 

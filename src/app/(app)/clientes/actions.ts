@@ -363,6 +363,8 @@ export async function updateClientRow(
   revalidatePath("/clientes");
   revalidatePath(`/clientes/${id}`);
   revalidatePath("/tareas");
+  // Nombre, Instagram o estado cambian el carrusel de marcas de la web.
+  revalidateTag("web-marcas");
   invalidateClientsCache();
   return { ok: true, tareasReasignadas: movidas };
 }

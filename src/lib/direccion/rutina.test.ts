@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cadenciaDe, lunesDe, puestaAPunto, rutinasDeDireccion } from "./rutina";
+import { cadenciaDe, lunesDe, puestaAPunto, reunionSemanalPm, rutinasDeDireccion } from "./rutina";
 
 describe("rutina de la dirección", () => {
   it("sin dueño no se genera nada", () => {
@@ -48,5 +48,22 @@ describe("rutina de la dirección", () => {
   it("febrero corto: el día 28/30 se recorta", () => {
     const f = rutinasDeDireccion("2027-02-02", "yo").find((x) => x.rutina_key.endsWith("objetivos"));
     expect(f?.fecha_limite).toBe("2027-02-28");
+  });
+});
+
+describe("reunionSemanalPm", () => {
+  it("agenda el martes de la semana si todavía no llegó", () => {
+    expect(reunionSemanalPm("2026-10-12").fecha).toBe("2026-10-13");
+    // El mismo martes ya se agenda la siguiente: una semana de aviso.
+    expect(reunionSemanalPm("2026-10-13").fecha).toBe("2026-10-20");
+  });
+  it("si el martes ya pasó, agenda el de la semana que viene", () => {
+    expect(reunionSemanalPm("2026-10-14").fecha).toBe("2026-10-20");
+    expect(reunionSemanalPm("2026-10-18").fecha).toBe("2026-10-20");
+  });
+  it("10 a 10:45 de Córdoba", () => {
+    const r = reunionSemanalPm("2026-10-14");
+    expect(r.startsAt).toBe("2026-10-20T13:00:00.000Z");
+    expect(r.endsAt).toBe("2026-10-20T13:45:00.000Z");
   });
 });

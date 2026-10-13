@@ -8,6 +8,8 @@ describe("marcas de la web", () => {
     expect(linkInstagram(null, "@fundanic.arg")).toBe("https://www.instagram.com/fundanic.arg/");
     expect(linkInstagram(null, "https://facebook.com/x")).toBeNull();
     expect(linkInstagram(null, null)).toBeNull();
+    // Si la ficha se corrigió, gana la ficha.
+    expect(linkInstagram("viejo", "https://www.instagram.com/nuevo/")).toBe("https://www.instagram.com/nuevo/");
   });
   it("primero las que tienen logo, después por antigüedad", () => {
     const m = marcasParaWeb([

@@ -15,6 +15,7 @@ import { rutinasDeServicios, type CuentaConServicio } from "./rutinas-servicios"
 import { isClientPausedFor } from "@/lib/client-pause";
 import { AREA_DIRECCION, puestaAPunto, rutinasDeDireccion } from "@/lib/direccion/rutina";
 import { hoyYmd } from "@/lib/dates";
+import { agendarReunionPm } from "@/lib/direccion/reunion-pm-run";
 
 const AREA_COORD_GENERAL = "Coordinación General";
 
@@ -46,6 +47,9 @@ export async function runRutinasMensuales(
   // La rutina de la dirección (ronda semanal, RRHH, objetivos, trimestre) va
   // al dueño: quien ocupa Estrategia/Dirección (12/10/2026).
   const duenoId = porArea(AREA_DIRECCION) ?? gente.adminId;
+  // Y su reunión semanal con la PM, cargada en la Agenda (13/10/2026). Si
+  // falla, las tareas se crean igual.
+  await agendarReunionPm(admin, hoyYmd(), duenoId, gente.pmId ?? null).catch(() => null);
   // Los servicios que se venden aparte: WhatsApp lo da Santi (dirección
   // creativa) y Google Ads, la coordinación de pauta (pedido del 12/10/2026).
   const { data: svRaw } = await admin

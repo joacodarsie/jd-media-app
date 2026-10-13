@@ -11,12 +11,15 @@ export interface MarcaWeb {
   link: string | null;
 }
 
+// Manda la URL de la ficha (es lo que el equipo corrige a mano); el usuario
+// guardado queda de respaldo. Con el orden al revés, corregir la ficha no
+// arreglaba el link de la web (Sabattini e Impertek, 13/10/2026).
 export function linkInstagram(igUsername: string | null | undefined, instagramUrl: string | null | undefined): string | null {
-  const u = igUsername?.trim().replace(/^@/, "");
-  if (u) return `https://www.instagram.com/${u}/`;
   const url = instagramUrl?.trim();
   if (url && /^https?:\/\/(www\.)?instagram\.com\//i.test(url)) return url;
   if (url && /^@?[\w.]+$/.test(url)) return `https://www.instagram.com/${url.replace(/^@/, "")}/`;
+  const u = igUsername?.trim().replace(/^@/, "");
+  if (u) return `https://www.instagram.com/${u}/`;
   return null;
 }
 

@@ -128,6 +128,17 @@ export function planOnboarding(input: {
     cm
   );
 
+  // El portal es donde el cliente ve y aprueba todo: si no tiene el link, el
+  // calendario se aprueba por WhatsApp y la plataforma no le sirve de nada.
+  // Es parte del proceso de la PM (pedido del dueño, 13/10/2026).
+  add(
+    3,
+    "Mandarle al cliente el link de su plataforma",
+    `En la ficha de ${nombreCliente}, recuadro «Link para el cliente»: generalo si no está, copialo y mandáselo por WhatsApp. Mensaje sugerido:\n\n«¡Hola! Te paso tu plataforma de JD Media: ahí vas a ver tu calendario del mes, aprobar o pedir cambios en cada pieza y seguir todo lo que hacemos. Guardalo, es tu acceso de siempre (no necesita usuario ni contraseña).»\n\nEn la misma ficha vas a ver cuándo lo abrió por última vez: si en unos días sigue sin abrirlo, recordáselo en la llamada.`,
+    "Coordinación",
+    equipo.fallback
+  );
+
   if (svc.has("gestion_redes")) {
     add(
       3,

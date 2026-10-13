@@ -179,3 +179,33 @@ export function puestaAPunto(duenoId: string | null): TareaRutina[] {
     ),
   ];
 }
+
+/**
+ * La reunión semanal con la PM (pedido del dueño, 13/10/2026): "una vez a la
+ * semana una reunión con Luz cargada en la plataforma, para analizar cómo
+ * venimos con las cuentas y que me muestre cómo viene con sus tareas".
+ *
+ * Martes de 10:00 a 10:45 (Córdoba), el mismo día que vence la ronda con los
+ * coordinadores. Se agenda la del martes de esta semana o, si ya llegó, la del
+ * que viene. Puro: el ejecutor la crea solo si no existe.
+ */
+export const TITULO_REUNION_PM = "Semanal con la dirección: cuentas y tareas";
+
+export function reunionSemanalPm(hoy: string): { fecha: string; startsAt: string; endsAt: string; descripcion: string } {
+  let martes = sumar(lunesDe(hoy), 1);
+  if (martes <= hoy) martes = sumar(martes, 7);
+  return {
+    fecha: martes,
+    // Córdoba es UTC-3 todo el año.
+    startsAt: `${martes}T13:00:00.000Z`,
+    endsAt: `${martes}T13:45:00.000Z`,
+    descripcion: [
+      "45 minutos, con la plataforma abierta. Se agenda sola todas las semanas.",
+      "",
+      "1. **Cuentas nuevas** (Clientes → Cuentas nuevas): las que están en rojo, qué las traba y quién lo destraba.",
+      "2. **Sus tareas** (Dirección → su tarjeta): las vencidas y las de esta semana.",
+      "3. **Clientes**: a quién hay que mandarle el link de su plataforma, la encuesta o la reunión mensual.",
+      "4. **Pedidos**: lo que le dejás para la semana, cargado con «Pedirle algo» y con fecha.",
+    ].join("\n"),
+  };
+}

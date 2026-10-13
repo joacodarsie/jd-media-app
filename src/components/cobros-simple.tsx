@@ -362,6 +362,8 @@ export function CobrosSimple({
                       el {p.fecha.slice(8, 10)}/{p.fecha.slice(5, 7)}
                     </span>
                     {p.nota && <span className="truncate text-muted-foreground">· {p.nota}</span>}
+                    {/* Un servicio pagado aparte no es una entrega: se deshace desde el cobro. */}
+                    {!p.id.startsWith("factura:") && (
                     <button
                       title="Borrar esta entrega"
                       disabled={pending}
@@ -376,6 +378,7 @@ export function CobrosSimple({
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
+                    )}
                   </li>
                 ))}
                 {!pagado && (

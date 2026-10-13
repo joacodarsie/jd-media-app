@@ -291,16 +291,19 @@ async function tarjetaExtra(
   if (puesto === "coord_general") {
     const { data: inv } = await admin
       .from("client_invoices")
-      .select("monto, fecha_cobro")
+      .select("cliente_id, monto, fecha_cobro")
       .eq("periodo", hoy.slice(0, 7));
-    const lista = (inv ?? []) as { monto: number | string; fecha_cobro: string | null }[];
+    // Por cliente, no por factura: un cliente con 3 servicios tiene 3 facturas
+    // y es UN cobro (12/10/2026).
+    const lista = (inv ?? []) as { cliente_id: string; monto: number | string; fecha_cobro: string | null }[];
+    const clientes = new Set(lista.map((x) => x.cliente_id));
     const pendientes = lista.filter((x) => !x.fecha_cobro);
     return tarjetaCoordGeneral(
       persona,
       {
-        sinCobrar: pendientes.length,
+        sinCobrar: new Set(pendientes.map((x) => x.cliente_id)).size,
         montoSinCobrar: pendientes.reduce((a, x) => a + Number(x.monto || 0), 0),
-        total: lista.length,
+        total: clientes.size,
         diaDelMes: Number(hoy.slice(8, 10)),
       },
       comunes

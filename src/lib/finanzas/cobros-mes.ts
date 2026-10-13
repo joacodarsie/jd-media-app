@@ -2,6 +2,7 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { isClientPausedFor } from "@/lib/client-pause";
 import { estadoDeCobro } from "@/lib/finanzas/cobro-gestion";
 import { fetchFacturacion } from "@/lib/finanzas/facturacion";
+import { cobroDelCliente } from "./cobro-cliente";
 
 /**
  * De dónde salen los cobros de un mes — un solo lugar.
@@ -85,7 +86,7 @@ export async function cargarCobrosDelMes(periodo: string): Promise<{
     admin
       .from("client_invoices")
       .select(
-        "id, cliente_id, periodo, monto, fecha_cobro, notas, gestion_estado, clients(nombre, estado, es_interno)"
+        "id, cliente_id, periodo, monto, concepto, created_at, fecha_cobro, notas, gestion_estado, clients(nombre, estado, es_interno)"
       )
       .or(`periodo.eq.${periodo},fecha_cobro.is.null`),
   ]);
@@ -95,6 +96,8 @@ export async function cargarCobrosDelMes(periodo: string): Promise<{
     cliente_id: string;
     periodo: string;
     monto: number;
+    concepto: string | null;
+    created_at: string | null;
     fecha_cobro: string | null;
     notas: string | null;
     gestion_estado: string | null;
@@ -103,7 +106,10 @@ export async function cargarCobrosDelMes(periodo: string): Promise<{
   const invoices = (invRaw ?? []) as unknown as InvRow[];
 
   const delMes = invoices.filter((i) => i.periodo === periodo);
-  const porCliente = new Map(delMes.map((i) => [i.cliente_id, i]));
+  // Un cliente puede tener varias facturas en el mes (una por servicio): el
+  // cobro es la suma de todas (ver lib/finanzas/cobro-cliente).
+  const porCliente = new Map<string, InvRow[]>();
+  for (const i of delMes) porCliente.set(i.cliente_id, [...(porCliente.get(i.cliente_id) ?? []), i]);
 
   // Entregas a cuenta. Si falta la migración 0155 la pantalla anda igual:
   // simplemente no hay pagos parciales.
@@ -149,20 +155,23 @@ export async function cargarCobrosDelMes(periodo: string): Promise<{
     // "falta cobrar" una plata que nadie debe.
     .filter((c) => !isClientPausedFor(c.pausas, periodo))
     .map((c) => {
-      const inv = porCliente.get(c.id);
+      const facturas = (porCliente.get(c.id) ?? []).map((i) => ({ ...i, monto: Number(i.monto) }));
+      const cobro = cobroDelCliente(facturas, pagosPorFactura);
+      const hay = facturas.length > 0;
       return {
         clienteId: c.id,
         nombre: c.nombre,
-        monto: Number(inv?.monto ?? c.monto_mensual ?? 0),
-        cobradoEl: inv?.fecha_cobro ?? null,
-        nota: inv?.notas ?? null,
+        monto: hay ? cobro.monto : Number(c.monto_mensual ?? 0),
+        cobradoEl: cobro.cobradoEl,
+        nota: cobro.nota,
         contacto: c.contacto_nombre,
         telefono: c.contacto_telefono,
         esperandoPago: c.estado === "esperando_pago",
-        etapa: inv?.gestion_estado ?? null,
-        pagos: inv ? (pagosPorFactura.get(inv.id) ?? []) : [],
-        facturaId: inv?.id ?? null,
-        facturado: inv ? (facturacion.byId.get(inv.id)?.facturado ?? false) : false,
+        etapa: cobro.etapa,
+        pagos: cobro.pagos,
+        facturaId: cobro.principalId,
+        // Facturado en ARCA = todas sus facturas del mes facturadas.
+        facturado: hay && facturas.every((f) => facturacion.byId.get(f.id)?.facturado ?? false),
       };
     });
 

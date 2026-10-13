@@ -221,11 +221,21 @@ export async function cargarPanelPuesto(
   if (puesto === "coord_general") {
     const { data } = await admin
       .from("client_invoices")
-      .select("monto, fecha_cobro, cliente:clients(nombre)")
+      .select("cliente_id, monto, fecha_cobro, cliente:clients(nombre)")
       .eq("periodo", hoy.slice(0, 7))
-      .is("fecha_cobro", null)
-      .order("monto", { ascending: false });
-    const lista = (data ?? []) as unknown as { monto: number | string; cliente: { nombre: string } | null }[];
+      .is("fecha_cobro", null);
+    // Una línea por cliente con lo que le falta pagar (puede tener una factura por servicio).
+    const porCliente = new Map<string, { monto: number; cliente: { nombre: string } | null }>();
+    for (const f of (data ?? []) as unknown as {
+      cliente_id: string;
+      monto: number | string;
+      cliente: { nombre: string } | null;
+    }[]) {
+      const e = porCliente.get(f.cliente_id) ?? { monto: 0, cliente: f.cliente };
+      e.monto += Number(f.monto || 0);
+      porCliente.set(f.cliente_id, e);
+    }
+    const lista = [...porCliente.values()].sort((a, b) => b.monto - a.monto);
     const fuera = Number(hoy.slice(8, 10)) > 5;
     return {
       puesto,

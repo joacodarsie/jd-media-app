@@ -6,6 +6,7 @@ title: Novedades
 
 - 📅 **«Me pagó» ahora pregunta el día** (viene con hoy, se cambia si lo marcás tarde).
 - ✏️ **El «Pagó el 07/10» de los ya marcados se toca para corregir la fecha.**
+- 🧾 **Los clientes con varios servicios figuran con el total** (Nazar Hogar: redes + WhatsApp + chatter = $475.000, antes mostraba una sola de sus facturas). «Me pagó» marca todas, y si pagó un servicio aparte se ve como entrega a cuenta.
 
 ## 2026-10-12 — Contactos que llegan desde la web
 

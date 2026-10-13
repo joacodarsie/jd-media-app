@@ -5,6 +5,7 @@ import { hoyYmd } from "@/lib/dates";
 import { revalidatePath } from "next/cache";
 import { requireFeature } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
+import { montoPrincipalPara, ordenarFacturas, type FacturaMes } from "@/lib/finanzas/cobro-cliente";
 
 /**
  * Acciones de la pantalla simple de cobros.
@@ -37,6 +38,8 @@ async function asegurarFactura(
     .select("id")
     .eq("cliente_id", input.clienteId)
     .eq("periodo", input.periodo)
+    // La principal: la de mayor monto (un cliente puede tener una por servicio).
+    .order("monto", { ascending: false })
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -58,7 +61,66 @@ async function asegurarFactura(
   return { id: data.id as string };
 }
 
-/** "Me pagó": sella la fecha de cobro de hoy (creando la factura si no estaba). */
+/** Todas las facturas del cliente en el mes, la principal primero. */
+async function facturasDelMes(
+  admin: ReturnType<typeof createAdmin>,
+  clienteId: string,
+  periodo: string
+): Promise<FacturaMes[]> {
+  const { data } = await admin
+    .from("client_invoices")
+    .select("id, monto, fecha_cobro, created_at, concepto")
+    .eq("cliente_id", clienteId)
+    .eq("periodo", periodo);
+  return ordenarFacturas(
+    ((data ?? []) as FacturaMes[]).map((f) => ({ ...f, monto: Number(f.monto) }))
+  );
+}
+
+/**
+ * Sella el cobro del mes: TODAS las facturas del cliente quedan pagadas en esa
+ * fecha. Con una sola factura, además se guarda el monto (como siempre); con
+ * varias, si el total cambió, el ajuste va a la principal y los demás
+ * servicios no se tocan (antes se pisaba una factura con el monto de otra).
+ */
+async function sellarCobro(
+  admin: ReturnType<typeof createAdmin>,
+  input: { clienteId: string; periodo: string; monto: number; fecha: string; userId: string; concepto?: string }
+): Promise<{ error?: string }> {
+  const facturas = await facturasDelMes(admin, input.clienteId, input.periodo);
+  if (facturas.length <= 1) {
+    const res = await asegurarFactura(admin, {
+      clienteId: input.clienteId,
+      periodo: input.periodo,
+      monto: input.monto,
+      concepto: input.concepto || `Abono ${input.periodo}`,
+      userId: input.userId,
+    });
+    if ("error" in res) return { error: res.error };
+    const { error } = await admin
+      .from("client_invoices")
+      .update({ fecha_cobro: input.fecha, monto: input.monto, gestion_estado: "cobrado" })
+      .eq("id", res.id);
+    return error ? { error: error.message } : {};
+  }
+  const total = facturas.reduce((a, f) => a + f.monto, 0);
+  if (Math.round(input.monto) !== Math.round(total)) {
+    const m = montoPrincipalPara(facturas, input.monto);
+    if (m !== null) {
+      await admin.from("client_invoices").update({ monto: m }).eq("id", facturas[0].id);
+    }
+  }
+  const { error } = await admin
+    .from("client_invoices")
+    .update({ fecha_cobro: input.fecha, gestion_estado: "cobrado" })
+    .in(
+      "id",
+      facturas.map((f) => f.id)
+    );
+  return error ? { error: error.message } : {};
+}
+
+/** "Me pagó": sella la fecha de cobro (creando la factura si no estaba). */
 export async function marcarCobrado(input: {
   clienteId: string;
   periodo: string;
@@ -67,21 +129,15 @@ export async function marcarCobrado(input: {
   fecha?: string;
 }) {
   const { admin, userId } = await ctx();
-  const res = await asegurarFactura(admin, {
+  const sello = await sellarCobro(admin, {
     clienteId: input.clienteId,
     periodo: input.periodo,
     monto: input.monto,
-    concepto: input.concepto || `Abono ${input.periodo}`,
+    fecha: input.fecha ?? hoyYmd(),
     userId,
+    concepto: input.concepto,
   });
-  if ("error" in res) return { error: res.error };
-
-  const hoy = input.fecha ?? hoyYmd();
-  const { error } = await admin
-    .from("client_invoices")
-    .update({ fecha_cobro: hoy, monto: input.monto })
-    .eq("id", res.id);
-  if (error) return { error: error.message };
+  if (sello.error) return { error: sello.error };
 
   // Si la cuenta estaba ESPERANDO EL PAGO, el pago la convierte en cliente.
   // Es el único momento en que alguien pasa a contar como cliente de verdad.
@@ -143,10 +199,19 @@ export async function guardarMonto(input: {
     userId,
   });
   if ("error" in res) return { error: res.error };
+  // Con varias facturas (una por servicio) el monto es el TOTAL del mes: el
+  // ajuste va a la principal y los demás servicios quedan como están.
+  const facturas = await facturasDelMes(admin, input.clienteId, input.periodo);
+  const montoPrincipal = facturas.length > 1 ? montoPrincipalPara(facturas, input.monto) : input.monto;
+  if (montoPrincipal === null) {
+    return {
+      error: "Ese total es menor que lo que suman los otros servicios del mes. Revisalos en la ficha del cliente.",
+    };
+  }
   const { error } = await admin
     .from("client_invoices")
-    .update({ monto: input.monto })
-    .eq("id", res.id);
+    .update({ monto: montoPrincipal })
+    .eq("id", facturas[0]?.id ?? res.id);
   if (error) return { error: error.message };
 
   let aviso: string | null = null;
@@ -278,20 +343,30 @@ export async function registrarPagoParcial(input: {
     };
   }
 
-  // ¿Con esto quedó saldado?
-  const [{ data: pagos }, { data: inv }] = await Promise.all([
-    admin.from("invoice_payments").select("monto").eq("invoice_id", f.id),
-    admin.from("client_invoices").select("monto, fecha_cobro").eq("id", f.id).maybeSingle(),
-  ]);
-  const entregado = ((pagos ?? []) as { monto: number }[]).reduce((a, p) => a + Number(p.monto), 0);
-  const total = Number((inv as { monto: number } | null)?.monto ?? input.monto);
-  const yaCobrada = !!(inv as { fecha_cobro: string | null } | null)?.fecha_cobro;
+  // ¿Con esto quedó saldado? Contra el TOTAL del mes (todas sus facturas):
+  // lo entregado más los servicios que ya pagó aparte.
+  const facturas = await facturasDelMes(admin, input.clienteId, input.periodo);
+  const impagas = facturas.filter((x) => !x.fecha_cobro);
+  const { data: pagos } = await admin
+    .from("invoice_payments")
+    .select("monto")
+    .in(
+      "invoice_id",
+      impagas.map((x) => x.id)
+    );
+  const entregado =
+    ((pagos ?? []) as { monto: number }[]).reduce((a, p) => a + Number(p.monto), 0) +
+    facturas.filter((x) => x.fecha_cobro).reduce((a, x) => a + x.monto, 0);
+  const total = facturas.reduce((a, x) => a + x.monto, 0) || input.monto;
 
-  if (!yaCobrada && total > 0 && entregado >= total) {
+  if (impagas.length > 0 && total > 0 && entregado >= total) {
     await admin
       .from("client_invoices")
       .update({ fecha_cobro: input.fecha || hoyYmd(), gestion_estado: "cobrado" })
-      .eq("id", f.id);
+      .in(
+        "id",
+        impagas.map((x) => x.id)
+      );
   } else {
     await admin.from("client_invoices").update({ gestion_estado: "parcial" }).eq("id", f.id);
   }
@@ -349,23 +424,15 @@ export async function marcarCobradosEnLote(input: {
   let activados = 0;
 
   for (const it of input.items) {
-    const res = await asegurarFactura(admin, {
+    const sello = await sellarCobro(admin, {
       clienteId: it.clienteId,
       periodo: input.periodo,
       monto: it.monto,
-      concepto: `Abono ${input.periodo}`,
+      fecha,
       userId,
     });
-    if ("error" in res) {
-      errores.push(res.error);
-      continue;
-    }
-    const { error } = await admin
-      .from("client_invoices")
-      .update({ fecha_cobro: fecha, monto: it.monto, gestion_estado: "cobrado" })
-      .eq("id", res.id);
-    if (error) {
-      errores.push(error.message);
+    if (sello.error) {
+      errores.push(sello.error);
       continue;
     }
     const { data: cli } = await admin
@@ -468,7 +535,9 @@ export async function marcarFacturado(input: {
       // Sin factura no hay cuándo: al desmarcar se limpia la fecha.
       facturado_at: input.facturado ? hoyYmd() : null,
     })
-    .eq("id", res.id);
+    // Todas las facturas del cliente en el mes (una por servicio).
+    .eq("cliente_id", input.clienteId)
+    .eq("periodo", input.periodo);
   if (error) return { error: error.message };
 
   invalidate();

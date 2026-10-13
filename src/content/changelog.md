@@ -2,6 +2,16 @@
 title: Novedades
 ---
 
+## 2026-10-12 — Mi día según tu puesto
+
+- 🧭 **Los coordinadores tienen arriba de Mi día «Lo de tu puesto»**: la lista concreta de qué hacer hoy, con un clic para resolver cada cosa, al lado de su tarjeta «Cómo te ve la dirección».
+  - **Santi:** las piezas para aprobar (con Ver archivo / Aprobar / Pedir cambios) y las ideas sin aprobar que salen esta semana.
+  - **Luz:** lo que tiene para repartir, las cuentas nuevas en rojo (y por qué) y quién tiene más tareas vencidas.
+  - **Mati:** las campañas donde hoy toca seguimiento y las reuniones que consiguió.
+  - **Leo:** los cobros del mes sin marcar, cliente por cliente.
+  - **Guille:** las cuentas con pauta que no están conectadas a la app o no tienen campañas publicadas.
+  - **Brisa:** lo que sale en las redes de JD Media en las próximas 3 semanas.
+
 ## 2026-10-12 — Efemérides: las fechas importantes, con 30 días de aviso
 
 - 🎉 **En Mi día, «Fechas que se vienen»**: las efemérides de los próximos 30 días, para quienes arman calendarios. Las de **todas las cuentas** (Navidad, Día de la Madre, feriados…) siempre; las **de rubro** (Día del Médico, Black Friday, Día del Maestro…) solo si le sirven a alguna de tus cuentas, y te dice a cuáles.

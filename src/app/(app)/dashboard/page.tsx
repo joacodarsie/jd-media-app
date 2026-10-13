@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 import { TaskList } from "@/components/task-list";
 import { HelpTrigger } from "@/components/help-trigger";
 import { DashboardAvisos } from "@/components/dashboard-avisos";
-import { MiTarjetaDireccion } from "@/components/mi-tarjeta-direccion";
+import { MiPuesto } from "@/components/mi-puesto";
 import { EfemeridesProximas } from "@/components/efemerides-proximas";
 
 export const dynamic = "force-dynamic";
@@ -499,9 +499,9 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Coordinadores: su tarjeta de la dirección (no frena el resto de la página). */}
+      {/* Coordinadores: lo de su puesto + su tarjeta de la dirección (no frena el resto). */}
       <Suspense fallback={null}>
-        <MiTarjetaDireccion userId={user.id} />
+        <MiPuesto userId={user.id} />
       </Suspense>
 
       {/* Efemérides de los próximos 30 días, para quienes arman calendarios. */}

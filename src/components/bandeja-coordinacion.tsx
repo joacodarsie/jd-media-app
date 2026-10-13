@@ -3,10 +3,9 @@ import { Inbox } from "lucide-react";
 import { createAdmin } from "@/lib/supabase/admin";
 import { personasClave } from "@/lib/tareas/personas-clave";
 import { formatTicket } from "@/lib/tareas/tickets";
-import { AREAS_DE_LA_PM, estadoAprobacion } from "@/lib/tareas/puerta";
-import { tieneArchivo } from "@/lib/contenidos/aprobacion";
-import { ymdEnZona } from "@/lib/dates";
-import { BandejaAprobar, type ItemAprobar } from "@/components/bandeja-aprobar";
+import { AREAS_DE_LA_PM } from "@/lib/tareas/puerta";
+import { BandejaAprobar } from "@/components/bandeja-aprobar";
+import { armarItemsParaAprobar } from "@/lib/tareas/items-aprobar";
 
 interface Fila {
   id: string;
@@ -69,48 +68,7 @@ export async function BandejaCoordinacion({ me }: { me: { id: string; rol: strin
   const aprobar = (aprobarRes.data ?? []) as unknown as Fila[];
   if (!repartir.length && !aprobar.length) return null;
 
-  // La pieza del calendario de cada ticket: fecha de salida y archivo, para
-  // decidir sin entrar a la tarea.
-  const { data: pubsRaw } = aprobar.length
-    ? await admin
-        .from("publications")
-        .select("task_id, estado, fecha_publicacion, asset_url, link_instagram, publish_media")
-        .in("task_id", aprobar.map((f) => f.id))
-    : { data: [] };
-  type Pub = {
-    task_id: string;
-    estado: string;
-    fecha_publicacion: string | null;
-    asset_url: string | null;
-    link_instagram: string | null;
-    publish_media: unknown[] | null;
-  };
-  const pubDe = new Map(((pubsRaw ?? []) as Pub[]).map((p) => [p.task_id, p]));
-  const items: ItemAprobar[] = aprobar.map((f) => {
-    const p = pubDe.get(f.id);
-    const reloj = f.revision_desde ? estadoAprobacion(f.revision_desde) : null;
-    return {
-      id: f.id,
-      ticket: formatTicket(f.numero) ?? null,
-      titulo: f.titulo,
-      cliente: f.cliente?.nombre ?? null,
-      persona: f.asignado?.nombre ?? null,
-      reloj: reloj ? { texto: reloj.texto, vencida: reloj.vencida } : null,
-      pieza: p
-        ? {
-            sale: ymdEnZona(p.fecha_publicacion),
-            archivo: p.asset_url || p.link_instagram || null,
-            tieneArchivo: tieneArchivo({ ...p, estado: "revision_creativa" }),
-          }
-        : null,
-    };
-  });
-  // Lo que sale antes, arriba; lo que no es del calendario, al final.
-  items.sort((a, b) => {
-    const sa = a.pieza?.sale ?? "9999";
-    const sb = b.pieza?.sale ?? "9999";
-    return sa.localeCompare(sb);
-  });
+  const items = await armarItemsParaAprobar(admin, aprobar);
 
   const pm = clave.pmNombre?.split(" ")[0] ?? "la PM";
   const directora = clave.directoraNombre?.split(" ")[0] ?? "la dirección creativa";

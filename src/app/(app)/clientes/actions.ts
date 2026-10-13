@@ -4,7 +4,7 @@ import { PACK_MARCA_REAL } from "@/lib/pack-marca-real";
 import { esOrigen } from "@/lib/clientes/origen";
 import { hoyYmd } from "@/lib/dates";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { invalidateClientsCache } from "@/lib/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -621,5 +621,30 @@ export async function registrarReunionMensual(input: {
   }
   revalidatePath(`/clientes/${input.clienteId}`);
   revalidatePath("/director");
+  return { ok: true as const };
+}
+
+/**
+ * El logo del cliente (13/10/2026): alimenta el carrusel de marcas de la web,
+ * que se arma solo con los clientes activos. Lo sube la coordinación o la CM
+ * de la cuenta (es un paso del arranque). `url` null = sacarlo.
+ */
+export async function guardarLogoCliente(clienteId: string, url: string | null) {
+  const me = await requireUser();
+  const admin = createAdmin();
+  const { data: cli } = await admin.from("clients").select("cm_id").eq("id", clienteId).maybeSingle();
+  if (!cli) return { error: "No encontré la cuenta." };
+  const esStaff = ["admin", "coordinador", "coordinador_diseno"].includes(me.rol) ||
+    ["admin", "coordinador", "coordinador_diseno"].includes(me.rol_secundario ?? "");
+  if (!esStaff && (cli as { cm_id: string | null }).cm_id !== me.id) {
+    return { error: "Solo la coordinación o la CM de la cuenta pueden cambiar el logo." };
+  }
+  const limpio = url?.trim() || null;
+  if (limpio && !/^https:\/\//.test(limpio)) return { error: "El logo tiene que ser un link https." };
+  const { error } = await admin.from("clients").update({ logo_url: limpio }).eq("id", clienteId);
+  if (error) return { error: error.message };
+  revalidatePath(`/clientes/${clienteId}`);
+  // El carrusel de la web lo toma al toque, sin esperar la hora de caché.
+  revalidateTag("web-marcas");
   return { ok: true as const };
 }

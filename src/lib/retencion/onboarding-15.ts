@@ -118,6 +118,16 @@ export function planOnboarding(input: {
     cm
   );
 
+  // El carrusel de marcas de jdmedia.com.ar se arma solo con los clientes
+  // activos: el logo es lo único que hay que cargar a mano (13/10/2026).
+  add(
+    2,
+    "Subir el logo de la cuenta a su ficha",
+    `En la ficha de ${nombreCliente}, tocá el cuadrado de «Logo» al lado del nombre y subí su logo (mejor PNG con fondo transparente). Con eso aparece en el carrusel de marcas de jdmedia.com.ar.`,
+    "Community Manager",
+    cm
+  );
+
   if (svc.has("gestion_redes")) {
     add(
       3,

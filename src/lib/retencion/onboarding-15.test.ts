@@ -114,10 +114,9 @@ describe("planOnboarding", () => {
     expect(plan(["gestion_redes"]).madre.dia).toBe(DIAS_ONBOARDING);
   });
 
-  it("una cuenta sin servicios reconocidos igual tiene la reunión de diagnóstico", () => {
+  it("una cuenta sin servicios reconocidos igual tiene la reunión de diagnóstico y el logo", () => {
     const p = plan([]);
-    expect(p.pasos).toHaveLength(1);
-    expect(p.pasos[0].titulo).toBe("Reunión de diagnóstico");
+    expect(p.pasos.map((x) => x.titulo)).toEqual(["Reunión de diagnóstico", "Subir el logo de la cuenta a su ficha"]);
   });
 });
 

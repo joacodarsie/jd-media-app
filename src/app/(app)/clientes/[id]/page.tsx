@@ -19,6 +19,7 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import { requireUser, isStaffUser, userInRoles, canSeeAllClients } from "@/lib/auth";
+import { ClienteLogo } from "@/components/cliente-logo";
 import { hrefDePanel, panelDeEntrada } from "@/lib/onboarding/paneles";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -359,6 +360,13 @@ export default async function ClientDetail({
       {/* ── Encabezado ── */}
       <div className="rounded-xl border bg-card p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
+          <ClienteLogo
+            clienteId={c.id}
+            nombre={c.nombre}
+            logoUrl={(c as { logo_url?: string | null }).logo_url ?? null}
+            puedeEditar={isStaffUser(me) || c.cm_id === me.id}
+          />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-bold">{c.nombre}</h1>
@@ -380,6 +388,7 @@ export default async function ClientDetail({
               {c.cm ? ` · CM: ${c.cm.nombre}` : ""}
               {c.fecha_inicio ? ` · Cliente desde ${fmtDate(c.fecha_inicio)}` : ""}
             </p>
+          </div>
           </div>
           {canEdit && (
             <div className="flex shrink-0 items-center gap-2">

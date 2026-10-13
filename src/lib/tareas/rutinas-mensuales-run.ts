@@ -10,7 +10,9 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { rutinasDelMes, type GenteRutina } from "./rutinas-mensuales";
-import { AREA_PM } from "./puerta";
+import { AREA_DIRECTORA, AREA_PM } from "./puerta";
+import { rutinasDeServicios, type CuentaConServicio } from "./rutinas-servicios";
+import { isClientPausedFor } from "@/lib/client-pause";
 import { AREA_DIRECCION, puestaAPunto, rutinasDeDireccion } from "@/lib/direccion/rutina";
 import { hoyYmd } from "@/lib/dates";
 
@@ -44,7 +46,32 @@ export async function runRutinasMensuales(
   // La rutina de la dirección (ronda semanal, RRHH, objetivos, trimestre) va
   // al dueño: quien ocupa Estrategia/Dirección (12/10/2026).
   const duenoId = porArea(AREA_DIRECCION) ?? gente.adminId;
-  const tareas = [...rutinasDelMes(periodo, gente), ...rutinasDeDireccion(hoyYmd(), duenoId), ...puestaAPunto(duenoId)];
+  // Los servicios que se venden aparte: WhatsApp lo da Santi (dirección
+  // creativa) y Google Ads, la coordinación de pauta (pedido del 12/10/2026).
+  const { data: svRaw } = await admin
+    .from("client_services")
+    .select("cliente_id, tipo, clients!inner(nombre, estado, es_interno, pausas)")
+    .eq("activo", true)
+    .in("tipo", ["gestion_whatsapp", "google_ads"]);
+  const conServicio: CuentaConServicio[] = (
+    (svRaw ?? []) as unknown as {
+      cliente_id: string;
+      tipo: string;
+      clients: { nombre: string; estado: string; es_interno: boolean; pausas: string[] | null } | null;
+    }[]
+  )
+    .filter((x) => x.clients?.estado === "activo" && !x.clients.es_interno && !isClientPausedFor(x.clients.pausas, periodo))
+    .map((x) => ({ clienteId: x.cliente_id, nombre: x.clients!.nombre, tipo: x.tipo }));
+
+  const tareas = [
+    ...rutinasDelMes(periodo, gente),
+    ...rutinasDeDireccion(hoyYmd(), duenoId),
+    ...puestaAPunto(duenoId),
+    ...rutinasDeServicios(periodo, hoyYmd(), conServicio, {
+      gestion_whatsapp: porArea(AREA_DIRECTORA),
+      google_ads: porArea("Coordinación de Paid Media"),
+    }),
+  ];
   if (tareas.length === 0) return { periodo, creadas: 0, yaEstaban: 0 };
 
   // Las que ya existen no se tocan: puede que alguien les haya cambiado la

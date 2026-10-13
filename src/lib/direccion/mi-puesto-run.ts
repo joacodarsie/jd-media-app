@@ -35,6 +35,33 @@ export type PanelPuesto =
   | { puesto: "direccion_creativa"; aprobar: ItemAprobar[]; bloques: Bloque[] }
   | { puesto: Exclude<Puesto, "direccion_creativa">; bloques: Bloque[] };
 
+/** Las tareas abiertas del mes de un servicio aparte, como bloque de Mi día. */
+async function bloqueServicio(
+  admin: SupabaseClient,
+  hoy: string,
+  clave: string,
+  titulo: string
+): Promise<Bloque | null> {
+  const { data } = await admin
+    .from("tasks")
+    .select("id, titulo, estado, fecha_limite")
+    .like("rutina_key", `${hoy.slice(0, 7)}:${clave}:%`)
+    .order("fecha_limite");
+  const todas = (data ?? []) as { id: string; titulo: string; estado: string; fecha_limite: string | null }[];
+  if (todas.length === 0) return null;
+  const abiertas = todas.filter((t) => t.estado !== "completada" && t.estado !== "archivada");
+  return {
+    titulo: `${titulo} (${todas.length - abiertas.length} de ${todas.length} hechas)`,
+    vacio: "Todas hechas este mes.",
+    lineas: abiertas.map((t) => ({
+      texto: t.titulo,
+      detalle: t.fecha_limite ? `vence el ${t.fecha_limite.slice(8, 10)}/${t.fecha_limite.slice(5, 7)}` : undefined,
+      href: `/tareas/${t.id}`,
+      urgente: !!t.fecha_limite && t.fecha_limite < hoy,
+    })),
+  };
+}
+
 const corta = (ymd: string | null | undefined) => (ymd ? `${ymd.slice(8, 10)}/${ymd.slice(5, 7)}` : "");
 const pesos = (n: number) => `$${Math.round(n).toLocaleString("es-AR")}`;
 const MAX = 8;
@@ -65,10 +92,12 @@ export async function cargarPanelPuesto(
       fecha_publicacion: string;
       cliente: { nombre: string } | null;
     }[];
+    const wpp = await bloqueServicio(admin, hoy, "wpp", "WhatsApp de tus cuentas");
     return {
       puesto,
       aprobar,
       bloques: [
+        ...(wpp ? [wpp] : []),
         {
           titulo: "Ideas sin aprobar que salen esta semana",
           vacio: "Ninguna: el calendario de los próximos 7 días está aprobado.",
@@ -277,9 +306,11 @@ export async function cargarPanelPuesto(
     const conCampanas = new Set(((onb ?? []) as { cliente_id: string }[]).map((x) => x.cliente_id));
     const sinConectar = cuentas.filter((c) => !conectadas.has(c.id));
     const sinCampanas = cuentas.filter((c) => !conCampanas.has(c.id));
+    const gads = await bloqueServicio(admin, hoy, "gads", "Google Ads de este mes");
     return {
       puesto,
       bloques: [
+        ...(gads ? [gads] : []),
         {
           titulo: "Pauta sin conectar a la app",
           vacio: "Todas las cuentas con pauta mandan datos.",

@@ -102,6 +102,31 @@ function comunes(c: Comunes): Indicador[] {
   ];
 }
 
+/** Avance de las tareas del mes de un servicio aparte (WhatsApp, Google Ads). */
+export interface AvanceServicio {
+  hechas: number;
+  total: number;
+  /** Abiertas con la fecha pasada. */
+  vencidas: number;
+}
+
+/** El indicador de un servicio aparte. Sin cuentas con el servicio, no aparece. */
+export function indicadorServicio(label: string, a: AvanceServicio | undefined, href: string): Indicador[] {
+  if (!a || a.total === 0) return [];
+  return [
+    {
+      label,
+      valor: `${a.hechas} de ${a.total}`,
+      detalle: a.vencidas
+        ? `${a.vencidas} con la fecha pasada`
+        : "Una tarea por cuenta con el servicio; vence el 10",
+      // Pesa solo lo vencido: en plazo, todavía no es un problema.
+      estado: a.vencidas > 0 ? "mal" : a.hechas === a.total ? "ok" : null,
+      href,
+    },
+  ];
+}
+
 function tarjeta(
   p: { id: string; nombre: string },
   puesto: Puesto,
@@ -149,7 +174,7 @@ export function tarjetaPm(
 
 export function tarjetaDireccionCreativa(
   p: { id: string; nombre: string },
-  d: { paraAprobar: number; fueraDeTiempo: number; ideasUrgentes: number },
+  d: { paraAprobar: number; fueraDeTiempo: number; ideasUrgentes: number; wpp?: AvanceServicio },
   c: Comunes
 ): Tarjeta {
   return tarjeta(
@@ -172,6 +197,7 @@ export function tarjetaDireccionCreativa(
         estado: porTope(d.ideasUrgentes, 5),
         href: "/contenidos",
       },
+      ...indicadorServicio("Gestión de WhatsApp de este mes", d.wpp, "/tareas"),
     ],
     c
   );
@@ -252,7 +278,7 @@ export function tarjetaCuentaJd(
 
 export function tarjetaPaidMedia(
   p: { id: string; nombre: string },
-  d: { conPauta: number; conectadas: number; conCampanas: number },
+  d: { conPauta: number; conectadas: number; conCampanas: number; gads?: AvanceServicio },
   c: Comunes
 ): Tarjeta {
   return tarjeta(
@@ -273,6 +299,7 @@ export function tarjetaPaidMedia(
         estado: porMeta(d.conCampanas, d.conPauta),
         href: "/paid-media",
       },
+      ...indicadorServicio("Google Ads de este mes", d.gads, "/tareas"),
     ],
     c
   );

@@ -19,6 +19,7 @@ import {
   tarjetaGenerica,
   type Comunes,
   type Puesto,
+  type AvanceServicio,
   type Tarjeta,
 } from "./coordinadores";
 
@@ -64,6 +65,21 @@ async function tareasAbiertas(admin: SupabaseClient): Promise<TareaAbierta[]> {
     if (!data || data.length < 1000) break;
   }
   return out;
+}
+
+/** Cuántas tareas del mes de un servicio aparte se hicieron (rutina "<periodo>:<clave>:<cliente>"). */
+async function avanceServicio(admin: SupabaseClient, hoy: string, clave: string): Promise<AvanceServicio> {
+  const { data } = await admin
+    .from("tasks")
+    .select("estado, fecha_limite")
+    .like("rutina_key", `${hoy.slice(0, 7)}:${clave}:%`);
+  const lista = (data ?? []) as { estado: string; fecha_limite: string | null }[];
+  const abierta = (t: { estado: string }) => t.estado !== "completada" && t.estado !== "archivada";
+  return {
+    hechas: lista.filter((t) => t.estado === "completada").length,
+    total: lista.filter((t) => t.estado !== "archivada").length,
+    vencidas: lista.filter((t) => abierta(t) && !!t.fecha_limite && t.fecha_limite < hoy).length,
+  };
 }
 
 /**
@@ -192,6 +208,7 @@ export async function cargarTablero(
           .lte("fecha_publicacion", en5),
       ]);
       const r = (revision ?? []) as { revision_desde: string | null }[];
+      const wpp = await avanceServicio(admin, hoy, "wpp");
       tarjetas.push(
         tarjetaDireccionCreativa(
           persona,
@@ -199,6 +216,7 @@ export async function cargarTablero(
             paraAprobar: r.length,
             fueraDeTiempo: r.filter((x) => x.revision_desde && estadoAprobacion(x.revision_desde, ahora).vencida).length,
             ideasUrgentes: ideas ?? 0,
+            wpp,
           },
           comunesDe(id)
         )
@@ -278,9 +296,11 @@ async function tarjetaExtra(
           admin.from("client_ads_onboarding").select("cliente_id").in("cliente_id", ids).not("campanas_publicadas_at", "is", null),
         ])
       : [{ data: [] }, { data: [] }];
+    const gads = await avanceServicio(admin, hoy, "gads");
     return tarjetaPaidMedia(
       persona,
       {
+        gads,
         conPauta: ids.length,
         conectadas: new Set(((snaps ?? []) as { cliente_id: string }[]).map((x) => x.cliente_id)).size,
         conCampanas: new Set(((onb ?? []) as { cliente_id: string }[]).map((x) => x.cliente_id)).size,

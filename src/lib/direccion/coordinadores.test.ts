@@ -103,6 +103,18 @@ describe("Leo y Guille", () => {
   });
 });
 
+describe("servicios aparte (WhatsApp, Google Ads)", () => {
+  it("en plazo no pesa; vencidas, rojo; sin cuentas con el servicio no aparece", () => {
+    const base = { paraAprobar: 0, fueraDeTiempo: 0, ideasUrgentes: 0 };
+    expect(tarjetaDireccionCreativa(p, { ...base, wpp: { hechas: 0, total: 2, vencidas: 0 } }, limpio).estado).toBe("ok");
+    const tarde = tarjetaDireccionCreativa(p, { ...base, wpp: { hechas: 0, total: 2, vencidas: 1 } }, limpio);
+    expect(tarde.estado).toBe("mal");
+    expect(tarde.indicadores.find((i) => i.label.includes("WhatsApp"))?.valor).toBe("0 de 2");
+    const sin = tarjetaPaidMedia(p, { conPauta: 1, conectadas: 1, conCampanas: 1, gads: { hechas: 0, total: 0, vencidas: 0 } }, limpio);
+    expect(sin.indicadores.some((i) => i.label.includes("Google Ads"))).toBe(false);
+  });
+});
+
 describe("días hábiles", () => {
   it("cuenta hasta hoy en la semana; el finde vale la semana entera", () => {
     expect(diasHabilesHastaHoy("2026-10-12")).toBe(1); // lunes

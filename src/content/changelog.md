@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-10-12 — Cobros: el día real en que te pagaron
+
+- 📅 **«Me pagó» ahora pregunta el día** (viene con hoy, se cambia si lo marcás tarde).
+- ✏️ **El «Pagó el 07/10» de los ya marcados se toca para corregir la fecha.**
+
 ## 2026-10-12 — Contactos que llegan desde la web
 
 - 📥 **Quien descarga un recurso gratuito de jdmedia.com.ar deja su nombre y mail, y entra solo como contacto en Comercial** (origen «web»), con qué descargó. Si ya estaba, se le suma la descarga.

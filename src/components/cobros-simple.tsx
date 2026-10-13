@@ -41,6 +41,11 @@ export function CobrosSimple({
   // viene con "me pagaron casi todos, quedan dos".
   const [tildados, setTildados] = useState<Set<string>>(() => new Set());
   const [fechaLote, setFechaLote] = useState(() => new Date().toISOString().slice(0, 10));
+  // "Me pagó" pregunta el día: muchas veces se marca tarde y el pago fue antes
+  // (pedido del dueño, 12/10/2026). También sirve para corregir uno ya marcado.
+  const [eligiendo, setEligiendo] = useState<string | null>(null);
+  const hoyLocal = () => new Date().toLocaleDateString("sv-SE");
+  const [fechaPago, setFechaPago] = useState(hoyLocal);
 
   if (!filas.length) {
     return (
@@ -50,13 +55,20 @@ export function CobrosSimple({
     );
   }
 
-  function cobrar(f: FilaCliente) {
+  function abrirFecha(f: FilaCliente) {
+    setFechaPago(f.cobradoEl?.slice(0, 10) ?? hoyLocal());
+    setEligiendo(f.clienteId);
+  }
+
+  function cobrar(f: FilaCliente, fecha: string) {
     start(async () => {
       const res = await marcarCobrado({
         clienteId: f.clienteId,
         periodo,
         monto: f.monto,
+        fecha,
       });
+      setEligiendo(null);
       if ("error" in res && res.error) {
         toast.error(res.error);
         return;
@@ -228,9 +240,24 @@ export function CobrosSimple({
 
               {pagado ? (
                 <div className="flex items-center gap-2">
-                  <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                    Pagó el {f.cobradoEl?.slice(8, 10)}/{f.cobradoEl?.slice(5, 7)}
-                  </span>
+                  {eligiendo === f.clienteId ? (
+                    <FechaDePago
+                      fecha={fechaPago}
+                      onFecha={setFechaPago}
+                      onConfirmar={() => cobrar(f, fechaPago)}
+                      onCancelar={() => setEligiendo(null)}
+                      pending={pending}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => abrirFecha(f)}
+                      title="Cambiar el día en que pagó"
+                      className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-800 hover:ring-1 hover:ring-emerald-400 dark:bg-emerald-950 dark:text-emerald-300"
+                    >
+                      Pagó el {f.cobradoEl?.slice(8, 10)}/{f.cobradoEl?.slice(5, 7)}
+                    </button>
+                  )}
                   {/* Al lado del "pagó" porque es la pregunta que sigue: esto
                       que entró, ¿lo facturaste? Solo en las cobradas — un
                       "sin factura" en las once que no pagaron es ruido. */}
@@ -246,9 +273,19 @@ export function CobrosSimple({
                   </Button>
                 </div>
               ) : (
-                <Button onClick={() => cobrar(f)} disabled={pending} className="min-w-[120px]">
-                  <Check className="mr-1.5 h-4 w-4" /> Me pagó
-                </Button>
+                eligiendo === f.clienteId ? (
+                  <FechaDePago
+                    fecha={fechaPago}
+                    onFecha={setFechaPago}
+                    onConfirmar={() => cobrar(f, fechaPago)}
+                    onCancelar={() => setEligiendo(null)}
+                    pending={pending}
+                  />
+                ) : (
+                  <Button onClick={() => abrirFecha(f)} disabled={pending} className="min-w-[120px]">
+                    <Check className="mr-1.5 h-4 w-4" /> Me pagó
+                  </Button>
+                )
               )}
             </div>
 
@@ -380,6 +417,42 @@ export function CobrosSimple({
  * abono" (un aumento). Antes solo existía la primera, y aplicar un aumento
  * había que ir a buscarlo a la ficha del cliente, servicio por servicio.
  */
+/** Elegir el día del pago: por defecto hoy, se cambia si se marca tarde. */
+function FechaDePago({
+  fecha,
+  onFecha,
+  onConfirmar,
+  onCancelar,
+  pending,
+}: {
+  fecha: string;
+  onFecha: (v: string) => void;
+  onConfirmar: () => void;
+  onCancelar: () => void;
+  pending: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-xs text-muted-foreground">pagó el</span>
+      <Input
+        type="date"
+        value={fecha}
+        max={new Date().toLocaleDateString("sv-SE")}
+        onChange={(e) => onFecha(e.target.value)}
+        className="h-8 w-[140px] text-xs"
+        autoFocus
+      />
+      <Button size="sm" onClick={onConfirmar} disabled={pending || !fecha} className="h-8">
+        {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+        Listo
+      </Button>
+      <Button size="sm" variant="ghost" onClick={onCancelar} disabled={pending} className="h-8 px-2" title="Cancelar">
+        <X className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
+
 function MontoEditor({
   inicial,
   onGuardar,

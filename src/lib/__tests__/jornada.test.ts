@@ -11,14 +11,14 @@ describe("precioJornada", () => {
     expect(precioJornada(1)).toBe(70000);
   });
 
-  it("cada hora extra suma $25.000", () => {
-    expect(precioJornada(2)).toBe(95000);
-    expect(precioJornada(3)).toBe(120000);
-    expect(precioJornada(4)).toBe(145000);
+  it("cada hora extra suma $35.000", () => {
+    expect(precioJornada(2)).toBe(105000);
+    expect(precioJornada(3)).toBe(140000);
+    expect(precioJornada(4)).toBe(175000);
   });
 
   it("media hora extra se cobra proporcional", () => {
-    expect(precioJornada(1.5)).toBe(82500);
+    expect(precioJornada(1.5)).toBe(87500);
   });
 
   it("una duración inválida se trata como una hora, no como cero", () => {

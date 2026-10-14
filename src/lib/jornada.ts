@@ -3,7 +3,7 @@
  *
  * Modelo (confirmado por el dueño el 11/9/2026), para las jornadas que van
  * DENTRO del servicio de gestión de redes:
- *  - PRECIO al cliente: **$70.000 la primera hora + $25.000 cada hora extra**
+ *  - PRECIO al cliente: **$70.000 la primera hora + $35.000 cada hora extra**
  *    (la primera hora era $50.000 hasta el 28/9/2026),
  *    más los viáticos. Van dos personas con micrófonos, celulares y guiones a
  *    grabar el contenido del mes.
@@ -25,7 +25,7 @@
  * [1] = acompañante (opcional).
  */
 export const JORNADA_PRECIO_HORA = 70000; // $50.000 hasta el 28/9/2026
-export const JORNADA_PRECIO_HORA_EXTRA = 25000;
+export const JORNADA_PRECIO_HORA_EXTRA = 35000; // $25.000 hasta el 14/10/2026
 export const JORNADA_PCT_DIRECTOR = 0.5;
 export const JORNADA_PCT_ACOMPANANTE = 0.3;
 export const JORNADA_PCT_AGENCIA = 0.2;

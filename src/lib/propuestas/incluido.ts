@@ -54,7 +54,7 @@ export const INCLUIDO_EN_TODOS: { titulo: string; items: string[] }[] = [
 
 /** Adicionales del servicio que no entran en el abono. Misma fuente. */
 export const ADICIONALES: string[] = [
-  "Sesión de producción en locación: $50.000 la hora (más traslado si es fuera de la ciudad) y $25.000 cada hora adicional.",
+  "Sesión de producción en locación: $70.000 la primera hora (más traslado si es fuera de la ciudad) y $35.000 cada hora adicional.",
 ];
 
 /**

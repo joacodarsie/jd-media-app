@@ -10,7 +10,7 @@ export interface JornadaInput {
   fecha: string; // YYYY-MM-DD
   /** Precio del trabajo, sin viáticos. Sale de las horas. */
   monto: number;
-  /** Duración: la primera hora vale $50.000 y cada extra $25.000. */
+  /** Duración: la primera hora vale $70.000 y cada extra $35.000. */
   horas?: number;
   /** Viáticos REALES de la jornada. Van enteros a quienes fueron. */
   viaticos?: number;

@@ -151,7 +151,9 @@ function gestionRedesDeliverables(svc: ClientService): string[] {
   if (piezas.length > 0) {
     out.push(`Publicaciones mensuales: ${piezas.join(", ")}.`);
   }
-  out.push("Respuesta básica de mensajes y comentarios.");
+  // La respuesta de mensajes y comentarios NO va en el pack: es un servicio
+  // aparte (Atención de mensajes). Decisión del dueño, 15/10/2026: la carta
+  // acuerdo la daba como incluida y la web como extra.
 
   return out;
 }

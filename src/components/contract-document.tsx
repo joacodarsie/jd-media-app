@@ -817,6 +817,17 @@ export function ContractDocument({ model }: { model: ContractModel }) {
             </p>
           )}
 
+          {tieneGestionRedes && (
+            <p>
+              <strong>Respuesta de mensajes y comentarios:</strong> la gestión de
+              redes <strong>no incluye</strong> responder los mensajes directos, los
+              comentarios ni las consultas de las cuentas: de eso se encarga el
+              Cliente. Si prefiere que lo haga la Agencia, se contrata{" "}
+              <strong>aparte</strong> como servicio de atención de mensajes, con su
+              propio costo.
+            </p>
+          )}
+
           {tieneGestionRedes && puestaTotal > 0 && (
             <p>
               <strong>Puesta en marcha (pago único inicial):</strong> al inicio del

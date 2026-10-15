@@ -30,6 +30,7 @@ export const INCLUIDO_EN_TODOS: { titulo: string; items: string[] }[] = [
       "Publicación con copywriting propio y repost de historias",
       "Publicamos en Instagram, Facebook y TikTok",
       "Carpetas de Drive organizadas con todo el material",
+      "Plantillas de Canva de tu marca para sumar contenido cuando quieras",
     ],
   },
   {

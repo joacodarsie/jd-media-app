@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { requireUser, isStaffUser, userInRoles, canSeeAllClients } from "@/lib/auth";
 import { ClienteLogo } from "@/components/cliente-logo";
+import { ClientePlantillasCanva } from "@/components/cliente-plantillas-canva";
 import { hrefDePanel, panelDeEntrada } from "@/lib/onboarding/paneles";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -555,6 +556,13 @@ export default async function ClientDetail({
                 clienteId={c.id}
                 initialToken={(portalToken as { token?: string } | null)?.token ?? null}
                 initialLastSeen={(portalToken as { last_seen_at?: string | null } | null)?.last_seen_at ?? null}
+              />
+
+              {/* Plantillas de Canva para el cliente (0200) */}
+              <ClientePlantillasCanva
+                clienteId={c.id}
+                url={(c as { canva_plantillas_url?: string | null }).canva_plantillas_url ?? null}
+                puedeEditar={isStaffUser(me) || c.cm_id === me.id || c.disenador_id === me.id}
               />
 
               {/* Estado del cliente */}

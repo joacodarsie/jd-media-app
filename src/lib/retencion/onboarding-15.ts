@@ -198,6 +198,16 @@ export function planOnboarding(input: {
       "Diseño",
       dis
     );
+    // Muchos clientes piden las plantillas para sumar contenido por su cuenta
+    // (pedido del dueño, 15/10/2026). Se comparte el enlace «Usar como
+    // plantilla»: el cliente se lleva una copia y el original queda intacto.
+    add(
+      12,
+      "Plantillas de Canva para el cliente",
+      `Con el manual de marca listo, armá en Canva las plantillas de ${nombreCliente} (historias, posteo y portada de reel, con sus colores y tipografías). En Canva: Compartir → Más → «Enlace de plantilla», y pegá ese link en la ficha de la cuenta, recuadro «Plantillas de Canva». El cliente las ve solas en su plataforma.`,
+      "Diseño",
+      dis
+    );
     add(
       13,
       "Piezas gráficas de los 15 días",
@@ -226,7 +236,7 @@ export function planOnboarding(input: {
     add(
       15,
       "Entrega del arranque al cliente",
-      `Reunión corta (20-30 minutos) con ${nombreCliente} para entregarle lo que se hizo en estas dos semanas: el diagnóstico, el manual de marca, el perfil optimizado con sus destacadas y el calendario aprobado. Contarle qué va a salir el resto del mes y agendar la primera reunión mensual. Participa el director creativo de la cuenta.`,
+      `Reunión corta (20-30 minutos) con ${nombreCliente} para entregarle lo que se hizo en estas dos semanas: el diagnóstico, el manual de marca, sus plantillas de Canva, el perfil optimizado con sus destacadas y el calendario aprobado. Contarle qué va a salir el resto del mes y agendar la primera reunión mensual. Participa el director creativo de la cuenta.`,
       "Coordinación",
       equipo.fallback
     );

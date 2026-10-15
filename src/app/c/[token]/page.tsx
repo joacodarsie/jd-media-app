@@ -190,8 +190,10 @@ export default async function PortalPage({ params }: { params: { token: string }
   // Cadencia consolidada (red principal)
   // «Recomendanos»: solo a quien ya lleva 2 meses (ya sabe cómo trabajamos).
   // Si la migración 0198 no está, no se muestra.
-  const { data: refRow } = await admin.from("clients").select("ref_code, fecha_inicio").eq("id", cliente_id).maybeSingle();
-  const ref = refRow as { ref_code: string | null; fecha_inicio: string | null } | null;
+  const { data: refRow } = await admin.from("clients").select("ref_code, fecha_inicio, canva_plantillas_url").eq("id", cliente_id).maybeSingle();
+  const ref = refRow as { ref_code: string | null; fecha_inicio: string | null; canva_plantillas_url?: string | null } | null;
+  // Sus plantillas de Canva, para sumar contenido por su cuenta (0200).
+  const plantillasCanva = ref?.canva_plantillas_url ?? null;
   const mostrarRecomendar = !!ref?.ref_code && puedeRecomendar(ref.fecha_inicio, hoyYmd());
   const { data: misReferidos } = mostrarRecomendar
     ? await admin
@@ -595,6 +597,23 @@ export default async function PortalPage({ params }: { params: { token: string }
             </p>
             <PortalContent pubs={upcoming} token={params.token} />
           </div>
+        )}
+
+        {plantillasCanva && (
+          <a
+            href={plantillasCanva}
+            target="_blank"
+            rel="noreferrer"
+            className="card"
+            style={{ display: "block", textDecoration: "none", color: "inherit" }}
+          >
+            <div className="card-label">Tus plantillas</div>
+            <h2 className="card-title">Plantillas de Canva de tu marca</h2>
+            <p style={{ fontSize: 13, color: "#555", margin: 0, lineHeight: 1.5 }}>
+              Las mismas que usa tu equipo, con tus colores y tipografías. Tocá acá, elegí «Usar plantilla» y se
+              crea tu propia copia para sumar contenido cuando quieras →
+            </p>
+          </a>
         )}
 
         {mostrarRecomendar && ref?.ref_code && <PortalRecomendar code={ref.ref_code} recomendados={recomendados} />}

@@ -185,3 +185,15 @@ describe("Pack Marca Real (sin redes)", () => {
     expect(p.pasos.map((x) => x.titulo)).toContain("Calendario de contenidos para aprobar");
   });
 });
+
+describe("plantillas de Canva en el arranque", () => {
+  it("con gestión de redes, la diseñadora las arma el día 12", () => {
+    const paso = plan(["gestion_redes"]).pasos.find((x) => x.titulo === "Plantillas de Canva para el cliente");
+    expect(paso?.dia).toBe(12);
+    expect(paso?.asignado_a_id).toBe("dis");
+    expect(paso?.descripcion).toContain("Enlace de plantilla");
+  });
+  it("sin gestión de redes no hay plantillas", () => {
+    expect(plan(["paid_media"]).pasos.some((x) => x.titulo.includes("Canva"))).toBe(false);
+  });
+});

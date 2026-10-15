@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-10-15 — Plantillas de Canva para el cliente
+
+- 🎨 **Los clientes reciben sus plantillas de Canva.** En la ficha de cada cuenta hay un recuadro nuevo, **«Plantillas de Canva»**: pegá el link de Canva **«Enlace de plantilla»** (Compartir → Más → Enlace de plantilla). El cliente las ve en su plataforma y se lleva su propia copia: el original de la CM no se toca.
+  - Cada cuenta nueva trae el paso **«Plantillas de Canva para el cliente»** el día 12 del arranque, para la diseñadora.
+
 ## 2026-10-13 — Tareas con más de una persona
 
 - 👥 **Una tarea puede tener varias personas.** Al crearla o editarla, debajo de **Responsable** está **«También la hacen»**: sumá a quien haga falta. Le llega el aviso, la ve en **Mis tareas** y en su día, y la puede mover. El responsable sigue siendo uno: el que responde por la tarea.

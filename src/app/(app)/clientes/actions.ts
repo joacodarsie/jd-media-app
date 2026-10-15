@@ -654,3 +654,29 @@ export async function guardarLogoCliente(clienteId: string, url: string | null) 
   revalidateTag("web-marcas");
   return { ok: true as const };
 }
+
+/**
+ * El link de las plantillas de Canva del cliente (0200, 15/10/2026). Lo carga
+ * la coordinación, la CM o la diseñadora de la cuenta, y el cliente lo ve en su
+ * portal. Tiene que ser un link de Canva.
+ */
+export async function guardarPlantillasCanva(clienteId: string, url: string | null) {
+  const me = await requireUser();
+  const admin = createAdmin();
+  const { data: cli } = await admin.from("clients").select("cm_id, disenador_id").eq("id", clienteId).maybeSingle();
+  if (!cli) return { error: "No encontré la cuenta." };
+  const c = cli as { cm_id: string | null; disenador_id: string | null };
+  const esStaff = ["admin", "coordinador", "coordinador_diseno"].includes(me.rol) ||
+    ["admin", "coordinador", "coordinador_diseno"].includes(me.rol_secundario ?? "");
+  if (!esStaff && c.cm_id !== me.id && c.disenador_id !== me.id) {
+    return { error: "Solo la coordinación, la CM o la diseñadora de la cuenta pueden cargar las plantillas." };
+  }
+  const limpio = url?.trim() || null;
+  if (limpio && !/^https:\/\/(www\.)?canva\.(com|link)\//i.test(limpio)) {
+    return { error: "Pegá el link de Canva (empieza con https://www.canva.com/ o https://canva.link/)." };
+  }
+  const { error } = await admin.from("clients").update({ canva_plantillas_url: limpio }).eq("id", clienteId);
+  if (error) return { error: error.message.includes("canva_plantillas_url") ? "Falta aplicar la migración 0200." : error.message };
+  revalidatePath(`/clientes/${clienteId}`);
+  return { ok: true as const };
+}

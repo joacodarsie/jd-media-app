@@ -42,6 +42,17 @@ describe("planOnboarding", () => {
     expect(plan(["paid_media"]).pasos.some((p) => p.titulo === "Entrega del arranque al cliente")).toBe(false);
   });
 
+  it("después del diagnóstico se le pregunta al cliente, y el manual y el calendario exigen contenido mínimo", () => {
+    const p = plan(["gestion_redes"]).pasos;
+    const preguntas = p.find((x) => x.titulo === "Ronda de preguntas al cliente");
+    expect(preguntas).toMatchObject({ dia: 2, asignado_a_id: "cm" });
+    const manual = p.find((x) => x.titulo === "Manual de marca")!.descripcion;
+    for (const parte of ["Esencia", "Logo", "Colores y tipografías", "Tono de voz", "Redes", "Aplicaciones", "director creativo"]) {
+      expect(manual).toContain(parte);
+    }
+    expect(p.find((x) => x.titulo === "Calendario de contenidos para aprobar")!.descripcion).toMatch(/porqué.*medir/s);
+  });
+
   it("toda cuenta arranca con la reunión de diagnóstico el día 1", () => {
     const p = plan(["gestion_redes"]);
     expect(p.pasos[0].titulo).toBe("Reunión de diagnóstico");

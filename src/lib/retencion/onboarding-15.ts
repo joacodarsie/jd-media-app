@@ -140,12 +140,35 @@ export function planOnboarding(input: {
   );
 
   if (svc.has("gestion_redes")) {
+    // Un cliente (Global Business Lab, 17/10/2026) recibió «el logo aplicado en
+    // una foto» como manual: no le sirvió para nada. El manual es la regla contra
+    // la que se audita cada pieza, así que tiene un contenido mínimo obligatorio.
     add(
       3,
       "Manual de marca",
-      "Paleta, tipografías, tono de voz y lineamientos visuales. Es lo que hace que las piezas de los 15 días salgan parejas.",
+      `El manual es la regla contra la que se revisa cada pieza de ${nombreCliente}: si algo no está acá, después se discute. No es el logo aplicado en una foto. Tiene que tener, como mínimo:
+
+1. **Esencia**: qué es la marca, para quién y qué la hace distinta (sale del diagnóstico).
+2. **Logo**: versiones (color, blanco, negro), área de resguardo, tamaños mínimos y usos incorrectos.
+3. **Colores y tipografías**: con sus códigos y para qué se usa cada una.
+4. **Tono de voz**: formal o coloquial, cómo le hablamos al cliente, palabras que sí y que no, y 3 ejemplos de copy bien y mal.
+5. **Redes**: estilo de fotos y videos, cómo se ven las placas, qué se publica y qué no.
+6. **Aplicaciones**: papelería, merchandising, cartelería o lo que use el negocio.
+
+Si en el diagnóstico el cliente pidió explorar otra opción de logo, se presentan las dos acá para decidir de entrada.
+
+Antes de mandarlo lo revisa el director creativo. Se manda **una sola versión completa** y se espera la devolución del cliente antes de la siguiente.`,
       "Coordinación de Diseño",
       dis
+    );
+    // El mismo cliente ofreció el canal abierto y nadie le preguntó nada en dos
+    // semanas. Preguntar es lo que evita entregar algo que no sirve.
+    add(
+      2,
+      "Ronda de preguntas al cliente",
+      `Después del diagnóstico, juntar TODAS las dudas sobre ${nombreCliente} (servicios y precios, a quién le vende, qué lo diferencia, qué no quiere mostrar, promociones que puede ofrecer) y hacerlas en una sola tanda: por el grupo o en una llamada de 15 minutos. Anotar las respuestas en la ficha. Sin estas respuestas no se arma ni el manual ni el calendario.`,
+      "Community Manager",
+      cm
     );
     add(
       3,
@@ -157,7 +180,7 @@ export function planOnboarding(input: {
     add(
       5,
       "Calendario de contenidos para aprobar",
-      `El calendario de los 15 días, con copys, formatos y referencias. Lo aprueba ${nombreCliente} antes de que nadie produzca nada.`,
+      `El calendario de los 15 días, con copys, formatos y referencias. **Cada pieza con su porqué**: qué rol cumple (que nos conozcan, que interactúen, que consulten o que compren) y qué esperamos medir (alcance, interacciones, consultas). En el lanzamiento, al menos 1 de cada 3 piezas tiene que ser promocional: una oferta, un beneficio por referir, un evento. Lo revisa el director creativo y lo aprueba ${nombreCliente} antes de que nadie produzca nada. Se manda completo, una sola vez.`,
       "Community Manager",
       cm
     );
@@ -225,7 +248,7 @@ export function planOnboarding(input: {
     add(
       14,
       "Aprobación del cliente y programación",
-      `Mostrarle todo a ${nombreCliente}, aplicar los cambios que pida y dejar las piezas programadas. El día 15 tiene que estar publicando.`,
+      `Mostrarle todo a ${nombreCliente} junto, en una sola entrega; aplicar todos los cambios que pida de una vez y recién ahí mandar la versión siguiente (nada de partes sueltas). Dejar las piezas programadas: el día 15 tiene que estar publicando.`,
       "Community Manager",
       cm
     );
@@ -294,7 +317,9 @@ El desglose de abajo es el arranque completo, en orden y con fecha. **El avance 
 
 Por qué importa tanto: de las últimas 7 cuentas que se fueron, **ninguna pasó de 3 meses**, y hasta hoy **ninguna cuenta de la agencia arrancó con un onboarding cargado**. El mes 1 es donde se decide si la cuenta se queda.
 
-Al día 15 el cliente tiene que estar publicando, con el perfil optimizado y el calendario aprobado por él.`,
+Al día 15 el cliente tiene que estar publicando, con el perfil optimizado y el calendario aprobado por él.
+
+**Cómo se entrega** (pedido de un cliente, 17/10/2026): cada entregable se manda completo, una sola vez, revisado por el director creativo, y se espera la devolución del cliente antes de mandar la versión siguiente. Ante la duda, se le pregunta: el cliente prefiere una consulta a una entrega que no sirve.`,
     area: "Coordinación",
     asignado_a_id: equipo.fallback,
     dia: DIAS_ONBOARDING,

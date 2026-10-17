@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TIMEZONE } from "@/lib/constants";
 
 interface ReviewPub {
   id: string;
@@ -63,7 +64,7 @@ export function PortalReviewCard({ pub, token }: { pub: ReviewPub; token: string
           <div className="text-sm font-semibold">{pub.titulo}</div>
           <div className="mt-0.5 text-xs" style={{ color: "#777", textTransform: "capitalize" }}>
             {pub.tipo} · {pub.red}
-            {pub.fecha_publicacion && ` · ${new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", { day: "2-digit", month: "long" })}`}
+            {pub.fecha_publicacion && ` · ${new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", { timeZone: TIMEZONE, day: "2-digit", month: "long" })}`}
           </div>
         </div>
       </div>

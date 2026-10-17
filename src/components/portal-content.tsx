@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { PUBLICATION_TYPE_HEX } from "@/lib/constants";
+import { PUBLICATION_TYPE_HEX, TIMEZONE } from "@/lib/constants";
+import { hoyYmd, ymdEnZona } from "@/lib/dates";
 import { DescripcionPieza } from "@/components/descripcion-pieza";
 
 /**
@@ -44,6 +45,13 @@ const MESES = [
 ];
 const DIAS = ["L", "M", "M", "J", "V", "S", "D"];
 
+// Día calendario de la pieza en Córdoba, como Date local (00:00). El portal se
+// renderiza en el server (UTC) y en el navegador: con getDate() sobre el ISO,
+// lo de después de las 21:00 caía en días distintos y rompía la hidratación.
+function diaEnZona(iso: string): Date {
+  const [y, m, d] = ymdEnZona(iso)!.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
 function dayKey(d: Date) {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
@@ -73,7 +81,7 @@ export function PortalContent({ pubs, token }: { pubs: PortalPub[]; token: strin
         undated.push(p);
         continue;
       }
-      const d = new Date(p.fecha_publicacion);
+      const d = diaEnZona(p.fecha_publicacion);
       dated.push(p);
       const k = dayKey(d);
       if (!byDay.has(k)) byDay.set(k, []);
@@ -93,8 +101,8 @@ export function PortalContent({ pubs, token }: { pubs: PortalPub[]; token: strin
   // piezas; si no, el último disponible. Así el cliente cae en "lo que viene" y
   // navega hacia atrás para ver el historial.
   const initialMonth = useMemo(() => {
-    const today = new Date();
-    const cur = { y: today.getFullYear(), m: today.getMonth() };
+    const [hy, hm] = hoyYmd().split("-").map(Number);
+    const cur = { y: hy, m: hm - 1 };
     if (months.length === 0) return cur;
     const exact = months.find((x) => x.y === cur.y && x.m === cur.m);
     if (exact) return exact;
@@ -221,7 +229,7 @@ export function PortalContent({ pubs, token }: { pubs: PortalPub[]; token: strin
           {selPubs.length > 0 && (
             <div style={{ marginTop: 16 }}>
               <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", color: "#888", marginBottom: 8 }}>
-                {new Date(selPubs[0].fecha_publicacion!).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
+                {new Date(selPubs[0].fecha_publicacion!).toLocaleDateString("es-AR", { timeZone: TIMEZONE, weekday: "long", day: "numeric", month: "long" })}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {selPubs.map((p) => <PubRow key={p.id} pub={p} onClick={() => setOpenId(p.id)} />)}
@@ -358,7 +366,7 @@ function PubRow({ pub, onClick, showDate }: { pub: PortalPub; onClick: () => voi
         </span>
         <span style={{ display: "block", fontSize: 11, color: "#888", marginTop: 2, textTransform: "capitalize" }}>
           {showDate && pub.fecha_publicacion
-            ? `${new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", { day: "2-digit", month: "short" })} · `
+            ? `${new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", { timeZone: TIMEZONE, day: "2-digit", month: "short" })} · `
             : ""}
           {TIPO_LABEL[pub.tipo] ?? pub.tipo} · {pub.red}
         </span>
@@ -428,7 +436,7 @@ function PubDetail({ pub, token, onClose }: { pub: PortalPub; token: string; onC
           <div>
             <div style={{ fontSize: 18, fontWeight: 800 }}>{pub.titulo}</div>
             <div style={{ fontSize: 12, color: "#888", marginTop: 2, textTransform: "capitalize" }}>
-              {pub.fecha_publicacion && `${new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })} · `}
+              {pub.fecha_publicacion && `${new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", { timeZone: TIMEZONE, weekday: "long", day: "numeric", month: "long" })} · `}
               {TIPO_LABEL[pub.tipo] ?? pub.tipo} · {pub.red}
             </div>
           </div>

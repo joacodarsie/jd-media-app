@@ -217,7 +217,8 @@ export default async function PortalPage({ params }: { params: { token: string }
 
   return (
     <>
-      <style>{`
+      {/* Como HTML crudo: con {`...`} el server escapa las comillas y React tira error de hidratación. */}
+      <style dangerouslySetInnerHTML={{ __html: `
         * { box-sizing: border-box; }
         body {
           margin: 0;
@@ -294,7 +295,7 @@ export default async function PortalPage({ params }: { params: { token: string }
           .portal-sheet { border-radius: 18px !important; animation: portalFade .2s ease; }
         }
         .footer { margin-top: 40px; text-align: center; padding: 24px 0; color: #888; font-size: 12px; border-top: 1px solid #ececec; }
-      `}</style>
+      ` }} />
 
       <div className="wrap">
         <div className="hero">

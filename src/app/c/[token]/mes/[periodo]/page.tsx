@@ -109,7 +109,8 @@ export default async function InformeMensualPage({
 
   return (
     <>
-      <style>{`
+      {/* Como HTML crudo: con {`...`} el server escapa las comillas y React tira error de hidratación. */}
+      <style dangerouslySetInnerHTML={{ __html: `
         * { box-sizing: border-box; }
         body {
           margin: 0;
@@ -226,7 +227,7 @@ export default async function InformeMensualPage({
           .sec, .block, .escuchamos, .num { break-inside: avoid; }
           .sec { margin-bottom: 18px; }
         }
-      `}</style>
+      ` }} />
 
       <div className="wrap">
         <div className="toolbar">

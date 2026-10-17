@@ -73,8 +73,14 @@ function Anillo({ puntaje }: { puntaje: number }) {
   );
 }
 
-export function CrecimientoVista({ datos, nombre }: { datos: Crecimiento; nombre: string }) {
-  const { inicio, hoy, comparaciones, seguidores, meses } = datos;
+/**
+ * `portal`: lo que ve el cliente. Solo lo que mejoró (lo que bajó se trabaja
+ * adentro con el equipo), sin el puntaje ni la lista de mejoras, y sin la curva
+ * de seguidores porque el portal ya la muestra en «Cómo venís».
+ */
+export function CrecimientoVista({ datos, nombre, portal = false }: { datos: Crecimiento; nombre: string; portal?: boolean }) {
+  const { inicio, hoy, seguidores, meses } = datos;
+  const comparaciones = portal ? datos.comparaciones.filter((c) => c.mejoro) : datos.comparaciones;
   if (!inicio && !hoy) return null;
   const ultima = hoy ?? inicio!;
   const flojos = (ultima.pilares ?? []).filter((p) => p.estado !== "bien").sort((a, b) => a.nota - b.nota).slice(0, 3);
@@ -138,7 +144,7 @@ export function CrecimientoVista({ datos, nombre }: { datos: Crecimiento; nombre
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Seguidores */}
-        {seguidores.length >= 2 && (
+        {!portal && seguidores.length >= 2 && (
           <section className="rounded-2xl border bg-card p-4">
             <h3 className="mb-2 text-sm font-bold">Seguidores</h3>
             <PortalIgChart points={seguidores} />
@@ -146,7 +152,7 @@ export function CrecimientoVista({ datos, nombre }: { datos: Crecimiento; nombre
         )}
 
         {/* Cómo está hoy */}
-        {ultima.puntaje !== null && (
+        {!portal && ultima.puntaje !== null && (
           <section className="rounded-2xl border bg-card p-4">
             <h3 className="mb-3 text-sm font-bold">Cómo está la cuenta hoy</h3>
             <div className="flex items-center gap-5">

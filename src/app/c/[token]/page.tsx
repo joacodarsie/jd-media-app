@@ -39,6 +39,9 @@ interface UpcomingPub {
   asset_url: string | null;
 }
 
+// El antes y el después de la cuenta (17/10/2026).
+import { cargarCrecimiento } from "@/lib/crecimiento/cargar";
+import { CrecimientoVista } from "@/components/crecimiento-vista";
 // Programa de referidos (13/10/2026).
 import { PortalRecomendar } from "@/components/portal-recomendar";
 import { labelEstado, puedeRecomendar, type EstadoReferido } from "@/lib/referidos/referidos";
@@ -63,6 +66,7 @@ export default async function PortalPage({ params }: { params: { token: string }
     .eq("id", tokenRow.id);
 
   const cliente_id = tokenRow.cliente_id;
+  const crecimiento = await cargarCrecimiento(admin, cliente_id).catch(() => null);
 
   // Cargar plan vigente + pubs (previas y próximas, para un calendario completo)
   const now = new Date();
@@ -423,6 +427,14 @@ export default async function PortalPage({ params }: { params: { token: string }
                 {aiResultados}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Tu crecimiento: el antes y el después con las fotos automáticas del Instagram. */}
+        {crecimiento && (crecimiento.inicio || crecimiento.hoy) && (
+          <div className="card">
+            <div className="card-label">Tu crecimiento</div>
+            <CrecimientoVista datos={crecimiento} nombre={client.nombre} portal />
           </div>
         )}
 

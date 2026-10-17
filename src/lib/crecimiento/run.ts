@@ -10,12 +10,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { usuarioDe } from "@/lib/diagnostico/puntaje";
 import { cuentaConHistorial, CuentaNoDisponible } from "@/lib/diagnostico/instagram-publico";
 import { fotosQueFaltan, metricasAFecha, puntajeDeHoy, type FotoExistente } from "./foto";
+import { AREA_PM } from "@/lib/tareas/puerta";
 
 export interface ResultadoFotos {
   procesadas: { cliente: string; fotos: string[] }[];
   sinCuenta: string[];
   noDisponibles: string[];
   errores: { cliente: string; error: string }[];
+  tareas: string[];
 }
 
 function hoyCordoba(): string {
@@ -42,7 +44,7 @@ export async function sacarFotosCuentas(
 ): Promise<ResultadoFotos> {
   const limite = opciones.limite ?? 4;
   const hoy = hoyCordoba();
-  const r: ResultadoFotos = { procesadas: [], sinCuenta: [], noDisponibles: [], errores: [] };
+  const r: ResultadoFotos = { procesadas: [], sinCuenta: [], noDisponibles: [], errores: [], tareas: [] };
 
   const { data: base } = await admin
     .from("clients")
@@ -71,7 +73,11 @@ export async function sacarFotosCuentas(
   for (const c of lista) {
     if (hechas >= limite) break;
     const usuario = c.instagram_url ? usuarioDe(c.instagram_url) : null;
-    if (!usuario) { r.sinCuenta.push(c.nombre); continue; }
+    if (!usuario) {
+      r.sinCuenta.push(c.nombre);
+      if (await avisarInstagram(admin, c.id, c.nombre, "falta")) r.tareas.push(c.nombre);
+      continue;
+    }
     const pedir = fotosQueFaltan(porCliente.get(c.id) ?? [], hoy, c.fecha_inicio);
     if (!pedir.length) continue;
     hechas += 1;
@@ -115,9 +121,46 @@ export async function sacarFotosCuentas(
       }
       r.procesadas.push({ cliente: c.nombre, fotos: sacadas });
     } catch (e) {
-      if (e instanceof CuentaNoDisponible) r.noDisponibles.push(c.nombre);
+      if (e instanceof CuentaNoDisponible) {
+        r.noDisponibles.push(c.nombre);
+        if (await avisarInstagram(admin, c.id, c.nombre, "no_se_lee")) r.tareas.push(c.nombre);
+      }
       else r.errores.push({ cliente: c.nombre, error: e instanceof Error ? e.message : String(e) });
     }
   }
   return r;
+}
+
+/**
+ * Sin Instagram leíble no hay foto de arranque ni antes y después: se le
+ * crea UNA tarea a la project manager (pedido del dueño, 17/10/2026). La
+ * clave de rutina evita repetirla todos los días.
+ */
+async function avisarInstagram(admin: SupabaseClient, clienteId: string, nombre: string, motivo: "falta" | "no_se_lee"): Promise<boolean> {
+  const { data: users } = await admin.from("users").select("id, rol, area, area_secundaria").eq("activo", true);
+  const lista = (users ?? []) as { id: string; rol: string; area: string | null; area_secundaria: string | null }[];
+  const pm = lista.find((u) => u.area === AREA_PM || u.area_secundaria === AREA_PM)?.id ?? lista.find((u) => u.rol === "admin")?.id;
+  if (!pm) return false;
+  const limite = new Date(Date.now() + 3 * 86_400_000).toLocaleDateString("en-CA", { timeZone: "America/Argentina/Cordoba" });
+  const titulo =
+    motivo === "falta"
+      ? `Cargar el Instagram de ${nombre} en su ficha`
+      : `Pasar el Instagram de ${nombre} a cuenta de empresa o creador`;
+  const descripcion =
+    motivo === "falta"
+      ? `${nombre} no tiene el Instagram cargado en la ficha. Sin eso la plataforma no puede sacar la foto del arranque ni mostrar su antes y después (en la ficha, en su portal y en la web). Cargá el link en la ficha del cliente: la foto se saca sola esa noche.`
+      : `Instagram no deja leer la cuenta de ${nombre}: tiene que ser pública y de empresa o creador (Configuración → Tipo de cuenta). Pedíselo al cliente o hacelo con sus accesos. Sin eso no hay foto del arranque ni antes y después.`;
+  const { error } = await admin.from("tasks").insert({
+    titulo,
+    descripcion,
+    cliente_id: clienteId,
+    asignado_a_id: pm,
+    creado_por_id: pm,
+    area: "Coordinación",
+    prioridad: "alta",
+    estado: "pendiente",
+    fecha_limite: limite,
+    rutina_key: `ig-cuenta:${clienteId}:${motivo}`,
+  });
+  return !error;
 }

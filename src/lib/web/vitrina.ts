@@ -38,11 +38,12 @@ export function elegirCasos(candidatos: CandidatoCaso[], max = 4): CasoWeb[] {
   return candidatos
     .filter((c) => c.antes && c.hoy && c.antes.grilla.length >= 6 && c.hoy.grilla.length >= 6 && (c.meses ?? 0) >= 1)
     .map((c) => {
-      // Solo mejoras que se notan: +10% o más (o pasar de no publicar a publicar).
-      const buenas = c.comparaciones.filter((x) => x.mejoro && x.clave !== "puntaje" && fuerza(x) >= 0.1);
+      // Prefiltro (pedido del dueño): solo mejoras que se notan (+15% o más,
+      // o pasar de no publicar a publicar) y al menos una que impresione (+50%).
+      const buenas = c.comparaciones.filter((x) => x.mejoro && x.clave !== "puntaje" && fuerza(x) >= 0.15);
       return { c, buenas, puntos: buenas.reduce((s, x) => s + fuerza(x), 0) };
     })
-    .filter((x) => x.buenas.length >= 2)
+    .filter((x) => x.buenas.length >= 2 && x.buenas.some((b) => fuerza(b) >= 0.5))
     .sort((a, b) => b.puntos - a.puntos)
     .slice(0, max)
     .map(({ c, buenas }) => ({

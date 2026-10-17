@@ -164,6 +164,8 @@ export interface DondeEstamos {
   avance: number;
   /** Si hoy le toca algo al cliente, cuál. */
   alCliente: Hito | null;
+  /** Otras quincenas que también se están preparando (en el arranque se superponen). */
+  tambien: { quincena: Quincena; hito: Hito }[];
 }
 
 /**
@@ -186,5 +188,8 @@ export function dondeEstamos(onboarding: string, hoy: string): DondeEstamos {
   // lo que le toca al cliente se busca en todas.
   const alCliente =
     futuras.flatMap((q) => q.hitos).find((h) => h.responsable === "cliente" && h.desde <= hoy && hoy <= h.hasta) ?? null;
-  return { publicando, preparando, hito, faltan: Math.max(0, diasEntre(hoy, hito.hasta)), avance, alCliente };
+  const tambien = futuras
+    .filter((q) => q !== preparando && q.hitos[0].desde <= hoy)
+    .map((q) => ({ quincena: q, hito: q.hitos.find((h) => hoy <= h.hasta && h.clave !== "material") ?? q.hitos[q.hitos.length - 1] }));
+  return { publicando, preparando, hito, faltan: Math.max(0, diasEntre(hoy, hito.hasta)), avance, alCliente, tambien };
 }

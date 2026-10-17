@@ -58,6 +58,8 @@ describe("dondeEstamos", () => {
     expect(d.preparando.inicio).toBe("2026-10-22");
     expect(d.hito.clave).toBe("produccion");
     expect(d.alCliente).toBeNull();
+    // Y en paralelo, hoy vence el calendario de la 1ª quincena de noviembre.
+    expect(d.tambien.map((t) => [t.quincena.inicio, t.hito.clave, t.hito.hasta])).toEqual([["2026-11-01", "calendario", "2026-10-17"]]);
   });
 
   it("una cuenta en régimen el 5 de noviembre: publica la 1ª quincena y el cliente tiene que aprobar el calendario", () => {

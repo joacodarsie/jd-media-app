@@ -112,6 +112,13 @@ export function CicloNave({ inicio, hoy, portal = false }: { inicio: string; hoy
       </div>
 
       {/* Qué pasa ahora */}
+      {!portal &&
+        d.tambien.map((t) => (
+          <p key={t.quincena.inicio} className="mb-2 rounded-lg border border-dashed px-3 py-2 text-xs">
+            <b>En paralelo:</b> {t.hito.titulo.toLowerCase()} de lo que sale del {corta(t.quincena.inicio)} al {corta(t.quincena.fin)} · vence {t.hito.hasta === hoy ? "hoy" : corta(t.hito.hasta)}
+          </p>
+        ))}
+
       <div className="grid gap-2 sm:grid-cols-2">
         <div className="rounded-xl bg-muted/50 p-3 text-sm">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Ahora</div>

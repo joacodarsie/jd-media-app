@@ -34,7 +34,7 @@ function fuerza(c: Comparacion): number {
   return Math.min(5, base) * peso;
 }
 
-export function elegirCasos(candidatos: CandidatoCaso[], max = 6): CasoWeb[] {
+export function elegirCasos(candidatos: CandidatoCaso[], max = 8): CasoWeb[] {
   return candidatos
     // El antes puede estar casi vacío (es justamente el contraste); el hoy, completo.
     .filter((c) => c.antes && c.hoy && c.antes.grilla.length >= 1 && c.hoy.grilla.length >= 6 && (c.meses ?? 0) >= 1)

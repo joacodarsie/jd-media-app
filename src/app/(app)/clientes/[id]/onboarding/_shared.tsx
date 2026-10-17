@@ -349,15 +349,8 @@ export async function loadOnboarding(clientId: string): Promise<OnboardingData |
       description:
         "Un botón la crea sola dentro de JD MEDIA › Clientes con sus 3 subcarpetas y deja el link listo (se muestra en el calendario de contenidos). También podés pegar un link a mano.",
     },
-    {
-      key: "perfiles_rediseno_at",
-      stage: "redes",
-      title: "Rediseño de perfiles y biografías realizado",
-      done: onb.perfiles_rediseno_at,
-      icon: UserCircle,
-      description:
-        "Actualizá foto de perfil, biografía, links, portadas e historias destacadas de las cuentas según la nueva identidad.",
-    },
+    // El rediseño de perfiles y biografías vive solo en la etapa de la community
+    // (cm_perfiles_at): estaba repetido acá (pedido de Luz, 17/10/2026).
     {
       key: "tareas_iniciales_at",
       stage: "redes",

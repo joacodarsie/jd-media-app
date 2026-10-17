@@ -112,10 +112,10 @@ export function mensajesDeBienvenida(e: EntradaBienvenida): string[] {
       ``,
       `Son de preparación: todavía no publicamos. Dejamos todo listo para que lo que salga después tenga sentido.`,
       ``,
-      `📍 *Día 1* · Reunión de onboarding: conocemos la marca a fondo, los objetivos y el público.`,
-      `📍 *Día 3* · Manual de marca, y la lista del material que vamos a necesitar de tu parte.`,
-      `📍 *Día 5* · Te compartimos el calendario de contenidos para que lo apruebes.`,
-      `📍 *Día 7* · Recibimos tu material ordenado y renovamos los perfiles.`,
+      `📍 *Día 1* · Reunión de onboarding: conocemos la marca a fondo, los objetivos y el público. Ese día compartinos todo el contenido que ya tengas.`,
+      `📍 *Día 3* · Te mandamos el primer calendario, la propuesta de biografía y el kit de marca (logo y sus variaciones, colores, tipografías, tono de voz, portadas de destacadas y plantillas de historias).`,
+      `📍 *Día 5* · Nos das tu aprobación o los cambios.`,
+      `📍 *Día 7* · Nos mandás el material para el calendario (tenés 2 días desde que lo aprobás) y renovamos los perfiles.`,
       `📍 *Días 8 al 14* · Diseñamos y editamos las piezas, y te las pasamos para aprobar.`,
       `📍 *Día 15* · Empezamos a publicar.`,
       ``,
@@ -178,8 +178,11 @@ export function mensajesDeBienvenida(e: EntradaBienvenida): string[] {
     const mes: string[] = [`Y después del arranque, así trabajamos todos los meses 👇`, ``];
     if (redes) {
       mes.push(
-        `🗓️ *Calendarios por quincena, con dos semanas de ventaja:* mientras se publica una quincena ya preparamos la siguiente, así te llega todo para aprobar con tiempo.`,
-        `✅ *Aprobaciones:* te compartimos por acá cada calendario y las piezas. Cuanto antes nos respondas, antes sale todo.`
+        `🗓️ *Calendarios por quincena, con dos semanas de ventaja:* mientras se publica una quincena ya preparamos la siguiente.`,
+        `📅 *Tus fechas fijas:*`,
+        `   – Para lo que sale del 16 a fin de mes: el calendario te llega el 2, lo aprobás el *5*, nos mandás el material hasta el *7* y aprobás las piezas el *15*.`,
+        `   – Para lo que sale del 1 al 15: el calendario te llega el 17, lo aprobás el *20*, el material hasta el *22* y aprobás las piezas el *30*.`,
+        `✅ *Si no llegás a responder en fecha, se da por aprobado* y sale como estaba previsto, así nunca se frena tu cuenta. Todo esto lo ves también en tu plataforma.`
       );
     }
     if (contenido) {

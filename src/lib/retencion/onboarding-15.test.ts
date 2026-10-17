@@ -46,8 +46,8 @@ describe("planOnboarding", () => {
     const p = plan(["gestion_redes"]).pasos;
     const preguntas = p.find((x) => x.titulo === "Ronda de preguntas al cliente");
     expect(preguntas).toMatchObject({ dia: 2, asignado_a_id: "cm" });
-    const manual = p.find((x) => x.titulo === "Manual de marca")!.descripcion;
-    for (const parte of ["Esencia", "Logo", "Colores y tipografías", "Tono de voz", "Redes", "Aplicaciones", "director creativo"]) {
+    const manual = p.find((x) => x.titulo === "Kit de marca")!.descripcion;
+    for (const parte of ["Logo y sus variaciones", "Paleta", "Tipografías", "Tono de voz", "Portadas", "Plantillas", "director creativo", "Pack Marca Real"]) {
       expect(manual).toContain(parte);
     }
     expect(p.find((x) => x.titulo === "Calendario de contenidos para aprobar")!.descripcion).toMatch(/porqué.*medir/s);
@@ -61,17 +61,16 @@ describe("planOnboarding", () => {
 
   it("una cuenta de gestión de redes trae el arranque completo", () => {
     const t = plan(["gestion_redes"]).pasos.map((p) => p.titulo);
-    expect(t).toContain("Manual de marca");
+    expect(t).toContain("Kit de marca");
     expect(t).toContain("Lista del contenido crudo que necesitamos");
     expect(t).toContain("Calendario de contenidos para aprobar");
     expect(t).toContain("Contenido crudo ordenado en carpetas");
-    expect(t).toContain("Portadas de las destacadas");
     expect(t).toContain("Aprobación del cliente y programación");
   });
 
   it("una cuenta de SOLO pauta no lleva calendario ni manual de marca", () => {
     const t = plan(["paid_media"]).pasos.map((p) => p.titulo);
-    expect(t).not.toContain("Manual de marca");
+    expect(t).not.toContain("Kit de marca");
     expect(t).not.toContain("Calendario de contenidos para aprobar");
     expect(t).toContain("Primera campaña al aire");
   });
@@ -198,9 +197,9 @@ describe("Pack Marca Real (sin redes)", () => {
 });
 
 describe("plantillas de Canva en el arranque", () => {
-  it("con gestión de redes, la diseñadora las arma el día 12", () => {
+  it("con gestión de redes, la diseñadora las comparte el día 5, con el kit aprobado", () => {
     const paso = plan(["gestion_redes"]).pasos.find((x) => x.titulo === "Plantillas de Canva para el cliente");
-    expect(paso?.dia).toBe(12);
+    expect(paso?.dia).toBe(5);
     expect(paso?.asignado_a_id).toBe("dis");
     expect(paso?.descripcion).toContain("Enlace de plantilla");
   });

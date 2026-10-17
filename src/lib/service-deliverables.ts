@@ -105,7 +105,7 @@ export function getDeliverables(svc: ClientService): string[] {
 
 function gestionRedesDeliverables(svc: ClientService): string[] {
   const out: string[] = [
-    "Manual de marca básico de la cuenta.",
+    "Kit de marca: logo y sus variaciones, paleta, tipografías, tono de voz, portadas de destacadas y plantillas de historias (el manual de marca completo, con papelería y merchandising, es el Pack Marca Real).",
     "Informe diagnóstico inicial, plan de acción y moodboard.",
     "Calendario de contenidos mensual.",
     "Drive ordenado en carpetas de contenido.",

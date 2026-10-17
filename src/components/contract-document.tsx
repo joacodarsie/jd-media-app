@@ -793,9 +793,10 @@ export function ContractDocument({ model }: { model: ContractModel }) {
               cuenta y <strong>no incluyen publicación de contenido</strong>. Ese
               tramo tiene entregables propios:{" "}
               <strong>
-                diagnóstico de la cuenta, manual de marca, optimización de
-                perfiles y destacadas, y el calendario de contenidos del mes para
-                aprobación del Cliente
+                diagnóstico de la cuenta, kit de marca (logo y sus variaciones,
+                paleta, tipografías, tono de voz, portadas de destacadas y
+                plantillas de historias), optimización de perfiles y destacadas, y
+                el primer calendario de contenidos para aprobación del Cliente
               </strong>
               . A tal efecto, el contenido del plan contratado se divide en cuatro
               (4) semanas: durante el primer mes se produce y publica el
@@ -990,6 +991,39 @@ export function ContractDocument({ model }: { model: ContractModel }) {
                   material crudo entregado y las piezas finales producidas son
                   propiedad del Cliente una vez abonados los honorarios del período
                   correspondiente.
+                </p>
+                {/* Ciclo quincenal y plazos del cliente (acordado con Luz, 17/10/2026). */}
+                <p>
+                  <strong>Ciclo de trabajo por quincenas:</strong> el contenido se
+                  planifica y produce con quince (15) días de anticipación. Para la
+                  quincena que se publica desde el día 16, el calendario se presenta
+                  los días 1 y 2 del mes y se produce hasta el 13; para la que se
+                  publica desde el día 1, el calendario se presenta del 15 al 17 del
+                  mes anterior y se produce hasta el 28.
+                </p>
+                <p>
+                  <strong>Plazos del Cliente:</strong> el Cliente aprueba o pide
+                  cambios del calendario el día 5 (o el 20, según la quincena) y
+                  aprueba las piezas terminadas el día 15 (o el 30; en febrero, el
+                  último día del mes). Envía todo el material crudo necesario dentro
+                  de los <strong>dos (2) días</strong> posteriores a la aprobación
+                  del calendario.
+                </p>
+                <p>
+                  <strong>Aprobación tácita:</strong> si vencido el plazo el Cliente
+                  no aprobó ni pidió cambios, el calendario o las piezas{" "}
+                  <strong>se dan por aprobados</strong> y se publican en las fechas
+                  previstas. Si el material no llega en plazo, La Agencia produce con
+                  el material disponible o corre la publicación de las piezas
+                  afectadas, sin que ello reduzca el abono.
+                </p>
+                <p>
+                  <strong>Arranque:</strong> el día de la reunión de onboarding el
+                  Cliente comparte todo el contenido previo que tenga. Al tercer día
+                  La Agencia presenta el primer calendario, la propuesta de biografía
+                  y el kit de marca; el Cliente los aprueba al quinto día y envía el
+                  material en los dos días siguientes. La publicación comienza a los
+                  quince (15) días del onboarding.
                 </p>
                 <p>
                   <strong>Jornadas de producción audiovisual:</strong> la producción

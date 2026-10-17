@@ -113,7 +113,7 @@ export function planOnboarding(input: {
   add(
     1,
     "Reunión de diagnóstico",
-    `Primera reunión con ${nombreCliente}. Presentar al equipo, entender el negocio y qué espera de estos 15 días. De acá sale todo lo demás.`,
+    `Primera reunión con ${nombreCliente}. Presentar al equipo, entender el negocio y qué espera de estos 15 días, y pedirle que ese mismo día comparta todo el contenido que ya tenga (fotos, videos, logos). De acá sale todo lo demás.`,
     "Coordinación",
     cm
   );
@@ -140,25 +140,24 @@ export function planOnboarding(input: {
   );
 
   if (svc.has("gestion_redes")) {
-    // Un cliente (Global Business Lab, 17/10/2026) recibió «el logo aplicado en
-    // una foto» como manual: no le sirvió para nada. El manual es la regla contra
-    // la que se audita cada pieza, así que tiene un contenido mínimo obligatorio.
+    // El kit de marca (decisión del dueño con Luz, 17/10/2026): lo básico para
+    // trabajar, entregado el día 3 con las portadas y las plantillas. El manual
+    // completo (papelería, merchandising) es el Pack Marca Real. Va con área
+    // Diseño para que pase por la aprobación del director creativo (día 4).
     add(
       3,
-      "Manual de marca",
-      `El manual es la regla contra la que se revisa cada pieza de ${nombreCliente}: si algo no está acá, después se discute. No es el logo aplicado en una foto. Tiene que tener, como mínimo:
+      "Kit de marca",
+      `El kit es la base con la que trabaja todo el equipo de ${nombreCliente}, y la regla contra la que se revisa cada pieza. Se entrega el día 3, completo:
 
-1. **Esencia**: qué es la marca, para quién y qué la hace distinta (sale del diagnóstico).
-2. **Logo**: versiones (color, blanco, negro), área de resguardo, tamaños mínimos y usos incorrectos.
-3. **Colores y tipografías**: con sus códigos y para qué se usa cada una.
-4. **Tono de voz**: formal o coloquial, cómo le hablamos al cliente, palabras que sí y que no, y 3 ejemplos de copy bien y mal.
-5. **Redes**: estilo de fotos y videos, cómo se ven las placas, qué se publica y qué no.
-6. **Aplicaciones**: papelería, merchandising, cartelería o lo que use el negocio.
+1. **Logo y sus variaciones** (color, blanco, negro), con área de resguardo y usos incorrectos.
+2. **Paleta de colores** con sus códigos.
+3. **Tipografías** con sus variaciones y para qué se usa cada una.
+4. **Tono de voz** en una página: formal o coloquial, cómo le hablamos al cliente, palabras que sí y que no, y 3 ejemplos de copy.
+5. **Portadas de las historias destacadas** que planteó la community en el primer calendario.
+6. **Plantillas de historias** en Canva.
 
-Si en el diagnóstico el cliente pidió explorar otra opción de logo, se presentan las dos acá para decidir de entrada.
-
-Antes de mandarlo lo revisa el director creativo. Se manda **una sola versión completa** y se espera la devolución del cliente antes de la siguiente.`,
-      "Coordinación de Diseño",
+Lo aprueba el director creativo el día 4 y el cliente el día 5. Se manda **una sola versión completa**. El manual de marca completo, con papelería y merchandising, no va acá: es el Pack Marca Real.`,
+      "Diseño",
       dis
     );
     // El mismo cliente ofreció el canal abierto y nadie le preguntó nada en dos
@@ -178,16 +177,16 @@ Antes de mandarlo lo revisa el director creativo. Se manda **una sola versión c
       cm
     );
     add(
-      5,
+      3,
       "Calendario de contenidos para aprobar",
-      `El calendario de los 15 días, con copys, formatos y referencias. **Cada pieza con su porqué**: qué rol cumple (que nos conozcan, que interactúen, que consulten o que compren) y qué esperamos medir (alcance, interacciones, consultas). En el lanzamiento, al menos 1 de cada 3 piezas tiene que ser promocional: una oferta, un beneficio por referir, un evento. Lo revisa el director creativo y lo aprueba ${nombreCliente} antes de que nadie produzca nada. Se manda completo, una sola vez.`,
+      `El primer calendario (desde el día 15 hasta el fin de esa quincena), con la propuesta de biografía y las historias destacadas planteadas, con copys, formatos y referencias. **Cada pieza con su porqué**: qué rol cumple (que nos conozcan, que interactúen, que consulten o que compren) y qué esperamos medir (alcance, interacciones, consultas). En el lanzamiento, al menos 1 de cada 3 piezas tiene que ser promocional: una oferta, un beneficio por referir, un evento. Lo revisa el director creativo y lo aprueba ${nombreCliente} antes de que nadie produzca nada. Se manda completo, una sola vez.`,
       "Community Manager",
       cm
     );
     add(
-      5,
-      "Día 5: ¿ya hay contenido?",
-      "Hito de control. Si al día 5 no hay material con el que trabajar, el arranque ya se está atrasando: hay que reclamarlo o resolverlo con una jornada de producción.",
+      7,
+      "Día 7: ¿llegó el material?",
+      "Hito de control. El cliente tiene 2 días desde que aprueba el calendario para mandar el material. Si al día 7 no llegó, el arranque ya se está atrasando: hay que reclamarlo o resolverlo con una jornada de producción.",
       "Coordinación",
       cm
     );
@@ -210,24 +209,17 @@ Antes de mandarlo lo revisa el director creativo. Se manda **una sola versión c
     add(
       7,
       "Optimizar el perfil: bio, accesos y destacadas",
-      "Biografía, foto, links y accesos. Las portadas de las destacadas van en su propio ticket, que lo abre el CM con el detalle de cuáles son.",
+      "A más tardar 2 días después de que el cliente aprueba el calendario: biografía aprobada, foto, links, accesos y las destacadas con las portadas del kit de marca.",
       "Community Manager",
       cm
-    );
-    add(
-      12,
-      "Portadas de las destacadas",
-      "Las portadas que pidió el CM en su ticket, más las placas que van adentro de cada destacada.",
-      "Diseño",
-      dis
     );
     // Muchos clientes piden las plantillas para sumar contenido por su cuenta
     // (pedido del dueño, 15/10/2026). Se comparte el enlace «Usar como
     // plantilla»: el cliente se lleva una copia y el original queda intacto.
     add(
-      12,
+      5,
       "Plantillas de Canva para el cliente",
-      `Con el manual de marca listo, armá en Canva las plantillas de ${nombreCliente} (historias, posteo y portada de reel, con sus colores y tipografías). En Canva: Compartir → Más → «Enlace de plantilla», y pegá ese link en la ficha de la cuenta, recuadro «Plantillas de Canva». El cliente las ve solas en su plataforma.`,
+      `Con el kit de marca aprobado, compartí en Canva las plantillas de ${nombreCliente} (historias, posteo y portada de reel, con sus colores y tipografías). En Canva: Compartir → Más → «Enlace de plantilla», y pegá ese link en la ficha de la cuenta, recuadro «Plantillas de Canva». El cliente las ve solas en su plataforma.`,
       "Diseño",
       dis
     );

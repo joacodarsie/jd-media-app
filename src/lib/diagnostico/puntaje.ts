@@ -92,7 +92,7 @@ export function diagnosticar(p: PerfilPublico, ahora = Date.now()): Diagnostico 
   if (carruseles) notaFormatos += 3;
   if (!recientes.length) notaFormatos = 0;
   const datoFormatos = recientes.length
-    ? `${reels} de tus últimas ${recientes.length} publicaciones son reels`
+    ? `${reels} de tus últimas ${recientes.length} publicaciones ${reels === 1 ? "es un reel" : "son reels"}`
     : "Sin publicaciones para medir";
 
   // 4. Perfil: lo primero que ve alguien que llega a la cuenta.

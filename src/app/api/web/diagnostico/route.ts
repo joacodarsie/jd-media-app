@@ -92,7 +92,7 @@ export async function GET(req: Request) {
         ok: false,
         motivo: "no_disponible",
         mensaje: `No pudimos leer @${usuario}. El diagnóstico funciona con cuentas de empresa o creador que sean públicas.`,
-      }, 404);
+      });
     }
     return responder({ ok: false, motivo: "error", mensaje: "No pudimos hacer el diagnóstico ahora. Probá de nuevo en un rato." }, 502);
   }

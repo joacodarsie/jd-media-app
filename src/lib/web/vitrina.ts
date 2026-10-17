@@ -34,16 +34,18 @@ function fuerza(c: Comparacion): number {
   return Math.min(5, base) * peso;
 }
 
-export function elegirCasos(candidatos: CandidatoCaso[], max = 4): CasoWeb[] {
+export function elegirCasos(candidatos: CandidatoCaso[], max = 6): CasoWeb[] {
   return candidatos
-    .filter((c) => c.antes && c.hoy && c.antes.grilla.length >= 6 && c.hoy.grilla.length >= 6 && (c.meses ?? 0) >= 1)
+    // El antes puede estar casi vacío (es justamente el contraste); el hoy, completo.
+    .filter((c) => c.antes && c.hoy && c.antes.grilla.length >= 1 && c.hoy.grilla.length >= 6 && (c.meses ?? 0) >= 1)
     .map((c) => {
       // Prefiltro (pedido del dueño): solo mejoras que se notan (+15% o más,
       // o pasar de no publicar a publicar) y al menos una que impresione (+50%).
       const buenas = c.comparaciones.filter((x) => x.mejoro && x.clave !== "puntaje" && fuerza(x) >= 0.15);
       return { c, buenas, puntos: buenas.reduce((s, x) => s + fuerza(x), 0) };
     })
-    .filter((x) => x.buenas.length >= 2 && x.buenas.some((b) => fuerza(b) >= 0.5))
+    // Alcanza con una mejora que impresione (+50%); las demás acompañan.
+    .filter((x) => x.buenas.some((b) => fuerza(b) >= 0.5))
     .sort((a, b) => b.puntos - a.puntos)
     .slice(0, max)
     .map(({ c, buenas }) => ({

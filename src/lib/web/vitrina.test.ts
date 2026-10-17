@@ -14,14 +14,16 @@ const cand = (nombre: string, comparaciones: CandidatoCaso["comparaciones"], g =
 });
 
 describe("elegirCasos", () => {
-  it("solo cuentas con dos mejoras y grillas completas; muestra solo lo que mejoró", () => {
+  it("solo cuentas con una mejora fuerte y el hoy completo; muestra solo lo que mejoró", () => {
     const casos = elegirCasos([
       cand("A", [comp("seguidores", 546, 1164), comp("posts_mes", 2, 4), comp("interaccion", 50, 30)]),
       cand("B", [comp("posts_mes", 0, 6), comp("seguidores", 100, 90)]),
-      cand("C", [comp("posts_mes", 0, 11), comp("reels", 0, 5)], 2),
+      cand("C", [comp("posts_mes", 0, 11), comp("reels", 0, 5)], 0),
+      cand("D", [comp("seguidores", 1000, 1050)]),
     ]);
-    expect(casos.map((c) => c.nombre)).toEqual(["A"]);
-    expect(casos[0].logros.map((l) => l.titulo)).toEqual(["seguidores", "posts_mes"]);
+    expect(casos.map((c) => c.nombre)).toEqual(["B", "A"]);
+    expect(casos[1].logros.map((l) => l.titulo)).toEqual(["seguidores", "posts_mes"]);
+    expect(casos[0].logros.map((l) => l.titulo)).toEqual(["posts_mes"]);
   });
 });
 

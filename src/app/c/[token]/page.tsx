@@ -42,6 +42,7 @@ interface UpcomingPub {
 // El antes y el después de la cuenta (17/10/2026).
 import { cargarCrecimiento } from "@/lib/crecimiento/cargar";
 import { CrecimientoVista } from "@/components/crecimiento-vista";
+import { CicloNave } from "@/components/ciclo-nave";
 // Programa de referidos (13/10/2026).
 import { PortalRecomendar } from "@/components/portal-recomendar";
 import { labelEstado, puedeRecomendar, type EstadoReferido } from "@/lib/referidos/referidos";
@@ -196,6 +197,13 @@ export default async function PortalPage({ params }: { params: { token: string }
   // Si la migración 0198 no está, no se muestra.
   const { data: refRow } = await admin.from("clients").select("ref_code, fecha_inicio, canva_plantillas_url").eq("id", cliente_id).maybeSingle();
   const ref = refRow as { ref_code: string | null; fecha_inicio: string | null; canva_plantillas_url?: string | null } | null;
+  // El ciclo quincenal solo aplica a las cuentas con gestión de redes.
+  const { count: conRedes } = await admin
+    .from("client_services")
+    .select("id", { count: "exact", head: true })
+    .eq("cliente_id", cliente_id)
+    .eq("activo", true)
+    .eq("tipo", "gestion_redes");
   // Sus plantillas de Canva, para sumar contenido por su cuenta (0200).
   const plantillasCanva = ref?.canva_plantillas_url ?? null;
   const mostrarRecomendar = !!ref?.ref_code && puedeRecomendar(ref.fecha_inicio, hoyYmd());
@@ -353,6 +361,13 @@ export default async function PortalPage({ params }: { params: { token: string }
               Los resultados de {periodLabel(ultimoInforme.periodo)} y qué viene ahora →
             </p>
           </a>
+        )}
+
+        {/* Dónde estamos con su cuenta y qué le toca a él (17/10/2026). */}
+        {ref?.fecha_inicio && (conRedes ?? 0) > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <CicloNave inicio={ref.fecha_inicio} hoy={hoyYmd()} portal />
+          </div>
         )}
 
         {/* Resultados del mes — Instagram + pauta, en vivo */}

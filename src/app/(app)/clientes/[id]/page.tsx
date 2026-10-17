@@ -61,6 +61,7 @@ import {
   type MovimientoRow,
 } from "@/components/movimientos-historial-card";
 import { ScrollTopOnMount } from "@/components/scroll-top-on-mount";
+import { CicloNave } from "@/components/ciclo-nave";
 import type { ClientService } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -504,6 +505,11 @@ export default async function ClientDetail({
             />
           </CardContent>
         </Card>
+      )}
+
+      {/* Dónde estamos en el ciclo quincenal (17/10/2026). */}
+      {c.estado === "activo" && c.fecha_inicio && svcList.some((s) => s.activo && s.tipo === "gestion_redes") && (
+        <CicloNave inicio={c.fecha_inicio} hoy={hoyYmd()} />
       )}
 
       {/* ── Contenido en pestañas ── */}

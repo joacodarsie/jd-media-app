@@ -78,11 +78,12 @@ export async function sacarFotosCuentas(
 
     try {
       const reconstruir = pedir.find((p) => !p.real);
-      const cuenta = await cuentaConHistorial(desde, usuario, { hasta: reconstruir?.fecha ?? null, paginasMax: 6 });
+      const cuenta = await cuentaConHistorial(desde, usuario, { hasta: reconstruir?.fecha ?? null, paginasMax: reconstruir ? 14 : 1 });
       const sacadas: string[] = [];
-      for (const p of pedir) {
-        // Si no se llegó a ver lo publicado antes del arranque, ese inicio no se inventa.
-        if (!p.real && !cuenta.completo) continue;
+      // Si no se llegó a ver lo publicado antes del arranque (cuentas de hace
+      // años), el inicio no se inventa: se mide desde hoy.
+      const aSacar = reconstruir && !cuenta.completo ? [{ tipo: "inicio" as const, fecha: hoy, real: true }] : pedir;
+      for (const p of aSacar) {
         const m = metricasAFecha(cuenta.historial, p.fecha);
         const grilla = [];
         for (let i = 0; i < m.grilla.length; i++) {

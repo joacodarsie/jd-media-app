@@ -157,7 +157,8 @@ export async function cuentaConHistorial(
         imagen: m.thumbnail_url ?? (m.media_type !== "VIDEO" ? m.media_url ?? null : null),
       });
     }
-    after = bd.media?.paging?.next ? bd.media?.paging?.cursors?.after ?? null : null;
+    // business discovery no siempre trae `next`: si vino la página llena, hay más.
+    after = data.length >= 50 ? bd.media?.paging?.cursors?.after ?? null : null;
     const masViejo = data.length ? Date.parse(data[data.length - 1].timestamp) : null;
     // Para el «antes» hacen falta 12 publicaciones anteriores al corte.
     const anteriores = corte === null ? 0 : historial.filter((h) => Date.parse(h.timestamp) < corte).length;

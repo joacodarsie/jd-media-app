@@ -31,7 +31,7 @@ describe("resumirEnVivo", () => {
 
   it("usa la semana si alcanza", () => {
     const r = resumirEnVivo([{ marca: "A", fechas: Array.from({ length: 8 }, (_, i) => hace(i * 10 + 2)) }, { marca: "B", fechas: [hace(30), hace(40), hace(50), hace(60), hace(70)] }], AHORA);
-    expect(r).toEqual({ publicaciones: 13, dias: 7, marcas: 2, ultima: { marca: "A", hace: "hace 2 horas" } });
+    expect(r).toEqual({ publicaciones: 13, dias: 7, marcas: 2, ultima: { marca: "A", fecha: hace(2), hace: "hace 2 horas" } });
   });
 
   it("si la semana es flaca muestra el mes", () => {

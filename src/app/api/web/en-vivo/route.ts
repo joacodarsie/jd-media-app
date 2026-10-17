@@ -38,7 +38,7 @@ const cargar = unstable_cache(
     );
     return resumirEnVivo(cuentas);
   },
-  ["web-en-vivo-v1"],
+  ["web-en-vivo-v2"],
   { revalidate: 10_800 }
 );
 

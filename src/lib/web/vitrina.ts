@@ -62,7 +62,7 @@ export interface EnVivo {
   publicaciones: number;
   dias: 7 | 30;
   marcas: number;
-  ultima: { marca: string; hace: string } | null;
+  ultima: { marca: string; fecha: string; hace: string } | null;
 }
 
 export function haceCuanto(iso: string, ahora = Date.now()): string {
@@ -87,6 +87,6 @@ export function resumirEnVivo(cuentas: { marca: string; fechas: string[] }[], ah
     publicaciones: lista.reduce((s, x) => s + x.n, 0),
     dias,
     marcas: lista.filter((x) => x.n > 0).length,
-    ultima: ultima ? { marca: ultima.marca, hace: haceCuanto(ultima.fecha, ahora) } : null,
+    ultima: ultima ? { marca: ultima.marca, fecha: ultima.fecha, hace: haceCuanto(ultima.fecha, ahora) } : null,
   };
 }

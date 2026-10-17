@@ -36,7 +36,7 @@ const cargar = unstable_cache(
     );
     return elegirCasos(candidatos);
   },
-  ["web-antes-despues-v1"],
+  ["web-antes-despues-v2"],
   { revalidate: 21_600 }
 );
 

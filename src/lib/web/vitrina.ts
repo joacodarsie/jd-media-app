@@ -38,7 +38,8 @@ export function elegirCasos(candidatos: CandidatoCaso[], max = 4): CasoWeb[] {
   return candidatos
     .filter((c) => c.antes && c.hoy && c.antes.grilla.length >= 6 && c.hoy.grilla.length >= 6 && (c.meses ?? 0) >= 1)
     .map((c) => {
-      const buenas = c.comparaciones.filter((x) => x.mejoro && x.clave !== "puntaje");
+      // Solo mejoras que se notan: +10% o más (o pasar de no publicar a publicar).
+      const buenas = c.comparaciones.filter((x) => x.mejoro && x.clave !== "puntaje" && fuerza(x) >= 0.1);
       return { c, buenas, puntos: buenas.reduce((s, x) => s + fuerza(x), 0) };
     })
     .filter((x) => x.buenas.length >= 2)

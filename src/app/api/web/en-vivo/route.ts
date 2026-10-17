@@ -12,7 +12,9 @@ export const maxDuration = 60;
 /**
  * «En vivo desde la agencia» para jdmedia.com.ar (17/10/2026): cuántas
  * publicaciones salieron esta semana en las cuentas que acompañamos y cuál fue
- * la última. Sale de Instagram (no del calendario), cacheado 3 horas.
+ * la última. Sale de Instagram (no del calendario), cacheado 3 horas. Cuenta
+ * todas las cuentas activas: solo se publica el total y el nombre de la última
+ * marca, que ya está en el carrusel.
  */
 const cargar = unstable_cache(
   async () => {
@@ -25,7 +27,6 @@ const cargar = unstable_cache(
       .select("nombre, instagram_url")
       .eq("estado", "activo")
       .eq("es_interno", false)
-      .eq("mostrar_en_web", true)
       .not("instagram_url", "is", null);
     const cuentas = await Promise.all(
       ((data ?? []) as { nombre: string; instagram_url: string }[]).map(async (c) => {

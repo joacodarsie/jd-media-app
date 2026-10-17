@@ -328,6 +328,13 @@ export default async function ClientDetail({
     },
     // Resultados de Instagram (lo que el cliente ve como resultado final). Para
     // todo cliente con gestión de redes; visible a quien pueda abrir la ficha.
+    // El antes y el después, con las fotos automáticas del Instagram (17/10/2026).
+    {
+      href: `/clientes/${c.id}/crecimiento`,
+      label: "Crecimiento",
+      icon: TrendingUp,
+      show: c.estado !== "propuesta" && (isStaffUser(me) || userInRoles(me, ["paid_media"]) || c.cm_id === me.id),
+    },
     {
       href: `/clientes/${c.id}/resultados`,
       label: "Resultados",

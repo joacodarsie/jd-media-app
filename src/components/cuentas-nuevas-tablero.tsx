@@ -15,9 +15,9 @@ const PUNTO: Record<Estado, string> = {
 };
 
 const PILL: Record<Estado, { txt: string; cls: string }> = {
-  ok: { txt: "Bien", cls: "border-emerald-500/40 text-emerald-700 dark:text-emerald-300" },
-  atento: { txt: "Atento", cls: "border-amber-500/50 text-amber-800 dark:text-amber-300" },
-  mal: { txt: "En riesgo", cls: "border-red-500/50 text-red-700 dark:text-red-300" },
+  ok: { txt: "Bien", cls: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" },
+  atento: { txt: "Atento", cls: "bg-amber-500/10 text-amber-800 dark:text-amber-300" },
+  mal: { txt: "En riesgo", cls: "bg-rose-500/10 text-rose-700 dark:text-rose-300" },
 };
 
 export function CuentasNuevasTablero({ filas }: { filas: CuentaNueva[] }) {
@@ -34,8 +34,8 @@ export function CuentasNuevasTablero({ filas }: { filas: CuentaNueva[] }) {
         <div
           key={f.id}
           className={cn(
-            "rounded-xl border bg-card p-4",
-            f.estado === "mal" && "border-red-500/40"
+            // Sin borde rojo (18/10/2026): el estado ya lo dice la etiqueta.
+            "rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border/50 animate-in fade-in duration-300"
           )}
         >
           <div className="flex items-start justify-between gap-2">
@@ -49,7 +49,7 @@ export function CuentasNuevasTablero({ filas }: { filas: CuentaNueva[] }) {
             </div>
             <span
               className={cn(
-                "shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold",
                 PILL[f.estado].cls
               )}
             >

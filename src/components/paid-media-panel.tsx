@@ -59,16 +59,34 @@ export function PaidMediaPanel({
   metaConfigured: boolean;
   canApply: boolean;
 }) {
+  const conectadas = clients.filter((c) => c.adAccountId);
+  const sinCuenta = clients.filter((c) => !c.adAccountId);
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      {clients.map((c) => (
-        <ClientCard key={c.id} client={c} canApply={canApply} />
-      ))}
+    <div className="space-y-6">
+      {conectadas.length > 0 && (
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          {conectadas.map((c) => (
+            <ClientCard key={c.id} client={c} canApply={canApply} />
+          ))}
+        </div>
+      )}
+      {sinCuenta.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Falta cargar la cuenta publicitaria · {sinCuenta.length}
+          </h2>
+          <div className="divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50">
+            {sinCuenta.map((c) => (
+              <ClientCard key={c.id} client={c} canApply={canApply} compacto />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
 
-function ClientCard({ client, canApply }: { client: PaidClient; canApply: boolean }) {
+function ClientCard({ client, canApply, compacto = false }: { client: PaidClient; canApply: boolean; compacto?: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [editing, setEditing] = useState(!client.adAccountId);
@@ -94,9 +112,29 @@ function ClientCard({ client, canApply }: { client: PaidClient; canApply: boolea
     });
   }
 
+  // Sin cuenta cargada: una fila con el campo para pegar el ID, nada más.
+  if (compacto) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5">
+        <div className="font-medium">{client.nombre}</div>
+        <div className="flex items-center gap-1.5">
+          <Input
+            value={acct}
+            onChange={(e) => setAcct(e.target.value)}
+            placeholder="act_123456789"
+            className="h-8 w-48 text-xs"
+          />
+          <Button size="sm" className="h-8 px-2.5" onClick={save} disabled={pending || !acct.trim()}>
+            {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col rounded-xl border bg-card">
-      <div className="flex items-start justify-between gap-3 border-b px-4 py-3">
+    <div className="flex flex-col overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50 animate-in fade-in duration-300">
+      <div className="flex items-start justify-between gap-3 border-b border-border/60 px-4 py-3">
         <div className="min-w-0">
           <div className="font-semibold">{client.nombre}</div>
           {editing ? (

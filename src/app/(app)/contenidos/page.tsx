@@ -216,16 +216,19 @@ export default async function ContenidosPage({
         </DismissibleHint>
       </div>
       {atrasadas.nuncaArrancaron + atrasadas.trabadas + atrasadas.esperandoCliente > 0 && (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-500/40 dark:bg-amber-500/10">
-          <p className="font-semibold text-amber-900 dark:text-amber-100">
-            {atrasadas.nuncaArrancaron + atrasadas.trabadas + atrasadas.esperandoCliente}{" "}
-            publicaciones con la fecha pasada que no salieron
-            <span className="font-normal text-amber-900/70 dark:text-amber-100/70">
-              {" "}
-              — solo cuentas activas
+        <details className="group rounded-2xl bg-card text-sm shadow-sm ring-1 ring-border/50">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 [&::-webkit-details-marker]:hidden">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />
+            <span className="font-semibold">
+              {atrasadas.nuncaArrancaron + atrasadas.trabadas + atrasadas.esperandoCliente} publicaciones con la fecha pasada que no salieron
             </span>
-          </p>
-          <div className="mt-1 space-y-1 text-xs text-amber-900/80 dark:text-amber-100/80">
+            <span className="hidden text-xs text-muted-foreground sm:inline">
+              {atrasadas.ejecucionPct != null ? `· salió el ${atrasadas.ejecucionPct}% de lo que vencía` : "· solo cuentas activas"}
+            </span>
+            <span className="ml-auto text-xs font-medium text-primary group-open:hidden">Ver detalle ▾</span>
+            <span className="ml-auto hidden text-xs font-medium text-primary group-open:inline">Cerrar ▴</span>
+          </summary>
+          <div className="space-y-1 border-t border-border/60 px-4 pb-3 pt-2 text-xs text-muted-foreground">
             {atrasadas.trabadas > 0 && (
               <DetalleAtrasadas
                 cantidad={atrasadas.trabadas}
@@ -248,14 +251,10 @@ export default async function ContenidosPage({
               />
             )}
           </div>
-          <p className="mt-1.5 text-xs text-amber-900/70 dark:text-amber-100/70">
-            {atrasadas.ejecucionPct != null && (
-              <>Salió el <b>{atrasadas.ejecucionPct}%</b> de lo que ya vencía. </>
-            )}
-            Si el atraso es del cliente, abrí la pieza y marcá{" "}
-            <b>&quot;Lo frenó el cliente&quot;</b>: así el número no le pega al equipo.
+          <p className="px-4 pb-3 text-xs text-muted-foreground">
+            Si el atraso es del cliente, abrí la pieza y marcá <b>&quot;Lo frenó el cliente&quot;</b>: así el número no le pega al equipo.
           </p>
-        </div>
+        </details>
       )}
       {teams.length > 0 && (
         <div className="flex flex-wrap gap-1.5">

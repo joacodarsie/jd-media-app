@@ -529,7 +529,7 @@ export default async function DashboardPage() {
       {(vencidas.length > 0 ||
         vencidasViejas.length > 0 ||
         delegatedVencidas.length > 0) && (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50 animate-in fade-in slide-in-from-bottom-1 duration-300">
           {vencidas.length > 0 && (
             <AlertCard
               tone="red"
@@ -837,24 +837,22 @@ function AlertCard({
   href: string;
   cta: string;
 }) {
-  const cls =
-    tone === "red"
-      ? "border-red-300 bg-red-50/60 dark:border-red-900 dark:bg-red-950/30 [&_.title]:text-red-900 dark:[&_.title]:text-red-200 [&_.icon]:text-red-700 dark:[&_.icon]:text-red-300 [&_.txt]:text-red-800/80 dark:[&_.txt]:text-red-300/70"
-      : "border-amber-300 bg-amber-50/60 dark:border-amber-900 dark:bg-amber-950/30 [&_.title]:text-amber-900 dark:[&_.title]:text-amber-200 [&_.icon]:text-amber-700 dark:[&_.icon]:text-amber-300 [&_.txt]:text-amber-800/80 dark:[&_.txt]:text-amber-300/70";
+  // Una fila dentro de la tarjeta de avisos: el color va en el ícono, no en la caja.
   return (
-    <Link
-      href={href}
-      className={cn(
-        "group flex items-start gap-3 rounded-lg border p-3 transition hover:shadow-sm",
-        cls
-      )}
-    >
-      <Icon className="icon mt-0.5 h-5 w-5" />
-      <div className="flex-1">
-        <div className="title text-sm font-semibold">{title}</div>
-        <p className="txt text-xs">{text}</p>
+    <Link href={href} className="group flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/40">
+      <span
+        className={cn(
+          "mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full",
+          tone === "red" ? "bg-rose-500/10 text-rose-600" : "bg-amber-500/10 text-amber-600"
+        )}
+      >
+        <Icon className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-semibold">{title}</div>
+        <p className="text-xs text-muted-foreground">{text}</p>
       </div>
-      <div className="title flex items-center gap-1 text-xs">
+      <div className="flex shrink-0 items-center gap-1 self-center text-xs font-medium text-primary">
         {cta} <ArrowRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
       </div>
     </Link>
@@ -871,7 +869,7 @@ function NextEventCard({ event: e }: { event: CalEvent }) {
     : "border-primary/30 bg-primary/5";
   const label = inProgress ? "En curso" : "Próxima reunión";
   return (
-    <div className={cn("rounded-lg border p-4", tone)}>
+    <div className={cn("rounded-2xl p-4 shadow-sm ring-1 ring-border/50 animate-in fade-in duration-300", tone)}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">

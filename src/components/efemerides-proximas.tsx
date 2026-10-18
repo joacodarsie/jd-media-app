@@ -49,8 +49,8 @@ export async function EfemeridesProximas({
   if (lista.length === 0) return null;
 
   return (
-    <section className="rounded-xl border bg-card">
-      <div className="flex items-center gap-2 border-b px-4 py-2.5">
+    <section className="overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50 animate-in fade-in duration-300">
+      <div className="flex items-center gap-2 border-b border-border/60 px-4 py-2.5">
         <CalendarHeart className="h-4 w-4 text-pink-600" />
         <h2 className="text-sm font-semibold">Fechas que se vienen</h2>
         <span className="text-xs text-muted-foreground">· próximos 30 días</span>

@@ -294,7 +294,9 @@ export default async function ClientDetail({
 
   // ── Acciones de navegación de la ficha (toolbar) ──
   const navBtn =
-    "inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-md border bg-card px-3 text-sm font-medium transition hover:bg-muted";
+    "inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full bg-muted/60 px-3.5 text-sm font-medium transition hover:bg-muted";
+  // Lo que se usa todos los días va a la vista; el resto, dentro de «Más» (18/10/2026).
+  const PRINCIPALES = ["Calendario", "Plan mensual", "Crecimiento", "Reunión mensual", "Onboarding"];
   const actions: { href: string; label: string; icon: typeof Sparkles; show: boolean; blank?: boolean }[] = [
     // UN solo botón de onboarding (21/9/2026). Antes eran CINCO —general,
     // redes, CM, diseño y publicidad— y todos llevaban a lo mismo por caminos
@@ -427,9 +429,9 @@ export default async function ClientDetail({
         </div>
 
         {/* Toolbar de acciones — fila que envuelve sin deformarse */}
-        <div className="mt-4 flex flex-wrap gap-2 border-t pt-4">
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-4">
           {actions
-            .filter((a) => a.show)
+            .filter((a) => a.show && PRINCIPALES.includes(a.label))
             .map((a) => {
               const Icon = a.icon;
               return (
@@ -443,6 +445,30 @@ export default async function ClientDetail({
                 </Link>
               );
             })}
+          {actions.some((a) => a.show && !PRINCIPALES.includes(a.label)) && (
+            <details className="group relative">
+              <summary className={cn(navBtn, "cursor-pointer list-none [&::-webkit-details-marker]:hidden")}>
+                Más <span className="text-muted-foreground transition-transform group-open:rotate-180">▾</span>
+              </summary>
+              <div className="absolute left-0 z-20 mt-2 min-w-[13rem] overflow-hidden rounded-xl bg-popover p-1 shadow-lg ring-1 ring-border/60 animate-in fade-in zoom-in-95 duration-150">
+                {actions
+                  .filter((a) => a.show && !PRINCIPALES.includes(a.label))
+                  .map((a) => {
+                    const Icon = a.icon;
+                    return (
+                      <Link
+                        key={a.label}
+                        href={a.href}
+                        target={a.blank ? "_blank" : undefined}
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
+                      >
+                        <Icon className="h-4 w-4 text-muted-foreground" /> {a.label}
+                      </Link>
+                    );
+                  })}
+              </div>
+            </details>
+          )}
         </div>
 
         {/* Banner de PROPUESTA: aún no es cliente real (no pagó). */}

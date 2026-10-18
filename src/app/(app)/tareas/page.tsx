@@ -142,13 +142,13 @@ export default async function TareasPage({
       {vencidasEquipo > 0 && (
         <Link
           href="/tareas/vencidas"
-          className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm hover:bg-red-100 dark:border-red-500/30 dark:bg-red-950/40 dark:hover:bg-red-950"
+          className="flex items-center justify-between gap-3 rounded-2xl bg-card px-4 py-3 text-sm shadow-sm ring-1 ring-border/50 transition-colors hover:bg-muted/40"
         >
-          <span className="text-red-900 dark:text-red-200">
+          <span className="text-foreground"><span className="mr-2 inline-block h-2 w-2 rounded-full bg-rose-500 align-middle" />
             <b>{vencidasEquipo} tareas vencidas en el equipo.</b> Despejalas por persona: hecha, fecha
             nueva o a otra persona.
           </span>
-          <span className="shrink-0 font-medium text-red-700 dark:text-red-300">Ponerse al día →</span>
+          <span className="shrink-0 font-medium text-primary">Ponerse al día →</span>
         </Link>
       )}
 

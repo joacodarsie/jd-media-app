@@ -554,11 +554,19 @@ export function TaskViews({
 
       {/* Content */}
       {view === "lista" && (
-        <div className="space-y-2 pb-20">
+        <div className="space-y-6 pb-20">
           {filtered.length === 0 ? (
             <EmptyState filter={quick} />
           ) : (
-            agrupadas.map((f) =>
+            gruposPorFecha(agrupadas).map((g) => (
+              <section key={g.clave} className="animate-in fade-in slide-in-from-bottom-1 duration-300">
+                <h3 className="mb-1.5 flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span className={cn("h-1.5 w-1.5 rounded-full", g.punto)} />
+                  {g.titulo}
+                  <span className="font-normal normal-case tracking-normal">· {g.items.length}</span>
+                </h3>
+                <div className="divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50">
+            {g.items.map((f) =>
               f.tipo === "ticket" ? (
                 <TicketGroup
                   key={f.tarea.id}
@@ -580,7 +588,10 @@ export function TaskViews({
                   onToggleSelect={() => toggleSelect(f.tarea.id)}
                 />
               )
-            )
+            )}
+                </div>
+              </section>
+            ))
           )}
         </div>
       )}
@@ -915,6 +926,26 @@ function EmptyState({ filter }: { filter: QuickFilter }) {
   );
 }
 
+/**
+ * Agrupa la lista por cuándo vence (17/10/2026): vencidas, hoy, esta semana,
+ * más adelante y sin fecha. Se lee de un vistazo sin pintar cada fila.
+ */
+function gruposPorFecha<F extends { tarea: { fecha_limite?: string | null; estado?: string } }>(filas: F[]) {
+  const defs = [
+    { clave: "vencida", titulo: "Vencidas", punto: "bg-rose-500" },
+    { clave: "hoy", titulo: "Hoy", punto: "bg-amber-500" },
+    { clave: "pronto", titulo: "Próximos días", punto: "bg-sky-500" },
+    { clave: "ok", titulo: "Más adelante", punto: "bg-muted-foreground/40" },
+    { clave: "none", titulo: "Sin fecha o terminadas", punto: "bg-muted-foreground/20" },
+  ] as const;
+  const grupos = defs.map((d) => ({ ...d, items: [] as F[] }));
+  for (const f of filas) {
+    const estado = dueState(f.tarea.fecha_limite, f.tarea.estado);
+    grupos.find((g) => g.clave === estado)!.items.push(f);
+  }
+  return grupos.filter((g) => g.items.length > 0);
+}
+
 function TaskRow({
   task: t,
   users,
@@ -938,9 +969,9 @@ function TaskRow({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-lg border bg-card p-3 transition-colors hover:border-primary/40 sm:flex-row sm:items-center",
-        selected && "border-primary/60 bg-primary/5 hover:border-primary",
-        anidada && "border-0 border-l-2 border-l-muted bg-transparent py-2 pl-3 pr-1 hover:bg-muted/30"
+        "group flex flex-col gap-2 px-3 py-2.5 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center",
+        selected && "bg-primary/5 hover:bg-primary/10",
+        anidada && "rounded-lg border-l-2 border-l-muted py-2 pl-3 pr-1"
       )}
     >
       <label
@@ -982,9 +1013,12 @@ function TaskRow({
           </Link>
         )}
         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span className={cn("rounded-full px-2 py-0.5 font-medium", PRIORITY_BADGE[t.prioridad])}>
-            {PRIORITY_LABEL[t.prioridad]}
-          </span>
+          {/* Solo se marca lo urgente: la prioridad media es la de siempre. */}
+          {(t.prioridad === "alta" || t.prioridad === "urgente") && (
+            <span className={cn("rounded-full px-2 py-0.5 font-medium", PRIORITY_BADGE[t.prioridad])}>
+              {PRIORITY_LABEL[t.prioridad]}
+            </span>
+          )}
           <span>
             {t.asignado?.nombre ?? "Sin asignar"}
             <MasPersonas t={t} />
@@ -994,8 +1028,8 @@ function TaskRow({
           {t.fecha_limite && (
             <span
               className={cn(
-                due === "vencida" && "font-semibold text-red-600",
-                due === "hoy" && "font-semibold text-orange-600"
+                due === "vencida" && "text-rose-600/90",
+                due === "hoy" && "font-medium text-amber-600"
               )}
             >
               · {due === "vencida" ? "Vencida " : "Vence "}
@@ -1004,7 +1038,7 @@ function TaskRow({
           )}
         </div>
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 transition-opacity sm:opacity-0 sm:focus-within:opacity-100 sm:group-hover:opacity-100">
         <TaskStatusSelect id={t.id} estado={t.estado} className="h-8 w-36 text-xs" />
         <TaskFormDialog
           mode="edit"
@@ -1050,7 +1084,7 @@ function TicketGroup({
   const pct = Math.round(prog.pct * 100);
 
   return (
-    <div className="rounded-lg border bg-card">
+    <div>
       <TaskRow
         task={ticket}
         users={users}

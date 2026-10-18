@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { sacarFotosCuentas } from "@/lib/crecimiento/run";
+import { medirPiezas } from "@/lib/medicion/run";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -9,7 +10,7 @@ export const maxDuration = 300;
 /**
  * Fotos del Instagram de cada cuenta, para el antes y el después (17/10/2026).
  * Corre todos los días: saca la foto de inicio de las cuentas nuevas y una por
- * mes de cada cuenta. Un admin logueado puede dispararlo a mano
+ * mes de cada cuenta, y mide las publicaciones que tienen objetivo. Un admin logueado puede dispararlo a mano
  * (?cliente=ID para una sola, ?limite=N para más por corrida).
  */
 function hasSecret(req: NextRequest): boolean {
@@ -34,6 +35,9 @@ export async function GET(req: NextRequest) {
   }
   const sp = req.nextUrl.searchParams;
   const limite = Math.min(10, Math.max(1, Number(sp.get("limite")) || 4));
-  const r = await sacarFotosCuentas(createAdmin(), { limite, clienteId: sp.get("cliente") ?? undefined });
-  return NextResponse.json(r);
+  const admin = createAdmin();
+  const r = await sacarFotosCuentas(admin, { limite, clienteId: sp.get("cliente") ?? undefined });
+  // Y de paso, el resultado de cada publicación con objetivo (17/10/2026).
+  const medicion = await medirPiezas(admin, { clienteId: sp.get("cliente") ?? undefined }).catch((e) => ({ error: String(e) }));
+  return NextResponse.json({ ...r, medicion });
 }

@@ -35,6 +35,7 @@ import { PublicationFinalFields } from "@/components/publication-final-fields";
 import { PublicationTiktokToggle } from "@/components/publication-tiktok-toggle";
 import { ClientPubComments } from "@/components/client-pub-comments";
 import { DescripcionPieza } from "@/components/descripcion-pieza";
+import { PiezaObjetivo } from "@/components/pieza-objetivo";
 import {
   PublicationFormDialog,
   type ClientForPub,
@@ -144,6 +145,9 @@ export function PublicationDetailDialog({
               </div>
             );
           })()}
+
+          {/* El porqué de la pieza y cómo le fue (17/10/2026). */}
+          <PiezaObjetivo objetivo={p.objetivo} meta={p.meta} valor={p.resultado_valor} publicada={p.estado === "publicado"} />
 
           {p.task_id && (
             <Link

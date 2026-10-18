@@ -271,6 +271,9 @@ function buildPubRow(args: {
     // correcciones pendientes cuando no las tenían (lo reportó Luz).
     descripcion: (esGuion ? null : brief) as string | null,
     notas_revision: null as string | null,
+    // El porqué de la pieza viaja del plan al calendario (17/10/2026).
+    objetivo: (["conocer", "interactuar", "guardar", "consultar"].includes(args.tema.objetivo ?? "") ? args.tema.objetivo : null) as string | null,
+    meta: (typeof args.tema.meta === "number" && args.tema.meta >= 0 ? Math.round(args.tema.meta) : null) as number | null,
   };
 }
 

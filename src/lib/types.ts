@@ -288,6 +288,13 @@ export interface Publication {
   published_at?: string | null;
   publish_error?: string | null;
   ig_media_id?: string | null;
+  /** Medición por pieza (0203): para qué sale, cuánto esperamos y qué dio. */
+  objetivo?: "conocer" | "interactuar" | "guardar" | "consultar" | null;
+  meta?: number | null;
+  consultas_recibidas?: number | null;
+  resultado?: { alcance: number | null; likes: number | null; comentarios: number | null; guardados: number | null; fuente?: string | null } | null;
+  resultado_valor?: number | null;
+  medido_at?: string | null;
   /** El link del posteo. Única columna de link desde la 0167. */
   link_instagram?: string | null;
   fb_post_id?: string | null;

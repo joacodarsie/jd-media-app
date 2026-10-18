@@ -32,6 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { BriefPorSlides } from "@/components/brief-por-slides";
+import { OBJETIVOS, objetivoDe } from "@/lib/medicion/objetivos";
 import { usaSlides } from "@/lib/contenidos/estructura-pieza";
 import { AIContentSuggester } from "@/components/ai-content-suggester";
 import { PublicationAutoPublish } from "@/components/publication-auto-publish";
@@ -127,6 +128,12 @@ export function PublicationFormDialog({
   const [portadaTouched, setPortadaTouched] = useState(false);
   const [portadaCopy, setPortadaCopy] = useState(publication?.portada_copy ?? "");
   const [estado, setEstado] = useState<string>(publication?.estado ?? "idea");
+  // El porqué de la pieza (17/10/2026): para qué sale y cuánto esperamos.
+  const [objetivo, setObjetivo] = useState<string>(publication?.objetivo ?? NONE);
+  const [meta, setMeta] = useState<string>(publication?.meta != null ? String(publication.meta) : "");
+  const [consultas, setConsultas] = useState<string>(
+    publication?.consultas_recibidas != null ? String(publication.consultas_recibidas) : ""
+  );
 
   const selectedClient = useMemo(
     () => selectableClients.find((c) => c.id === cliente),
@@ -185,6 +192,9 @@ export function PublicationFormDialog({
       portada_copy: isReel ? portadaCopy : null,
       task_id: publication?.task_id ?? null,
       estado: mode === "edit" ? estado : undefined,
+      objetivo: objetivo === NONE ? null : objetivo,
+      meta: meta.trim() === "" ? null : Math.max(0, Math.round(Number(meta) || 0)),
+      consultas_recibidas: consultas.trim() === "" ? null : Math.max(0, Math.round(Number(consultas) || 0)),
     };
     start(async () => {
       const res =
@@ -406,6 +416,49 @@ export function PublicationFormDialog({
               </p>
             </div>
           )}
+
+          {/* El porqué de la pieza: se mide sola después de publicada (17/10/2026). */}
+          <div className="rounded-xl border border-amber-300/60 bg-amber-50/60 p-3 dark:bg-amber-500/5">
+            <div className="grid gap-3 sm:grid-cols-[1fr_9rem]">
+              <div className="space-y-1.5">
+                <Label>¿Para qué sale esta pieza?</Label>
+                <Select value={objetivo} onValueChange={setObjetivo}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Elegí el objetivo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Sin objetivo</SelectItem>
+                    {OBJETIVOS.map((o) => (
+                      <SelectItem key={o.clave} value={o.clave}>{o.titulo}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Meta</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={meta}
+                  onChange={(e) => setMeta(e.target.value)}
+                  placeholder="Ej.: 500"
+                  disabled={objetivo === NONE}
+                />
+              </div>
+            </div>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              {objetivoDe(objetivo)
+                ? `${objetivoDe(objetivo)!.ayuda} La meta va en ${objetivoDe(objetivo)!.unidad}.${objetivoDe(objetivo)!.automatico ? " La plataforma lo mide sola a los 2 días de publicada." : ""}`
+                : "Cada pieza con su porqué: elegí qué esperamos de ella y la plataforma lo compara con lo que dio en Instagram."}
+            </p>
+            {objetivo === "consultar" && mode === "edit" && (
+              <div className="mt-2 space-y-1.5">
+                <Label>Consultas que trajo</Label>
+                <Input type="number" min={0} inputMode="numeric" value={consultas} onChange={(e) => setConsultas(e.target.value)} placeholder="Cargalo cuando lleguen" />
+              </div>
+            )}
+          </div>
 
           {needsDescription && usaSlides(tipo) && (
             <BriefPorSlides value={descripcion} onChange={setDescripcion} tipo={tipo} />

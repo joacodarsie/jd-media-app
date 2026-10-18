@@ -117,6 +117,10 @@ export interface PublicationInput {
   estado?: string;
 
   resubido_tiktok?: boolean;
+  /** Medición por pieza (0203). */
+  objetivo?: string | null;
+  meta?: number | null;
+  consultas_recibidas?: number | null;
 }
 
 function clean(input: PublicationInput) {
@@ -142,6 +146,18 @@ function clean(input: PublicationInput) {
     notas_revision: input.notas_revision?.trim() || null,
 
     resubido_tiktok: input.resubido_tiktok ?? false,
+    // Solo si vinieron: los formularios viejos no los borran.
+    ...(input.objetivo !== undefined ? { objetivo: input.objetivo || null } : {}),
+    ...(input.meta !== undefined ? { meta: input.meta ?? null } : {}),
+    ...(input.consultas_recibidas !== undefined
+      ? {
+          consultas_recibidas: input.consultas_recibidas ?? null,
+          // Las consultas las carga la community: el resultado es ese número.
+          ...(input.objetivo === "consultar"
+            ? { resultado_valor: input.consultas_recibidas ?? null, medido_at: new Date().toISOString() }
+            : {}),
+        }
+      : {}),
   };
 }
 

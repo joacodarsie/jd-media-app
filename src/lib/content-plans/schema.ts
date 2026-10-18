@@ -63,6 +63,9 @@ export type TemaDestacado = {
   hook?: string;
   /** Qué queremos que haga quien lo ve. Sin esto la pieza no pide nada. */
   cta?: string;
+  /** Para qué sale la pieza y cuánto esperamos: se mide sola (17/10/2026). */
+  objetivo?: "conocer" | "interactuar" | "guardar" | "consultar";
+  meta?: number;
   /**
    * A quién de la audiencia le habla ESTA pieza. Sale de los segmentos del
    * diagnóstico: una pieza que le habla "a todos" no le habla a nadie.

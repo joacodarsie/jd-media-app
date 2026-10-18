@@ -173,6 +173,17 @@ export const SAVE_CONTENT_PLAN_TOOL = {
               description:
                 "Qué queremos que HAGA quien lo ve, escrito tal como cierra la pieza. Uno solo y concreto: 'Guardalo para tu próxima visita', 'Escribinos y te armamos el presupuesto', 'Comentá LISTA y te mando los horarios'. Tiene que ser coherente con el objetivo del mes y con lo que el negocio puede resolver. PROHIBIDO 'seguinos para más contenido'.",
             },
+            objetivo: {
+              type: "string",
+              enum: ["conocer", "interactuar", "guardar", "consultar"],
+              description:
+                "Para qué sale ESTA pieza, y con eso qué se va a medir: conocer (llegar a gente nueva → alcance), interactuar (me gusta, comentarios y guardados), guardar (contenido útil → guardados) o consultar (que escriban o pidan → consultas). Uno solo, coherente con el CTA.",
+            },
+            meta: {
+              type: "integer",
+              description:
+                "Cuánto esperamos de esa métrica, realista para el tamaño de la cuenta según el diagnóstico (seguidores e interacción actuales). Ej.: una cuenta de 2.000 seguidores → alcance 800-1.500, interacciones 40-80, guardados 5-15, consultas 2-5. Un número, sin rangos.",
+            },
             publico_objetivo: {
               type: "string",
               description:
@@ -223,6 +234,8 @@ export const SAVE_CONTENT_PLAN_TOOL = {
             "descripcion",
             "hook",
             "cta",
+            "objetivo",
+            "meta",
             "publico_objetivo",
             "formato",
             "red_principal",

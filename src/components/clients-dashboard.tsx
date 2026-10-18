@@ -314,6 +314,7 @@ export function ClientsDashboard({
                 <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {t.nombre} · {propios.length}
                 </h2>
+                <div className="divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50">
                 {propios.map((c) => (
                   <ClientCard
                     key={c.id}
@@ -324,6 +325,7 @@ export function ClientsDashboard({
                     fecha={detalleFecha(c, orden)}
                   />
                 ))}
+                </div>
               </div>
             );
           })
@@ -427,8 +429,8 @@ function ClientCard({
   return (
     <details
       className={cn(
-        "group rounded-lg border bg-card transition-colors hover:border-primary/40",
-        // Equipo incompleto: borde ámbar a la izquierda para que salte a la vista.
+        "group bg-card transition-colors hover:bg-muted/30 animate-in fade-in duration-300",
+        // Equipo incompleto: una línea ámbar a la izquierda para que salte a la vista.
         falta.length > 0 && "border-l-4 border-l-amber-400 dark:border-l-amber-500"
       )}
     >
@@ -556,7 +558,7 @@ function ClientCard({
 
 function Group({ title, tasks }: { title: string; tasks: TaskWithRels[] }) {
   return (
-    <details className="group rounded-lg border bg-card">
+    <details className="group overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50">
       <summary className="flex cursor-pointer list-none items-center justify-between p-4">
         <span className="font-semibold">{title}</span>
         <span className="flex items-center gap-2 text-sm text-muted-foreground">

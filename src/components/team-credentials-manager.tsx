@@ -358,7 +358,7 @@ function UserRow({ user, soyDirector }: { user: TeamRow; soyDirector: boolean })
             className="h-8 gap-1 px-2"
           >
             <Send className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Mail reset</span>
+            <span className="hidden 2xl:inline">Mail reset</span>
           </Button>
           <Button
             size="sm"
@@ -524,7 +524,7 @@ function SetPasswordPopover({ user }: { user: TeamRow }) {
       <PopoverTrigger asChild>
         <Button size="sm" variant="ghost" className="h-8 gap-1 px-2" title="Setear contraseña">
           <KeyRound className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Setear pass</span>
+          <span className="hidden 2xl:inline">Setear pass</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-72 space-y-2">
@@ -607,7 +607,7 @@ function PermissionsDialog({
           title="Permisos de acceso"
         >
           <Shield className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Permisos</span>
+          <span className="hidden 2xl:inline">Permisos</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
@@ -785,7 +785,7 @@ function EditRolesDialog({ user }: { user: TeamRow }) {
       <DialogTrigger asChild>
         <Button size="sm" variant="ghost" className="h-8 gap-1 px-2" title="Rol y área">
           <UserCog className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Rol</span>
+          <span className="hidden 2xl:inline">Rol</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">

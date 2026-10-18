@@ -167,8 +167,11 @@ export function CobrosSimple({
           )}
         </div>
       )}
-    <ul className="divide-y rounded-xl border bg-card">
-      {filas.map((f) => {
+    <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50">
+      {/* Primero los que faltan; los que ya pagaron quedan abajo, en una línea (18/10/2026). */}
+      {[...filas]
+        .sort((a, b) => Number(saldadoDe(a)) - Number(saldadoDe(b)))
+        .map((f) => {
         const pagos = f.pagos ?? [];
         // La etapa sale de los números, no del último clic: si entregó algo,
         // está "pagó una parte" aunque nadie haya tocado el selector.
@@ -180,7 +183,7 @@ export function CobrosSimple({
         });
         const pagado = est.saldado;
         return (
-          <li key={f.clienteId} className="p-3">
+          <li key={f.clienteId} className={pagado ? "px-3 py-2" : "p-3"}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               {!pagado && (
                 <input
@@ -390,6 +393,7 @@ export function CobrosSimple({
               </ul>
             )}
 
+            {(!pagado || f.nota) && (
             <NotaInline
               inicial={f.nota ?? ""}
               onGuardar={(nota) =>
@@ -406,6 +410,7 @@ export function CobrosSimple({
                 })
               }
             />
+            )}
           </li>
         );
       })}
@@ -558,6 +563,9 @@ function FacturaChip({ fila, periodo }: { fila: FilaCliente; periodo: string }) 
     </button>
   );
 }
+
+const saldadoDe = (f: FilaCliente) =>
+  estadoDeCobro({ monto: f.monto, pagos: f.pagos ?? [], etapaGuardada: f.etapa, cobradoEl: f.cobradoEl }).saldado;
 
 /** La anotación que hoy vive en la cabeza: se guarda al salir del campo. */
 function NotaInline({

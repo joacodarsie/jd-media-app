@@ -64,9 +64,13 @@ export function ObjectivesBoard({
   groups: Group[];
   canEdit: boolean;
 }) {
+  // Las áreas sin objetivos van juntas al final, en una sola línea: antes eran
+  // diez títulos con «Sin objetivos para esta área» entre los que sí tenían (18/10/2026).
+  const conObjetivos = groups.filter((g) => g.area === null || g.objetivos.length > 0);
+  const vacias = groups.filter((g) => g.area !== null && g.objetivos.length === 0);
   return (
     <div className="space-y-6">
-      {groups.map((g) => (
+      {conObjetivos.map((g) => (
         <section key={g.area ?? "__general"} className="space-y-3">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -91,6 +95,24 @@ export function ObjectivesBoard({
           )}
         </section>
       ))}
+      {vacias.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Áreas sin objetivos · {vacias.length}
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {vacias.map((g) => (
+              <div
+                key={g.area}
+                className="flex items-center gap-1 rounded-full bg-muted/50 py-0.5 pl-3 pr-1 text-sm text-muted-foreground"
+              >
+                {g.label}
+                {canEdit && <AddObjectiveButton area={g.area} />}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

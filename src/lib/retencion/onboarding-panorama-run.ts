@@ -15,7 +15,10 @@ export async function cargarPanoramaArranques(admin: SupabaseClient, hoy: string
     .from("tasks")
     .select("id, numero, titulo, cliente_id, cliente:clients(id, nombre, fecha_inicio)")
     .like("titulo", "Onboarding 15 días — %")
-    .is("parent_id", null);
+    .is("parent_id", null)
+    // Un arranque archivado no cuenta: el de «Nahuel» (Nazar Hogar antes de
+    // renombrarla) aparecía como un segundo arranque «completo» (18/10/2026).
+    .neq("estado", "archivada");
 
   const madres = ((madresRaw ?? []) as unknown as {
     id: string;

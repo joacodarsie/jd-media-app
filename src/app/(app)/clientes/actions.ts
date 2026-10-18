@@ -649,6 +649,15 @@ export async function guardarLogoCliente(clienteId: string, url: string | null) 
   if (limpio && !/^https:\/\//.test(limpio)) return { error: "El logo tiene que ser un link https." };
   const { error } = await admin.from("clients").update({ logo_url: limpio }).eq("id", clienteId);
   if (error) return { error: error.message };
+  // El paso del arranque se cierra solo: no hace falta ir a marcarlo (18/10/2026).
+  if (limpio) {
+    await admin
+      .from("tasks")
+      .update({ estado: "completada" })
+      .eq("cliente_id", clienteId)
+      .eq("titulo", "Subir el logo de la cuenta a su ficha")
+      .not("estado", "in", "(completada,archivada)");
+  }
   revalidatePath(`/clientes/${clienteId}`);
   // El carrusel de la web lo toma al toque, sin esperar la hora de caché.
   revalidateTag("web-marcas");

@@ -1346,7 +1346,7 @@ function DayDetail({
         </div>
       </div>
       {evs.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Sin reuniones este día.</p>
+        <p className="text-sm text-muted-foreground">Día libre de reuniones 🙌</p>
       ) : (
         <div className="max-h-[60vh] space-y-2 overflow-y-auto">
           {evs.map((e) => (

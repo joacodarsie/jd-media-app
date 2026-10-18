@@ -176,7 +176,7 @@ export default async function DireccionPage() {
             </Link>
           </div>
           {otras.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-muted-foreground">Nada pendiente.</p>
+            <p className="px-4 py-3 text-sm text-muted-foreground">Nada pendiente 🎉</p>
           ) : (
             <ul className="divide-y">
               {otras.slice(0, 20).map((t) => {

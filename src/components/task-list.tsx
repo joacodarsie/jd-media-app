@@ -5,6 +5,7 @@ import type { TaskWithRels } from "@/lib/types";
 import { STATUS_LABEL, PRIORITY_LABEL, PRIORITY_BADGE } from "@/lib/constants";
 import { fmtDate, dueState } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { CompletarTarea } from "@/components/completar-tarea";
 
 /**
  * Lista corta de tareas (Mi día, ficha del cliente, panel de cuentas).
@@ -45,9 +46,11 @@ export function TaskList({
           <Link
             key={t.id}
             href={`/tareas/${t.id}`}
+            data-fila-tarea
             className="group flex items-center gap-3 px-4 py-3 transition-colors animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300 hover:bg-muted/40"
             style={{ animationDelay: `${Math.min(i, 10) * 35}ms` }}
           >
+            <CompletarTarea id={t.id} titulo={t.titulo} />
             <span className={cn("h-2 w-2 shrink-0 rounded-full", PUNTO[due])} aria-hidden="true" />
             <div className="min-w-0 flex-1">
               <div className="flex min-w-0 items-baseline gap-2">

@@ -63,6 +63,7 @@ import { TaskFormDialog } from "@/components/task-form-dialog";
 import { esDe } from "@/lib/tareas/colaboradores";
 import { TaskStatusSelect } from "@/components/task-status-select";
 import { DeleteTaskButton } from "@/components/delete-task-button";
+import { CompletarTarea } from "@/components/completar-tarea";
 import { SkeletonBlock } from "@/components/skeleton-block";
 
 // Lazy-load heavy views — solo se cargan al hacer click en la tab
@@ -918,8 +919,8 @@ function EmptyState({ filter }: { filter: QuickFilter }) {
   };
   const c = content[filter];
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/20 px-6 py-10 text-center">
-      <div className="text-3xl">{c.emoji}</div>
+    <div className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-muted/30 px-6 py-12 text-center animate-in fade-in zoom-in-95 duration-300">
+      <div className="jd-flota text-4xl">{c.emoji}</div>
       <h3 className="text-sm font-semibold tracking-tight">{c.title}</h3>
       <p className="max-w-sm text-xs text-muted-foreground">{c.description}</p>
     </div>
@@ -966,8 +967,10 @@ function TaskRow({
   anidada?: boolean;
 }) {
   const due = dueState(t.fecha_limite, t.estado);
+  const abierta = t.estado !== "completada" && t.estado !== "archivada";
   return (
     <div
+      data-fila-tarea
       className={cn(
         "group flex flex-col gap-2 px-3 py-2.5 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center",
         selected && "bg-primary/5 hover:bg-primary/10",
@@ -986,6 +989,7 @@ function TaskRow({
           className="h-4 w-4 cursor-pointer rounded border-muted-foreground/40 accent-primary"
         />
       </label>
+      {abierta && <CompletarTarea id={t.id} titulo={t.titulo} className="hidden sm:flex" />}
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-baseline gap-2">
           {/* El número adelante: es como se nombra un ticket al hablarlo. */}

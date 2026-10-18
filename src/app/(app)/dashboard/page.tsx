@@ -26,6 +26,7 @@ import type { PublicationWithRels, TaskWithRels } from "@/lib/types";
 import { dueState, esVencidaReciente, hoyYmd } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { TaskList } from "@/components/task-list";
+import { AnilloDelDia } from "@/components/anillo-del-dia";
 import { HelpTrigger } from "@/components/help-trigger";
 import { DashboardAvisos } from "@/components/dashboard-avisos";
 import { MiPuesto } from "@/components/mi-puesto";
@@ -296,6 +297,11 @@ export default async function DashboardPage() {
     return s !== "vencida" && s !== "hoy" && s !== "pronto";
   });
   const completadas = tasks.filter((t) => t.estado === "completada").length;
+  // Lo que ya cerró hoy (la última vez que se tocó fue hoy y quedó hecha), para el anillo.
+  const inicioHoy = new Date(`${hoy}T00:00:00-03:00`).getTime();
+  const hechasHoy = tasks.filter(
+    (t) => t.estado === "completada" && new Date((t as { updated_at?: string }).updated_at ?? 0).getTime() >= inicioHoy
+  ).length;
 
   // Eventos hoy y resto de la semana
   const eventsHoy = calendarEvents.filter((e) => isToday(new Date(e.start)));
@@ -491,6 +497,8 @@ export default async function DashboardPage() {
             </p>
           </div>
 
+          <AnilloDelDia hechas={hechasHoy} total={hechasHoy + venceHoy.length + vencidas.length} hoy={hoy} />
+
           {/* Stat compactas en la esquina (grid en mobile, fila en desktop) */}
           <div className="grid w-full grid-cols-4 gap-3 text-sm sm:flex sm:w-auto">
             <MiniStat label="Vencidas" value={vencidas.length} tone={vencidas.length > 0 ? "red" : "muted"} />
@@ -573,7 +581,7 @@ export default async function DashboardPage() {
               {venceHoy.length === 0 && vencidas.length === 0 ? (
                 <EmptyMini
                   icon={Sparkles}
-                  text="Sin tareas urgentes para hoy."
+                  text={hechasHoy > 0 ? "Cerraste todo lo de hoy. ¡Bien ahí!" : "Nada urgente para hoy: buen momento para adelantar la semana."}
                 />
               ) : (
                 <TaskList tasks={[...vencidas, ...venceHoy]} currentUserId={user.id} />
@@ -596,7 +604,7 @@ export default async function DashboardPage() {
                     text="Conectá tu Calendar desde Mi perfil o agendá una reunión interna desde Agenda."
                   />
                 ) : (
-                  <EmptyMini icon={CalendarClock} text="Sin reuniones hoy." />
+                  <EmptyMini icon={CalendarClock} text="Día libre de reuniones." />
                 )
               ) : (
                 <div className="space-y-2">
@@ -815,8 +823,10 @@ function EmptyMini({
   text: string;
 }) {
   return (
-    <div className="flex items-center gap-2 rounded-md border border-dashed bg-muted/20 p-3 text-xs text-muted-foreground">
-      <Icon className="h-4 w-4" />
+    <div className="flex items-center gap-3 rounded-xl bg-muted/40 p-3 text-sm text-muted-foreground">
+      <span className="jd-flota flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+        <Icon className="h-4 w-4" />
+      </span>
       {text}
     </div>
   );

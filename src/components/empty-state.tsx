@@ -24,12 +24,12 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed bg-muted/20 px-6 py-10 text-center",
+        "flex flex-col items-center justify-center gap-3 rounded-2xl bg-muted/30 px-6 py-12 text-center animate-in fade-in zoom-in-95 duration-300",
         className
       )}
     >
       {Icon && (
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <div className="jd-flota flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 text-primary">
           <Icon className="h-5 w-5" />
         </div>
       )}

@@ -547,7 +547,7 @@ function ClientCard({
       </summary>
       <div className="border-t p-4">
         {tasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Sin tareas.</p>
+          <p className="text-sm text-muted-foreground">Todo al día con esta cuenta ✓</p>
         ) : (
           <TaskList tasks={tasks} />
         )}

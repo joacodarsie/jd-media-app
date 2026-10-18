@@ -395,7 +395,7 @@ export default async function TaskDetail({
           {t.descripcion ? (
             <Markdown>{t.descripcion}</Markdown>
           ) : (
-            <p className="text-sm text-muted-foreground">Sin descripción.</p>
+            <p className="text-sm italic text-muted-foreground">Esta tarea no tiene descripción todavía.</p>
           )}
         </CardContent>
       </Card>

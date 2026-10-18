@@ -406,7 +406,10 @@ export function AppShell({
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <main className="flex-1 p-4 md:p-6">
+          {/* Cada pantalla entra con un fundido corto: la navegación se siente viva (18/10/2026). */}
+          <div key={pathname} className="jd-pagina">{children}</div>
+        </main>
       </div>
     </div>
   );

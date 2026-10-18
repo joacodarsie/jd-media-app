@@ -314,7 +314,7 @@ export function ClientsDashboard({
                 <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {t.nombre} · {propios.length}
                 </h2>
-                <div className="divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50">
+                <div className="jd-cascada divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50">
                 {propios.map((c) => (
                   <ClientCard
                     key={c.id}

@@ -99,3 +99,38 @@
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
 }
+
+/* ── Movimiento de la plataforma (18/10/2026) ──────────────────────────────
+   Corto y suave: que se sienta viva sin hacer esperar a nadie.
+   - .jd-pagina: cada pantalla entra con un fundido de abajo.
+   - .jd-cascada: las filas y tarjetas de una lista entran una tras otra.
+   - Las barras de progreso (rounded-full con ancho en línea) se llenan.
+   Con «reducir movimiento» del sistema, no corre nada. */
+@keyframes jd-entra {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes jd-llena {
+  from { transform: scaleX(0); }
+}
+.jd-pagina { animation: jd-entra 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.jd-cascada > * { animation: jd-entra 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.jd-cascada > *:nth-child(2) { animation-delay: 30ms; }
+.jd-cascada > *:nth-child(3) { animation-delay: 60ms; }
+.jd-cascada > *:nth-child(4) { animation-delay: 90ms; }
+.jd-cascada > *:nth-child(5) { animation-delay: 120ms; }
+.jd-cascada > *:nth-child(6) { animation-delay: 150ms; }
+.jd-cascada > *:nth-child(7) { animation-delay: 180ms; }
+.jd-cascada > *:nth-child(8) { animation-delay: 210ms; }
+.jd-cascada > *:nth-child(9) { animation-delay: 240ms; }
+.jd-cascada > *:nth-child(10) { animation-delay: 270ms; }
+.jd-cascada > *:nth-child(n + 11) { animation-delay: 300ms; }
+.rounded-full[style^="width"] {
+  transform-origin: left center;
+  animation: jd-llena 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .jd-pagina,
+  .jd-cascada > *,
+  .rounded-full[style^="width"] { animation: none; }
+}

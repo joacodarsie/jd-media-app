@@ -181,7 +181,7 @@ export default async function ComercialPage() {
             activás y se vuelve cliente.
           </div>
         ) : (
-          <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50">
+          <ul className="jd-cascada divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50">
             {propuestasRows.map((p) => {
               const dias = diasDe(p.created_at);
               const b = seguimientoBucket(dias);

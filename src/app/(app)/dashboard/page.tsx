@@ -529,7 +529,7 @@ export default async function DashboardPage() {
       {(vencidas.length > 0 ||
         vencidasViejas.length > 0 ||
         delegatedVencidas.length > 0) && (
-        <div className="divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50 animate-in fade-in slide-in-from-bottom-1 duration-300">
+        <div className="jd-cascada divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50 animate-in fade-in slide-in-from-bottom-1 duration-300">
           {vencidas.length > 0 && (
             <AlertCard
               tone="red"

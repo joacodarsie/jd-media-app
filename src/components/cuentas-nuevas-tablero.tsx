@@ -29,7 +29,7 @@ export function CuentasNuevasTablero({ filas }: { filas: CuentaNueva[] }) {
     );
   }
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+    <div className="jd-cascada grid gap-3 md:grid-cols-2 xl:grid-cols-3">
       {filas.map((f) => (
         <div
           key={f.id}

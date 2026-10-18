@@ -64,7 +64,7 @@ export function PaidMediaPanel({
   return (
     <div className="space-y-6">
       {conectadas.length > 0 && (
-        <div className="grid items-start gap-4 lg:grid-cols-2">
+        <div className="jd-cascada grid items-start gap-4 lg:grid-cols-2">
           {conectadas.map((c) => (
             <ClientCard key={c.id} client={c} canApply={canApply} />
           ))}
@@ -75,7 +75,7 @@ export function PaidMediaPanel({
           <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Falta cargar la cuenta publicitaria · {sinCuenta.length}
           </h2>
-          <div className="divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50">
+          <div className="jd-cascada divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50">
             {sinCuenta.map((c) => (
               <ClientCard key={c.id} client={c} canApply={canApply} compacto />
             ))}

@@ -565,7 +565,7 @@ export function TaskViews({
                   {g.titulo}
                   <span className="font-normal normal-case tracking-normal">· {g.items.length}</span>
                 </h3>
-                <div className="divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50">
+                <div className="jd-cascada divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50">
             {g.items.map((f) =>
               f.tipo === "ticket" ? (
                 <TicketGroup

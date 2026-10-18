@@ -38,7 +38,7 @@ export function TaskList({
 }) {
   if (!tasks.length) return null;
   return (
-    <div className="divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50">
+    <div className="jd-cascada divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50">
       {tasks.map((t, i) => {
         const due = dueState(t.fecha_limite, t.estado);
         return (

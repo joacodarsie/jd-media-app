@@ -140,7 +140,7 @@ export default async function ComercialPage() {
       {/* Prospección: el techo del embudo */}
       <Link
         href="/prospeccion"
-        className="group flex items-center justify-between gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
+        className="group flex items-center justify-between gap-3 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border/50 transition-colors hover:bg-muted/40"
       >
         <div className="flex items-center gap-3">
           <Radar className="h-5 w-5 text-primary" />
@@ -181,7 +181,7 @@ export default async function ComercialPage() {
             activás y se vuelve cliente.
           </div>
         ) : (
-          <ul className="space-y-2">
+          <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50">
             {propuestasRows.map((p) => {
               const dias = diasDe(p.created_at);
               const b = seguimientoBucket(dias);
@@ -189,17 +189,19 @@ export default async function ComercialPage() {
               return (
                 <li
                   key={p.id}
-                  className={cn(
-                    "flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3",
-                    b.urgente && "border-amber-300/60 dark:border-amber-900/60"
-                  )}
+                  className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 transition-colors animate-in fade-in duration-300 hover:bg-muted/40"
                 >
-                  <div className="min-w-0">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span
+                      className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", b.urgente ? "bg-rose-500" : "bg-amber-400")}
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0">
                     <Link href={`/clientes/${p.id}`} className="font-medium hover:underline">
                       {p.nombre}
                     </Link>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs">
-                      <span className={cn("rounded-full px-2 py-0.5 font-medium", b.badge)}>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                      <span className={cn("font-medium", b.urgente ? "text-rose-600/90" : "text-amber-700 dark:text-amber-400")}>
                         {b.label}
                       </span>
                       <span className="text-muted-foreground">
@@ -211,13 +213,15 @@ export default async function ComercialPage() {
                         </span>
                       ) : null}
                     </div>
+                    </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     {wa ? (
                       <Button
                         asChild
                         size="sm"
-                        className="bg-[#25D366] text-white hover:bg-[#1ebe5b]"
+                        variant="ghost"
+                        className="text-[#128C4A] hover:bg-[#25D366]/10 hover:text-[#0d6b38]"
                       >
                         <a href={wa} target="_blank" rel="noopener noreferrer">
                           <MessageCircle className="mr-1 h-4 w-4" /> Seguir
@@ -228,8 +232,8 @@ export default async function ComercialPage() {
                         <Link href={`/clientes/${p.id}`}>Abrir</Link>
                       </Button>
                     )}
-                    <Button asChild size="sm" variant="outline">
-                      <Link href={`/clientes/${p.id}`}>Activar / ver</Link>
+                    <Button asChild size="sm" variant="ghost">
+                      <Link href={`/clientes/${p.id}`}>Activar / ver →</Link>
                     </Button>
                   </div>
                 </li>

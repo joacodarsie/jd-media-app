@@ -1051,7 +1051,7 @@ function WeekView({
             key={k}
             role="gridcell"
             aria-current={isToday ? "date" : undefined}
-            className={`rounded-lg border bg-card p-2 ${isToday ? "border-primary" : ""} ${sobre === k ? "ring-2 ring-primary/60" : ""}`}
+            className={`rounded-2xl border border-border/50 bg-card p-2 shadow-sm ${isToday ? "border-primary" : ""} ${sobre === k ? "ring-2 ring-primary/60" : ""}`}
             onDragOver={(ev) => {
               ev.preventDefault();
               if (sobre !== k) setSobre(k);
@@ -1166,8 +1166,8 @@ function MonthView({
   const weekdays = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
   return (
-    <div className="rounded-lg border bg-card" role="grid" aria-label="Vista mensual">
-      <div className="grid grid-cols-7 border-b text-center text-xs font-medium text-muted-foreground">
+    <div className="overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50" role="grid" aria-label="Vista mensual">
+      <div className="grid grid-cols-7 border-b border-border/50 text-center text-xs font-medium text-muted-foreground">
         {weekdays.map((w) => (
           <div key={w} className="py-2">
             {w}
@@ -1199,7 +1199,7 @@ function MonthView({
                 const id = ev.dataTransfer.getData("text/plain");
                 if (id) onMover(id, k);
               }}
-              className={`group relative min-h-[88px] cursor-pointer border-b border-r p-1.5 text-left transition hover:bg-muted/30 sm:min-h-[100px] ${sobre === k ? "bg-primary/15 ring-2 ring-inset ring-primary/60" : ""} ${
+              className={`group relative min-h-[88px] cursor-pointer border-b border-r border-border/40 p-1.5 text-left transition hover:bg-muted/30 sm:min-h-[100px] ${sobre === k ? "bg-primary/15 ring-2 ring-inset ring-primary/60" : ""} ${
                 i % 7 === 6 ? "border-r-0" : ""
               } ${i >= 35 ? "border-b-0" : ""} ${
                 !isCurMonth ? "bg-muted/20 text-muted-foreground/60" : ""
@@ -1404,7 +1404,7 @@ function EventCard({
 
   return (
     <article
-      className={`rounded-lg border bg-card transition hover:border-primary/30 ${compact ? "p-2" : "p-3"}`}
+      className={`rounded-xl border border-border/50 bg-card transition hover:bg-muted/30 ${compact ? "p-2" : "p-3"}`}
     >
       <div className="flex items-start gap-2">
         <span className={`mt-1.5 inline-block h-2 w-2 shrink-0 rounded-full ${color.dot}`} />

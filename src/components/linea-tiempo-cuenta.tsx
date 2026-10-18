@@ -100,10 +100,10 @@ export async function LineaTiempoCuenta({ clienteId, fechaInicio }: { clienteId:
     <div className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border/50 sm:p-5">
       <div className="mb-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">La historia de la cuenta</div>
       <div className="relative overflow-x-auto pb-1">
-        <div className="relative min-w-max">
+        <div className="relative w-max">
           {/* La línea se dibuja de izquierda a derecha. */}
-          <div className="absolute left-4 right-4 top-[15px] h-0.5 bg-border" aria-hidden="true" />
-          <div className="jd-linea absolute left-4 right-4 top-[15px] h-0.5 bg-primary/70" aria-hidden="true" />
+          <div className="absolute left-4 right-[112px] top-[15px] sm:right-[128px] h-0.5 bg-border" aria-hidden="true" />
+          <div className="jd-linea absolute left-4 right-[112px] top-[15px] sm:right-[128px] h-0.5 bg-primary/70" aria-hidden="true" />
           <ol className="jd-cascada relative flex gap-2">
             {hitos.map((h, i) => (
               <li key={`${h.tipo}-${h.fecha}-${i}`} className="flex w-32 shrink-0 flex-col items-start px-1 sm:w-36">

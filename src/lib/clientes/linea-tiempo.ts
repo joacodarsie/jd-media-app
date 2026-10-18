@@ -48,7 +48,10 @@ export function armarLineaDeTiempo(d: DatosLinea, hoy: string): Hito[] {
     });
   }
 
-  if (d.primerCobro) hitos.push({ fecha: dia(d.primerCobro), tipo: "cobro", titulo: "Primer pago" });
+  // Solo si cae cerca del alta: los cobros se registran desde jul-2026 y en una
+  // cuenta vieja «primer pago» meses después confunde.
+  if (d.primerCobro && diasEntre(inicio, d.primerCobro) <= 45)
+    hitos.push({ fecha: dia(d.primerCobro), tipo: "cobro", titulo: "Primer pago" });
 
   if (d.primeraPieza) {
     hitos.push({
@@ -59,8 +62,7 @@ export function armarLineaDeTiempo(d: DatosLinea, hoy: string): Hito[] {
     });
   }
 
-  d.reuniones
-    .map(dia)
+  [...new Set(d.reuniones.map(dia))]
     .filter((f) => f >= inicio && f <= hoy)
     .sort()
     .forEach((f, i) => hitos.push({ fecha: f, tipo: "reunion", titulo: i === 0 ? "Primera reunión mensual" : "Reunión mensual" }));

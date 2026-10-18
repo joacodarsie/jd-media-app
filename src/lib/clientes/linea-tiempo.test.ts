@@ -35,4 +35,10 @@ describe("armarLineaDeTiempo", () => {
     const h = armarLineaDeTiempo({ ...base, reuniones: ["2026-08-01", "2026-10-12", "2026-11-12"] }, "2026-10-18");
     expect(h.filter((x) => x.tipo === "reunion")).toHaveLength(1);
   });
+
+  it("no repite reuniones del mismo día ni muestra un primer pago lejano al alta", () => {
+    const h = armarLineaDeTiempo({ ...base, fechaInicio: "2026-03-16", reuniones: ["2026-10-01", "2026-10-01"], primerCobro: "2026-07-30" }, "2026-10-18");
+    expect(h.filter((x) => x.tipo === "reunion")).toHaveLength(1);
+    expect(h.some((x) => x.tipo === "cobro")).toBe(false);
+  });
 });

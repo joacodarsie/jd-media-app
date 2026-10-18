@@ -161,7 +161,7 @@ function Fila({ item: i, puedeDecidir }: { item: ItemAprobar; puedeDecidir: bool
             <ExternalLink className="h-3 w-3" /> Ver archivo
           </a>
         ) : i.pieza && !i.pieza.tieneArchivo ? (
-          <span className="text-xs text-amber-700">Sin archivo cargado: no se puede aprobar todavía</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-400">Falta el archivo: no se puede aprobar todavía</span>
         ) : null}
         {hecha ? (
           <span className="text-xs font-medium">
@@ -170,15 +170,18 @@ function Fila({ item: i, puedeDecidir }: { item: ItemAprobar; puedeDecidir: bool
         ) : (
           puedeDecidir && (
             <>
+              {/* Sin archivo, el botón no se muestra: se veía activo y no hacía nada (18/10/2026). */}
+              {!(i.pieza && !i.pieza.tieneArchivo) && (
               <Button
                 size="sm"
                 className="h-7 px-2.5 text-xs"
-                disabled={pending || (!!i.pieza && !i.pieza.tieneArchivo)}
+                disabled={pending}
                 onClick={() => correr(() => aprobarTarea(i.id), "aprobada")}
               >
                 {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                 Aprobar
               </Button>
+              )}
               <Button
                 size="sm"
                 variant="outline"

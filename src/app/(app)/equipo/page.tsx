@@ -177,7 +177,7 @@ function PositionCard({
   return (
     <Link
       href={`/equipo/${position.id}`}
-      className="group flex flex-col gap-2 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
+      className="group flex flex-col gap-2 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border/50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-primary/40"
     >
       <div className="flex items-start justify-between">
         <h3 className="font-semibold">{position.nombre}</h3>
@@ -193,15 +193,27 @@ function PositionCard({
           {integrantes.length === 0 ? (
             <span className="text-[10px] text-muted-foreground">Sin asignar</span>
           ) : (
-            integrantes.slice(0, 4).map((u) => (
-              <div
-                key={u.id}
-                title={u.nombre}
-                className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-card bg-muted text-[10px] font-semibold"
-              >
-                {u.nombre.charAt(0)}
-              </div>
-            ))
+            // Con foto cuando la tiene (18/10/2026); se abren un poco al pasar el mouse.
+            integrantes.slice(0, 4).map((u) =>
+              u.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={u.id}
+                  src={u.avatar_url}
+                  alt={u.nombre}
+                  title={u.nombre}
+                  className="h-7 w-7 rounded-full border-2 border-card object-cover transition-transform group-hover:translate-x-0.5"
+                />
+              ) : (
+                <div
+                  key={u.id}
+                  title={u.nombre}
+                  className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-card bg-primary/15 text-[11px] font-semibold text-foreground"
+                >
+                  {u.nombre.split(" ").map((x) => x.charAt(0)).slice(0, 2).join("")}
+                </div>
+              )
+            )
           )}
           {integrantes.length > 4 && (
             <div className="flex h-6 items-center px-1 text-[10px] text-muted-foreground">

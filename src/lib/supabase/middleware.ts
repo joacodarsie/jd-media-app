@@ -48,6 +48,11 @@ const PUBLIC_PATHS = [
   // Archivo de verificación de dominio de TikTok (signature file en /public).
   // Debe servirse sin redirigir a login para que TikTok lo lea.
   "/tiktok",
+  // Service worker y manifest de la PWA (estáticos de /public). Sin esto, en el
+  // portal y la propuesta (visitantes sin sesión) /sw.js redirigía a /login y
+  // el navegador tiraba «The script resource is behind a redirect».
+  "/sw.js",
+  "/manifest.json",
 ];
 
 export async function updateSession(request: NextRequest) {

@@ -156,7 +156,13 @@ export default async function PortalPage({ params }: { params: { token: string }
     .eq("cliente_id", cliente_id)
     .not("client_report", "is", null)
     .order("periodo", { ascending: false })
-    .limit(1);
+    .limit(12);
+  // Los períodos que tienen informe listo, para la lista de reportes.
+  const periodosConInforme = new Set(
+    ((informeRows ?? []) as { periodo: string; client_report: unknown }[])
+      .filter((x) => hasClientReport(x.client_report))
+      .map((x) => x.periodo)
+  );
   const informeRow = (informeRows ?? [])[0] as
     | { periodo: string; client_report: unknown }
     | undefined;
@@ -375,7 +381,51 @@ export default async function PortalPage({ params }: { params: { token: string }
           </div>
         )}
 
-        {/* Tus cuentas: el cliente carga sus accesos (pedido de Luz, 17/10/2026). */}
+        {/* Tus reportes: todo en este mismo link, mes por mes (17/10/2026). */}
+        {(() => {
+          const inicio = (ref?.fecha_inicio ?? mesActual).slice(0, 7);
+          const meses: string[] = [];
+          for (let i = 0; i < 6; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+            if (ym < inicio) break;
+            meses.push(ym);
+          }
+          if (!meses.length) return null;
+          return (
+            <div className="card" id="reportes">
+              <div className="card-label">Tus reportes</div>
+              <h2 className="card-title">Mes a mes</h2>
+              <div style={{ display: "grid", gap: 8 }}>
+                {meses.map((ym) => {
+                  const periodoInforme = [...periodosConInforme].find((p) => p.startsWith(ym));
+                  return (
+                    <div key={ym} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 12px", border: "1px solid #ececec", borderRadius: 12 }}>
+                      <span style={{ fontWeight: 700, fontSize: 14 }}>
+                        {periodLabel(ym)}
+                        {ym === mesActual && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: "#888" }}>en curso</span>}
+                      </span>
+                      <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {periodoInforme && (
+                          <a href={`/c/${params.token}/mes/${periodoInforme}`} style={{ fontSize: 12, fontWeight: 700, background: "#FFD400", color: "#000", borderRadius: 999, padding: "6px 12px", textDecoration: "none" }}>
+                            Informe del mes →
+                          </a>
+                        )}
+                        <a href={`/reporte/cliente/${cliente_id}?mes=${ym}&token=${params.token}`} style={{ fontSize: 12, fontWeight: 700, background: "#111", color: "#fff", borderRadius: 999, padding: "6px 12px", textDecoration: "none" }}>
+                          Números y publicaciones →
+                        </a>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Tus cuentas: el cliente carga sus accesos (pedido de Luz, 17/10/2026).
+            Solo aparece mientras falte alguna red: cuando está todo, no ocupa lugar. */}
+        {Object.values(estadoCuentas).some((e) => e === "falta") && (
         <div className="card">
           <div className="card-label">Tus cuentas</div>
           <h2 className="card-title">Tus redes y accesos</h2>
@@ -384,6 +434,7 @@ export default async function PortalPage({ params }: { params: { token: string }
           </p>
           <PortalAccesos token={params.token} estado={estadoCuentas} />
         </div>
+        )}
 
         {/* Resultados del mes — Instagram + pauta, en vivo */}
         {hayResultados && (

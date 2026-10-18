@@ -58,8 +58,11 @@ export function ReportWhatsappButton({
   }
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const url = `${origin}/reporte/cliente/${clienteId}?mes=${mes}&token=${token}`;
-  const mensaje = `Hola! 👋 Te dejamos el reporte de ${mesLabel} con los resultados del mes: ${url}\n\nCualquier consulta, quedamos a disposición. ¡Gracias por la confianza! — JD Media`;
+  // Un solo link (17/10/2026): su plataforma, donde está el reporte de cada mes
+  // junto con el calendario, el crecimiento y todo lo demás.
+  const url = `${origin}/c/${token}#reportes`;
+  void mes;
+  const mensaje = `Hola! 👋 Ya está el reporte de ${mesLabel} en tu plataforma de JD Media: ${url}\n\nAhí tenés los resultados de cada mes, tu calendario y cómo viene creciendo la cuenta. Cualquier consulta, quedamos a disposición. ¡Gracias por la confianza! — JD Media`;
 
   const waLink = telefono
     ? `https://wa.me/${telefono.replace(/[^\d]/g, "")}?text=${encodeURIComponent(mensaje)}`

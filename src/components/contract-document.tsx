@@ -207,7 +207,7 @@ export function ContractDocument({ model }: { model: ContractModel }) {
 
   return (
     <>
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @page { size: A4; margin: 18mm 16mm; }
         * { box-sizing: border-box; }
         body {
@@ -540,7 +540,7 @@ export function ContractDocument({ model }: { model: ContractModel }) {
           }
           .doc.editing { outline: none; }
         }
-      `}</style>
+      ` }} />
 
       <div className="print-bar">
         <div>

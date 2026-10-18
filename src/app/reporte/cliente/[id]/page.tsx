@@ -1111,12 +1111,12 @@ export default async function ReporteClientePage({
         </footer>
       </div>
 
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           body { background: white !important; }
           @page { margin: 1.5cm; }
         }
-      `}</style>
+      ` }} />
     </div>
   );
 }

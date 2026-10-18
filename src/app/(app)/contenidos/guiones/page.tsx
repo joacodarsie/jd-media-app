@@ -201,10 +201,10 @@ export default async function GuionesPage({
   return (
     <div className="space-y-5">
       {/* Al imprimir: solo el documento, sin shell ni controles. */}
-      <style>{`@media print {
+      <style dangerouslySetInnerHTML={{ __html: `@media print {
         aside, header, .no-print { display: none !important; }
         main { padding: 0 !important; }
-      }`}</style>
+      }` }} />
 
       <div className="no-print">
         <h1 className="text-2xl font-bold">Guiones del mes</h1>

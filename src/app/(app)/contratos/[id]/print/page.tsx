@@ -33,7 +33,7 @@ export default async function ContractPrintPage({
 
   return (
     <div className="min-h-screen bg-white p-6 text-zinc-900 print:p-0">
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           @page { size: A4; margin: 18mm 16mm; }
           body { background: white !important; }
@@ -44,7 +44,7 @@ export default async function ContractPrintPage({
         .prose-contract p { line-height: 1.55; margin: 0.6rem 0; text-align: justify; }
         .prose-contract ul, .prose-contract ol { margin: 0.4rem 0 0.4rem 1.2rem; }
         .prose-contract li { line-height: 1.5; }
-      `}</style>
+      ` }} />
       <div className="no-print mx-auto mb-4 flex max-w-3xl items-center justify-between">
         <span className="text-sm text-zinc-600">
           Contrato — {c.persona?.nombre ?? "—"}

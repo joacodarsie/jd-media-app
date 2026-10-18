@@ -60,7 +60,7 @@ export default async function PlanPrintPage({
 
   return (
     <>
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @page { size: A4; margin: 18mm 16mm; }
         * { box-sizing: border-box; }
         body { background: #ececec; margin: 0; font-family: 'Inter', system-ui, sans-serif; color: #1a1a1a; }
@@ -124,7 +124,7 @@ export default async function PlanPrintPage({
           body { background: white; }
           .doc { box-shadow: none; margin: 0; max-width: 100%; padding: 0; }
         }
-      `}</style>
+      ` }} />
 
       <div className="print-bar">
         <div>

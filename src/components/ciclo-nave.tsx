@@ -48,7 +48,7 @@ export function CicloNave({ inicio, hoy, portal = false }: { inicio: string; hoy
 
   return (
     <div className="ciclo-nave rounded-2xl border bg-card p-4 sm:p-5">
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes ciclo-flota { 0%,100% { transform: translate(-50%, -50%) rotate(-8deg); } 50% { transform: translate(-50%, -62%) rotate(-4deg); } }
         @keyframes ciclo-llama { 0%,100% { opacity: .9; transform: scaleX(1); } 50% { opacity: .55; transform: scaleX(.7); } }
         @keyframes ciclo-estela { from { background-position: 0 0; } to { background-position: 24px 0; } }
@@ -56,7 +56,7 @@ export function CicloNave({ inicio, hoy, portal = false }: { inicio: string; hoy
         .ciclo-nave .llama { animation: ciclo-llama .35s ease-in-out infinite; transform-origin: right center; }
         .ciclo-nave .estela { background-image: repeating-linear-gradient(90deg, #ffd400 0 10px, #ffe766 10px 14px); background-size: 24px 100%; animation: ciclo-estela .8s linear infinite; }
         @media (prefers-reduced-motion: reduce) { .ciclo-nave .nave, .ciclo-nave .llama, .ciclo-nave .estela { animation: none; } }
-      `}</style>
+      ` }} />
 
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>

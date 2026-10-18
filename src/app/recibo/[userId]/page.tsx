@@ -59,7 +59,7 @@ export default async function ReciboSueldoPage({
 
   return (
     <>
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @page { size: A4; margin: 16mm 16mm; }
         * { box-sizing: border-box; }
         body { background: #ececec; margin: 0;
@@ -77,7 +77,7 @@ export default async function ReciboSueldoPage({
         .toolbar { max-width: 760px; margin: 16px auto 0; display: flex; justify-content: flex-end; }
         @media print { .toolbar { display: none; } body { background: #fff; }
           .sheet { box-shadow: none; margin: 0; max-width: none; padding: 0; } }
-      `}</style>
+      ` }} />
 
       <div className="toolbar">
         <PrintButton />

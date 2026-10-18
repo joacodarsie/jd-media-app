@@ -61,7 +61,7 @@ export default async function DiagnosticoPrintPage({
 
   return (
     <>
-      <style>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @page { size: A4; margin: 18mm 16mm; }
         * { box-sizing: border-box; }
         body {
@@ -289,7 +289,7 @@ export default async function DiagnosticoPrintPage({
           body { background: white; }
           .doc { box-shadow: none; margin: 0; max-width: 100%; padding: 0; }
         }
-      `}</style>
+      ` }} />
 
       <div className="print-bar">
         <div>

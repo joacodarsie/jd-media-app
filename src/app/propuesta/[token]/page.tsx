@@ -234,7 +234,7 @@ export default async function PropuestaPage({
 
   return (
     <div className="min-h-screen bg-[#0A0A0B] [color-scheme:dark]">
-      <style>{CSS_PROPUESTA}</style>
+      <style dangerouslySetInnerHTML={{ __html: CSS_PROPUESTA }} />
 
       <div className="doc mx-auto max-w-3xl">
         {soyDelEquipo && (

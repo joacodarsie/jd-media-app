@@ -3,6 +3,14 @@
 // Coordinación, el Panorama y el resumen de Sueldos; ahora es una sola.
 
 import { cn } from "@/lib/utils";
+import { NumeroVivo } from "@/components/numero-vivo";
+
+/** "$6.495.000" o "44%" → cuenta hasta el número; lo demás ("10,4", textos) queda quieto. */
+function animable(v: string) {
+  const m = /^([^\d-]*)(-?\d{1,3}(?:\.\d{3})*|-?\d+)([^\d,]*)$/.exec(v);
+  if (!m) return null;
+  return { prefijo: m[1], valor: Number(m[2].replace(/\./g, "")), sufijo: m[3] };
+}
 
 export function StatCard({
   label,
@@ -38,7 +46,10 @@ export function StatCard({
           muted && "text-muted-foreground"
         )}
       >
-        {value}
+        {(() => {
+          const a = animable(value);
+          return a ? <NumeroVivo valor={a.valor} prefijo={a.prefijo} sufijo={a.sufijo} /> : value;
+        })()}
       </div>
       {sub && (
         <div className={cn("text-[10px] text-muted-foreground", subCapitalize && "capitalize")}>

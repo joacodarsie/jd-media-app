@@ -5,6 +5,7 @@ import { MonthPicker } from "@/components/month-picker";
 import { CobrosSimple } from "@/components/cobros-simple";
 import { FacturasColgadas } from "@/components/facturas-colgadas";
 import { FinanzasAlertas } from "@/components/finanzas-alertas";
+import { NumeroVivo } from "@/components/numero-vivo";
 import { fetchFacturadoUltimos12Meses } from "@/lib/finanzas/facturacion";
 import { createAdmin } from "@/lib/supabase/admin";
 import { hoyYmd } from "@/lib/dates";
@@ -85,12 +86,12 @@ export default async function CobrosSimplePage({
         <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-500/40 dark:bg-emerald-500/10">
           <p className="text-xs text-emerald-800 dark:text-emerald-300">Ya entró</p>
           <p className="text-2xl font-bold tabular-nums text-emerald-900 dark:text-emerald-200">
-            ${cobrado.toLocaleString("es-AR")}
+            <NumeroVivo valor={cobrado} prefijo="$" />
           </p>
         </div>
         <div className="rounded-xl border bg-card p-4">
           <p className="text-xs text-muted-foreground">Falta cobrar este mes</p>
-          <p className="text-2xl font-bold tabular-nums">${falta.toLocaleString("es-AR")}</p>
+          <p className="text-2xl font-bold tabular-nums"><NumeroVivo valor={falta} prefijo="$" /></p>
         </div>
         {/* Tercer número, del mismo tamaño que los otros dos: para ARCA lo que
             importa es cuánta plata se facturó, no qué proporción. Un porcentaje
@@ -98,7 +99,7 @@ export default async function CobrosSimplePage({
         {facturacionActiva && (
           <div className="rounded-xl border bg-card p-4">
             <p className="text-xs text-muted-foreground">Facturado este mes</p>
-            <p className="text-2xl font-bold tabular-nums">${facturado.toLocaleString("es-AR")}</p>
+            <p className="text-2xl font-bold tabular-nums"><NumeroVivo valor={facturado} prefijo="$" /></p>
             {sinFacturar.monto > 0 && (
               <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
                 en negro ${sinFacturar.monto.toLocaleString("es-AR")} · {sinFacturar.cuenta} cobro

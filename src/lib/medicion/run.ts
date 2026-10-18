@@ -13,6 +13,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { usuarioDe } from "@/lib/diagnostico/puntaje";
 import { cuentaConHistorial } from "@/lib/diagnostico/instagram-publico";
+import { fetchMediaInsights, metaConfigured } from "@/lib/meta/instagram";
 import { permalinkClave, tocaMedir, valorDelObjetivo, type MetricasPieza, type Objetivo } from "./objetivos";
 
 interface Pieza {
@@ -96,6 +97,11 @@ export async function medirPiezas(admin: SupabaseClient, opciones: { clienteId?:
         if (s) {
           m = { alcance: s.reach ?? null, likes: s.like_count ?? null, comentarios: s.comments_count ?? null, guardados: s.saved ?? null };
           fuente = "instagram";
+          // El registro diario a veces viene sin alcance ni guardados: se piden directo.
+          if ((m.alcance === null || m.guardados === null) && metaConfigured()) {
+            const ins = await fetchMediaInsights(s.id).catch(() => null);
+            if (ins) m = { ...m, alcance: m.alcance ?? ins.alcance ?? ins.vistas, guardados: m.guardados ?? ins.guardados };
+          }
         } else if (permalinkClave(p.link_instagram)) {
           const pub = (await buscarPublicos()).get(permalinkClave(p.link_instagram));
           if (pub) {

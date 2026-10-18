@@ -354,3 +354,22 @@ export function friendlyIgError(err: unknown): string {
   }
   return "No se pudieron traer los resultados de Instagram. Reintentá en un rato.";
 }
+
+/**
+ * Estadísticas de UNA publicación (17/10/2026), para la medición por pieza. El
+ * registro diario a veces trae el alcance vacío: acá se pide directo y se
+ * tolera que Instagram no tenga alguna métrica (prueba de a una).
+ */
+export async function fetchMediaInsights(
+  mediaId: string
+): Promise<{ alcance: number | null; guardados: number | null; vistas: number | null }> {
+  const pedir = async (metric: string) => {
+    const r = await graphGetSoft<{ data: RawInsightItem[] }>(`${mediaId}/insights`, { metric });
+    const it = r?.data?.find((i) => i.name === metric);
+    if (!it) return null;
+    const v = it.values?.[0]?.value ?? it.total_value?.value;
+    return typeof v === "number" ? v : null;
+  };
+  const [alcance, guardados, vistas] = await Promise.all([pedir("reach"), pedir("saved"), pedir("views")]);
+  return { alcance, guardados, vistas };
+}

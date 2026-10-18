@@ -161,3 +161,7 @@
   .jd-fila-hecha { animation-duration: 0.01s; }
   .jd-flota { animation: none; }
 }
+
+/* La línea de tiempo de la ficha se dibuja de izquierda a derecha (18/10/2026). */
+.jd-linea { transform-origin: left center; animation: jd-llena 1.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@media (prefers-reduced-motion: reduce) { .jd-linea { animation: none; } }

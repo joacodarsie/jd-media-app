@@ -61,7 +61,9 @@ import {
   type MovimientoRow,
 } from "@/components/movimientos-historial-card";
 import { ScrollTopOnMount } from "@/components/scroll-top-on-mount";
+import { Suspense } from "react";
 import { CicloNave } from "@/components/ciclo-nave";
+import { LineaTiempoCuenta } from "@/components/linea-tiempo-cuenta";
 import type { ClientService } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -536,6 +538,13 @@ export default async function ClientDetail({
       {/* Dónde estamos en el ciclo quincenal (17/10/2026). */}
       {c.estado === "activo" && c.fecha_inicio && svcList.some((s) => s.activo && s.tipo === "gestion_redes") && (
         <CicloNave inicio={c.fecha_inicio} hoy={hoyYmd()} />
+      )}
+
+      {/* La historia de la cuenta en una línea (18/10/2026). */}
+      {c.estado === "activo" && c.fecha_inicio && (
+        <Suspense fallback={null}>
+          <LineaTiempoCuenta clienteId={c.id} fechaInicio={c.fecha_inicio} />
+        </Suspense>
       )}
 
       {/* ── Contenido en pestañas ── */}

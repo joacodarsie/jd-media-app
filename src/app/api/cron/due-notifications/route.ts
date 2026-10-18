@@ -35,6 +35,7 @@ import { runRecordatorioReunionesHoy } from "@/lib/agenda/recordatorio-hoy-run";
 import {
   runAgendarReunionesCuentasNuevas,
   runAvisoCuentasEnRiesgo,
+  runRescateArranques,
 } from "@/lib/retencion/cuentas-nuevas-run";
 import { currentPeriod } from "@/lib/finanzas";
 import { hoyYmd } from "@/lib/dates";
@@ -213,6 +214,15 @@ export async function GET(req: NextRequest) {
     cuentasEnRiesgo = await runAvisoCuentasEnRiesgo(admin, hoyYmd());
   } catch (e) {
     cuentasEnRiesgo = { error: e instanceof Error ? e.message : "falló" };
+  }
+
+  // Rescate: la cuenta que pasa el día 16 sin nada publicado tiene tarea con
+  // dueño y plazo; el día 21, aviso al dueño (18/10/2026).
+  let rescates: unknown = null;
+  try {
+    rescates = await runRescateArranques(admin, hoyYmd());
+  } catch (e) {
+    rescates = { error: e instanceof Error ? e.message : "falló" };
   }
 
   // Las reuniones de hoy de la Agenda (con prospectos y las demás): un aviso
@@ -518,6 +528,7 @@ export async function GET(req: NextRequest) {
     reunionesHoy,
     reunionesNuevas,
     cuentasEnRiesgo,
+    rescates,
     rutinas,
     revision_creativa: revisionCreativa,
     aprobaciones,

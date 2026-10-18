@@ -23,8 +23,14 @@ import { DIA_LIMITE_REUNION } from "./reunion-mensual";
 /** Cuántos días se mira una cuenta como "nueva". */
 export const DIAS_CUENTA_NUEVA = 90;
 
-/** Desde qué día de la cuenta preocupa no tener ninguna pieza publicada. */
-export const DIA_PRIMERA_PIEZA = 21;
+/** Desde qué día de la cuenta preocupa no tener ninguna pieza publicada. El
+ *  arranque promete la entrega el día 15: el 16 sin nada ya es un problema
+ *  (antes era el 21 y las cuentas llegaban a la semana 3 sin que nadie se
+ *  moviera, 18/10/2026). */
+export const DIA_PRIMERA_PIEZA = 16;
+
+/** Desde qué día, sin nada publicado, se le avisa también al dueño. */
+export const DIA_RESCATE_DUENO = 21;
 
 /** Día de la cuenta en que se agenda sola la reunión del primer mes. */
 export const DIA_REUNION_PRIMER_MES = 28;
@@ -136,12 +142,12 @@ function chequeoPieza(c: CuentaNuevaCruda, dia: number): Chequeo {
       detalle: `El ${fechaCorta(c.primeraPublicada)}`,
     };
   const ideas = c.ideasSinAprobar ?? 0;
-  const base = dia >= 14 ? `Todavía nada, día ${dia}` : "Todavía no (es normal hasta la semana 3)";
+  const base = dia >= 12 ? `Todavía nada, día ${dia}` : "Todavía no (es normal hasta el día 15)";
   return {
     clave: "pieza",
     label,
-    estado: dia >= DIA_PRIMERA_PIEZA ? "mal" : dia >= 14 ? "atento" : "ok",
-    detalle: ideas > 0 && dia >= 14 ? `${base} · ${ideas} sin aprobar` : base,
+    estado: dia >= DIA_PRIMERA_PIEZA ? "mal" : dia >= 12 ? "atento" : "ok",
+    detalle: ideas > 0 && dia >= 12 ? `${base} · ${ideas} sin aprobar` : base,
   };
 }
 
@@ -342,4 +348,45 @@ export function avisoCuentasEnRiesgo(filas: CuentaNueva[]): string | null {
   });
   const resto = mal.length - MAX_EN_AVISO;
   return `${PREFIJO_AVISO} (${mal.length}): ${partes.join(" · ")}${resto > 0 ? ` · y ${resto} más` : ""}.`;
+}
+
+export interface Rescate {
+  id: string;
+  nombre: string;
+  dia: number;
+  /** Ya pasó el día del aviso al dueño. */
+  avisarDueno: boolean;
+}
+
+/**
+ * Las cuentas que hay que rescatar (18/10/2026): con gestión de redes, en su
+ * primer mes y medio y sin ninguna pieza publicada pasado el día de la entrega.
+ * El aviso diario las mezclaba con todo lo demás y nadie se movía; a cada una
+ * le toca una tarea con dueño y plazo.
+ */
+export function rescatesDeArranque(cuentas: CuentaNuevaCruda[], hoy: string): Rescate[] {
+  return cuentas
+    .filter((c) => c.conRedes !== false && !c.primeraPublicada)
+    .map((c) => ({ c, dia: diasEntre(c.fechaInicio.slice(0, 10), hoy) + 1 }))
+    .filter(({ dia }) => dia >= DIA_PRIMERA_PIEZA && dia <= 45)
+    .map(({ c, dia }) => ({ id: c.id, nombre: c.nombre, dia, avisarDueno: dia >= DIA_RESCATE_DUENO }))
+    .sort((a, b) => b.dia - a.dia);
+}
+
+/** El texto de la tarea de rescate: qué hacer en las próximas 48 horas. */
+export function tareaDeRescate(r: Rescate): { titulo: string; descripcion: string } {
+  return {
+    titulo: `Rescate: ${r.nombre} lleva ${r.dia} días sin nada publicado`,
+    descripcion: [
+      `${r.nombre} arrancó hace ${r.dia} días y todavía no vio ninguna pieza en su Instagram. Las bajas de la agencia fueron todas antes de los 3 meses: esta es la ventana.`,
+      "",
+      "En las próximas 48 horas:",
+      "1. Llamar al cliente hoy (no por mensaje): contarle qué sale y cuándo.",
+      "2. Publicar 2 piezas esta semana con lo que ya hay (material del cliente, una historia de presentación).",
+      "3. Si lo que frena es algo del cliente (material, accesos, aprobación), pedírselo en esa misma llamada, con fecha.",
+      "4. Anotar acá qué se acordó.",
+      "",
+      "Se da por hecha cuando la primera pieza esté publicada.",
+    ].join("\n"),
+  };
 }

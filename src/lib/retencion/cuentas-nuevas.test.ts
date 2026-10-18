@@ -4,6 +4,8 @@ import {
   avisoCuentasEnRiesgo,
   esCuentaNueva,
   reunionesAAgendar,
+  rescatesDeArranque,
+  tareaDeRescate,
   tableroCuentasNuevas,
   type CuentaNuevaCruda,
 } from "./cuentas-nuevas";
@@ -183,5 +185,38 @@ describe("avisoCuentasEnRiesgo", () => {
     const t = avisoCuentasEnRiesgo(tableroCuentasNuevas(muchas, "2026-10-06"))!;
     expect(t).toContain("(6)");
     expect(t.endsWith("· y 2 más.")).toBe(true);
+  });
+});
+
+describe("rescatesDeArranque", () => {
+  // Arrancó el 1/10: el 16/10 es su día 16.
+  const sinNada = (o: Partial<CuentaNuevaCruda> = {}) => base({ fechaInicio: "2026-10-01", primeraPublicada: null, ...o });
+
+  it("el día 15 todavía no, el 16 sí", () => {
+    expect(rescatesDeArranque([sinNada()], "2026-10-15")).toEqual([]);
+    expect(rescatesDeArranque([sinNada()], "2026-10-16")).toEqual([
+      { id: "c1", nombre: "Warrior", dia: 16, avisarDueno: false },
+    ]);
+  });
+
+  it("el día 21 también le avisa al dueño", () => {
+    expect(rescatesDeArranque([sinNada()], "2026-10-21")[0].avisarDueno).toBe(true);
+  });
+
+  it("no rescata a quien ya publicó, ni a una cuenta sin redes, ni a una vieja", () => {
+    expect(rescatesDeArranque([sinNada({ primeraPublicada: "2026-10-10" })], "2026-10-18")).toEqual([]);
+    expect(rescatesDeArranque([sinNada({ conRedes: false })], "2026-10-18")).toEqual([]);
+    expect(rescatesDeArranque([sinNada({ fechaInicio: "2026-08-01" })], "2026-10-18")).toEqual([]);
+  });
+
+  it("la más atrasada primero y la tarea dice qué hacer", () => {
+    const r = rescatesDeArranque(
+      [sinNada({ id: "a", nombre: "A" }), sinNada({ id: "b", nombre: "B", fechaInicio: "2026-09-25" })],
+      "2026-10-18"
+    );
+    expect(r.map((x) => x.id)).toEqual(["b", "a"]);
+    const t = tareaDeRescate(r[0]);
+    expect(t.titulo).toBe("Rescate: B lleva 24 días sin nada publicado");
+    expect(t.descripcion).toContain("Llamar al cliente hoy");
   });
 });

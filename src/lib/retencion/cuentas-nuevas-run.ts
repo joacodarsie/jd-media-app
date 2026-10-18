@@ -18,6 +18,7 @@ import {
 import { arranquesPorCuenta, cargarPanoramaArranques } from "./onboarding-panorama-run";
 import { computeAccountHealth } from "@/lib/director/health";
 import { sendPushToUsers } from "@/lib/push";
+import { rescatesDeArranque, tareaDeRescate } from "./cuentas-nuevas";
 
 type Admin = SupabaseClient;
 
@@ -320,4 +321,92 @@ export async function runAvisoCuentasEnRiesgo(
     tag: `cuentas-riesgo-${hoy}`,
   });
   return { enRiesgo: enRiesgo.length, avisados: nuevos.length };
+}
+
+/**
+ * Rescate de arranques (18/10/2026): cada cuenta que pasa el día 16 sin nada
+ * publicado recibe una tarea para su director creativo (o la PM) con plazo de
+ * 48 horas. Si llega al día 21 igual, le avisa al dueño una sola vez.
+ * Idempotente por rutina_key.
+ */
+export async function runRescateArranques(
+  admin: Admin,
+  hoy: string
+): Promise<{ tareas: string[]; avisosDueno: string[] }> {
+  const { cuentas, equipo } = await cargarCuentasNuevas(admin, hoy);
+
+  // Las que ya publicaron su primera pieza: el rescate se da por hecho solo.
+  const publicadas = cuentas.filter((c) => c.primeraPublicada).map((c) => `rescate:${c.id}`);
+  if (publicadas.length) {
+    await admin
+      .from("tasks")
+      .update({ estado: "completada" })
+      .in("rutina_key", publicadas)
+      .not("estado", "in", "(completada,archivada)");
+  }
+
+  const rescates = rescatesDeArranque(cuentas, hoy);
+  if (rescates.length === 0) return { tareas: [], avisosDueno: [] };
+
+  const { data: usersRaw } = await admin
+    .from("users")
+    .select("id, rol, area, area_secundaria")
+    .eq("activo", true);
+  const users = (usersRaw ?? []) as { id: string; rol: string; area: string | null; area_secundaria: string | null }[];
+  const activos = new Set(users.map((u) => u.id));
+  const pm = users.find((u) => u.area === AREA_PM || u.area_secundaria === AREA_PM)?.id;
+  const dueno = users.find((u) => u.rol === "admin")?.id;
+
+  const claves = rescates.map((x) => `rescate:${x.id}`);
+  const { data: yaRaw } = await admin.from("tasks").select("rutina_key").in("rutina_key", claves);
+  const ya = new Set(((yaRaw ?? []) as { rutina_key: string }[]).map((t) => t.rutina_key));
+
+  const tareas: string[] = [];
+  for (const x of rescates) {
+    if (ya.has(`rescate:${x.id}`)) continue;
+    const resp = equipo.get(x.id)?.responsable;
+    const asignado = (resp && activos.has(resp) ? resp : null) ?? pm ?? dueno;
+    if (!asignado) continue;
+    const { titulo, descripcion } = tareaDeRescate(x);
+    const { error } = await admin.from("tasks").insert({
+      titulo,
+      descripcion,
+      cliente_id: x.id,
+      asignado_a_id: asignado,
+      creado_por_id: dueno ?? asignado,
+      area: "Coordinación",
+      prioridad: "alta",
+      estado: "pendiente",
+      fecha_limite: sumarDias(hoy, 2),
+      rutina_key: `rescate:${x.id}`,
+    });
+    if (!error) tareas.push(x.nombre);
+  }
+
+  // Al dueño, una vez por cuenta: el día 21 sin nada ya no es un atraso.
+  const avisosDueno: string[] = [];
+  const paraDueno = rescates.filter((x) => x.avisarDueno);
+  if (dueno && paraDueno.length) {
+    const { data: avRaw } = await admin
+      .from("notifications")
+      .select("link")
+      .eq("user_id", dueno)
+      .like("mensaje", "🛟%")
+      .in("link", paraDueno.map((x) => `/clientes/${x.id}`));
+    const avisadas = new Set(((avRaw ?? []) as { link: string }[]).map((n) => n.link));
+    const nuevas = paraDueno.filter((x) => !avisadas.has(`/clientes/${x.id}`));
+    if (nuevas.length) {
+      await admin.from("notifications").insert(
+        nuevas.map((x) => ({
+          user_id: dueno,
+          task_id: null,
+          tipo: "recordatorio",
+          mensaje: `🛟 ${x.nombre} lleva ${x.dia} días sin nada publicado. Ya tiene tarea de rescate; conviene que la mires vos.`,
+          link: `/clientes/${x.id}`,
+        }))
+      );
+      avisosDueno.push(...nuevas.map((x) => x.nombre));
+    }
+  }
+  return { tareas, avisosDueno };
 }

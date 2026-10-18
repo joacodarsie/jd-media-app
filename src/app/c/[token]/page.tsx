@@ -44,6 +44,7 @@ import { cargarCrecimiento } from "@/lib/crecimiento/cargar";
 import { CrecimientoVista } from "@/components/crecimiento-vista";
 import { CicloNave } from "@/components/ciclo-nave";
 import { PortalAccesos } from "@/components/portal-accesos";
+import { PortalMaterial } from "@/components/portal-material";
 import { estadoDeRedes, type Credencial } from "@/lib/accesos/portal";
 // Programa de referidos (13/10/2026).
 import { PortalRecomendar } from "@/components/portal-recomendar";
@@ -215,6 +216,41 @@ export default async function PortalPage({ params }: { params: { token: string }
     .eq("cliente_id", cliente_id)
     .eq("activo", true)
     .eq("tipo", "gestion_redes");
+  // «Tu material» (18/10/2026): mientras el arranque espera sus fotos y videos
+  // (el paso del contenido crudo sigue abierto), se le piden acá.
+  let material: { driveUrl: string | null; avisado: boolean } | null = null;
+  const enArranque =
+    !!ref?.fecha_inicio && (conRedes ?? 0) > 0 &&
+    Date.now() - new Date(ref.fecha_inicio + "T12:00:00-03:00").getTime() < 30 * 86_400_000;
+  if (enArranque) {
+    const { data: madre } = await admin
+      .from("tasks")
+      .select("id")
+      .eq("cliente_id", cliente_id)
+      .is("parent_id", null)
+      .like("titulo", "Onboarding 15 días — %")
+      .neq("estado", "archivada")
+      .limit(1)
+      .maybeSingle();
+    if (madre) {
+      const { data: paso } = await admin
+        .from("tasks")
+        .select("estado")
+        .eq("parent_id", (madre as { id: string }).id)
+        .eq("titulo", "Contenido crudo ordenado en carpetas")
+        .limit(1)
+        .maybeSingle();
+      const abierto = paso && !["completada", "archivada"].includes((paso as { estado: string }).estado);
+      if (abierto) {
+        const hace3 = new Date(Date.now() - 3 * 86_400_000).toISOString();
+        const [{ data: drv }, { data: av }] = await Promise.all([
+          admin.from("clients").select("drive_url").eq("id", cliente_id).maybeSingle(),
+          admin.from("tasks").select("id").eq("cliente_id", cliente_id).like("rutina_key", "material:%").gte("created_at", hace3).limit(1),
+        ]);
+        material = { driveUrl: (drv as { drive_url: string | null } | null)?.drive_url ?? null, avisado: !!av?.length };
+      }
+    }
+  }
   // Sus plantillas de Canva, para sumar contenido por su cuenta (0200).
   const plantillasCanva = ref?.canva_plantillas_url ?? null;
   const mostrarRecomendar = !!ref?.ref_code && puedeRecomendar(ref.fecha_inicio, hoyYmd());
@@ -422,6 +458,18 @@ export default async function PortalPage({ params }: { params: { token: string }
             </div>
           );
         })()}
+
+        {/* Tu material: lo que el arranque necesita de su lado (18/10/2026). */}
+        {material && (
+          <div className="card">
+            <div className="card-label">Para arrancar</div>
+            <h2 className="card-title">Necesitamos tus fotos y videos</h2>
+            <p style={{ fontSize: 13, color: "#666", margin: "0 0 12px", lineHeight: 1.5 }}>
+              Con tu material salen tus primeras publicaciones: productos, el local, tu equipo, lo que tengas. Subilo a tu carpeta y avisanos acá; tu equipo lo revisa ese mismo día.
+            </p>
+            <PortalMaterial token={params.token} driveUrl={material.driveUrl} avisado={material.avisado} />
+          </div>
+        )}
 
         {/* Tus cuentas: el cliente carga sus accesos (pedido de Luz, 17/10/2026).
             Solo aparece mientras falte alguna red: cuando está todo, no ocupa lugar. */}

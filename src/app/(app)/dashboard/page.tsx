@@ -31,6 +31,7 @@ import { SALUDO, fraseDelDia, momentoDelDia } from "@/lib/saludo-del-dia";
 import { logrosDelDia } from "@/lib/logros";
 import { rachaDias } from "@/lib/racha";
 import { RachaChip } from "@/components/racha-chip";
+import { PrimeraSemanaMiDia } from "@/components/primera-semana";
 import { HelpTrigger } from "@/components/help-trigger";
 import { DashboardAvisos } from "@/components/dashboard-avisos";
 import { MiPuesto } from "@/components/mi-puesto";
@@ -77,7 +78,7 @@ function relativeWhen(start: string): string {
   return `${formatTime(new Date(start))}`;
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams?: { "primera-semana"?: string } }) {
   const user = await requireUser();
   const supabase = createClient();
 
@@ -550,6 +551,11 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Tu primera semana: el checklist de quien recién entra (19/10/2026). */}
+      <Suspense fallback={null}>
+        <PrimeraSemanaMiDia userId={user.id} nombre={user.nombre} rol={user.rol} forzar={searchParams?.["primera-semana"] === "1"} />
+      </Suspense>
 
       {/* Sin foto de perfil: una línea para subirla (18/10/2026). */}
       {!user.avatar_url && (

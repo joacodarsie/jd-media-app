@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { avisoSinMedir, cuentasSinMedir, tareaVincular } from "./vinculacion-ig";
+import { avisoSinMedir, cuentasSinMedir, tareaVincular, tareaVincularPagina } from "./vinculacion-ig";
 
 const c = (id: string, o: Partial<{ fechaInicio: string | null; necesitaInstagram: boolean }> = {}) => ({
   id,
@@ -21,5 +21,7 @@ describe("cuentas sin medir", () => {
     expect(avisoSinMedir(lista)).toMatch(/^🔗 6 cuentas sin medir Instagram: .* y 1 más\./);
     expect(avisoSinMedir([])).toBeNull();
     expect(tareaVincular(lista[0]).descripcion).toContain("Asignar activos");
+    expect(tareaVincular(lista[0]).descripcion).toContain("570336019465694");
+    expect(tareaVincularPagina(lista[0]).descripcion).toContain("Cuentas vinculadas");
   });
 });

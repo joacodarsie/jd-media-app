@@ -42,20 +42,44 @@ export function avisoSinMedir(lista: SinMedir[]): string | null {
   return `${PREFIJO_AVISO_IG} ${lista.length} cuenta${lista.length === 1 ? "" : "s"} sin medir Instagram: ${nombres}${resto}. Sin esto no hay datos reales para el cliente ni para el reporte.`;
 }
 
-/** La tarea de vincular, con los pasos completos. */
+/** El ID del Business de JD Media, para que el cliente lo agregue como socio. */
+export const BUSINESS_JD = "570336019465694";
+
+/**
+ * Parte 1 — la página de Facebook vinculada al Instagram. A cargo de la PM
+ * (Luz): la hace la CM, que tiene el Instagram, y si la marca no tiene página
+ * la crea paid media. La PM se asegura de que se termine y apura a todos.
+ */
+export function tareaVincularPagina(c: SinMedir): { titulo: string; descripcion: string } {
+  return {
+    titulo: `🔗 Página de Facebook vinculada al Instagram · ${c.nombre}`,
+    descripcion: [
+      `**A cargo de la project manager.** Sin la página vinculada, el Instagram de ${c.nombre}${c.igUsername ? ` (@${c.igUsername})` : ""} no se puede compartir con JD Media y la plataforma no mide nada.`,
+      "",
+      "**Paso a paso:**",
+      "1. **¿Tiene página de Facebook?** Si no tiene, la crea paid media (Guille) con el nombre y el logo de la marca, y avisa acá.",
+      "2. **La CM la vincula** (es quien tiene el Instagram): en la app de Instagram de la marca → **Editar perfil** → **Página** → **Conectar** → elegir la página.",
+      "3. **La PM lo verifica:** en la página de Facebook → **Configuración** → **Cuentas vinculadas** tiene que figurar el Instagram. Ahí se avisa a paid media para que siga con su parte.",
+      "",
+      "La PM apura a quien corresponda hasta que esté. La tarea se cierra sola cuando la plataforma trae los datos del Instagram.",
+    ].join("\n"),
+  };
+}
+
+/** Parte 2 — compartir con JD Media y conectar a la plataforma. A paid media. */
 export function tareaVincular(c: SinMedir): { titulo: string; descripcion: string } {
   return {
-    titulo: `🔗 Vincular Instagram y Facebook de ${c.nombre} a la plataforma`,
+    titulo: `🔗 Compartir y conectar el Instagram de ${c.nombre} con JD Media`,
     descripcion: [
-      `La plataforma todavía no puede leer el Instagram de ${c.nombre}${c.igUsername ? ` (@${c.igUsername})` : ""}. Sin esto no hay seguidores, alcance ni crecimiento para el cliente, el reporte ni la reunión mensual.`,
+      `**A cargo de paid media.** Con la página ya vinculada al Instagram (lo verifica la PM), falta que la plataforma pueda leer a ${c.nombre}${c.igUsername ? ` (@${c.igUsername})` : ""}.`,
       "",
-      "Pasos, en orden:",
-      "1. Que la marca tenga página de Facebook y su Instagram esté VINCULADO a esa página (app de Instagram → Editar perfil → Página → Conectar). Se chequea en la página → Configuración → Cuentas vinculadas.",
-      "2. Que el cliente comparta la página y el Instagram con el Business de JD Media (como socio, acceso total).",
-      "3. En el Business de JD Media → Configuración → Usuarios del sistema → «jdmedia» → ··· → Asignar activos: tildar su Página de Facebook y su Cuenta de Instagram, con todos los permisos.",
-      "4. En la plataforma: Clientes → Conectar Instagram → elegir la cuenta de la lista → Conectar.",
+      "**Paso a paso:**",
+      `1. **El cliente comparte con JD Media:** desde su Business → Configuración → **Socios** → Agregar socio → ID de JD Media **${BUSINESS_JD}** → acceso total a la **página** y a la **cuenta de Instagram**. Si no sabe, se hace con él en una llamada de 10 minutos.`,
+      "2. **Asignar al usuario del sistema:** en el Business de JD Media → Configuración → **Usuarios del sistema** → «jdmedia» → **···** → **Asignar activos** → **Páginas de Facebook**: tildar la del cliente con todos los permisos. Repetir en **Cuentas de Instagram**.",
+      "3. **Conectar en la plataforma:** Clientes → **Conectar Instagram** → elegir la cuenta de la lista → Conectar (no se carga ningún número a mano).",
+      "4. **Verificar:** en Resultados del cliente → «Actualizar ahora» tienen que aparecer los seguidores.",
       "",
-      "Esta tarea se cierra sola cuando la plataforma trae los datos. Mientras tanto, avisa todos los días.",
+      "Se cierra sola cuando llegan los datos. Mientras tanto, la plataforma avisa todos los días.",
     ].join("\n"),
   };
 }

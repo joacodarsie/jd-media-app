@@ -146,17 +146,31 @@ export function planOnboarding(input: {
   // paid media, para toda cuenta con redes o pauta. Se cierra sola cuando la
   // plataforma trae los datos; mientras tanto avisa todos los días.
   if (svc.has("gestion_redes") || svc.has("paid_media")) {
+    // Parte 1, a cargo de la PM: la página vinculada al Instagram (la hace la
+    // CM; si no hay página, la crea paid media). Pedido del dueño, 19/10/2026.
     add(
       2,
-      "Vincular Instagram y Facebook a la plataforma",
-      `Que la plataforma lea el Instagram de ${nombreCliente} desde el primer día. En orden:
+      "Página de Facebook vinculada al Instagram",
+      `**A cargo de la project manager**, que se asegura de que se termine y apura a quien haga falta. Paso a paso:
 
-1. **Página de Facebook vinculada al Instagram.** Si la marca no tiene página, se la creamos. En la app de Instagram de la marca → Editar perfil → Página → Conectar. Se chequea en la página → Configuración → Cuentas vinculadas.
-2. **El cliente comparte la página y el Instagram con el Business de JD Media** como socio, con acceso total (si no sabe, se hace con él en una llamada de 10 minutos).
-3. **En el Business de JD Media** → Configuración → Usuarios del sistema → «jdmedia» → ··· → Asignar activos: tildar su **Página de Facebook** y su **Cuenta de Instagram**, con todos los permisos.
-4. **En la plataforma:** Clientes → Conectar Instagram → elegir la cuenta de la lista → Conectar.
+1. **¿Tiene página de Facebook?** Si no tiene, la crea paid media con el nombre y el logo de ${nombreCliente}.
+2. **La CM la vincula** (tiene el Instagram): app de Instagram → **Editar perfil** → **Página** → **Conectar** → elegir la página.
+3. **La PM lo verifica:** en la página → **Configuración** → **Cuentas vinculadas** tiene que figurar el Instagram. Ahí le avisa a paid media para que comparta y conecte.
 
-**Cómo saber que está hecho:** en Resultados del cliente aparecen los seguidores. Este paso se controla con datos reales: hasta que lleguen, la plataforma te lo recuerda todos los días a vos y a dirección.`,
+Sin esto no se puede seguir con el paso de paid media y la plataforma no mide nada.`,
+      "Coordinación",
+      equipo.fallback
+    );
+    add(
+      3,
+      "Compartir con JD Media y conectar el Instagram a la plataforma",
+      `**A cargo de paid media**, apenas la PM confirma que la página está vinculada. Que la plataforma lea el Instagram de ${nombreCliente} desde el primer día:
+
+1. **El cliente comparte con JD Media:** desde su Business → Configuración → **Socios** → Agregar socio → ID de JD Media **570336019465694** → acceso total a la página y al Instagram (si no sabe, se hace con él en una llamada de 10 minutos).
+2. **Asignar al usuario del sistema:** en el Business de JD Media → Configuración → **Usuarios del sistema** → «jdmedia» → **···** → **Asignar activos**: su **Página de Facebook** y su **Cuenta de Instagram**, con todos los permisos.
+3. **En la plataforma:** Clientes → **Conectar Instagram** → elegir la cuenta de la lista → Conectar (nunca un número a mano).
+
+**Cómo saber que está hecho:** en Resultados del cliente aparecen los seguidores. Este paso se controla con datos reales: hasta que lleguen, la plataforma se lo recuerda todos los días a paid media, a la PM y a dirección.`,
       "Paid Media",
       mb
     );

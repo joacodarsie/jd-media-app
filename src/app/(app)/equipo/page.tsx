@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, Plus, Users as UsersIcon } from "lucide-react";
 import { requireUser } from "@/lib/auth";
+import { Suspense } from "react";
+import { CargaEquipo } from "@/components/carga-equipo";
 import { createClient } from "@/lib/supabase/server";
 import type { AppUser, Position } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -120,6 +122,12 @@ export default async function EquipoPage() {
           )}
         </div>
       </div>
+
+      {(isAdmin || me.rol === "coordinador") && (
+        <Suspense fallback={null}>
+          <CargaEquipo />
+        </Suspense>
+      )}
 
       {SERVICE_GROUPS.map((group) => {
         const positionsInGroup = group.areas.flatMap(

@@ -58,9 +58,11 @@ export async function DireccionWeb() {
         </p>
       ) : (
         <div className="space-y-4 p-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Dato label="Visitas" valor={esta.visitas} ant={antes.visitas} ayuda="Gente que entró a jdmedia.com.ar (una por visita)." />
             <Dato label="Escribieron por WhatsApp" valor={esta.whatsapp} ant={antes.whatsapp} ayuda="Tocaron un botón de WhatsApp: son las consultas que trae la web." />
+            <Dato label="Pidieron el diagnóstico de Instagram" valor={esta.diagnosticos} ant={antes.diagnosticos} ayuda="Pusieron su usuario en el diagnóstico gratis de la home." />
+            <Dato label="Mandaron el formulario" valor={esta.formularios} ant={antes.formularios} ayuda="Completaron el formulario de contacto (después sigue por WhatsApp)." />
             <Dato label="Descargaron un recurso" valor={esta.recursos} ant={antes.recursos} ayuda="Dejaron su mail para bajarse algo: entran solos a Comercial." />
             <Dato label="Fueron a dejar reseña" valor={esta.resenas} ant={antes.resenas} ayuda="Tocaron «Dejanos tu reseña» (lo de Google se ve en el perfil)." />
           </div>

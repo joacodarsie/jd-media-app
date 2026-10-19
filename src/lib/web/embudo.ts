@@ -6,8 +6,9 @@
  * Puro: entra lo que mandó la web, sale lo que ve el dueño en Dirección.
  */
 
-export type TipoEvento = "visita" | "whatsapp" | "resena" | "recurso" | "referido";
-export const TIPOS_EVENTO: TipoEvento[] = ["visita", "whatsapp", "resena", "recurso", "referido"];
+// formulario y diagnostico: 19/10/2026 (0205).
+export type TipoEvento = "visita" | "whatsapp" | "resena" | "recurso" | "referido" | "formulario" | "diagnostico";
+export const TIPOS_EVENTO: TipoEvento[] = ["visita", "whatsapp", "resena", "recurso", "referido", "formulario", "diagnostico"];
 
 /**
  * De dónde vino la visita, en palabras: primero el utm_source (los links de la
@@ -54,6 +55,10 @@ export interface ResumenWeb {
   whatsapp: number;
   recursos: number;
   resenas: number;
+  /** Mandaron el formulario de contacto. */
+  formularios: number;
+  /** Usaron el diagnóstico gratis de Instagram. */
+  diagnosticos: number;
   /** De cada 100 visitas, cuántas escribieron por WhatsApp. null sin visitas. */
   tasa: number | null;
   /** Visitas por fuente, de la que más trae a la que menos. */
@@ -72,6 +77,8 @@ export function resumirWeb(eventos: EventoWeb[]): ResumenWeb {
     whatsapp,
     recursos: cuenta("recurso"),
     resenas: cuenta("resena"),
+    formularios: cuenta("formulario"),
+    diagnosticos: cuenta("diagnostico"),
     tasa: visitas ? Math.round((whatsapp / visitas) * 1000) / 10 : null,
     fuentes: [...porFuente].map(([fuente, v]) => ({ fuente, visitas: v })).sort((a, b) => b.visitas - a.visitas),
   };

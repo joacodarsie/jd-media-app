@@ -48,6 +48,8 @@ import { PortalMaterial } from "@/components/portal-material";
 import { PortalMovimiento } from "@/components/portal-movimiento";
 import { PortalDeslizar } from "@/components/portal-deslizar";
 import { pedirEncuestaEnPortal } from "@/lib/retencion/encuesta-portal";
+import { cargarReunionPortal } from "@/lib/retencion/reunion-autoagenda-run";
+import { PortalReunion } from "@/components/portal-reunion";
 import { SALUDO, momentoDelDia } from "@/lib/saludo-del-dia";
 import { estadoDeRedes, type Credencial } from "@/lib/accesos/portal";
 // Programa de referidos (13/10/2026).
@@ -264,6 +266,8 @@ export default async function PortalPage({ params }: { params: { token: string }
     .eq("periodo", hoyYmd().slice(0, 7))
     .maybeSingle();
   const pedirEncuesta = !encErr && pedirEncuestaEnPortal({ fechaInicio: ref?.fecha_inicio ?? null, hoy: hoyYmd(), yaRespondio: !!encRow });
+  // Su reunión mensual: la elige él (19/10/2026).
+  const reunion = await cargarReunionPortal(admin, cliente_id, hoyYmd()).catch(() => null);
   // Sus plantillas de Canva, para sumar contenido por su cuenta (0200).
   const plantillasCanva = ref?.canva_plantillas_url ?? null;
   const mostrarRecomendar = !!ref?.ref_code && puedeRecomendar(ref.fecha_inicio, hoyYmd());
@@ -389,6 +393,26 @@ export default async function PortalPage({ params }: { params: { token: string }
         @keyframes pm-hero { from { opacity: 0; transform: translateY(10px) scale(.99); } to { opacity: 1; transform: none; } }
         @keyframes pm-brillo { from { transform: translate(0,0); } to { transform: translate(-12%, 8%); } }
         @media (prefers-reduced-motion: reduce) { .hero, .hero:before { animation: none; } }
+        .pr-card { border-color: #e9e3c6; background: linear-gradient(180deg, #fffdf3 0%, #fff 70%); }
+        .pr-dias { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; }
+        .pr-dia { flex: 0 0 auto; width: 58px; padding: 8px 0; border-radius: 14px; border: 1px solid #eee; background: #fff; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; font-family: inherit; transition: transform .15s ease, background .2s ease, border-color .2s ease; }
+        .pr-dia span { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: .06em; }
+        .pr-dia b { font-size: 20px; font-weight: 800; color: #111; }
+        .pr-dia:hover { transform: translateY(-2px); }
+        .pr-activo { background: #111; border-color: #111; }
+        .pr-activo span { color: #FFD400; }
+        .pr-activo b { color: #fff; }
+        .pr-horas { display: flex; flex-wrap: wrap; gap: 8px; }
+        .pr-hora { min-width: 72px; padding: 10px 14px; border-radius: 12px; border: 1px solid #f1e3a0; background: #fffbe6; font: 700 14px Inter, system-ui, sans-serif; color: #111; cursor: pointer; display: inline-flex; justify-content: center; animation: pr-entra .35s cubic-bezier(.2,.8,.2,1) both; transition: transform .15s ease, background .15s ease; }
+        .pr-hora:hover { background: #FFD400; transform: translateY(-2px); }
+        .pr-hora:disabled { opacity: .6; cursor: default; }
+        @keyframes pr-entra { from { opacity: 0; transform: translateY(6px) scale(.96); } }
+        .pr-gira { animation: pr-gira 1s linear infinite; }
+        @keyframes pr-gira { to { transform: rotate(360deg); } }
+        .pr-listo { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: #e9f9ef; color: #0f5132; animation: pr-entra .4s ease both; }
+        .pr-check { width: 34px; height: 34px; border-radius: 50%; background: #16a34a; color: #fff; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; animation: pr-pop .5s cubic-bezier(.34,1.56,.64,1) both; }
+        @keyframes pr-pop { from { transform: scale(.2); } }
+        @media (prefers-reduced-motion: reduce) { .pr-hora, .pr-listo, .pr-check { animation: none; } }
         .enc-cara { transition: transform .15s ease, background .15s ease; }
         .enc-cara:hover { transform: scale(1.12); background: #fffbe6 !important; }
         .card-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; color: #888; margin-bottom: 6px; }
@@ -461,6 +485,25 @@ export default async function PortalPage({ params }: { params: { token: string }
             </div>
           );
         })()}
+
+        {/* Tu reunión del mes: el cliente elige el día y la hora. */}
+        {reunion && (
+          <div className="card pr-card">
+            <div className="card-label">Tu reunión del mes</div>
+            <h2 className="card-title" style={{ marginBottom: 4 }}>
+              {reunion.estado === "agendada" ? "Nos vemos pronto" : "Elegí cuándo nos juntamos"}
+            </h2>
+            <p style={{ fontSize: 13, color: "#666", margin: "0 0 14px", lineHeight: 1.5 }}>
+              30 minutos por videollamada para ver los resultados del mes y planear el que viene
+              {reunion.estado === "elegir" && reunion.conQuien ? `, con ${reunion.conQuien}` : ""}.
+            </p>
+            <PortalReunion
+              token={params.token}
+              turnos={reunion.estado === "elegir" ? reunion.turnos : []}
+              agendada={reunion.estado === "agendada" ? reunion.etiqueta : null}
+            />
+          </div>
+        )}
 
         {/* La encuesta del mes: un toque en la carita y abre la encuesta con esa nota. */}
         {pedirEncuesta && (

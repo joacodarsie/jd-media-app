@@ -6,18 +6,27 @@
  */
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, RefreshCw, X } from "lucide-react";
+import { Loader2, RefreshCw, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { agregarFuente, actualizarInspo, quitarFuente } from "@/app/(app)/contenidos/inspo/actions";
+import { agregarFuente, actualizarInspo, buscarReferenciasIA, quitarFuente } from "@/app/(app)/contenidos/inspo/actions";
 
 export function InspoFuentes({
   clienteId,
   fuentes,
 }: {
   clienteId: string;
-  fuentes: { id: string; tipo: "cuenta" | "hashtag"; valor: string; error: string | null }[];
+  fuentes: { id: string; tipo: "cuenta" | "hashtag"; valor: string; error: string | null; origen?: string | null }[];
 }) {
+  const [buscando, setBuscando] = useState(false);
+  async function buscarIA() {
+    setBuscando(true);
+    const r = await buscarReferenciasIA(clienteId);
+    setBuscando(false);
+    if (r.agregadas.length) toast.success(`Sumamos ${r.agregadas.length}: ${r.agregadas.join(", ")}`);
+    else toast.message(r.motivo ?? "No encontramos cuentas nuevas.");
+    startTransition(() => router.refresh());
+  }
   const router = useRouter();
   const [valor, setValor] = useState("");
   const [cargando, setCargando] = useState(false);
@@ -63,6 +72,10 @@ export function InspoFuentes({
         <Button type="submit" disabled={cargando || !valor.trim()}>
           {cargando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Sumar
         </Button>
+        <Button type="button" variant="outline" onClick={buscarIA} disabled={buscando} title="La IA propone cuentas del rubro y las verificamos en Instagram">
+          {buscando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4 text-primary" />}
+          {buscando ? "Buscando…" : "Buscar con IA"}
+        </Button>
         {fuentes.length > 0 && (
           <Button type="button" variant="outline" onClick={actualizar} disabled={actualizando} title="Volver a traer todo">
             <RefreshCw className={`h-4 w-4 ${actualizando ? "animate-spin" : ""}`} />
@@ -77,6 +90,8 @@ export function InspoFuentes({
               title={f.error ?? undefined}
               className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${f.error ? "border-red-300 bg-red-50 text-red-800 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300" : "bg-muted/50"}`}
             >
+              {f.origen === "ia" && <span title="Sugerida por la IA, verificada en Instagram">✨</span>}
+              {f.origen === "cliente" && <span title="La nombró el cliente">🗣️</span>}
               {f.tipo === "cuenta" ? "@" : "#"}
               {f.valor}
               {f.error && " ⚠️"}

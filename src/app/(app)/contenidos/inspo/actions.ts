@@ -45,3 +45,12 @@ export async function actualizarInspo(clienteId: string) {
   revalidatePath("/contenidos/inspo");
   return r;
 }
+
+/** «Buscar referencias con IA»: propone cuentas del rubro, verificadas contra Instagram. */
+export async function buscarReferenciasIA(clienteId: string) {
+  await acceso(clienteId);
+  const { autoInspo } = await import("@/lib/inspo/auto-run");
+  const r = await autoInspo(createAdmin(), clienteId, { forzar: true });
+  revalidatePath("/contenidos/inspo");
+  return r;
+}

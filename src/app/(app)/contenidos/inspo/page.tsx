@@ -82,7 +82,7 @@ export default async function InspoPage({ searchParams }: { searchParams?: { cli
 
   const [{ data: fRaw, error: fErr }, { data: pRaw }] = actual
     ? await Promise.all([
-        admin.from("inspo_fuentes").select("id, tipo, valor, error").eq("cliente_id", actual.id).order("created_at"),
+        admin.from("inspo_fuentes").select("id, tipo, valor, error, origen").eq("cliente_id", actual.id).order("created_at"),
         admin
           .from("inspo_piezas")
           .select("media_id, cuenta, permalink, caption, producto, publicado_at, likes, comentarios, imagen, rendimiento")
@@ -92,7 +92,7 @@ export default async function InspoPage({ searchParams }: { searchParams?: { cli
           .limit(600),
       ])
     : [{ data: [], error: null }, { data: [] }];
-  const fuentes = (fRaw ?? []) as { id: string; tipo: "cuenta" | "hashtag"; valor: string; error: string | null }[];
+  const fuentes = (fRaw ?? []) as { id: string; tipo: "cuenta" | "hashtag"; valor: string; error: string | null; origen?: string | null }[];
   const piezas: PiezaInspo[] = ((pRaw ?? []) as {
     media_id: string;
     cuenta: string | null;
@@ -170,7 +170,8 @@ export default async function InspoPage({ searchParams }: { searchParams?: { cli
             <p className="mb-3 text-xs text-muted-foreground">
               Sumá cuentas que comuniquen como queremos que comunique {actual.nombre}
               {actual.rubro ? ` (${actual.rubro.toLowerCase()})` : ""}: competencia que lo hace bien, marcas de otro país del mismo rubro, o
-              referentes de estilo (tienen que ser públicas y de empresa o creador). Traemos sus últimas 50 publicaciones y se actualizan solas cada semana.
+              referentes de estilo (tienen que ser públicas y de empresa o creador). Si nadie cargó nada, la IA propone cuentas del rubro (✨) y
+              sumamos las que nombró el cliente en su reunión (🗣️); todas se verifican en Instagram. Se actualizan solas cada semana.
             </p>
             {fErr ? (
               <p className="text-sm text-red-600">Falta aplicar la migración 0207.</p>

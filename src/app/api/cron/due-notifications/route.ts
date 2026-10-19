@@ -23,6 +23,7 @@ import { runTuLunes } from "@/lib/direccion/tu-lunes-run";
 import { runAlarma48h } from "@/lib/contenidos/alarma-48h-run";
 import { runAprobacionTacita } from "@/lib/contenidos/aprobacion-tacita-run";
 import { runInspoSemanal } from "@/lib/inspo/run";
+import { runInspoAuto } from "@/lib/inspo/auto-run";
 import { runPerfilesIncompletos } from "@/lib/equipo/perfil-completo-run";
 import { runConciliacionDiaria } from "@/lib/social/conciliar-run";
 import { runAccountAlerts } from "@/lib/social/alerts";
@@ -485,7 +486,9 @@ export async function GET(req: NextRequest) {
   // Inspo: las referencias de cada cuenta se actualizan una vez por semana (19/10/2026).
   let inspo: unknown = null;
   try {
-    inspo = await runInspoSemanal(admin);
+    // Primero, referencias automáticas a las cuentas que no tienen ninguna (de a dos por día).
+    const auto = await runInspoAuto(admin).catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
+    inspo = { auto, semanal: await runInspoSemanal(admin) };
   } catch (e) {
     inspo = { error: e instanceof Error ? e.message : String(e) };
   }

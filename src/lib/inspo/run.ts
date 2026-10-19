@@ -12,19 +12,19 @@ import { conRendimiento, formatoDe, type MediaCruda } from "./inspo";
 const GRAPH = "https://graph.facebook.com/v21.0";
 const CAMPOS = "id,permalink,caption,media_type,media_product_type,timestamp,like_count,comments_count,media_url,thumbnail_url";
 
-interface Fuente {
+export interface Fuente {
   id: string;
   cliente_id: string;
   tipo: "cuenta" | "hashtag";
   valor: string;
 }
 
-async function igDeJdMedia(admin: SupabaseClient): Promise<string | null> {
+export async function igDeJdMedia(admin: SupabaseClient): Promise<string | null> {
   const { data } = await admin.from("clients").select("ig_user_id").not("ig_user_id", "is", null).ilike("nombre", "jd media").limit(1).maybeSingle();
   return (data as { ig_user_id: string } | null)?.ig_user_id ?? null;
 }
 
-async function graph<T>(path: string, params: Record<string, string>): Promise<T> {
+export async function graph<T>(path: string, params: Record<string, string>): Promise<T> {
   const token = process.env.META_SYSTEM_USER_TOKEN;
   if (!token) throw new Error("Falta la conexión con Meta.");
   const qs = new URLSearchParams({ ...params, access_token: token });
@@ -34,7 +34,7 @@ async function graph<T>(path: string, params: Record<string, string>): Promise<T
   return json;
 }
 
-async function traerFuente(desde: string, f: Fuente): Promise<{ media: MediaCruda[]; cuenta: string | null; seguidores: number | null }> {
+export async function traerFuente(desde: string, f: Fuente): Promise<{ media: MediaCruda[]; cuenta: string | null; seguidores: number | null }> {
   if (f.tipo === "cuenta") {
     const r = await graph<{ business_discovery?: { username: string; followers_count?: number; media?: { data?: MediaCruda[] } } }>(desde, {
       fields: `business_discovery.username(${f.valor}){username,followers_count,media.limit(50){${CAMPOS}}}`,

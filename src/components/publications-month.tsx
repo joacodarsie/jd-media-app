@@ -728,7 +728,17 @@ export function PublicationsMonth({
         <>
           {/* Resumen del mes visible por formato (hace también de leyenda de colores) */}
           <MonthTypeSummary counts={monthTypeCounts} />
-          <div className="rounded-xl border bg-card">
+          <LeyendaEtapas />
+          {/* En el celular, agenda por día en vez de la grilla (19/10/2026): la
+              grilla de 7 columnas mostraba «H.», «R.» y nada más. */}
+          <AgendaCelular
+            cells={cells.filter((d) => d.getMonth() === cursor.getMonth()).map(ymd)}
+            byDay={byDay}
+            clients={clients}
+            users={users}
+            unseenByPub={unseenByPub}
+          />
+          <div className="hidden rounded-xl border bg-card md:block">
             <div className="grid grid-cols-7 border-b text-xs font-medium text-muted-foreground">
               {DAY_NAMES.map((d) => (
                 <div key={d} className="px-2 py-2 text-center">
@@ -1128,6 +1138,110 @@ function MonthTypeSummary({ counts }: { counts: Record<string, number> }) {
   );
 }
 
+/** Qué significa el color de fondo de cada pieza (su etapa). */
+function LeyendaEtapas() {
+  const etapas: PublicationStatus[] = ["idea", "en_diseno", "edicion", "revision_creativa", "revision_cliente", "aprobado", "publicado"];
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-[11px] text-muted-foreground">
+      <span className="font-medium">Etapa:</span>
+      {etapas.map((e) => (
+        <span key={e} className="inline-flex items-center gap-1">
+          <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: PUBLICATION_STATUS_HEX[e] }} />
+          {PUBLICATION_STATUS_LABEL[e]}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+const DIA_LARGO = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+
+/** El mes como agenda, solo en el celular: hoy y lo que viene primero; lo pasado, plegado. */
+function AgendaCelular({
+  cells,
+  byDay,
+  clients,
+  users,
+  unseenByPub,
+}: {
+  cells: string[];
+  byDay: Map<string, PublicationWithRels[]>;
+  clients: ClientForPub[];
+  users: Pick<AppUser, "id" | "nombre">[];
+  unseenByPub?: Record<string, number>;
+}) {
+  const [verPasado, setVerPasado] = useState(false);
+  const hoy = ymd(new Date());
+  const conPiezas = cells.filter((k) => (byDay.get(k) ?? []).length > 0);
+  const pasados = conPiezas.filter((k) => k < hoy);
+  const visibles = verPasado ? conPiezas : conPiezas.filter((k) => k >= hoy);
+  return (
+    <div className="space-y-3 md:hidden">
+      {pasados.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setVerPasado((v) => !v)}
+          className="w-full rounded-lg border border-dashed py-2 text-xs font-medium text-muted-foreground"
+        >
+          {verPasado ? "Ocultar los días pasados" : `Ver los días pasados (${pasados.length})`}
+        </button>
+      )}
+      {visibles.length === 0 && <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No hay piezas este mes.</p>}
+      {visibles.map((k) => {
+        const d = new Date(`${k}T12:00:00`);
+        const esHoy = k === hoy;
+        const items = byDay.get(k) ?? [];
+        return (
+          <section key={k} className={cn("overflow-hidden rounded-xl border bg-card", esHoy && "ring-2 ring-primary/60")}>
+            <div className={cn("flex items-baseline justify-between border-b px-3 py-2", esHoy ? "bg-primary/10" : "bg-muted/30")}>
+              <span className="text-sm font-semibold">
+                {esHoy ? "Hoy" : DIA_LARGO[d.getDay()]} {d.getDate()}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {items.length} pieza{items.length === 1 ? "" : "s"}
+              </span>
+            </div>
+            <ul className="divide-y">
+              {items.map((p) => (
+                <li key={p.id}>
+                  <PublicationDetailDialog
+                    publication={p}
+                    clients={clients}
+                    users={users}
+                    trigger={
+                      <button type="button" className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left active:bg-muted/50">
+                        <span
+                          className="h-8 w-1.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: PUBLICATION_STATUS_HEX[p.estado] }}
+                          aria-label={PUBLICATION_STATUS_LABEL[p.estado]}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="line-clamp-2 text-sm font-medium leading-snug">{p.titulo}</span>
+                          <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: PUBLICATION_TYPE_HEX[p.tipo] }} />
+                            {PUBLICATION_TYPE_LABEL[p.tipo]}
+                            {p.cliente?.nombre && <span className="truncate">· {p.cliente.nombre}</span>}
+                            <span>· {PUBLICATION_STATUS_LABEL[p.estado]}</span>
+                          </span>
+                        </span>
+                        {(unseenByPub?.[p.id] ?? 0) > 0 && (
+                          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+                            {unseenByPub![p.id]}
+                          </span>
+                        )}
+                      </button>
+                    }
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
 function PubChip({
   pub,
   clients,
@@ -1147,8 +1261,8 @@ function PubChip({
 }) {
   const titleWithBadge =
     unseenCount > 0
-      ? `${pub.titulo} · ${PUBLICATION_STATUS_LABEL[pub.estado]} · ${unseenCount} comentario(s) del cliente sin ver`
-      : `${pub.titulo} · ${PUBLICATION_STATUS_LABEL[pub.estado]}`;
+      ? `${pub.cliente?.nombre ? pub.cliente.nombre + " · " : ""}${pub.titulo} · ${PUBLICATION_STATUS_LABEL[pub.estado]} · ${unseenCount} comentario(s) del cliente sin ver`
+      : `${pub.cliente?.nombre ? pub.cliente.nombre + " · " : ""}${pub.titulo} · ${PUBLICATION_STATUS_LABEL[pub.estado]}`;
 
   return (
     <PublicationDetailDialog

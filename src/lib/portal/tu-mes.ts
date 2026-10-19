@@ -19,7 +19,7 @@ export interface DatosTuMes {
 
 export type Placa =
   | { tipo: "portada"; titulo: string; sub: string }
-  | { tipo: "numero"; valor: number; titulo: string; sub: string; prefijo?: string }
+  | { tipo: "numero"; valor: number; titulo: string; sub: string; prefijo?: string; iconos?: string[] }
   | { tipo: "estrella"; titulo: string; caption: string; permalink: string | null; datos: string }
   | { tipo: "cierre"; titulo: string; sub: string };
 
@@ -35,7 +35,9 @@ export function armarPlacas(d: DatosTuMes): Placa[] {
       posts ? `${posts} posteo${posts === 1 ? "" : "s"}` : null,
       historias ? `${historias} historia${historias === 1 ? "" : "s"}` : null,
     ].filter(Boolean);
-    placas.push({ tipo: "numero", valor: total, titulo: "piezas publicadas", sub: partes.join(" · ") });
+    // Un ícono por pieza (hasta 40), para que aparezcan una por una.
+    const iconos = [...Array(reels).fill("🎬"), ...Array(posts).fill("🖼️"), ...Array(historias).fill("📱")].slice(0, 40);
+    placas.push({ tipo: "numero", valor: total, titulo: "piezas publicadas", sub: partes.join(" · "), iconos });
   }
   const ig = d.ig;
   if (ig?.reach && ig.reach > 0) {

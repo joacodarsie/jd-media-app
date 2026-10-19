@@ -94,6 +94,12 @@ export function PortalTuMes({ placas, mesLabel, refCode = null }: { placas: Plac
       {abierto && p && (
         <div className="tm-fondo" role="dialog" aria-label={`Tu ${mesLabel} en JD Media`}>
           <div className="tm-placa" style={{ background: FONDOS[i % FONDOS.length], color: claro ? "#111" : "#fff" }}>
+            {/* Formas de color que se mueven de fondo (19/10/2026). */}
+            <div className="tm-blobs" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </div>
             <div className="tm-barras">
               {placas.map((_, j) => (
                 <span key={j}>
@@ -112,7 +118,13 @@ export function PortalTuMes({ placas, mesLabel, refCode = null }: { placas: Plac
               {p.tipo === "portada" && (
                 <>
                   <div className="tm-chico">{p.sub}</div>
-                  <h2 className="tm-titulo-gigante">{p.titulo}</h2>
+                  <h2 className="tm-titulo-gigante" aria-label={p.titulo}>
+                    {[...p.titulo].map((ch, j) => (
+                      <span key={j} className="tm-letra" style={{ animationDelay: `${200 + j * 55}ms` }} aria-hidden="true">
+                        {ch === " " ? " " : ch}
+                      </span>
+                    ))}
+                  </h2>
                   <div className="tm-chico">Tocá para seguir →</div>
                 </>
               )}
@@ -123,6 +135,15 @@ export function PortalTuMes({ placas, mesLabel, refCode = null }: { placas: Plac
                   </div>
                   <h2 className="tm-titulo">{p.titulo}</h2>
                   <p className="tm-sub">{p.sub}</p>
+                  {p.iconos && p.iconos.length > 0 && (
+                    <div className="tm-iconos" aria-hidden="true">
+                      {p.iconos.map((e, j) => (
+                        <span key={j} style={{ animationDelay: `${500 + j * 45}ms` }}>
+                          {e}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </>
               )}
               {p.tipo === "estrella" && (
@@ -140,6 +161,20 @@ export function PortalTuMes({ placas, mesLabel, refCode = null }: { placas: Plac
               )}
               {p.tipo === "cierre" && (
                 <>
+                  <div className="tm-confeti" aria-hidden="true">
+                    {Array.from({ length: 26 }).map((_, j) => (
+                      <span
+                        key={j}
+                        style={{
+                          left: `${(j * 37) % 100}%`,
+                          animationDelay: `${(j % 9) * 120}ms`,
+                          animationDuration: `${2.2 + (j % 5) * 0.35}s`,
+                        }}
+                      >
+                        {["🎉", "✨", "⭐", "💛", "🎊"][j % 5]}
+                      </span>
+                    ))}
+                  </div>
                   <div className="tm-emoji">🚀</div>
                   <h2 className="tm-titulo-gigante">{p.titulo}</h2>
                   <p className="tm-sub">{p.sub}</p>

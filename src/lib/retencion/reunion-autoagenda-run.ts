@@ -46,7 +46,7 @@ async function contexto(admin: SupabaseClient, clienteId: string, hoy: string) {
 async function libresDe(admin: SupabaseClient, userId: string | null, hoy: string): Promise<Turno[]> {
   if (!userId) return turnosLibres(hoy, []);
   const desde = new Date().toISOString();
-  const hasta = new Date(Date.now() + 14 * 86_400_000).toISOString();
+  const hasta = new Date(Date.now() + 50 * 86_400_000).toISOString();
   const [{ data: asiste }, { data: creadas }] = await Promise.all([
     admin.from("internal_meeting_attendees").select("meeting:internal_meetings(starts_at, ends_at)").eq("user_id", userId),
     admin.from("internal_meetings").select("starts_at, ends_at").eq("created_by", userId).gte("starts_at", desde).lte("starts_at", hasta),

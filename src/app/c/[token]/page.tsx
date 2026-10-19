@@ -380,6 +380,9 @@ export default async function PortalPage({ params }: { params: { token: string }
           color: #1a1a1a;
           -webkit-font-smoothing: antialiased;
         }
+        /* El portal es siempre claro (19/10/2026): si el navegador del cliente está en
+           modo oscuro, los componentes de la plataforma tomaban fondo oscuro con letra oscura. */
+        .wrap { --background: 0 0% 100%; --foreground: 240 10% 3.9%; --card: 0 0% 100%; --card-foreground: 240 10% 3.9%; --popover: 0 0% 100%; --popover-foreground: 240 10% 3.9%; --primary: 48 100% 50%; --primary-foreground: 0 0% 9%; --secondary: 240 4.8% 95.9%; --secondary-foreground: 240 5.9% 10%; --muted: 240 4.8% 95.9%; --muted-foreground: 240 3.8% 46.1%; --accent: 240 4.8% 95.9%; --accent-foreground: 240 5.9% 10%; --destructive: 0 84.2% 60.2%; --destructive-foreground: 0 0% 98%; --border: 240 5.9% 90%; --input: 240 5.9% 90%; --ring: 48 100% 50%; --radius: 0.5rem; --sidebar: 0 0% 7%; --sidebar-foreground: 0 0% 98%; --sidebar-primary: 48 100% 50%; --sidebar-primary-foreground: 0 0% 9%; --sidebar-accent: 0 0% 15%; --sidebar-accent-foreground: 0 0% 98%; --sidebar-border: 0 0% 18%; --sidebar-ring: 48 100% 50%; color-scheme: light; }
         .wrap {
           max-width: 760px;
           margin: 0 auto;
@@ -508,6 +511,25 @@ export default async function PortalPage({ params }: { params: { token: string }
         .tm-cita { font-size: 18px; font-weight: 600; line-height: 1.4; margin: 4px 0; max-width: 320px; }
         .tm-link { position: relative; z-index: 3; margin-top: 10px; display: inline-block; padding: 12px 20px; border-radius: 999px; background: #FFD400; color: #111; font: 800 14px Inter, sans-serif; text-decoration: none; border: 0; cursor: pointer; }
         .tm-link-sec { background: transparent; color: inherit; border: 1px solid currentColor; margin-top: 6px; }
+        /* Más vida en «Tu mes» (19/10/2026) */
+        .tm-blobs { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+        .tm-blobs i { position: absolute; width: 60%; aspect-ratio: 1; border-radius: 50%; filter: blur(50px); opacity: .45; animation: tm-blob 9s ease-in-out infinite alternate; }
+        .tm-blobs i:nth-child(1) { background: #FFD400; top: -15%; left: -20%; }
+        .tm-blobs i:nth-child(2) { background: #ff6b9a; bottom: -20%; right: -25%; animation-delay: -3s; opacity: .3; }
+        .tm-blobs i:nth-child(3) { background: #5b8cff; top: 40%; left: 30%; width: 45%; animation-delay: -6s; opacity: .25; }
+        @keyframes tm-blob { from { transform: translate(0, 0) scale(1); } to { transform: translate(18%, 12%) scale(1.2); } }
+        .tm-placa > *:not(.tm-blobs) { position: relative; z-index: 1; }
+        .tm-barras, .tm-cerrar, .tm-zona { position: absolute !important; }
+        .tm-letra { display: inline-block; animation: tm-letra .6s cubic-bezier(.34,1.56,.64,1) both; }
+        @keyframes tm-letra { from { opacity: 0; transform: translateY(40px) rotate(-8deg) scale(.6); } }
+        .tm-iconos { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; max-width: 300px; margin-top: 8px; font-size: 20px; }
+        .tm-iconos span { display: inline-block; animation: tm-pop .45s cubic-bezier(.34,1.56,.64,1) both; }
+        @keyframes tm-pop { from { opacity: 0; transform: scale(0) rotate(-30deg); } }
+        .tm-contenido > *:not(.tm-confeti) { position: relative; z-index: 1; }
+        .tm-confeti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+        .tm-confeti span { position: absolute; top: -10%; font-size: 22px; animation: tm-cae linear infinite; }
+        @keyframes tm-cae { from { transform: translateY(0) rotate(0); opacity: 1; } to { transform: translateY(120vh) rotate(540deg); opacity: .6; } }
+        @media (prefers-reduced-motion: reduce) { .tm-blobs i, .tm-letra, .tm-iconos span, .tm-confeti { animation: none; display: inline-block; } .tm-confeti { display: none; } }
         .tm-zona { position: absolute; top: 60px; bottom: 0; z-index: 2; background: transparent; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
         .tm-izq { left: 0; width: 30%; }
         .tm-der { right: 0; width: 70%; }
@@ -704,7 +726,7 @@ export default async function PortalPage({ params }: { params: { token: string }
           <div className="card" style={{ textAlign: "center" }}>
             <div className="card-label">30 segundos</div>
             <h2 className="card-title" style={{ marginBottom: 4 }}>¿Cómo venimos este mes?</h2>
-            <p style={{ fontSize: 13, color: "#666", margin: "0 0 14px" }}>Tu opinión la lee todo el equipo y nos ayuda a mejorar el mes que viene.</p>
+            <p style={{ fontSize: 13, color: "#666", margin: "0 0 14px" }}>Tu opinión nos sirve para mejorar nuestros servicios. Son 3 preguntas.</p>
             <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
               {["😞", "😕", "😐", "🙂", "😍"].map((cara, i) => (
                 <a

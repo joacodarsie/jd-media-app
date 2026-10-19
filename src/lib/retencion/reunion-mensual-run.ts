@@ -46,10 +46,14 @@ export async function runReunionesMensuales(
   let archivadas = 0;
   const { data: viejosRaw } = await admin
     .from("tasks")
-    .select("id, titulo, estado")
+    .select("id, titulo, estado, fecha_limite")
     .like("titulo", "Reunión mensual — %")
     .in("estado", ["pendiente", "en_progreso", "en_revision"]);
-  const viejos = ticketsDeMesesPasados((viejosRaw ?? []) as { id: string; titulo: string; estado: string }[], periodo);
+  // Las reuniones del cierre se dan del 1 al 7 del mes siguiente (19/10/2026):
+  // si el ticket ya tiene fecha de hoy en adelante (la agendó el cliente), no se archiva.
+  const viejos = ticketsDeMesesPasados((viejosRaw ?? []) as { id: string; titulo: string; estado: string; fecha_limite: string | null }[], periodo).filter(
+    (t) => !((t as { fecha_limite?: string | null }).fecha_limite && (t as { fecha_limite: string }).fecha_limite >= hoy)
+  );
   if (viejos.length > 0) {
     const { error: archErr } = await admin
       .from("tasks")

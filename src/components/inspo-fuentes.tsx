@@ -23,7 +23,7 @@ export function InspoFuentes({
     setBuscando(true);
     const r = await buscarReferenciasIA(clienteId);
     setBuscando(false);
-    if (r.agregadas.length) toast.success(`Sumamos ${r.agregadas.length}: ${r.agregadas.join(", ")}`);
+    if (r.agregadas.length) toast.success(`Sumamos ${r.agregadas.length}: ${r.agregadas.join(", ")}${r.detalle ? ` (${r.detalle})` : ""}`);
     else toast.message(r.motivo ?? "No encontramos cuentas nuevas.");
     startTransition(() => router.refresh());
   }

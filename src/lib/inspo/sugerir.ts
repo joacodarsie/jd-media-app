@@ -50,7 +50,7 @@ export function promptReferencias(c: { nombre: string; rubro: string | null; not
     c.notas ? `Notas de la cuenta: ${c.notas.slice(0, 600)}` : "",
     c.contexto ? `Lo que contó el cliente en su reunión de diagnóstico (extracto): ${c.contexto.slice(0, 2500)}` : "",
     "",
-    "Dame 12 cuentas REALES y conocidas de Instagram que comuniquen muy bien en ese rubro o en uno parecido: competidores argentinos que lo hacen bien, marcas latinoamericanas o de España del mismo rubro, y referentes internacionales. Tienen que ser cuentas de empresa o creador, públicas y activas. No inventes: si no estás seguro de que un usuario existe tal cual, no lo pongas.",
+    "Dame 20 cuentas REALES y conocidas de Instagram que comuniquen muy bien en ese rubro o en uno parecido: competidores argentinos que lo hacen bien, marcas latinoamericanas o de España del mismo rubro, y referentes internacionales. Tienen que ser cuentas de empresa o creador, públicas y activas. No inventes: si no estás seguro de que un usuario existe tal cual, no lo pongas.",
     "",
     'Respondé SOLO con un JSON así, sin texto alrededor: {"cuentas": ["usuario1", "usuario2"]} (los usuarios sin @).',
   ]

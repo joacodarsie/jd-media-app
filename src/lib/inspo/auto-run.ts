@@ -43,7 +43,7 @@ export async function autoInspo(
   admin: SupabaseClient,
   clienteId: string,
   opts: { forzar?: boolean } = {}
-): Promise<{ agregadas: string[]; motivo?: string }> {
+): Promise<{ agregadas: string[]; motivo?: string; detalle?: string }> {
   const desde = await igDeJdMedia(admin);
   if (!desde) return { agregadas: [], motivo: "La cuenta de JD Media no tiene Instagram conectado." };
   const [{ data: c }, { data: fRaw }, { data: dRaw }] = await Promise.all([
@@ -61,6 +61,7 @@ export async function autoInspo(
 
   const transcript = ((dRaw ?? []) as { transcript_text: string | null }[]).map((d) => d.transcript_text ?? "").join("\n");
   const nuevas: { usuario: string; origen: "cliente" | "ia" }[] = [];
+  let detalle = "";
 
   // 2. Las que nombró el cliente.
   for (const h of handlesDelTexto(`${transcript}\n${cli.notas ?? ""}`)) {
@@ -75,13 +76,16 @@ export async function autoInspo(
       (u) => !ya.has(u) && u !== propia && !nuevas.some((n) => n.usuario === u)
     );
     const verificadas: Candidata[] = [];
-    for (const u of propuestas.slice(0, 12)) {
+    for (const u of propuestas.slice(0, 20)) {
       const v = await verificar(desde, u);
       if (v) verificadas.push(v);
     }
-    for (const v of elegirCandidatas(verificadas, Date.now(), faltan - nuevas.length)) nuevas.push({ usuario: v.usuario, origen: "ia" });
+    const elegidas = elegirCandidatas(verificadas, Date.now(), faltan - nuevas.length);
+    for (const v of elegidas) nuevas.push({ usuario: v.usuario, origen: "ia" });
+    // Para entender qué pasó: cuántas propuso la IA, cuántas existen en Instagram y cuántas quedaron.
+    detalle = `la IA propuso ${propuestas.length}, existen ${verificadas.length}, quedaron ${elegidas.length}`;
   }
-  if (!nuevas.length) return { agregadas: [], motivo: "No encontramos cuentas que valgan la pena para este rubro." };
+  if (!nuevas.length) return { agregadas: [], motivo: `No encontramos cuentas que valgan la pena para este rubro (${detalle}).`, detalle };
 
   const { data: insertadas } = await admin
     .from("inspo_fuentes")
@@ -91,7 +95,7 @@ export async function autoInspo(
     )
     .select("id, cliente_id, tipo, valor");
   await actualizarFuentes(admin, (insertadas ?? []) as Fuente[]);
-  return { agregadas: nuevas.map((n) => `@${n.usuario}${n.origen === "cliente" ? " (del cliente)" : ""}`) };
+  return { agregadas: nuevas.map((n) => `@${n.usuario}${n.origen === "cliente" ? " (del cliente)" : ""}`), detalle };
 }
 
 /** Cron: a las cuentas con redes que todavía no tienen ninguna referencia, de a dos por día. */

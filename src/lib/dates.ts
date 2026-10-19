@@ -108,3 +108,22 @@ export function dueState(
   if (diff <= 2) return "pronto";
   return "ok";
 }
+
+const DIAS_CORTOS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
+
+/**
+ * La fecha límite dicha como la diría una persona (19/10/2026): «Venció hace
+ * 6 días», «Hoy», «Mañana», «Jueves», «vie 24/10». `hoy` en "YYYY-MM-DD".
+ */
+export function cuandoVence(fechaLimite: string | null | undefined, hoy: string): string {
+  if (!fechaLimite) return "Sin fecha";
+  const f = fechaLimite.slice(0, 10);
+  const d = Math.round((Date.parse(`${f}T12:00:00Z`) - Date.parse(`${hoy}T12:00:00Z`)) / 86_400_000);
+  if (d < -1) return `Venció hace ${-d} días`;
+  if (d === -1) return "Venció ayer";
+  if (d === 0) return "Hoy";
+  if (d === 1) return "Mañana";
+  const w = new Date(`${f}T12:00:00Z`).getUTCDay();
+  if (d < 7) return ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"][w];
+  return `${DIAS_CORTOS[w]} ${Number(f.slice(8, 10))}/${Number(f.slice(5, 7))}`;
+}

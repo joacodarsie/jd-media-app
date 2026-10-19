@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { TaskWithRels } from "@/lib/types";
 import { STATUS_LABEL, PRIORITY_LABEL, PRIORITY_BADGE } from "@/lib/constants";
-import { fmtDate, dueState } from "@/lib/dates";
+import { cuandoVence, dueState, hoyYmd } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { CompletarTarea } from "@/components/completar-tarea";
 import { TrabadaBoton } from "@/components/trabada-boton";
@@ -39,46 +39,49 @@ export function TaskList({
   currentUserId?: string;
 }) {
   if (!tasks.length) return null;
+  const hoy = hoyYmd();
   return (
     <div className="jd-cascada divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50">
       {tasks.map((t, i) => {
         const due = dueState(t.fecha_limite, t.estado);
+        const trabada = !!t.bloqueo;
         return (
           <Link
             key={t.id}
             href={`/tareas/${t.id}`}
             data-fila-tarea
             data-expande
-            className="group flex items-center gap-3 px-4 py-3 transition-colors animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300 hover:bg-muted/40"
+            className="group flex items-start gap-3 px-4 py-3 transition-colors animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300 hover:bg-muted/40 sm:items-center"
             style={{ animationDelay: `${Math.min(i, 10) * 35}ms` }}
           >
             <CompletarTarea id={t.id} titulo={t.titulo} />
-            <span className={cn("h-2 w-2 shrink-0 rounded-full", PUNTO[due])} aria-hidden="true" />
             <div className="min-w-0 flex-1">
-              <div className="flex min-w-0 items-baseline gap-2">
-                {formatTicket(t.numero) && (
-                  <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{formatTicket(t.numero)}</span>
-                )}
-                <span className="truncate font-medium">{t.titulo}</span>
-              </div>
-              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                {t.estado !== "pendiente" && <span className="font-medium text-foreground/70">{STATUS_LABEL[t.estado]}</span>}
+              {/* El título primero y completo: en el celular baja a dos líneas en vez de cortarse. */}
+              <div className="line-clamp-2 font-medium leading-snug sm:line-clamp-1">{t.titulo}</div>
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                <span className={cn("inline-flex items-center gap-1.5 font-medium", TEXTO_FECHA[due])}>
+                  <span className={cn("h-1.5 w-1.5 rounded-full", PUNTO[due])} aria-hidden="true" />
+                  {cuandoVence(t.fecha_limite, hoy)}
+                </span>
                 {(t.prioridad === "alta" || t.prioridad === "urgente") && (
                   <span className={cn("rounded-full px-1.5 py-px text-[10px] font-semibold", PRIORITY_BADGE[t.prioridad])}>
                     {PRIORITY_LABEL[t.prioridad]}
                   </span>
                 )}
-                {t.cliente && <span>{t.cliente.nombre}</span>}
-                <span>· {t.area}</span>
+                {t.estado !== "pendiente" && <span className="font-medium text-foreground/70">{STATUS_LABEL[t.estado]}</span>}
+                {t.cliente && <span className="truncate">{t.cliente.nombre}</span>}
+                <span className="hidden sm:inline">· {t.area}</span>
+                {formatTicket(t.numero) && <span className="hidden font-mono text-[10px] opacity-70 sm:inline">{formatTicket(t.numero)}</span>}
               </div>
             </div>
-            {(due === "vencida" || t.bloqueo) && (
-              <TrabadaBoton taskId={t.id} titulo={t.titulo} bloqueo={t.bloqueo} bloqueoQuien={t.bloqueo_quien} />
+            {(due === "vencida" || trabada) && (
+              // Trabada: siempre a la vista. Si no, en la compu aparece al pasar el
+              // mouse (en cada fila era mucho ruido); en el celular, siempre.
+              <span className={cn("shrink-0 self-center", !trabada && "sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100")}>
+                <TrabadaBoton taskId={t.id} titulo={t.titulo} bloqueo={t.bloqueo} bloqueoQuien={t.bloqueo_quien} />
+              </span>
             )}
-            <span className={cn("shrink-0 text-xs tabular-nums", TEXTO_FECHA[due])}>
-              {t.fecha_limite ? (due === "vencida" ? "Venció " : "") + fmtDate(t.fecha_limite) : "Sin fecha"}
-            </span>
-            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5" />
+            <ChevronRight className="hidden h-4 w-4 shrink-0 self-center text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 sm:block" />
           </Link>
         );
       })}

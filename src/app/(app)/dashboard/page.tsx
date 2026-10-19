@@ -574,11 +574,6 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
         <MiPuesto userId={user.id} />
       </Suspense>
 
-      {/* Efemérides de los próximos 30 días, para quienes arman calendarios. */}
-      <Suspense fallback={null}>
-        <EfemeridesProximas user={user} />
-      </Suspense>
-
       {/* Avisos importantes del Portal sin leer */}
       <DashboardAvisos
         avisos={avisosSinLeer.map((a) => ({
@@ -594,20 +589,9 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
       )}
 
       {/* Alertas críticas */}
-      {(vencidas.length > 0 ||
-        vencidasViejas.length > 0 ||
+      {(vencidasViejas.length > 0 ||
         delegatedVencidas.length > 0) && (
         <div className="jd-cascada divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50 animate-in fade-in slide-in-from-bottom-1 duration-300">
-          {vencidas.length > 0 && (
-            <AlertCard
-              tone="red"
-              icon={AlertCircle}
-              title={`${vencidas.length} tarea${vencidas.length === 1 ? "" : "s"} vencida${vencidas.length === 1 ? "" : "s"}`}
-              text="Recuperalas o reprogramá la fecha."
-              href="/tareas"
-              cta="Ver tareas"
-            />
-          )}
           {vencidasViejas.length > 0 && (
             <AlertCard
               tone="amber"
@@ -801,6 +785,11 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
           </div>
         </div>
       </Section>
+
+      {/* Efemérides de los próximos 30 días: abajo, después de lo del día (19/10/2026). */}
+      <Suspense fallback={null}>
+        <EfemeridesProximas user={user} />
+      </Suspense>
     </div>
   );
 }

@@ -20,6 +20,7 @@ import { runTareaEncuesta } from "@/lib/retencion/encuesta-tarea-run";
 import { runCuentasEnRojo } from "@/lib/retencion/cuentas-rojo-run";
 import { runGuionesPrevios } from "@/lib/retencion/guion-previo-run";
 import { runTuLunes } from "@/lib/direccion/tu-lunes-run";
+import { runAlarma48h } from "@/lib/contenidos/alarma-48h-run";
 import { runConciliacionDiaria } from "@/lib/social/conciliar-run";
 import { runAccountAlerts } from "@/lib/social/alerts";
 import { checkMetaToken } from "@/lib/meta/health";
@@ -462,6 +463,14 @@ export async function GET(req: NextRequest) {
     lunes = { error: e instanceof Error ? e.message : String(e) };
   }
 
+  // Alarma 48 h antes de cada pieza atrasada (19/10/2026).
+  let alarma48h: unknown = null;
+  try {
+    alarma48h = await runAlarma48h(admin, hoyYmd());
+  } catch (e) {
+    alarma48h = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   // Conciliación Instagram ↔ calendario: con el feed recién sincronizado, marca
   // como publicadas las piezas que ya salieron. Nadie marca a mano, así que sin
   // esto la puntualidad y el reporte del cliente miden cualquier cosa.
@@ -580,6 +589,7 @@ export async function GET(req: NextRequest) {
     enRojo,
     guiones,
     lunes,
+    alarma48h,
     rutinas,
     revision_creativa: revisionCreativa,
     aprobaciones,

@@ -29,6 +29,8 @@ import { TaskList } from "@/components/task-list";
 import { AnilloDelDia } from "@/components/anillo-del-dia";
 import { SALUDO, fraseDelDia, momentoDelDia } from "@/lib/saludo-del-dia";
 import { logrosDelDia } from "@/lib/logros";
+import { rachaDias } from "@/lib/racha";
+import { RachaChip } from "@/components/racha-chip";
 import { HelpTrigger } from "@/components/help-trigger";
 import { DashboardAvisos } from "@/components/dashboard-avisos";
 import { MiPuesto } from "@/components/mi-puesto";
@@ -309,6 +311,13 @@ export default async function DashboardPage() {
     (t) => t.estado === "completada" && new Date((t as { updated_at?: string }).updated_at ?? 0).getTime() >= hace7
   ).length;
 
+  // La racha (19/10/2026): días hábiles seguidos cerrando todo lo que vencía.
+  // Solo las propias (no en las que colabora).
+  const racha = rachaDias(
+    tasks.filter((t) => t.asignado_a_id === user.id) as unknown as Parameters<typeof rachaDias>[0],
+    hoy
+  );
+
   // Eventos hoy y resto de la semana
   const eventsHoy = calendarEvents.filter((e) => isToday(new Date(e.start)));
   const eventsSemana = calendarEvents.filter((e) => !isToday(new Date(e.start)));
@@ -513,8 +522,9 @@ export default async function DashboardPage() {
             {/* Logros chiquitos: solo los que se ganaron (18/10/2026). */}
             {(() => {
               const logros = logrosDelDia({ vencidas: vencidas.length, hechasHoy, pendientesHoy: venceHoy.length + vencidas.length, hechasSemana });
-              return logros.length > 0 ? (
+              return (
                 <div className="mt-3 flex flex-wrap gap-1.5">
+                  <RachaChip racha={racha} />
                   {logros.map((l, i) => (
                     <span
                       key={l.clave}
@@ -525,7 +535,7 @@ export default async function DashboardPage() {
                     </span>
                   ))}
                 </div>
-              ) : null;
+              );
             })()}
           </div>
 

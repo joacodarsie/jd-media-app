@@ -305,3 +305,13 @@ a.rounded-2xl.bg-card:hover, a.rounded-xl.bg-card:hover { transform: translateY(
    achicaba entera (18/10/2026). */
 .jd-pagina .grid > *, .jd-pagina .flex > * { min-width: 0; }
 .jd-pagina { max-width: 100%; }
+
+/* La racha de Mi día (19/10/2026): la llama titila y el hito tira chispas. */
+@keyframes jd-llama { 0%, 100% { transform: scale(1) rotate(-4deg); } 50% { transform: scale(1.15) rotate(4deg); } }
+.jd-llama { transform-origin: 50% 90%; animation: jd-llama 1.4s ease-in-out infinite; }
+@keyframes jd-chispa {
+  0% { opacity: 1; transform: translate(-50%, -50%) rotate(var(--ang)) translateY(0) scale(.6); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--ang)) translateY(-70px) scale(1.1); }
+}
+.jd-chispa { animation: jd-chispa 1.2s cubic-bezier(.2, .8, .2, 1) both; }
+@media (prefers-reduced-motion: reduce) { .jd-llama, .jd-chispa { animation: none; } }

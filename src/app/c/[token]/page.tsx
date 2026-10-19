@@ -51,6 +51,8 @@ import { pedirEncuestaEnPortal } from "@/lib/retencion/encuesta-portal";
 import { cargarReunionPortal } from "@/lib/retencion/reunion-autoagenda-run";
 import { PortalReunion } from "@/components/portal-reunion";
 import { PortalTuMes } from "@/components/portal-tu-mes";
+import { PortalProduccion } from "@/components/portal-produccion";
+import { lineaDeProduccion } from "@/lib/portal/produccion";
 import { armarPlacas, hayTuMes, piezaEstrella } from "@/lib/portal/tu-mes";
 import { SALUDO, momentoDelDia } from "@/lib/saludo-del-dia";
 import { estadoDeRedes, type Credencial } from "@/lib/accesos/portal";
@@ -464,6 +466,29 @@ export default async function PortalPage({ params }: { params: { token: string }
         .tm-izq { left: 0; width: 30%; }
         .tm-der { right: 0; width: 70%; }
         @media (prefers-reduced-motion: reduce) { .tm-abrir, .tm-play, .tm-contenido > *, .tm-barras i.tm-corre { animation: none; } }
+        /* Tu contenido, en vivo (19/10/2026) */
+        .pp-resumen { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; color: #555; margin-bottom: 14px; }
+        .pp-resumen b { color: #111; font-size: 15px; }
+        .pp-sep { color: #bbb; }
+        .pp-vivo { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #16a34a; }
+        .pp-vivo i { width: 8px; height: 8px; border-radius: 50%; background: #16a34a; animation: pp-late 1.6s ease-in-out infinite; }
+        @keyframes pp-late { 0%,100% { box-shadow: 0 0 0 0 rgba(22,163,74,.5); } 50% { box-shadow: 0 0 0 6px rgba(22,163,74,0); } }
+        .pp-lista { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+        .pp-pieza { padding: 12px 14px 26px; border: 1px solid #f0f0f0; border-radius: 12px; animation: tm-sube .5s cubic-bezier(.2,.8,.2,1) both; }
+        .pp-arriba { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; margin-bottom: 12px; }
+        .pp-titulo { flex: 1; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pp-fecha { color: #888; flex: 0 0 auto; text-transform: capitalize; }
+        .pp-linea { position: relative; height: 4px; margin: 0 22px; border-radius: 4px; background: #eee; }
+        .pp-relleno { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: linear-gradient(90deg, #ffd400, #f5b400); transform-origin: left; animation: pp-llena .9s cubic-bezier(.2,.8,.2,1) both; }
+        @keyframes pp-llena { from { transform: scaleX(0); } }
+        .pp-paso { position: absolute; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; }
+        .pp-paso i { width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 2px solid #ddd; }
+        .pp-paso small { position: absolute; top: 14px; font-size: 10px; color: #aaa; white-space: nowrap; }
+        .pp-hecho i { background: #ffd400; border-color: #ffd400; }
+        .pp-ahora i { background: #111; border-color: #111; box-shadow: 0 0 0 4px rgba(255,212,0,.45); animation: pp-late2 1.8s ease-in-out infinite; }
+        .pp-ahora small { color: #111; font-weight: 700; }
+        @keyframes pp-late2 { 0%,100% { box-shadow: 0 0 0 3px rgba(255,212,0,.5); } 50% { box-shadow: 0 0 0 7px rgba(255,212,0,.1); } }
+        @media (prefers-reduced-motion: reduce) { .pp-vivo i, .pp-pieza, .pp-relleno, .pp-ahora i { animation: none; } }
         .pr-card { border-color: #e9e3c6; background: linear-gradient(180deg, #fffdf3 0%, #fff 70%); }
         .pr-dias { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; }
         .pr-dia { flex: 0 0 auto; width: 58px; padding: 8px 0; border-radius: 14px; border: 1px solid #eee; background: #fff; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; font-family: inherit; transition: transform .15s ease, background .2s ease, border-color .2s ease; }
@@ -967,6 +992,19 @@ export default async function PortalPage({ params }: { params: { token: string }
         )}
 
         {/* Calendario de contenidos — todo lo planificado, en vivo */}
+        {/* Tu contenido, en vivo: la línea de producción de lo que viene (19/10/2026). */}
+        {(() => {
+          const linea = lineaDeProduccion(upcoming, hoyYmd());
+          if (!linea.piezas.length) return null;
+          return (
+            <div className="card">
+              <div className="card-label">Tu contenido, en vivo</div>
+              <h2 className="card-title">Lo que estamos preparando</h2>
+              <PortalProduccion {...linea} />
+            </div>
+          );
+        })()}
+
         {upcoming.length > 0 && (
           <div className="card">
             <div className="card-label">Calendario de contenidos</div>

@@ -21,6 +21,8 @@ function useExpansion(router: ReturnType<typeof useRouter>) {
     if (!doc.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const clic = (e: MouseEvent) => {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      // Un botón adentro de la fila (hecha, trabada) no abre la tarea.
+      if ((e.target as HTMLElement | null)?.closest("button, input, select, textarea, label")) return;
       const a = (e.target as HTMLElement | null)?.closest<HTMLAnchorElement>("a[data-expande]");
       if (!a || a.target === "_blank") return;
       const url = new URL(a.href, location.href);

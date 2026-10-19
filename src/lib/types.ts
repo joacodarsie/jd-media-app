@@ -210,6 +210,9 @@ export interface Task {
   parent_id?: string | null;
   /** Carpeta de Drive del ticket, donde se suben las piezas (migración 0166). */
   drive_url?: string | null;
+  /** «Estoy trabado» (0206): qué la frena y a quién espera. */
+  bloqueo?: "cliente" | "persona" | null;
+  bloqueo_quien?: string | null;
   created_at: string;
   updated_at: string;
 }

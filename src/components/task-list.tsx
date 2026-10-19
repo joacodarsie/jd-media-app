@@ -6,6 +6,7 @@ import { STATUS_LABEL, PRIORITY_LABEL, PRIORITY_BADGE } from "@/lib/constants";
 import { fmtDate, dueState } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { CompletarTarea } from "@/components/completar-tarea";
+import { TrabadaBoton } from "@/components/trabada-boton";
 
 /**
  * Lista corta de tareas (Mi día, ficha del cliente, panel de cuentas).
@@ -71,6 +72,9 @@ export function TaskList({
                 <span>· {t.area}</span>
               </div>
             </div>
+            {(due === "vencida" || t.bloqueo) && (
+              <TrabadaBoton taskId={t.id} titulo={t.titulo} bloqueo={t.bloqueo} bloqueoQuien={t.bloqueo_quien} />
+            )}
             <span className={cn("shrink-0 text-xs tabular-nums", TEXTO_FECHA[due])}>
               {t.fecha_limite ? (due === "vencida" ? "Venció " : "") + fmtDate(t.fecha_limite) : "Sin fecha"}
             </span>

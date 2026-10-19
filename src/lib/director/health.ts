@@ -128,7 +128,7 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
         .order("fecha", { ascending: true }),
       admin
         .from("tasks")
-        .select("cliente_id, estado, fecha_limite")
+        .select("cliente_id, estado, fecha_limite, bloqueo")
         .in("cliente_id", ids)
         .neq("estado", "completada")
         .neq("estado", "archivada")
@@ -243,8 +243,9 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
   const overdueTasksByC = new Map<string, number>();
   // Solo las vencidas hace más de 3 días: una que venció ayer no es una alarma.
   const hace3dias = new Date(now.getTime() - 3 * 86_400_000).toISOString().slice(0, 10);
-  for (const t of (tasksRaw ?? []) as { cliente_id: string; fecha_limite: string }[]) {
-    if (!t.cliente_id || t.fecha_limite >= hace3dias) continue;
+  for (const t of (tasksRaw ?? []) as { cliente_id: string; fecha_limite: string; bloqueo?: string | null }[]) {
+    // Las trabadas (0206) esperan a otro: no son atraso de quien las tiene.
+    if (!t.cliente_id || t.fecha_limite >= hace3dias || t.bloqueo) continue;
     overdueTasksByC.set(t.cliente_id, (overdueTasksByC.get(t.cliente_id) ?? 0) + 1);
   }
 

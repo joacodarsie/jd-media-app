@@ -64,6 +64,7 @@ import { esDe } from "@/lib/tareas/colaboradores";
 import { TaskStatusSelect } from "@/components/task-status-select";
 import { DeleteTaskButton } from "@/components/delete-task-button";
 import { CompletarTarea } from "@/components/completar-tarea";
+import { TrabadaBoton } from "@/components/trabada-boton";
 import { SkeletonBlock } from "@/components/skeleton-block";
 
 // Lazy-load heavy views — solo se cargan al hacer click en la tab
@@ -990,6 +991,9 @@ function TaskRow({
         />
       </label>
       {abierta && <CompletarTarea id={t.id} titulo={t.titulo} className="hidden sm:flex" />}
+      {abierta && (due === "vencida" || t.bloqueo) && (
+        <TrabadaBoton taskId={t.id} titulo={t.titulo} bloqueo={t.bloqueo} bloqueoQuien={t.bloqueo_quien} className="self-start sm:order-last sm:self-center" />
+      )}
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-baseline gap-2">
           {/* El número adelante: es como se nombra un ticket al hablarlo. */}

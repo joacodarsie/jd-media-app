@@ -279,7 +279,7 @@ a.rounded-2xl.bg-card:hover, a.rounded-xl.bg-card:hover { transform: translateY(
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .3s; }
 
 /* De noche, los botoncitos claros del saludo (la ayuda «?») van translúcidos. */
-.jd-cielo--noche .bg-muted, .jd-cielo--madrugada .bg-muted, .jd-cielo--noche .bg-background, .jd-cielo--madrugada .bg-background { background: rgba(255, 255, 255, .15) !important; }
+.jd-cielo--noche .bg-muted, .jd-cielo--madrugada .bg-muted, .jd-cielo--noche .bg-background, .jd-cielo--madrugada .bg-background, .jd-cielo--noche .bg-card, .jd-cielo--madrugada .bg-card { background: rgba(255, 255, 255, .12) !important; border-color: rgba(255, 255, 255, .15) !important; }
 
 /* El «hoy» de la historia de la cuenta late suave (18/10/2026). */
 .jd-hoy-pulso::after { content: ''; position: absolute; inset: 0; border-radius: 9999px; animation: jd-hoy-pulso 2.4s ease-in-out infinite; }

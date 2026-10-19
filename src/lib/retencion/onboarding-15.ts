@@ -69,6 +69,54 @@ export function tituloMadre(nombreCliente: string): string {
  * editor cargado, cae en el fallback. Una tarea sin dueño es invisible — es
  * exactamente lo que pasó con las 57 tareas sin fecha de septiembre.
  */
+/**
+ * Quién hace cada paso y cuándo está hecho (19/10/2026, pedido del dueño: «que
+ * sean lo más claros posible y se respeten todos los pasos»). Se agrega al final
+ * de cada descripción. Los pasos que ya lo dicen adentro no están acá.
+ */
+const HECHO: Record<string, { quien: string; hecho: string }> = {
+  "Página de Facebook vinculada al Instagram": { quien: "Paid media. La project manager lo sigue y apura.", hecho: "en la página de Facebook → Configuración → Cuentas vinculadas figura el Instagram." },
+  "Asignar el equipo de la cuenta": { quien: "La project manager.", hecho: "en la ficha figuran CM, diseño, edición y media buyer, y las tareas del arranque quedaron reasignadas a cada uno." },
+  "Reunión de diagnóstico": { quien: "La CM, con la project manager.", hecho: "la reunión está registrada en la ficha con lo que contó el cliente y ya mandó el material que tenía." },
+  "Subir el logo de la cuenta a su ficha": { quien: "La project manager.", hecho: "el logo se ve en la ficha. Se marca sola al subirlo." },
+  "Mandarle al cliente el link de su plataforma": { quien: "La project manager.", hecho: "en la ficha figura que el cliente abrió su link al menos una vez." },
+  "Kit de marca": { quien: "Diseño. Lo revisa el director creativo el día 4.", hecho: "los 6 elementos están en el Drive de la cuenta y el cliente los aprobó por escrito." },
+  "Ronda de preguntas al cliente": { quien: "La CM.", hecho: "las respuestas del cliente están anotadas en su ficha." },
+  "Lista del contenido crudo que necesitamos": { quien: "La CM.", hecho: "la lista se le mandó al cliente y está pegada en esta tarea." },
+  "Calendario de contenidos para aprobar": { quien: "La CM. Lo revisa el director creativo.", hecho: "el calendario está cargado en Contenidos, pieza por pieza, aprobado por el director creativo y por el cliente." },
+  "Día 7: ¿llegó el material?": { quien: "La project manager.", hecho: "el material está en el Drive de la cuenta, o hay jornada de producción con fecha." },
+  "¿Hace falta jornada de producción?": { quien: "La project manager, con edición.", hecho: "quedó escrito en esta tarea «sí, el día X en Y» o «no hace falta»." },
+  "Contenido crudo ordenado en carpetas": { quien: "La CM.", hecho: "el material está en carpetas por tipo en el Drive de la cuenta, con el link en esta tarea." },
+  "Optimizar el perfil: bio, accesos y destacadas": { quien: "La CM.", hecho: "la bio, la foto, el link y las destacadas ya se ven en el Instagram (dejá una captura en esta tarea)." },
+  "Plantillas de Canva para el cliente": { quien: "Diseño.", hecho: "el link de las plantillas está en la ficha y el cliente lo ve en su plataforma." },
+  "Piezas gráficas de los 15 días": { quien: "Diseño.", hecho: "cada posteo del calendario tiene su archivo final cargado." },
+  "Videos de los 15 días": { quien: "Edición.", hecho: "cada reel del calendario tiene su archivo final cargado." },
+  "Aprobación del cliente y programación": { quien: "La CM.", hecho: "todas las piezas de los 15 días están aprobadas por el cliente y programadas: el día 15 sale la primera." },
+  "Entrega del arranque al cliente": { quien: "La project manager, con el director creativo.", hecho: "la reunión está hecha y registrada, y quedó agendada la primera reunión mensual." },
+  "Objetivos y presupuesto acordados": { quien: "Paid media.", hecho: "el objetivo, el presupuesto mensual y cómo se mide están anotados en el onboarding de publicidad (Campañas clave)." },
+  "Primera campaña al aire": { quien: "Paid media.", hecho: "la campaña está activa y en Paid Media ya se ve el gasto del día." },
+  "Relevamiento del sitio": { quien: "Desarrollo web.", hecho: "el relevamiento está en el Drive de la cuenta y el cliente lo aprobó." },
+  // Pack Marca Real
+  "Asignar quién diseña la marca": { quien: "La project manager.", hecho: "el diseñador figura en la ficha y las tareas de abajo están a su nombre." },
+  "Mandar el brief de marca": { quien: "La project manager.", hecho: "el cliente recibió las 10 preguntas (pegá acá el mensaje que le mandaste)." },
+  "Brief recibido y material ordenado": { quien: "La project manager.", hecho: "el brief completo, el logo actual y las referencias están en el Drive de la cuenta." },
+  "Logo final, paleta y tipografías": { quien: "Diseño.", hecho: "el cliente aprobó por escrito la versión final y los archivos están en el Drive." },
+  "Plantillas y perfil de Instagram": { quien: "Diseño.", hecho: "las plantillas están en Canva con el link en la ficha, y el perfil ya se ve cambiado en Instagram." },
+  "Plantilla de calendario y manual de 30 ideas": { quien: "La CM.", hecho: "la plantilla y el manual están en el Drive de la cuenta." },
+  "Entrega final": { quien: "La project manager.", hecho: "el cliente recibió los archivos, las plantillas y el manual, y confirmó que le llegaron." },
+  "Definir el flujo del bot": { quien: "Botly.", hecho: "el flujo está armado y el cliente lo aprobó." },
+};
+
+const HECHO_PROPUESTAS = { quien: "Diseño.", hecho: "el cliente recibió las propuestas y eligió una por escrito." };
+
+/** Le suma a la descripción quién lo hace y cuándo está hecho, si no lo dice ya. */
+function conHecho(titulo: string, descripcion: string): string {
+  const h = HECHO[titulo] ?? (/propuestas de logo$/.test(titulo) ? HECHO_PROPUESTAS : undefined);
+  return h && !/Cómo saber que está hecho|Está hecho cuando/.test(descripcion)
+    ? `${descripcion}\n\n**Quién lo hace:** ${h.quien}\n**Está hecho cuando:** ${h.hecho}`
+    : descripcion;
+}
+
 export function planOnboarding(input: {
   nombreCliente: string;
   servicios: string[];
@@ -90,7 +138,7 @@ export function planOnboarding(input: {
     descripcion: string,
     area: string,
     asignado_a_id: string
-  ) => pasos.push({ dia, titulo, descripcion, area, asignado_a_id });
+  ) => pasos.push({ dia, titulo, descripcion: conHecho(titulo, descripcion), area, asignado_a_id });
 
   // ── Común a toda cuenta nueva ──
   // Si la cuenta arranca sin equipo cargado, TODO el onboarding cae en una sola
@@ -377,7 +425,7 @@ function planMarcaReal(nombreCliente: string, equipo: EquipoDelCliente): PlanOnb
   const m = MARCA_REAL;
   const pasos: PasoOnboarding[] = [];
   const add = (dia: number, titulo: string, descripcion: string, area: string, asignado_a_id: string) =>
-    pasos.push({ dia, titulo, descripcion, area, asignado_a_id });
+    pasos.push({ dia, titulo, descripcion: conHecho(titulo, descripcion), area, asignado_a_id });
 
   if (!equipo.disenador_id) {
     add(

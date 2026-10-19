@@ -207,3 +207,13 @@ describe("plantillas de Canva en el arranque", () => {
     expect(plan(["paid_media"]).pasos.some((x) => x.titulo.includes("Canva"))).toBe(false);
   });
 });
+
+describe("cada paso dice quién lo hace y cuándo está hecho (19/10/2026)", () => {
+  it("en el arranque completo y en Marca Real", () => {
+    for (const servicios of [["gestion_redes", "paid_media", "desarrollo_web", "botly"], ["marca_real"]]) {
+      const p = planOnboarding({ nombreCliente: "X", servicios, equipo: { fallback: "f" } as never });
+      const sin = p.pasos.filter((s) => !/Está hecho cuando|Cómo saber que está hecho/.test(s.descripcion));
+      expect(sin.map((s) => s.titulo)).toEqual([]);
+    }
+  });
+});

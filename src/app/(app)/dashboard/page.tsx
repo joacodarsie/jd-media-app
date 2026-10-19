@@ -314,10 +314,6 @@ export default async function DashboardPage() {
       .filter((e) => new Date(e.end).getTime() > Date.now())
       .sort((a, b) => a.start.localeCompare(b.start))[0] ?? null;
 
-  // Total "para hoy" — cosas reales que pedir atención
-  const todayCount =
-    eventsHoy.length + venceHoy.length + vencidas.length + pubsHoy.length;
-
   // Tareas delegadas que están vencidas
   type Delegated = {
     id: string;

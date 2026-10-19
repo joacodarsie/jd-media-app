@@ -18,7 +18,7 @@ type DocConTransicion = Document & { startViewTransition?: (cb: () => Promise<vo
  * marcada con `data-expande-fila`, crece la fila entera. Usa las transiciones
  * del navegador; donde no existen, se navega como siempre.
  */
-function usarExpansion(router: ReturnType<typeof useRouter>) {
+function useExpansion(router: ReturnType<typeof useRouter>) {
   useEffect(() => {
     const doc = document as DocConTransicion;
     if (!doc.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -59,7 +59,7 @@ function usarExpansion(router: ReturnType<typeof useRouter>) {
 
 export function EfectosGlobales() {
   const router = useRouter();
-  usarExpansion(router);
+  useExpansion(router);
   useEffect(() => {
     if (!matchMedia("(hover: hover) and (pointer: fine)").matches) return;
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;

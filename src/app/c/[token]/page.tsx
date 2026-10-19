@@ -50,6 +50,8 @@ import { PortalDeslizar } from "@/components/portal-deslizar";
 import { pedirEncuestaEnPortal } from "@/lib/retencion/encuesta-portal";
 import { cargarReunionPortal } from "@/lib/retencion/reunion-autoagenda-run";
 import { PortalReunion } from "@/components/portal-reunion";
+import { PortalTuMes } from "@/components/portal-tu-mes";
+import { armarPlacas, hayTuMes, piezaEstrella } from "@/lib/portal/tu-mes";
 import { SALUDO, momentoDelDia } from "@/lib/saludo-del-dia";
 import { estadoDeRedes, type Credencial } from "@/lib/accesos/portal";
 // Programa de referidos (13/10/2026).
@@ -268,6 +270,38 @@ export default async function PortalPage({ params }: { params: { token: string }
   const pedirEncuesta = !encErr && pedirEncuestaEnPortal({ fechaInicio: ref?.fecha_inicio ?? null, hoy: hoyYmd(), yaRespondio: !!encRow });
   // Su reunión mensual: la elige él (19/10/2026).
   const reunion = await cargarReunionPortal(admin, cliente_id, hoyYmd()).catch(() => null);
+  // «Tu mes en JD Media»: el resumen del mes cerrado en historias (19/10/2026).
+  const tuMes = await (async () => {
+    const d = new Date(Date.parse(`${hoyYmd().slice(0, 7)}-15T12:00:00Z`) - 30 * 86_400_000);
+    const mesPrev = d.toISOString().slice(0, 7);
+    const [{ data: pubs }, igPrev] = await Promise.all([
+      admin
+        .from("publications")
+        .select("tipo")
+        .eq("cliente_id", cliente_id)
+        .eq("estado", "publicado")
+        .gte("fecha_publicacion", `${mesPrev}-01`)
+        .lt("fecha_publicacion", `${hoyYmd().slice(0, 7)}-01`),
+      igMonthlyForReport(admin, cliente_id, mesPrev).catch(() => null),
+    ]);
+    const tipos = ((pubs ?? []) as { tipo: string }[]).map((x) => x.tipo);
+    const estrella = piezaEstrella(igPrev?.media ?? []);
+    const mesLabel = d.toLocaleDateString("es-AR", { month: "long", timeZone: "UTC" });
+    const placas = armarPlacas({
+      nombre: client?.nombre ?? "",
+      mesLabel,
+      publicadas: {
+        reels: tipos.filter((t) => t === "reel" || t === "video").length,
+        posts: tipos.filter((t) => t === "post" || t === "carrusel").length,
+        historias: tipos.filter((t) => t === "historia").length,
+      },
+      ig: igPrev?.hasData ? igPrev : null,
+      estrella: estrella
+        ? { caption: estrella.caption, permalink: estrella.permalink, reach: estrella.reach, likes: estrella.like_count, comentarios: estrella.comments_count }
+        : null,
+    });
+    return hayTuMes(placas) ? { placas, mesLabel } : null;
+  })().catch(() => null);
   // Sus plantillas de Canva, para sumar contenido por su cuenta (0200).
   const plantillasCanva = ref?.canva_plantillas_url ?? null;
   const mostrarRecomendar = !!ref?.ref_code && puedeRecomendar(ref.fecha_inicio, hoyYmd());
@@ -393,6 +427,43 @@ export default async function PortalPage({ params }: { params: { token: string }
         @keyframes pm-hero { from { opacity: 0; transform: translateY(10px) scale(.99); } to { opacity: 1; transform: none; } }
         @keyframes pm-brillo { from { transform: translate(0,0); } to { transform: translate(-12%, 8%); } }
         @media (prefers-reduced-motion: reduce) { .hero, .hero:before { animation: none; } }
+        /* Tu mes en JD Media (19/10/2026) */
+        .tm-abrir { display: flex; align-items: center; gap: 14px; width: 100%; margin: 0 0 16px; padding: 14px 16px; border: 0; border-radius: 16px; cursor: pointer; text-align: left; font-family: inherit; color: #fff; background: linear-gradient(120deg, #1a1a1a 0%, #3a2f05 55%, #1a1a1a 100%); background-size: 200% 100%; animation: tm-brillo 6s ease-in-out infinite alternate; box-shadow: 0 10px 30px -14px rgba(0,0,0,.5); transition: transform .2s ease; }
+        .tm-abrir:hover { transform: translateY(-2px); }
+        .tm-abrir b { display: block; font-size: 15px; }
+        .tm-abrir small { display: block; font-size: 12px; color: rgba(255,255,255,.65); margin-top: 2px; }
+        .tm-play { width: 42px; height: 42px; flex: 0 0 auto; border-radius: 50%; background: #FFD400; color: #111; display: flex; align-items: center; justify-content: center; font-size: 15px; box-shadow: 0 0 0 0 rgba(255,212,0,.6); animation: tm-pulso 2.2s ease-out infinite; }
+        @keyframes tm-brillo { from { background-position: 0% 0; } to { background-position: 100% 0; } }
+        @keyframes tm-pulso { 0% { box-shadow: 0 0 0 0 rgba(255,212,0,.55); } 80%, 100% { box-shadow: 0 0 0 14px rgba(255,212,0,0); } }
+        .tm-fondo { position: fixed; inset: 0; z-index: 70; background: #000; display: flex; align-items: center; justify-content: center; animation: pd-entra .3s ease both; }
+        .tm-placa { position: relative; width: 100%; height: 100%; max-width: 430px; max-height: 860px; overflow: hidden; display: flex; flex-direction: column; transition: background .5s ease; }
+        @media (min-width: 600px) { .tm-placa { border-radius: 24px; height: 92vh; } }
+        .tm-barras { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; gap: 4px; z-index: 4; }
+        .tm-barras span { flex: 1; height: 3px; border-radius: 3px; background: rgba(127,127,127,.35); overflow: hidden; }
+        .tm-barras i { display: block; height: 100%; width: 100%; background: currentColor; transform: scaleX(0); transform-origin: left; }
+        .tm-barras i.tm-llena { transform: none; }
+        .tm-barras i.tm-corre { animation: tm-barra linear forwards; }
+        @keyframes tm-barra { to { transform: scaleX(1); } }
+        .tm-cerrar { position: absolute; top: 24px; right: 14px; z-index: 5; background: rgba(127,127,127,.25); color: inherit; border: 0; width: 34px; height: 34px; border-radius: 50%; font-size: 14px; cursor: pointer; }
+        .tm-contenido { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 60px 28px; gap: 10px; }
+        .tm-contenido > * { animation: tm-sube .7s cubic-bezier(.2,.8,.2,1) both; }
+        .tm-contenido > *:nth-child(2) { animation-delay: .12s; }
+        .tm-contenido > *:nth-child(3) { animation-delay: .24s; }
+        .tm-contenido > *:nth-child(4) { animation-delay: .36s; }
+        .tm-contenido > *:nth-child(5) { animation-delay: .48s; }
+        @keyframes tm-sube { from { opacity: 0; transform: translateY(24px) scale(.97); } }
+        .tm-titulo-gigante { font-size: 54px; font-weight: 900; letter-spacing: -.04em; line-height: .95; margin: 6px 0; text-transform: capitalize; }
+        .tm-numero { font-size: 84px; font-weight: 900; letter-spacing: -.05em; line-height: 1; font-variant-numeric: tabular-nums; }
+        .tm-titulo { font-size: 26px; font-weight: 800; margin: 0; letter-spacing: -.02em; }
+        .tm-sub { font-size: 15px; opacity: .75; margin: 0; max-width: 300px; line-height: 1.45; }
+        .tm-chico { font-size: 13px; opacity: .7; letter-spacing: .04em; }
+        .tm-emoji { font-size: 64px; animation: pd-salta .7s cubic-bezier(.34,1.56,.64,1) both !important; }
+        .tm-cita { font-size: 18px; font-weight: 600; line-height: 1.4; margin: 4px 0; max-width: 320px; }
+        .tm-link { position: relative; z-index: 3; margin-top: 10px; display: inline-block; padding: 12px 20px; border-radius: 999px; background: #FFD400; color: #111; font: 800 14px Inter, sans-serif; text-decoration: none; border: 0; cursor: pointer; }
+        .tm-zona { position: absolute; top: 60px; bottom: 0; z-index: 2; background: transparent; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        .tm-izq { left: 0; width: 30%; }
+        .tm-der { right: 0; width: 70%; }
+        @media (prefers-reduced-motion: reduce) { .tm-abrir, .tm-play, .tm-contenido > *, .tm-barras i.tm-corre { animation: none; } }
         .pr-card { border-color: #e9e3c6; background: linear-gradient(180deg, #fffdf3 0%, #fff 70%); }
         .pr-dias { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; }
         .pr-dia { flex: 0 0 auto; width: 58px; padding: 8px 0; border-radius: 14px; border: 1px solid #eee; background: #fff; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; font-family: inherit; transition: transform .15s ease, background .2s ease, border-color .2s ease; }
@@ -485,6 +556,8 @@ export default async function PortalPage({ params }: { params: { token: string }
             </div>
           );
         })()}
+
+        {tuMes && <PortalTuMes placas={tuMes.placas} mesLabel={tuMes.mesLabel} />}
 
         {/* Tu reunión del mes: el cliente elige el día y la hora. */}
         {reunion && (

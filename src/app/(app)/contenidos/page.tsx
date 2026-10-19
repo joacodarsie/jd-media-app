@@ -193,6 +193,12 @@ export default async function ContenidosPage({
               📸 Lo que salió
             </Link>
             <Link
+              href="/contenidos/inspo"
+              className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-sm font-medium hover:bg-primary/20"
+            >
+              💡 Inspo
+            </Link>
+            <Link
               href="/contenidos/guiones"
               className="rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
             >

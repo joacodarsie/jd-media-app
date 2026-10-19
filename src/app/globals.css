@@ -296,3 +296,9 @@ a.rounded-2xl.bg-card:hover, a.rounded-xl.bg-card:hover { transform: translateY(
 .jd-barra-activo { animation: jd-barra-salta .45s cubic-bezier(.34, 1.56, .64, 1) both; box-shadow: 0 6px 18px -6px rgba(255, 212, 0, .8); }
 @keyframes jd-barra-salta { 0% { transform: scale(.7) translateY(4px); } 100% { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .jd-barra-activo { animation: none; } }
+
+/* En el celular, las columnas de las grillas se achican hasta el ancho de la
+   pantalla: antes un título largo empujaba la página a 768 px y el teléfono la
+   achicaba entera (18/10/2026). */
+.jd-pagina .grid > *, .jd-pagina .flex > * { min-width: 0; }
+.jd-pagina { max-width: 100%; }

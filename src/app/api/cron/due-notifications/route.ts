@@ -19,6 +19,7 @@ import { runAlarmaVinculacion } from "@/lib/retencion/vinculacion-ig-run";
 import { runTareaEncuesta } from "@/lib/retencion/encuesta-tarea-run";
 import { runCuentasEnRojo } from "@/lib/retencion/cuentas-rojo-run";
 import { runGuionesPrevios } from "@/lib/retencion/guion-previo-run";
+import { runTuLunes } from "@/lib/direccion/tu-lunes-run";
 import { runConciliacionDiaria } from "@/lib/social/conciliar-run";
 import { runAccountAlerts } from "@/lib/social/alerts";
 import { checkMetaToken } from "@/lib/meta/health";
@@ -453,6 +454,14 @@ export async function GET(req: NextRequest) {
     guiones = { error: e instanceof Error ? e.message : String(e) };
   }
 
+  // «Tu lunes en 1 minuto» para el dueño, solo los lunes (19/10/2026).
+  let lunes: unknown = null;
+  try {
+    lunes = await runTuLunes(admin, hoyYmd());
+  } catch (e) {
+    lunes = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   // Conciliación Instagram ↔ calendario: con el feed recién sincronizado, marca
   // como publicadas las piezas que ya salieron. Nadie marca a mano, así que sin
   // esto la puntualidad y el reporte del cliente miden cualquier cosa.
@@ -570,6 +579,7 @@ export async function GET(req: NextRequest) {
     encuestaMes,
     enRojo,
     guiones,
+    lunes,
     rutinas,
     revision_creativa: revisionCreativa,
     aprobaciones,

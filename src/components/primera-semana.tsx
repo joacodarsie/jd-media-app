@@ -7,7 +7,16 @@ import { cn } from "@/lib/utils";
  * «Tu primera semana» en Mi día (19/10/2026): el checklist de bienvenida, con
  * los pasos que se marcan solos a medida que la persona los hace.
  */
-export function PrimeraSemana({ nombre, pasos }: { nombre: string; pasos: PasoSemana[] }) {
+export function PrimeraSemana({
+  nombre,
+  pasos,
+  modo = "bienvenida",
+}: {
+  nombre: string;
+  pasos: PasoSemana[];
+  /** bienvenida: quien recién entra. datos: el resto del equipo, hasta completar su perfil. */
+  modo?: "bienvenida" | "datos";
+}) {
   const hechos = pasos.filter((p) => p.hecho).length;
   const pct = Math.round((hechos / pasos.length) * 100);
   return (
@@ -15,9 +24,17 @@ export function PrimeraSemana({ nombre, pasos }: { nombre: string; pasos: PasoSe
       <div className="relative border-b bg-gradient-to-r from-primary/15 via-amber-100/40 to-transparent px-5 py-4 dark:from-primary/15 dark:via-primary/5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tu primera semana</p>
-            <h2 className="mt-0.5 text-lg font-bold">¡Bienvenido/a, {nombre.split(" ")[0]}! 👋</h2>
-            <p className="text-sm text-muted-foreground">Estos pasos se van tildando solos a medida que los hacés.</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {modo === "bienvenida" ? "Tu primera semana" : "Tu perfil"}
+            </p>
+            <h2 className="mt-0.5 text-lg font-bold">
+              {modo === "bienvenida" ? `¡Bienvenido/a, ${nombre.split(" ")[0]}! 👋` : `${nombre.split(" ")[0]}, completá tus datos 📝`}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {modo === "bienvenida"
+                ? "Estos pasos se van tildando solos a medida que los hacés."
+                : "Te lleva 3 minutos y se tilda solo. Lo necesitamos de todo el equipo."}
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
@@ -65,14 +82,37 @@ export function PrimeraSemana({ nombre, pasos }: { nombre: string; pasos: PasoSe
  * Carga los datos y decide si mostrarla (los primeros 14 días de la persona).
  * `forzar` la muestra igual (para que la dirección vea cómo queda).
  */
-export async function PrimeraSemanaMiDia({ userId, nombre, rol, forzar = false }: { userId: string; nombre: string; rol: string; forzar?: boolean }) {
+export async function PrimeraSemanaMiDia({
+  userId,
+  nombre,
+  rol,
+  forzar = false,
+  verDatos = false,
+}: {
+  userId: string;
+  nombre: string;
+  rol: string;
+  forzar?: boolean;
+  /** Muestra la tarjeta «Completá tus datos» aunque sea la dirección (para verla). */
+  verDatos?: boolean;
+}) {
   const { createAdmin } = await import("@/lib/supabase/admin");
   const { pasosPrimeraSemana, mostrarPrimeraSemana } = await import("@/lib/equipo/primera-semana");
+  const { datosDelPerfil } = await import("@/lib/equipo/perfil-completo");
   const admin = createAdmin();
-  const { data: u } = await admin.from("users").select("created_at, avatar_url").eq("id", userId).maybeSingle();
-  const yo = u as { created_at: string | null; avatar_url: string | null } | null;
+  const { data: u } = await admin.from("users").select("*").eq("id", userId).maybeSingle();
+  const yo = u as ({ created_at: string | null; avatar_url: string | null } & import("@/lib/equipo/perfil-completo").DatosPerfil) | null;
   if (!yo) return null;
-  if (!forzar && (!yo.created_at || Date.now() - Date.parse(yo.created_at) > 14 * 86_400_000)) return null;
+  // El perfil completo se le pide a TODO el equipo (19/10/2026): no hay foto,
+  // alias ni datos de facturación de casi nadie.
+  const perfil = datosDelPerfil(yo);
+  const esNuevo = !!yo.created_at && Date.now() - Date.parse(yo.created_at) <= 14 * 86_400_000;
+  if (!forzar && !esNuevo) {
+    // La dirección no se pide datos a sí misma.
+    const esDireccion = rol === "admin" && (yo as { area?: string | null }).area === "Estrategia/Dirección";
+    if ((esDireccion && !verDatos) || perfil.every((d) => d.hecho)) return null;
+    return <PrimeraSemana nombre={nombre} pasos={perfil} modo="datos" />;
+  }
   const [{ count: push }, { data: uso }, { count: cerradas }, { count: mensajes }] = await Promise.all([
     admin.from("push_subscriptions").select("id", { count: "exact", head: true }).eq("user_id", userId),
     admin.from("uso_secciones").select("seccion").eq("user_id", userId),
@@ -87,6 +127,8 @@ export async function PrimeraSemanaMiDia({ userId, nombre, rol, forzar = false }
     escribioEnElChat: (mensajes ?? 0) > 0,
     rol,
   });
-  if (!forzar && !mostrarPrimeraSemana(yo.created_at, Date.now(), pasos)) return null;
-  return <PrimeraSemana nombre={nombre} pasos={pasos} />;
+  // Quien recién entra: los pasos de la primera semana más sus datos (la foto ya está en los dos).
+  const todos = [...pasos, ...perfil.filter((d) => d.clave !== "foto")];
+  if (!forzar && !mostrarPrimeraSemana(yo.created_at, Date.now(), todos)) return null;
+  return <PrimeraSemana nombre={nombre} pasos={todos} />;
 }

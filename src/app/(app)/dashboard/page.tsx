@@ -554,7 +554,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
 
       {/* Tu primera semana: el checklist de quien recién entra (19/10/2026). */}
       <Suspense fallback={null}>
-        <PrimeraSemanaMiDia userId={user.id} nombre={user.nombre} rol={user.rol} forzar={searchParams?.["primera-semana"] === "1"} />
+        <PrimeraSemanaMiDia userId={user.id} nombre={user.nombre} rol={user.rol} forzar={searchParams?.["primera-semana"] === "1"} verDatos={searchParams?.["primera-semana"] === "datos"} />
       </Suspense>
 
       {/* Sin foto de perfil: una línea para subirla (18/10/2026). */}

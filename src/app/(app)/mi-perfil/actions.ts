@@ -70,3 +70,47 @@ export async function guardarMiFoto(url: string | null) {
   revalidatePath("/dashboard");
   return { ok: true as const };
 }
+
+/**
+ * Los datos personales y de facturación del user logueado (19/10/2026, 0209):
+ * nombre completo, teléfono, DNI/CUIT, condición fiscal y domicilio.
+ */
+export async function updateMisDatos(input: {
+  nombre: string;
+  telefono: string | null;
+  dniCuit: string | null;
+  condicionFiscal: string | null;
+  domicilio: string | null;
+}) {
+  const me = await requireUser();
+  const clean = (s: string | null) => s?.trim() || null;
+  const nombre = input.nombre.trim().replace(/\s+/g, " ");
+  if (nombre.split(" ").length < 2) return { error: "Poné tu nombre y apellido." };
+  const tel = clean(input.telefono);
+  if (tel && !/^[+\d\s\-()]{8,20}$/.test(tel)) return { error: "Teléfono inválido. Ej: +54 9 351 555 5555" };
+  const doc = clean(input.dniCuit);
+  if (doc && !/^[\d.\-\s]{7,15}$/.test(doc)) return { error: "El DNI o CUIT tiene que tener solo números (y guiones)." };
+  const condiciones = ["monotributo", "responsable_inscripto", "relacion_dependencia", "ninguna"];
+  const cond = clean(input.condicionFiscal);
+  if (cond && !condiciones.includes(cond)) return { error: "Condición fiscal inválida." };
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("users")
+    .update({ nombre, telefono: tel, dni_cuit: doc, condicion_fiscal: cond, domicilio: clean(input.domicilio)?.slice(0, 200) ?? null })
+    .eq("id", me.id);
+  if (error) return { error: /condicion_fiscal|domicilio/.test(error.message) ? "Falta aplicar la migración 0209." : error.message };
+  revalidatePath("/mi-perfil");
+  revalidatePath("/dashboard");
+  return { ok: true as const };
+}
+
+/** «Ya tengo anotados mi mail y mi contraseña» (19/10/2026, 0209). */
+export async function confirmarMiAcceso() {
+  const me = await requireUser();
+  const supabase = createClient();
+  const { error } = await supabase.from("users").update({ acceso_confirmado_at: new Date().toISOString() }).eq("id", me.id);
+  if (error) return { error: error.message };
+  revalidatePath("/mi-perfil");
+  revalidatePath("/dashboard");
+  return { ok: true as const };
+}

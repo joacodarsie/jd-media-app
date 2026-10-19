@@ -23,6 +23,7 @@ import { runTuLunes } from "@/lib/direccion/tu-lunes-run";
 import { runAlarma48h } from "@/lib/contenidos/alarma-48h-run";
 import { runAprobacionTacita } from "@/lib/contenidos/aprobacion-tacita-run";
 import { runInspoSemanal } from "@/lib/inspo/run";
+import { runPerfilesIncompletos } from "@/lib/equipo/perfil-completo-run";
 import { runConciliacionDiaria } from "@/lib/social/conciliar-run";
 import { runAccountAlerts } from "@/lib/social/alerts";
 import { checkMetaToken } from "@/lib/meta/health";
@@ -489,6 +490,14 @@ export async function GET(req: NextRequest) {
     inspo = { error: e instanceof Error ? e.message : String(e) };
   }
 
+  // «Completá tus datos»: una tarea a quien le falte algo; se cierra sola (19/10/2026).
+  let perfiles: unknown = null;
+  try {
+    perfiles = await runPerfilesIncompletos(admin, hoyYmd());
+  } catch (e) {
+    perfiles = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   // Conciliación Instagram ↔ calendario: con el feed recién sincronizado, marca
   // como publicadas las piezas que ya salieron. Nadie marca a mano, así que sin
   // esto la puntualidad y el reporte del cliente miden cualquier cosa.
@@ -610,6 +619,7 @@ export async function GET(req: NextRequest) {
     alarma48h,
     tacitas,
     inspo,
+    perfiles,
     rutinas,
     revision_creativa: revisionCreativa,
     aprobaciones,

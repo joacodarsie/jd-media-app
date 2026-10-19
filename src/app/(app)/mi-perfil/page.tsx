@@ -18,6 +18,7 @@ import { Markdown } from "@/components/markdown";
 import { Bell } from "lucide-react";
 import { MiFoto } from "@/components/mi-foto";
 import { SonidosToggle } from "@/components/sonidos-toggle";
+import { MisDatosCard, MiAccesoCard } from "@/components/mis-datos-card";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,7 @@ export default async function MiPerfilPage() {
         <p className="text-muted-foreground">Tu puesto, tu pago y tus datos.</p>
       </div>
 
-      <Card>
+      <Card id="foto" className="scroll-mt-20">
         <CardHeader>
           <CardTitle className="text-base">Datos</CardTitle>
         </CardHeader>
@@ -69,6 +70,23 @@ export default async function MiPerfilPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Datos personales, de facturación y el acceso (19/10/2026, 0209). */}
+      {(() => {
+        const u = me as unknown as { telefono?: string | null; whatsapp_phone?: string | null; dni_cuit?: string | null; condicion_fiscal?: string | null; domicilio?: string | null; acceso_confirmado_at?: string | null };
+        return (
+          <>
+            <MisDatosCard
+              nombre={me.nombre}
+              telefono={u.telefono ?? u.whatsapp_phone ?? null}
+              dniCuit={u.dni_cuit ?? null}
+              condicionFiscal={u.condicion_fiscal ?? null}
+              domicilio={u.domicilio ?? null}
+            />
+            <MiAccesoCard email={me.email} confirmado={!!u.acceso_confirmado_at} />
+          </>
+        );
+      })()}
 
       {position && (() => {
         const p = position as Position & {
@@ -146,6 +164,7 @@ export default async function MiPerfilPage() {
 
       <MiSueldoCard person={miSueldo} periodo={periodo} />
 
+      <div id="cobro" className="scroll-mt-20" />
       <BankDetailsCard
         initialAlias={(me as unknown as { alias_cbu?: string | null }).alias_cbu ?? null}
         initialCbu={(me as unknown as { cbu?: string | null }).cbu ?? null}

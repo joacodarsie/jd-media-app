@@ -53,6 +53,8 @@ import { PortalReunion } from "@/components/portal-reunion";
 import { PortalTuMes } from "@/components/portal-tu-mes";
 import { PortalProduccion } from "@/components/portal-produccion";
 import { PortalArranque } from "@/components/portal-arranque";
+import { PortalAbono } from "@/components/portal-abono";
+import { clavePago, mostrarAbono } from "@/lib/portal/tu-abono";
 import { mostrarArranque, pasosArranque } from "@/lib/portal/tu-arranque";
 import { lineaDeProduccion } from "@/lib/portal/produccion";
 import { armarPlacas, hayTuMes, piezaEstrella } from "@/lib/portal/tu-mes";
@@ -299,6 +301,18 @@ export default async function PortalPage({ params }: { params: { token: string }
     });
     return mostrarArranque(ref.fecha_inicio, hoyYmd(), pasos) ? pasos : null;
   })().catch(() => null);
+  // «Tu abono del mes» del 1 al 10 (19/10/2026). Se esconde si ya figura cobrado.
+  const abono = await (async () => {
+    const periodo = hoyYmd().slice(0, 7);
+    const [{ data: inv }, { data: av }] = await Promise.all([
+      admin.from("client_invoices").select("fecha_cobro").eq("cliente_id", cliente_id).eq("periodo", periodo),
+      admin.from("tasks").select("id").eq("rutina_key", clavePago(cliente_id, periodo)).limit(1),
+    ]);
+    const filas = (inv ?? []) as { fecha_cobro: string | null }[];
+    const pagado = filas.length > 0 && filas.every((x) => !!x.fecha_cobro);
+    if (!mostrarAbono({ hoy: hoyYmd(), fechaInicio: ref?.fecha_inicio ?? null, pagado })) return null;
+    return { mes: periodLabel(periodo).replace(/ de \d{4}$/, "").toLowerCase(), avisado: !!av?.length };
+  })().catch(() => null);
   // Su reunión mensual: la elige él (19/10/2026).
   const reunion = await cargarReunionPortal(admin, cliente_id, hoyYmd()).catch(() => null);
   // «Tu mes en JD Media»: el resumen del mes cerrado en historias (19/10/2026).
@@ -534,6 +548,18 @@ export default async function PortalPage({ params }: { params: { token: string }
         .ta-tuyo .ta-check { background: #FFD400; color: #111; box-shadow: 0 0 0 4px rgba(255,212,0,.25); }
         .ta-chip { margin-left: auto; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; background: #111; color: #FFD400; padding: 3px 8px; border-radius: 999px; }
         @media (prefers-reduced-motion: reduce) { .ta-barra span, .ta-pasos li, .ta-hecho .ta-check { animation: none; } }
+        /* Tu abono del mes (19/10/2026) */
+        .ab-card { border-color: #d7e6ff; background: linear-gradient(180deg, #f3f8ff 0%, #fff 70%); }
+        .ab-datos { display: grid; gap: 6px; margin-bottom: 12px; }
+        .ab-fila { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid #e6edf8; background: #fff; font-family: inherit; text-align: left; cursor: pointer; transition: transform .15s ease, border-color .15s ease; }
+        .ab-fila:hover { transform: translateY(-1px); border-color: #9ec0f5; }
+        .ab-fija { cursor: default; }
+        .ab-fija:hover { transform: none; border-color: #e6edf8; }
+        .ab-label { width: 54px; flex: 0 0 auto; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #888; }
+        .ab-valor { flex: 1; min-width: 0; font-weight: 700; font-size: 14px; color: #111; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .ab-copiar { color: #3b82f6; display: inline-flex; }
+        .ab-pague { display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; border-radius: 12px; border: 0; background: #111; color: #fff; font: 700 14px Inter, system-ui, sans-serif; cursor: pointer; }
+        .ab-pague:disabled { opacity: .6; }
         .pr-card { border-color: #e9e3c6; background: linear-gradient(180deg, #fffdf3 0%, #fff 70%); }
         .pr-dias { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; }
         .pr-dia { flex: 0 0 auto; width: 58px; padding: 8px 0; border-radius: 14px; border: 1px solid #eee; background: #fff; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; font-family: inherit; transition: transform .15s ease, background .2s ease, border-color .2s ease; }
@@ -626,6 +652,18 @@ export default async function PortalPage({ params }: { params: { token: string }
             </div>
           );
         })()}
+
+        {abono && (
+          <PortalAbono
+            token={params.token}
+            mes={abono.mes}
+            hastaDia={5}
+            alias={AGENCY.bank.alias}
+            cvu={AGENCY.bank.cvu}
+            titular={AGENCY.bank.titular}
+            avisado={abono.avisado}
+          />
+        )}
 
         {arranque && <PortalArranque pasos={arranque} />}
 

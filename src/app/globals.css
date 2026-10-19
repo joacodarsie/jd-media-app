@@ -273,5 +273,13 @@ a.rounded-2xl.bg-card:hover, a.rounded-xl.bg-card:hover { transform: translateY(
 
 /* La tarjeta que se expande hasta la pantalla nueva (18/10/2026) */
 ::view-transition-group(jd-expande) { animation-duration: .45s; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
-::view-transition-old(jd-expande), ::view-transition-new(jd-expande) { height: 100%; object-fit: cover; overflow: clip; }
+/* Recorta en vez de estirar: la tarjeta se abre como una ventana a la pantalla nueva. */
+::view-transition-old(jd-expande), ::view-transition-new(jd-expande) { height: 100%; width: 100%; object-fit: none; object-position: 0 0; overflow: clip; }
+::view-transition-old(jd-expande) { animation: jd-vt-sale .18s ease both; }
+::view-transition-new(jd-expande) { animation: jd-vt-entra .35s .08s ease both; }
+@keyframes jd-vt-sale { to { opacity: 0; } }
+@keyframes jd-vt-entra { from { opacity: 0; } }
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .3s; }
+
+/* De noche, los botoncitos claros del saludo (la ayuda «?») van translúcidos. */
+.jd-cielo--noche .bg-muted, .jd-cielo--madrugada .bg-muted, .jd-cielo--noche .bg-background, .jd-cielo--madrugada .bg-background { background: rgba(255, 255, 255, .15) !important; }

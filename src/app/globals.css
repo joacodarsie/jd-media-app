@@ -253,8 +253,20 @@ a.rounded-2xl.bg-card:hover, a.rounded-xl.bg-card:hover { transform: translateY(
 .jd-cielo--noche, .jd-cielo--madrugada { background: linear-gradient(120deg, #1d2140 0%, #2b2f5c 55%, #3d2f5c 100%); color: #fff; }
 .jd-cielo--noche .text-muted-foreground, .jd-cielo--madrugada .text-muted-foreground,
 .jd-cielo--noche .text-foreground\/70, .jd-cielo--madrugada .text-foreground\/70 { color: rgba(255, 255, 255, .75); }
-.dark .jd-cielo--manana, .dark .jd-cielo--tarde, .dark .jd-cielo--atardecer { color: #1a1a1a; }
-.dark .jd-cielo--manana .text-muted-foreground, .dark .jd-cielo--tarde .text-muted-foreground, .dark .jd-cielo--atardecer .text-muted-foreground { color: rgba(0, 0, 0, .55); }
+/* Modo oscuro (19/10/2026): los cielos de día tienen su versión oscura, con letra
+   clara. Antes quedaban claros con la frase y los chips en blanco: no se leían. */
+.dark .jd-cielo--manana { background: linear-gradient(120deg, #3a2e0c 0%, #2a2410 45%, #16202e 100%); }
+.dark .jd-cielo--tarde { background: linear-gradient(120deg, #10243d 0%, #15202f 50%, #2c2710 100%); }
+.dark .jd-cielo--atardecer { background: linear-gradient(120deg, #3d2216 0%, #3a1a26 45%, #261c3d 100%); }
+.dark .jd-cielo { color: #fff; border-color: rgba(255, 255, 255, .08); }
+.dark .jd-cielo .text-muted-foreground, .dark .jd-cielo .text-foreground\/70 { color: rgba(255, 255, 255, .75); }
+.dark .jd-cielo .bg-muted, .dark .jd-cielo .bg-background, .dark .jd-cielo .bg-card { background: rgba(255, 255, 255, .1) !important; border-color: rgba(255, 255, 255, .14) !important; }
+.dark .jd-cielo .jd-logro { background: rgba(255, 255, 255, .12); color: #fff; }
+/* Los números del saludo van sin caja en la compu, también con el cielo oscuro. */
+@media (min-width: 640px) {
+  .jd-cielo .sm\:bg-transparent.sm\:bg-transparent,
+  .dark .jd-cielo .sm\:bg-transparent.sm\:bg-transparent { background: transparent !important; border-color: transparent !important; }
+}
 .jd-cielo::before { /* estrellitas de noche, brillo de día */
   content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .6;
   background-image: radial-gradient(rgba(255, 255, 255, .9) 1px, transparent 1.5px);
@@ -315,3 +327,10 @@ a.rounded-2xl.bg-card:hover, a.rounded-xl.bg-card:hover { transform: translateY(
 }
 .jd-chispa { animation: jd-chispa 1.2s cubic-bezier(.2, .8, .2, 1) both; }
 @media (prefers-reduced-motion: reduce) { .jd-llama, .jd-chispa { animation: none; } }
+
+/* Modo claro (19/10/2026): el amarillo de marca como TEXTO sobre fondo blanco no
+   se lee («Ver tareas», «Ver el año», números de «Hoy»). Como texto pasa a un
+   ámbar oscuro; los botones y fondos amarillos quedan igual. El menú lateral es
+   oscuro también en modo claro, así que ahí no se toca. */
+html:not(.dark) .text-primary:not(.jd-sidebar *, .jd-cielo--noche *, .jd-cielo--madrugada *, .bg-black *, .bg-zinc-900 *, .bg-neutral-900 *) { color: #a16207; }
+html:not(.dark) .hover\:text-primary:hover:not(.jd-sidebar *) { color: #854d0e; }

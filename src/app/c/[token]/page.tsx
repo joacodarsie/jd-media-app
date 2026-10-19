@@ -304,7 +304,7 @@ export default async function PortalPage({ params }: { params: { token: string }
           inset: 0;
           background: radial-gradient(ellipse at top right, rgba(255,212,0,.15), transparent 60%);
         }
-        .hero-saludo { font-size: 13px; color: rgba(255,255,255,.75); margin-bottom: 14px; font-weight: 500; }
+        .hero-saludo { font-size: 13px; color: rgba(255,255,255,.75); margin-bottom: 14px; font-weight: 500; padding-right: 64px; }
         .hero-astro { position: absolute; right: 18px; top: 14px; font-size: 52px; line-height: 1; filter: drop-shadow(0 0 20px rgba(255,212,0,.5)); animation: pm-astro 6s ease-in-out infinite; }
         @keyframes pm-astro { 0%,100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(6px) rotate(6deg); } }
         .hero--manana { background: linear-gradient(135deg, #2a2412 0%, #1a1a1a 60%); }

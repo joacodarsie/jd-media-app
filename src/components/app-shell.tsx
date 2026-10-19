@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EfectosGlobales } from "@/components/efectos-globales";
+import { createClient as createBrowserSupabase } from "@/lib/supabase/client";
 import { visibleNavGroups, visibleNav, matchNavItem } from "@/lib/nav";
 import { ROLE_LABEL } from "@/lib/constants";
 import type { AppUser } from "@/lib/types";
@@ -393,6 +394,15 @@ export function AppShell({
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const sectionLabel = currentSectionLabel(pathname, user, isLiveOwner);
+
+  // Qué secciones se usan (19/10/2026, 0204): una visita por cambio de página.
+  // Sin la migración, la función no existe y falla en silencio.
+  useEffect(() => {
+    const seccion = sectionLabel || `/${pathname.split("/")[1] ?? ""}`;
+    void createBrowserSupabase()
+      .rpc("registrar_uso", { p_seccion: seccion })
+      .then(() => undefined, () => undefined);
+  }, [pathname, sectionLabel]);
 
   return (
     <div className="flex min-h-screen">

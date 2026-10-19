@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { Suspense } from "react";
 import { DireccionWeb } from "@/components/direccion-web";
 import { DireccionReferidos } from "@/components/direccion-referidos";
+import { DireccionUso } from "@/components/direccion-uso";
 
 export const dynamic = "force-dynamic";
 
@@ -163,6 +164,12 @@ export default async function DireccionPage() {
       {esDireccion && (
         <Suspense fallback={null}>
           <DireccionReferidos />
+        </Suspense>
+      )}
+
+      {esDireccion && (
+        <Suspense fallback={null}>
+          <DireccionUso />
         </Suspense>
       )}
 

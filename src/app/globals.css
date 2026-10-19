@@ -217,7 +217,7 @@ a.rounded-2xl.bg-card:hover, a.rounded-xl.bg-card:hover { transform: translateY(
 
 /* Títulos de cada pantalla: entran y se dibuja una línea amarilla abajo */
 .jd-pagina h1 { position: relative; animation: jd-titulo .6s cubic-bezier(.2, .8, .2, 1) both; }
-.jd-pagina > div > h1:not(.flex)::after, .jd-pagina > div > div > h1:not(.flex)::after, .jd-pagina > div > div > div > h1:not(.flex)::after {
+.jd-pagina h1:not(.flex)::after {
   content: ''; display: block; height: 3px; width: 2.5rem; margin-top: .3rem; border-radius: 3px; background: #ffd400;
   transform-origin: left; animation: jd-llena .8s .25s cubic-bezier(.2, .8, .2, 1) both;
 }

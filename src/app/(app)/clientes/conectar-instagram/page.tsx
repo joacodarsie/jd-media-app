@@ -58,6 +58,17 @@ export default async function ConectarInstagramPage() {
   const sinConectar = clientes.filter((c) => !c.ig_user_id);
   const conectados = clientes.filter((c) => c.ig_user_id);
 
+  // Conectada no es lo mismo que funcionando (18/10/2026): 12 de 17 tenían el
+  // ID cargado pero nunca trajeron un dato. Funciona = trajo datos en 3 días.
+  const hace3 = new Date(Date.now() - 3 * 86_400_000).toISOString().slice(0, 10);
+  const { data: snapsRaw } = await admin
+    .from("ig_snapshots")
+    .select("cliente_id")
+    .gte("fecha", hace3)
+    .in("cliente_id", conectados.map((c) => c.id));
+  const conDatos = new Set(((snapsRaw ?? []) as { cliente_id: string }[]).map((x) => x.cliente_id));
+  const sinDatos = conectados.filter((c) => !conDatos.has(c.id));
+
   let cuentas: IgCuenta[] = [];
   let errorMeta: string | null = null;
   if (!metaConfigured()) {
@@ -110,9 +121,38 @@ export default async function ConectarInstagramPage() {
           justamente lo que hace que un cliente renueve.
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          {conectados.length} de {clientes.length} cuentas activas ya están conectadas.
+          {conDatos.size} de {clientes.length} cuentas activas traen sus datos todos los días
+          {sinDatos.length > 0 && ` · ${sinDatos.length} conectadas pero sin datos`}
+          {sinConectar.length > 0 && ` · ${sinConectar.length} sin conectar`}.
         </p>
       </div>
+
+      {sinDatos.length > 0 && (
+        <div className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-amber-400/50">
+          <div className="font-semibold">Conectadas pero sin datos · {sinDatos.length}</div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Tienen la cuenta cargada, pero Meta no deja leerlas: no están asignadas al usuario del sistema del Business Manager. Se arregla una sola vez, para todas juntas:
+          </p>
+          <ol className="mt-2 list-decimal space-y-0.5 pl-5 text-sm">
+            <li>Entrá a <b>business.facebook.com</b> → Configuración del negocio.</li>
+            <li>Usuarios → <b>Usuarios del sistema</b> → elegí el de JD Media → <b>Asignar activos</b>.</li>
+            <li>En <b>Cuentas de Instagram</b>, tildá estas cuentas con control total. Repetí en <b>Páginas</b> con su página de Facebook.</li>
+            <li>Volvé acá: al día siguiente empiezan a llegar los datos (o tocá «Actualizar ahora» en Resultados de cada una).</li>
+          </ol>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {sinDatos.map((c) => (
+              <Link
+                key={c.id}
+                href={`/clientes/${c.id}/resultados`}
+                className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium hover:bg-primary/15"
+              >
+                {c.nombre}
+                {c.ig_username ? <span className="text-muted-foreground"> · @{c.ig_username}</span> : null}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {errorMeta ? (
         <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">

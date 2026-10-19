@@ -348,8 +348,13 @@ export function friendlyIgError(err: unknown): string {
   if (msg.includes("META_NO_TOKEN"))
     return "Falta conectar Meta: configurá el token del sistema (META_SYSTEM_USER_TOKEN).";
   if (msg.includes("META_API")) {
-    if (/permission|insights|scope|oauth|token|expired|session/i.test(msg))
-      return "El token de Meta no tiene los permisos de Instagram (instagram_basic, instagram_manage_insights, pages_read_engagement). Regeneralo con esos permisos.";
+    // Vencido: hay que regenerar el token. Sin permiso sobre UNA cuenta (con el
+    // mismo token otras andan): esa cuenta no está asignada al usuario del
+    // sistema en el Business Manager (18/10/2026, antes decía siempre «token»).
+    if (/expired|session has expired|invalid oauth access token|error validating access token/i.test(msg))
+      return "El token de Meta venció: hay que regenerarlo en el Business Manager (usuario del sistema).";
+    if (/permission|insights|scope|oauth|token|does not exist|unsupported get request|cannot be loaded/i.test(msg))
+      return "Meta no deja leer esta cuenta: en el Business Manager, asignala al usuario del sistema (Configuración del negocio → Usuarios del sistema → Asignar activos → Cuentas de Instagram y su página de Facebook, con control total).";
     return msg.replace("META_API: ", "Instagram: ");
   }
   return "No se pudieron traer los resultados de Instagram. Reintentá en un rato.";

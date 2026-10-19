@@ -40,7 +40,7 @@ import {
   STATUS_LABEL,
   STATUS_ORDER,
 } from "@/lib/constants";
-import { fmtDate, dueState } from "@/lib/dates";
+import { fmtDate, dueState, cuandoVence, hoyYmd } from "@/lib/dates";
 import { HelpTrigger } from "@/components/help-trigger";
 import { cn } from "@/lib/utils";
 import type { AppUser, Client, TaskWithRels } from "@/lib/types";
@@ -969,17 +969,21 @@ function TaskRow({
 }) {
   const due = dueState(t.fecha_limite, t.estado);
   const abierta = t.estado !== "completada" && t.estado !== "archivada";
+  const trabada = !!t.bloqueo;
+  // Rediseño (19/10/2026): en el celular la fila es el círculo de «hecha», el
+  // título completo y una línea con la fecha en palabras; lo demás (estado,
+  // editar, borrar, seleccionar) vive en la compu o adentro de la tarea.
   return (
     <div
       data-fila-tarea
       className={cn(
-        "group flex flex-col gap-2 px-3 py-2.5 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center",
+        "group flex items-start gap-3 px-3 py-3 transition-colors hover:bg-muted/40 sm:items-center sm:py-2.5",
         selected && "bg-primary/5 hover:bg-primary/10",
         anidada && "rounded-lg border-l-2 border-l-muted py-2 pl-3 pr-1"
       )}
     >
       <label
-        className="flex shrink-0 cursor-pointer items-center"
+        className="hidden shrink-0 cursor-pointer items-center sm:flex"
         onClick={(e) => e.stopPropagation()}
       >
         <input
@@ -990,25 +994,14 @@ function TaskRow({
           className="h-4 w-4 cursor-pointer rounded border-muted-foreground/40 accent-primary"
         />
       </label>
-      {abierta && <CompletarTarea id={t.id} titulo={t.titulo} className="hidden sm:flex" />}
-      {abierta && (due === "vencida" || t.bloqueo) && (
-        <TrabadaBoton taskId={t.id} titulo={t.titulo} bloqueo={t.bloqueo} bloqueoQuien={t.bloqueo_quien} className="self-start sm:order-last sm:self-center" />
-      )}
+      {abierta ? <CompletarTarea id={t.id} titulo={t.titulo} /> : <span className="h-5 w-5 shrink-0" />}
       <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-baseline gap-2">
-          {/* El número adelante: es como se nombra un ticket al hablarlo. */}
-          {formatTicket(t.numero) && (
-            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
-              {formatTicket(t.numero)}
-            </span>
-          )}
-          <Link
-            href={`/tareas/${t.id}`}
-            className={cn("truncate font-medium hover:underline", anidada && "text-sm")}
-          >
-            {t.titulo}
-          </Link>
-        </div>
+        <Link
+          href={`/tareas/${t.id}`}
+          className={cn("line-clamp-2 font-medium leading-snug hover:underline sm:line-clamp-1", anidada && "text-sm")}
+        >
+          {t.titulo}
+        </Link>
         {/* Subtarea cuya madre quedó fuera del filtro: se dice de dónde sale. */}
         {madre && (
           <Link
@@ -1020,33 +1013,46 @@ function TaskRow({
             <span className="truncate">{madre.titulo}</span>
           </Link>
         )}
-        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          {t.fecha_limite && abierta && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 font-medium",
+                due === "vencida" && "text-rose-600 dark:text-rose-400",
+                due === "hoy" && "text-amber-600 dark:text-amber-400"
+              )}
+            >
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  due === "vencida" ? "bg-rose-500" : due === "hoy" ? "bg-amber-500" : due === "pronto" ? "bg-sky-500" : "bg-muted-foreground/30"
+                )}
+                aria-hidden="true"
+              />
+              {cuandoVence(t.fecha_limite, hoyYmd())}
+            </span>
+          )}
           {/* Solo se marca lo urgente: la prioridad media es la de siempre. */}
           {(t.prioridad === "alta" || t.prioridad === "urgente") && (
-            <span className={cn("rounded-full px-2 py-0.5 font-medium", PRIORITY_BADGE[t.prioridad])}>
+            <span className={cn("rounded-full px-1.5 py-px text-[10px] font-semibold", PRIORITY_BADGE[t.prioridad])}>
               {PRIORITY_LABEL[t.prioridad]}
             </span>
           )}
+          {t.cliente && <span className="truncate font-medium text-foreground/70">{t.cliente.nombre}</span>}
           <span>
-            {t.asignado?.nombre ?? "Sin asignar"}
+            {t.asignado?.nombre?.split(" ")[0] ?? "Sin asignar"}
             <MasPersonas t={t} />
           </span>
-          {t.cliente && <span>· {t.cliente.nombre}</span>}
-          <span>· {t.area}</span>
-          {t.fecha_limite && (
-            <span
-              className={cn(
-                due === "vencida" && "text-rose-600/90",
-                due === "hoy" && "font-medium text-amber-600"
-              )}
-            >
-              · {due === "vencida" ? "Vencida " : "Vence "}
-              {fmtDate(t.fecha_limite)}
-            </span>
-          )}
+          <span className="hidden sm:inline">· {t.area}</span>
+          {formatTicket(t.numero) && <span className="hidden font-mono text-[10px] opacity-70 sm:inline">{formatTicket(t.numero)}</span>}
         </div>
       </div>
-      <div className="flex items-center gap-1 transition-opacity sm:opacity-0 sm:focus-within:opacity-100 sm:group-hover:opacity-100">
+      {abierta && (due === "vencida" || trabada) && (
+        <span className={cn("shrink-0 self-center", !trabada && "sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100")}>
+          <TrabadaBoton taskId={t.id} titulo={t.titulo} bloqueo={t.bloqueo} bloqueoQuien={t.bloqueo_quien} />
+        </span>
+      )}
+      <div className="hidden items-center gap-1 transition-opacity sm:flex sm:opacity-0 sm:focus-within:opacity-100 sm:group-hover:opacity-100">
         <TaskStatusSelect id={t.id} estado={t.estado} className="h-8 w-36 text-xs" />
         <TaskFormDialog
           mode="edit"

@@ -73,7 +73,10 @@ export async function BandejaCoordinacion({ me }: { me: { id: string; rol: strin
   const pm = clave.pmNombre?.split(" ")[0] ?? "la PM";
   const directora = clave.directoraNombre?.split(" ")[0] ?? "la dirección creativa";
 
-  return (
+  // La dirección mira de afuera (19/10/2026): plegado, para que no tape sus
+  // propias tareas. Quien tiene que actuar (la PM, la directora) lo ve abierto.
+  const soloMira = !soyPm && !soyDirectora;
+  const contenido = (
     <div className="grid gap-3 md:grid-cols-2">
       {aprobar.length > 0 && (
         <BandejaAprobar
@@ -101,6 +104,28 @@ export async function BandejaCoordinacion({ me }: { me: { id: string; rol: strin
         />
       )}
     </div>
+  );
+  if (!soloMira) return contenido;
+  return (
+    <details className="group rounded-xl border bg-card [&_summary::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-2.5 text-sm transition-colors hover:bg-muted/40">
+        <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />
+        {aprobar.length > 0 && (
+          <span>
+            <b>{aprobar.length}</b> esperando que apruebe {directora}
+          </span>
+        )}
+        {aprobar.length > 0 && repartir.length > 0 && <span className="text-muted-foreground">·</span>}
+        {repartir.length > 0 && (
+          <span>
+            <b>{repartir.length}</b> esperando que {pm} reparta
+          </span>
+        )}
+        <span className="ml-auto text-xs text-muted-foreground group-open:hidden">Ver</span>
+        <span className="ml-auto hidden text-xs text-muted-foreground group-open:inline">Ocultar</span>
+      </summary>
+      <div className="border-t p-3">{contenido}</div>
+    </details>
   );
 }
 

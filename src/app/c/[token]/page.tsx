@@ -317,7 +317,7 @@ export default async function PortalPage({ params }: { params: { token: string }
         .pm-vivo .card .pilar-bar-fill { transform: scaleX(0); transform-origin: left; transition: transform 1s cubic-bezier(.2,.8,.2,1) .2s; }
         .pm-vivo .card.pm-visto .pilar-bar-fill { transform: none; }
         .hero { animation: pm-hero .7s cubic-bezier(.2,.8,.2,1) both; }
-        .hero:before { animation: pm-brillo 9s ease-in-out infinite alternate; }
+        .hero:before { inset: -25%; animation: pm-brillo 9s ease-in-out infinite alternate; }
         @keyframes pm-hero { from { opacity: 0; transform: translateY(10px) scale(.99); } to { opacity: 1; transform: none; } }
         @keyframes pm-brillo { from { transform: translate(0,0); } to { transform: translate(-12%, 8%); } }
         @media (prefers-reduced-motion: reduce) { .hero, .hero:before { animation: none; } }

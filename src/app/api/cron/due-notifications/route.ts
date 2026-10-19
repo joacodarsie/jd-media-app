@@ -16,6 +16,7 @@ import {
 import { runPaidMediaDaily } from "@/lib/paid-media/sync";
 import { runInstagramDaily } from "@/lib/social/sync";
 import { runAlarmaVinculacion } from "@/lib/retencion/vinculacion-ig-run";
+import { runTareaEncuesta } from "@/lib/retencion/encuesta-tarea-run";
 import { runConciliacionDiaria } from "@/lib/social/conciliar-run";
 import { runAccountAlerts } from "@/lib/social/alerts";
 import { checkMetaToken } from "@/lib/meta/health";
@@ -426,6 +427,14 @@ export async function GET(req: NextRequest) {
     sinMedir = { error: e instanceof Error ? e.message : String(e) };
   }
 
+  // La encuesta del mes como tarea de la PM, desde el día 15 (19/10/2026).
+  let encuestaMes: unknown = null;
+  try {
+    encuestaMes = await runTareaEncuesta(admin, hoyYmd());
+  } catch (e) {
+    encuestaMes = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   // Conciliación Instagram ↔ calendario: con el feed recién sincronizado, marca
   // como publicadas las piezas que ya salieron. Nadie marca a mano, así que sin
   // esto la puntualidad y el reporte del cliente miden cualquier cosa.
@@ -540,6 +549,7 @@ export async function GET(req: NextRequest) {
     cuentasEnRiesgo,
     rescates,
     sinMedir,
+    encuestaMes,
     rutinas,
     revision_creativa: revisionCreativa,
     aprobaciones,

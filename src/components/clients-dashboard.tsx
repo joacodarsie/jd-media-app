@@ -428,6 +428,7 @@ function ClientCard({
 
   return (
     <details
+      data-expande-fila
       className={cn(
         "group bg-card transition-colors hover:bg-muted/30 animate-in fade-in duration-300",
         // Equipo incompleto: una línea ámbar a la izquierda para que salte a la vista.
@@ -439,6 +440,7 @@ function ClientCard({
           <div className="flex flex-wrap items-center gap-2">
             <Link
               href={`/clientes/${client.id}`}
+              data-expande
               className="font-semibold hover:underline"
               onClick={(e) => e.stopPropagation()}
             >

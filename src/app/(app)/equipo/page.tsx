@@ -177,6 +177,7 @@ function PositionCard({
   return (
     <Link
       href={`/equipo/${position.id}`}
+      data-expande
       className="group flex flex-col gap-2 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border/50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-primary/40"
     >
       <div className="flex items-start justify-between">

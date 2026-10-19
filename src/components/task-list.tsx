@@ -47,6 +47,7 @@ export function TaskList({
             key={t.id}
             href={`/tareas/${t.id}`}
             data-fila-tarea
+            data-expande
             className="group flex items-center gap-3 px-4 py-3 transition-colors animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300 hover:bg-muted/40"
             style={{ animationDelay: `${Math.min(i, 10) * 35}ms` }}
           >

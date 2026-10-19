@@ -27,6 +27,7 @@ import { dueState, esVencidaReciente, hoyYmd } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { TaskList } from "@/components/task-list";
 import { AnilloDelDia } from "@/components/anillo-del-dia";
+import { SALUDO, fraseDelDia, momentoDelDia } from "@/lib/saludo-del-dia";
 import { HelpTrigger } from "@/components/help-trigger";
 import { DashboardAvisos } from "@/components/dashboard-avisos";
 import { MiPuesto } from "@/components/mi-puesto";
@@ -476,25 +477,38 @@ export default async function DashboardPage() {
   });
   const fechaHoyCap = fechaHoy.charAt(0).toUpperCase() + fechaHoy.slice(1);
 
+  // El saludo según la hora de Córdoba, con su cielo y lo importante del día (18/10/2026).
+  const horaCba = Number(new Intl.DateTimeFormat("es-AR", { hour: "numeric", hour12: false, timeZone: "America/Argentina/Cordoba" }).format(new Date())) % 24;
+  const momento = momentoDelDia(horaCba);
+  const reunionHoy = eventsHoy.find((e) => new Date(e.end).getTime() > Date.now()) ?? null;
+  const frase = fraseDelDia({
+    vencidas: vencidas.length,
+    hoy: venceHoy.length,
+    reunion: reunionHoy
+      ? {
+          titulo: reunionHoy.summary ?? "reunión",
+          hora: new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Cordoba" }).format(new Date(reunionHoy.start)),
+        }
+      : null,
+    piezasHoy: pubsHoy.length,
+  });
+
   return (
     <div className="space-y-6">
-      {/* Hero */}
-      <div>
-        <div className="flex flex-wrap items-end justify-between gap-3">
+      {/* Hero: el cielo del momento del día */}
+      <div className={`jd-cielo jd-cielo--${momento} relative overflow-hidden rounded-3xl px-5 py-5 md:px-7 md:py-6`}>
+        <span className="jd-astro" aria-hidden="true">{SALUDO[momento].emoji}</span>
+        <div className="relative flex flex-wrap items-end justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
               <Sun className="h-3.5 w-3.5" /> {fechaHoyCap}
             </div>
             <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold">
-              Hola, {user.nombre.split(" ")[0]}{" "}
-              <span className="ml-1">👋</span>
+              {SALUDO[momento].saludo}, {user.nombre.split(" ")[0]}{" "}
+              <span className="ml-1 inline-block origin-[70%_70%] animate-[jd-saluda_1.6s_ease-in-out_.4s_2]">👋</span>
               <HelpTrigger slug="mi-dia" label="¿Qué es Mi día?" size="md" />
             </h1>
-            <p className="text-muted-foreground">
-              {todayCount === 0
-                ? "Tu día está limpio. Aprovechá para revisar la agenda o leer documentación."
-                : `Tenés ${todayCount} cosa${todayCount === 1 ? "" : "s"} para hoy.`}
-            </p>
+            <p className="max-w-xl text-foreground/70">{frase}</p>
           </div>
 
           <AnilloDelDia hechas={hechasHoy} total={hechasHoy + venceHoy.length + vencidas.length} hoy={hoy} />

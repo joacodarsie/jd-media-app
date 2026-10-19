@@ -243,3 +243,35 @@ a.rounded-2xl.bg-card:hover, a.rounded-xl.bg-card:hover { transform: translateY(
   .jd-nav-activo::after, .jd-pagina h1, .jd-pagina h1::after, .jd-shimmer { animation: none !important; }
   .jd-brillo::after { display: none; }
 }
+
+
+/* El cielo de Mi día según la hora (18/10/2026) */
+.jd-cielo { border: 1px solid hsl(var(--border) / .6); }
+.jd-cielo--manana { background: linear-gradient(120deg, #fff7d6 0%, #ffe9a8 45%, #dff0ff 100%); }
+.jd-cielo--tarde { background: linear-gradient(120deg, #e4f2ff 0%, #f3f8ff 50%, #fff3c4 100%); }
+.jd-cielo--atardecer { background: linear-gradient(120deg, #ffd9b8 0%, #ffc1c8 45%, #d9c8ff 100%); }
+.jd-cielo--noche, .jd-cielo--madrugada { background: linear-gradient(120deg, #1d2140 0%, #2b2f5c 55%, #3d2f5c 100%); color: #fff; }
+.jd-cielo--noche .text-muted-foreground, .jd-cielo--madrugada .text-muted-foreground,
+.jd-cielo--noche .text-foreground\/70, .jd-cielo--madrugada .text-foreground\/70 { color: rgba(255, 255, 255, .75); }
+.dark .jd-cielo--manana, .dark .jd-cielo--tarde, .dark .jd-cielo--atardecer { color: #1a1a1a; }
+.dark .jd-cielo--manana .text-muted-foreground, .dark .jd-cielo--tarde .text-muted-foreground, .dark .jd-cielo--atardecer .text-muted-foreground { color: rgba(0, 0, 0, .55); }
+.jd-cielo::before { /* estrellitas de noche, brillo de día */
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .6;
+  background-image: radial-gradient(rgba(255, 255, 255, .9) 1px, transparent 1.5px);
+  background-size: 38px 38px; mask-image: linear-gradient(90deg, transparent, #000 60%);
+}
+.jd-cielo--manana::before, .jd-cielo--tarde::before, .jd-cielo--atardecer::before { opacity: .35; }
+.jd-astro {
+  position: absolute; right: 1.5rem; top: -0.6rem; font-size: 4.5rem; line-height: 1; opacity: .9;
+  filter: drop-shadow(0 0 24px rgba(255, 212, 0, .55)); animation: jd-astro 6s ease-in-out infinite;
+}
+@keyframes jd-astro { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(6px) rotate(6deg); } }
+@keyframes jd-saluda { 0%, 100% { transform: rotate(0); } 20%, 60% { transform: rotate(16deg); } 40%, 80% { transform: rotate(-8deg); } }
+@media (max-width: 640px) { .jd-astro { font-size: 3rem; right: .8rem; } }
+@media (prefers-reduced-motion: reduce) { .jd-astro { animation: none; } }
+
+
+/* La tarjeta que se expande hasta la pantalla nueva (18/10/2026) */
+::view-transition-group(jd-expande) { animation-duration: .45s; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+::view-transition-old(jd-expande), ::view-transition-new(jd-expande) { height: 100%; object-fit: cover; overflow: clip; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .3s; }

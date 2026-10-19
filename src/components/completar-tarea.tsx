@@ -12,6 +12,7 @@ import { Check } from "lucide-react";
 import { toast } from "sonner";
 import { updateTaskStatus } from "@/app/(app)/tareas/actions";
 import { cn } from "@/lib/utils";
+import { sonar } from "@/lib/sonido";
 
 export function CompletarTarea({ id, titulo, className }: { id: string; titulo: string; className?: string }) {
   const router = useRouter();
@@ -23,6 +24,7 @@ export function CompletarTarea({ id, titulo, className }: { id: string; titulo: 
     e.stopPropagation();
     if (hecha) return;
     setHecha(true);
+    sonar("hecha");
     const fila = ref.current?.closest<HTMLElement>("[data-fila-tarea]");
     fila?.classList.add("jd-fila-hecha");
     const [res] = await Promise.all([updateTaskStatus(id, "completada"), new Promise((r) => setTimeout(r, 750))]);

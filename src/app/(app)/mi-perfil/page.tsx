@@ -17,6 +17,7 @@ import { PushToggle } from "@/components/push-toggle";
 import { Markdown } from "@/components/markdown";
 import { Bell } from "lucide-react";
 import { MiFoto } from "@/components/mi-foto";
+import { SonidosToggle } from "@/components/sonidos-toggle";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,7 @@ export default async function MiPerfilPage() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <MiFoto userId={me.id} nombre={me.nombre} url={me.avatar_url ?? null} />
+          <SonidosToggle />
           <div className="space-y-1 border-t pt-3">
             <div>
               <strong>{me.nombre}</strong>

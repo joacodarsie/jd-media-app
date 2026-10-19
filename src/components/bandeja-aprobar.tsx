@@ -9,6 +9,7 @@ import { aprobarTarea, pedirArchivo, pedirCambios } from "@/app/(app)/tareas/apr
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { sonar } from "@/lib/sonido";
 
 export interface ItemAprobar {
   id: string;
@@ -108,6 +109,7 @@ function Fila({ item: i, puedeDecidir }: { item: ItemAprobar; puedeDecidir: bool
       const r = await fn();
       if ("error" in r && r.error) return void toast.error(r.error);
       setHecha(ok);
+      if (ok === "aprobada") sonar("aprobada");
       setCambios(false);
       toast.success(ok === "aprobada" ? "Aprobada" : "Cambios pedidos");
       router.refresh();

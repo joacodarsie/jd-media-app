@@ -47,6 +47,7 @@ import { PortalAccesos } from "@/components/portal-accesos";
 import { PortalMaterial } from "@/components/portal-material";
 import { PortalMovimiento } from "@/components/portal-movimiento";
 import { PortalDeslizar } from "@/components/portal-deslizar";
+import { pedirEncuestaEnPortal } from "@/lib/retencion/encuesta-portal";
 import { SALUDO, momentoDelDia } from "@/lib/saludo-del-dia";
 import { estadoDeRedes, type Credencial } from "@/lib/accesos/portal";
 // Programa de referidos (13/10/2026).
@@ -254,6 +255,15 @@ export default async function PortalPage({ params }: { params: { token: string }
       }
     }
   }
+  // La encuesta del mes, adentro del portal (19/10/2026): por WhatsApp nadie
+  // la contestó nunca. Sin la tabla, no se muestra.
+  const { data: encRow, error: encErr } = await admin
+    .from("client_satisfaction")
+    .select("id")
+    .eq("cliente_id", cliente_id)
+    .eq("periodo", hoyYmd().slice(0, 7))
+    .maybeSingle();
+  const pedirEncuesta = !encErr && pedirEncuestaEnPortal({ fechaInicio: ref?.fecha_inicio ?? null, hoy: hoyYmd(), yaRespondio: !!encRow });
   // Sus plantillas de Canva, para sumar contenido por su cuenta (0200).
   const plantillasCanva = ref?.canva_plantillas_url ?? null;
   const mostrarRecomendar = !!ref?.ref_code && puedeRecomendar(ref.fecha_inicio, hoyYmd());
@@ -379,6 +389,8 @@ export default async function PortalPage({ params }: { params: { token: string }
         @keyframes pm-hero { from { opacity: 0; transform: translateY(10px) scale(.99); } to { opacity: 1; transform: none; } }
         @keyframes pm-brillo { from { transform: translate(0,0); } to { transform: translate(-12%, 8%); } }
         @media (prefers-reduced-motion: reduce) { .hero, .hero:before { animation: none; } }
+        .enc-cara { transition: transform .15s ease, background .15s ease; }
+        .enc-cara:hover { transform: scale(1.12); background: #fffbe6 !important; }
         .card-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; color: #888; margin-bottom: 6px; }
         .card-title { font-size: 20px; font-weight: 700; margin: 0 0 12px; }
 
@@ -449,6 +461,28 @@ export default async function PortalPage({ params }: { params: { token: string }
             </div>
           );
         })()}
+
+        {/* La encuesta del mes: un toque en la carita y abre la encuesta con esa nota. */}
+        {pedirEncuesta && (
+          <div className="card" style={{ textAlign: "center" }}>
+            <div className="card-label">30 segundos</div>
+            <h2 className="card-title" style={{ marginBottom: 4 }}>¿Cómo venimos este mes?</h2>
+            <p style={{ fontSize: 13, color: "#666", margin: "0 0 14px" }}>Tu opinión la lee todo el equipo y nos ayuda a mejorar el mes que viene.</p>
+            <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
+              {["😞", "😕", "😐", "🙂", "😍"].map((cara, i) => (
+                <a
+                  key={cara}
+                  href={`/encuesta/${params.token}?p=${i + 1}`}
+                  aria-label={`${i + 1} de 5`}
+                  className="enc-cara"
+                  style={{ fontSize: 32, width: 56, height: 56, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 14, background: "#fafafa", border: "1px solid #eee", textDecoration: "none" }}
+                >
+                  {cara}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Pendientes de revisión — se muestra primero porque es lo urgente */}
         {toReview.length > 0 && (

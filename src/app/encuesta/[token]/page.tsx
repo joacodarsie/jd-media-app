@@ -17,7 +17,13 @@ const MESES = [
  * Encuesta de satisfacción del cliente (pública, sin login). Usa el MISMO token
  * del portal: el equipo comparte el link del portal con /encuesta al final.
  */
-export default async function EncuestaPage({ params }: { params: { token: string } }) {
+export default async function EncuestaPage({
+  params,
+  searchParams,
+}: {
+  params: { token: string };
+  searchParams?: { p?: string };
+}) {
   const admin = createAdmin();
 
   const { data: tokenRow } = await admin
@@ -54,6 +60,10 @@ export default async function EncuestaPage({ params }: { params: { token: string
     .maybeSingle();
   const previo = (prev as { puntaje?: number } | null)?.puntaje ?? null;
 
+  // Desde el portal llega con la carita ya elegida (?p=1..5).
+  const pEnUrl = Number(searchParams?.p);
+  const elegido = Number.isInteger(pEnUrl) && pEnUrl >= 1 && pEnUrl <= 5 ? pEnUrl : null;
+
   const [anio, mes] = periodo.split("-");
   const mesLabel = `${MESES[Number(mes) - 1] ?? ""} ${anio}`;
 
@@ -71,7 +81,7 @@ export default async function EncuestaPage({ params }: { params: { token: string
       <SatisfactionForm
         token={params.token}
         yaRespondio={previo != null}
-        puntajePrevio={previo}
+        puntajePrevio={previo ?? elegido}
         refCode={refCode}
       />
 

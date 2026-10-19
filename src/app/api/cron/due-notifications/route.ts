@@ -18,6 +18,7 @@ import { runInstagramDaily } from "@/lib/social/sync";
 import { runAlarmaVinculacion } from "@/lib/retencion/vinculacion-ig-run";
 import { runTareaEncuesta } from "@/lib/retencion/encuesta-tarea-run";
 import { runCuentasEnRojo } from "@/lib/retencion/cuentas-rojo-run";
+import { runGuionesPrevios } from "@/lib/retencion/guion-previo-run";
 import { runConciliacionDiaria } from "@/lib/social/conciliar-run";
 import { runAccountAlerts } from "@/lib/social/alerts";
 import { checkMetaToken } from "@/lib/meta/health";
@@ -444,6 +445,14 @@ export async function GET(req: NextRequest) {
     enRojo = { error: e instanceof Error ? e.message : String(e) };
   }
 
+  // El guion de las reuniones mensuales de los próximos 3 días (19/10/2026).
+  let guiones: unknown = null;
+  try {
+    guiones = await runGuionesPrevios(admin);
+  } catch (e) {
+    guiones = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   // Conciliación Instagram ↔ calendario: con el feed recién sincronizado, marca
   // como publicadas las piezas que ya salieron. Nadie marca a mano, así que sin
   // esto la puntualidad y el reporte del cliente miden cualquier cosa.
@@ -560,6 +569,7 @@ export async function GET(req: NextRequest) {
     sinMedir,
     encuestaMes,
     enRojo,
+    guiones,
     rutinas,
     revision_creativa: revisionCreativa,
     aprobaciones,

@@ -2,6 +2,14 @@
 title: Novedades
 ---
 
+## 2026-10-19 — Instagram vinculado y arranques más claros
+
+- 🔗 **Instagram vinculado = datos reales.** Desde hoy, cada cuenta que no trae datos de Instagram tiene dos tareas, las dos a cargo de **Paid Media**:
+  1. **Vincular la página de Facebook al Instagram** (Luz la sigue y apura).
+  2. **Compartir la cuenta con JD Media y conectarla en la plataforma.**
+  - Se cierran solas cuando llegan los datos. Si se cierran a mano sin datos, se vuelven a abrir. Hasta entonces llega un aviso 🔗 todos los días.
+- ✅ **Arranques más claros.** Cada paso del onboarding dice **quién lo hace** y **cuándo está hecho**.
+
 ## 2026-10-15 — Plantillas de Canva para el cliente
 
 - 🎨 **Los clientes reciben sus plantillas de Canva.** En la ficha de cada cuenta hay un recuadro nuevo, **«Plantillas de Canva»**: pegá el link de Canva **«Enlace de plantilla»** (Compartir → Más → Enlace de plantilla). El cliente las ve en su plataforma y se lleva su propia copia: el original de la CM no se toca.

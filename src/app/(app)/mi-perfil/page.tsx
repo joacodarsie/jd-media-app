@@ -16,6 +16,7 @@ import { ReplayTourButton } from "@/components/replay-tour-button";
 import { PushToggle } from "@/components/push-toggle";
 import { Markdown } from "@/components/markdown";
 import { Bell } from "lucide-react";
+import { MiFoto } from "@/components/mi-foto";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,8 @@ export default async function MiPerfilPage() {
           <CardTitle className="text-base">Datos</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
-          <div className="space-y-1">
+          <MiFoto userId={me.id} nombre={me.nombre} url={me.avatar_url ?? null} />
+          <div className="space-y-1 border-t pt-3">
             <div>
               <strong>{me.nombre}</strong>
             </div>

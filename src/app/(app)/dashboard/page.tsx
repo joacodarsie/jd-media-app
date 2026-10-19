@@ -509,6 +509,18 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      {/* Sin foto de perfil: una línea para subirla (18/10/2026). */}
+      {!user.avatar_url && (
+        <Link
+          href="/mi-perfil"
+          className="group flex items-center gap-3 rounded-2xl bg-primary/10 px-4 py-3 text-sm ring-1 ring-primary/30 transition hover:bg-primary/15 animate-in fade-in slide-in-from-top-1 duration-500"
+        >
+          <span className="jd-flota text-xl" aria-hidden="true">📸</span>
+          <span className="flex-1"><b>Subí tu foto de perfil.</b> Así el equipo te pone cara en las tareas, el chat y Equipo.</span>
+          <span className="font-semibold text-foreground/80 transition-transform group-hover:translate-x-0.5">Subirla →</span>
+        </Link>
+      )}
+
       {/* Coordinadores: lo de su puesto + su tarjeta de la dirección (no frena el resto). */}
       <Suspense fallback={null}>
         <MiPuesto userId={user.id} />

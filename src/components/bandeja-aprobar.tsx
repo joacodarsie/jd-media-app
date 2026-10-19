@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Check, CheckCircle2, Clock, ExternalLink, Loader2, Pencil } from "lucide-react";
-import { aprobarTarea, pedirCambios } from "@/app/(app)/tareas/aprobacion-actions";
+import { aprobarTarea, pedirArchivo, pedirCambios } from "@/app/(app)/tareas/aprobacion-actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -96,6 +96,7 @@ function fechaCorta(ymd: string) {
 function Fila({ item: i, puedeDecidir }: { item: ItemAprobar; puedeDecidir: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const [pedido, setPedido] = useState(false);
   const [cambios, setCambios] = useState(false);
   const [detalle, setDetalle] = useState("");
   const [hecha, setHecha] = useState<null | "aprobada" | "cambios">(null);
@@ -170,7 +171,24 @@ function Fila({ item: i, puedeDecidir }: { item: ItemAprobar; puedeDecidir: bool
         ) : (
           puedeDecidir && (
             <>
-              {/* Sin archivo, el botón no se muestra: se veía activo y no hacía nada (18/10/2026). */}
+              {/* Sin archivo no se aprueba: se le pide a quien la tiene, de un toque (18/10/2026). */}
+              {i.pieza && !i.pieza.tieneArchivo && (
+                <Button
+                  size="sm"
+                  className="h-7 px-2.5 text-xs"
+                  disabled={pending || pedido}
+                  onClick={() =>
+                    start(async () => {
+                      const r = await pedirArchivo(i.id);
+                      if ("error" in r && r.error) return void toast.error(r.error);
+                      setPedido(true);
+                      toast.success(r && "yaAvisado" in r && r.yaAvisado ? "Ya se lo habías pedido hoy" : `Listo, le avisamos a ${i.persona?.split(" ")[0] ?? "quien la tiene"}`);
+                    })
+                  }
+                >
+                  {pedido ? "✓ Pedido" : `📎 Pedirle el archivo${i.persona ? ` a ${i.persona.split(" ")[0]}` : ""}`}
+                </Button>
+              )}
               {!(i.pieza && !i.pieza.tieneArchivo) && (
               <Button
                 size="sm"

@@ -90,6 +90,34 @@ async function avisar(userId: string | null, yo: string, taskId: string, mensaje
     .insert({ user_id: userId, task_id: taskId, tipo: "asignacion", mensaje, link: `/tareas/${taskId}` });
 }
 
+/**
+ * Pedir el archivo (18/10/2026): la pieza está para aprobar pero nadie subió el
+ * archivo, así que no se puede aprobar. Un toque le avisa a quien la tiene,
+ * con un comentario en la tarea. Una vez por día por tarea.
+ */
+export async function pedirArchivo(id: string) {
+  const { supabase, actor, nombre } = await sesion();
+  const t = await tareaParaAprobar(id);
+  if (!t) return { error: "No encontré el ticket." };
+  if (!t.asignado_a_id) return { error: "La tarea no tiene a nadie asignado." };
+  const desde = new Date(Date.now() - 20 * 3_600_000).toISOString();
+  const { data: ya } = await createAdmin()
+    .from("notifications")
+    .select("id")
+    .eq("task_id", id)
+    .eq("user_id", t.asignado_a_id)
+    .like("mensaje", "📎%")
+    .gte("created_at", desde)
+    .limit(1);
+  if (ya?.length) return { ok: true as const, yaAvisado: true };
+  await supabase
+    .from("comments")
+    .insert({ task_id: id, user_id: actor.id, contenido: "📎 Falta subir el archivo final para poder aprobar esta pieza." });
+  await avisar(t.asignado_a_id, actor.id, id, `📎 ${nombre.split(" ")[0]} necesita el archivo de "${t.titulo}" para aprobarla`);
+  refrescar(id);
+  return { ok: true as const, yaAvisado: false };
+}
+
 /** La directora aprueba: la pieza queda lista para mandarle al cliente. */
 export async function aprobarTarea(id: string) {
   const { supabase, actor, nombre } = await sesion();

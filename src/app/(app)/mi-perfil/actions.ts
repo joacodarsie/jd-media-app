@@ -55,3 +55,18 @@ export async function updateMyBankDetails(input: {
   revalidatePath("/mi-perfil");
   return { ok: true };
 }
+
+/** La foto de perfil del user logueado (18/10/2026). Tiene que ser de nuestro storage. */
+export async function guardarMiFoto(url: string | null) {
+  const me = await requireUser();
+  const limpio = url?.trim() || null;
+  if (limpio && !limpio.startsWith(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/`)) {
+    return { error: "La foto tiene que subirse desde acá." };
+  }
+  const { error } = await createClient().from("users").update({ avatar_url: limpio }).eq("id", me.id);
+  if (error) return { error: error.message };
+  revalidatePath("/mi-perfil");
+  revalidatePath("/equipo");
+  revalidatePath("/dashboard");
+  return { ok: true as const };
+}

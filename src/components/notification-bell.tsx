@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { fmtDateTime } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { agruparNotificaciones, type GrupoNoti } from "@/lib/notificaciones-grupos";
 import type { Notification } from "@/lib/types";
 import { markRead, markAllRead } from "@/app/(app)/notificaciones/actions";
 import { updateTaskStatus } from "@/app/(app)/tareas/actions";
@@ -66,12 +67,25 @@ export function NotificationBell({
     ? 0
     : Math.max(0, unreadCount - optReadIds.size);
 
-  function onClickItem(n: Notification) {
+  // Los avisos repetidos van juntos (18/10/2026): uno solo, con cuántas veces vino.
+  const grupos = agruparNotificaciones(items);
+  const porId = new Map(items.map((x) => [x.id, x]));
+  const sinLeerDe = (g: GrupoNoti<Notification>) => g.ids.filter((id) => !isRead(porId.get(id)!));
+  function marcarGrupo(g: GrupoNoti<Notification>) {
+    const ids = sinLeerDe(g);
+    if (!ids.length) return Promise.resolve();
+    setOptReadIds((s) => new Set([...s, ...ids]));
+    return Promise.all(ids.map((id) => markRead(id))).then(() => undefined);
+  }
+
+  function onClickItem(n: Notification, g?: GrupoNoti<Notification>) {
+    const pendientes = g ? marcarGrupo(g) : Promise.resolve();
     if (!isRead(n)) {
       setOptReadIds((s) => new Set(s).add(n.id));
     }
     start(async () => {
-      if (!n.leida) await markRead(n.id);
+      await pendientes;
+      if (!n.leida && !g) await markRead(n.id);
       setOpen(false);
       if (n.task_id) router.push(`/tareas/${n.task_id}`);
       else if (n.link) router.push(n.link);
@@ -114,11 +128,10 @@ export function NotificationBell({
       }
     });
   }
-  function onMarkReadOnly(n: Notification) {
-    if (n.leida || optReadIds.has(n.id)) return;
-    setOptReadIds((s) => new Set(s).add(n.id));
+  function onMarkReadOnly(g: GrupoNoti<Notification>) {
+    if (!sinLeerDe(g).length) return;
     start(async () => {
-      await markRead(n.id);
+      await marcarGrupo(g);
       router.refresh();
     });
   }
@@ -159,9 +172,10 @@ export function NotificationBell({
             </p>
           ) : (
             <ul className="divide-y">
-              {items.map((n) => {
+              {grupos.map((g) => {
+                const n = g.principal;
                 const Icon = ICONS[n.tipo] ?? Bell;
-                const read = isRead(n);
+                const read = sinLeerDe(g).length === 0;
                 const completed = n.task_id
                   ? completedTaskIds.has(n.task_id)
                   : false;
@@ -175,12 +189,12 @@ export function NotificationBell({
                   <li
                     key={n.id}
                     className={cn(
-                      "flex items-stretch gap-1 hover:bg-accent/50",
+                      "flex items-stretch gap-1 transition-colors hover:bg-accent/50 animate-in fade-in duration-300",
                       !read && "bg-primary/5"
                     )}
                   >
                     <button
-                      onClick={() => onClickItem(n)}
+                      onClick={() => onClickItem(n, g)}
                       className="flex min-w-0 flex-1 gap-3 px-3 py-2.5 text-left"
                     >
                       <Icon
@@ -199,8 +213,13 @@ export function NotificationBell({
                         >
                           {n.mensaje}
                         </p>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
                           {fmtDateTime(n.created_at)}
+                          {g.veces > 1 && (
+                            <span className="rounded-full bg-muted px-1.5 py-px font-semibold text-foreground/70" title={`Llegó ${g.veces} veces`}>
+                              ×{g.veces}
+                            </span>
+                          )}
                         </p>
                       </div>
                       {!read && !completed && (
@@ -228,7 +247,7 @@ export function NotificationBell({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onMarkReadOnly(n);
+                            onMarkReadOnly(g);
                           }}
                           className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                           title="Marcar como leída"

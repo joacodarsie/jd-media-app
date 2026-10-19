@@ -3,6 +3,7 @@ import { createHash } from "crypto";
 import { createAdmin } from "@/lib/supabase/admin";
 import { corsHeaders } from "@/lib/web/cors";
 import { diagnosticar, usuarioDe } from "@/lib/diagnostico/puntaje";
+import { tareaSeguimientoDiagnostico } from "@/lib/comercial/seguimiento-diagnostico";
 import { perfilPublico, CuentaNoDisponible } from "@/lib/diagnostico/instagram-publico";
 
 export const dynamic = "force-dynamic";
@@ -83,7 +84,8 @@ export async function GET(req: Request) {
     void _posts;
     const resultado = { ok: true, perfil: resto, diagnostico };
     await guardar(true, diagnostico.puntaje, resultado);
-    await registrarContacto(admin, perfil.usuario, perfil.nombre, diagnostico.puntaje);
+    const nuevo = await registrarContacto(admin, perfil.usuario, perfil.nombre, diagnostico.puntaje);
+    if (nuevo) await tareaParaComercial(admin, perfil.usuario, perfil.nombre, diagnostico.puntaje, diagnostico.mejoras);
     return responder(resultado);
   } catch (e) {
     if (e instanceof CuentaNoDisponible) {
@@ -99,7 +101,7 @@ export async function GET(req: Request) {
 }
 
 /** La cuenta diagnosticada entra como contacto en Comercial (sin duplicar). */
-async function registrarContacto(admin: ReturnType<typeof createAdmin>, usuario: string, nombre: string | null, puntaje: number) {
+async function registrarContacto(admin: ReturnType<typeof createAdmin>, usuario: string, nombre: string | null, puntaje: number): Promise<boolean> {
   try {
     const hoy = new Date().toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba" });
     const linea = `${hoy}: pidió el diagnóstico de Instagram en la web (${puntaje}/100). Puede no ser el dueño de la cuenta.`;
@@ -107,12 +109,56 @@ async function registrarContacto(admin: ReturnType<typeof createAdmin>, usuario:
     const { data: existe } = await admin.from("leads").select("id, notas").eq("nombre", etiqueta).eq("origen", "web").limit(1).maybeSingle();
     if (existe) {
       const notas = (existe as { notas: string | null }).notas ?? "";
-      if (notas.includes(`${hoy}: pidió el diagnóstico`)) return;
+      if (notas.includes(`${hoy}: pidió el diagnóstico`)) return false;
       await admin.from("leads").update({ notas: [notas, linea].filter(Boolean).join("\n") }).eq("id", (existe as { id: string }).id);
-    } else {
-      await admin.from("leads").insert({ nombre: etiqueta, empresa: nombre, origen: "web", notas: linea });
+      return false;
     }
+    await admin.from("leads").insert({ nombre: etiqueta, empresa: nombre, origen: "web", notas: linea });
+    return true;
   } catch {
     // Que falle el registro no frena el diagnóstico.
+    return false;
+  }
+}
+
+/**
+ * Contacto nuevo del diagnóstico → tarea para comercial con lo que le falta y
+ * el mensaje listo (19/10/2026). No a las cuentas que ya son clientes.
+ */
+async function tareaParaComercial(
+  admin: ReturnType<typeof createAdmin>,
+  usuario: string,
+  nombre: string | null,
+  puntaje: number,
+  mejoras: string[]
+) {
+  try {
+    const { data: cliente } = await admin.from("clients").select("id").ilike("ig_username", usuario).limit(1);
+    if (cliente?.length) return;
+    const clave = `diag-web:${usuario.toLowerCase()}`;
+    const { data: ya } = await admin.from("tasks").select("id").eq("rutina_key", clave).limit(1);
+    if (ya?.length) return;
+    const { data: us } = await admin.from("users").select("id, rol, rol_secundario, area").eq("activo", true);
+    const lista = (us ?? []) as { id: string; rol: string; rol_secundario: string | null; area: string | null }[];
+    const quien =
+      lista.find((u) => u.area === "Comercial" && u.rol === "coordinador") ??
+      lista.find((u) => u.rol === "comercial" || u.rol_secundario === "comercial") ??
+      lista.find((u) => u.rol === "admin");
+    if (!quien) return;
+    const t = tareaSeguimientoDiagnostico({ usuario, nombre, puntaje, mejoras });
+    const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Argentina/Cordoba" });
+    await admin.from("tasks").insert({
+      titulo: t.titulo,
+      descripcion: t.descripcion,
+      asignado_a_id: quien.id,
+      creado_por_id: quien.id,
+      area: "Comercial",
+      prioridad: "alta",
+      estado: "pendiente",
+      fecha_limite: hoy,
+      rutina_key: clave,
+    });
+  } catch {
+    // Que falle no frena el diagnóstico.
   }
 }

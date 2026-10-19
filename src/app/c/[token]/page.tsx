@@ -54,6 +54,8 @@ import { PortalTuMes } from "@/components/portal-tu-mes";
 import { PortalProduccion } from "@/components/portal-produccion";
 import { PortalArranque } from "@/components/portal-arranque";
 import { PortalAbono } from "@/components/portal-abono";
+import { PortalPlazo } from "@/components/portal-plazo";
+import { etiquetaPlazo, plazoAprobacion } from "@/lib/contenidos/aprobacion-tacita";
 import { clavePago, mostrarAbono } from "@/lib/portal/tu-abono";
 import { mostrarArranque, pasosArranque } from "@/lib/portal/tu-arranque";
 import { lineaDeProduccion } from "@/lib/portal/produccion";
@@ -116,7 +118,7 @@ export default async function PortalPage({ params }: { params: { token: string }
       .limit(120),
     admin
       .from("publications")
-      .select("id, titulo, copy, guion, descripcion, red, tipo, fecha_publicacion, asset_url")
+      .select("id, titulo, copy, guion, descripcion, red, tipo, fecha_publicacion, asset_url, cliente_revision_iniciada_at, updated_at")
       .eq("cliente_id", cliente_id)
       .eq("estado", "revision_cliente")
       .order("fecha_publicacion", { ascending: true, nullsFirst: false })
@@ -560,6 +562,15 @@ export default async function PortalPage({ params }: { params: { token: string }
         .ab-copiar { color: #3b82f6; display: inline-flex; }
         .ab-pague { display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; border-radius: 12px; border: 0; background: #111; color: #fff; font: 700 14px Inter, system-ui, sans-serif; cursor: pointer; }
         .ab-pague:disabled { opacity: .6; }
+        /* Plazo de aprobación tácita (19/10/2026) */
+        .pz-caja { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; margin: 0 0 14px; border-radius: 12px; background: #fff; border: 1px dashed #f3c94b; }
+        .pz-urgente { border-style: solid; border-color: #f59e0b; background: #fff7e0; }
+        .pz-reloj { font-size: 22px; line-height: 1; animation: pz-gira 2.4s ease-in-out infinite; }
+        @keyframes pz-gira { 0%, 40% { transform: rotate(0); } 50%, 90% { transform: rotate(180deg); } 100% { transform: rotate(360deg); } }
+        .pz-titulo { font-weight: 700; font-size: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+        .pz-falta { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; background: #111; color: #FFD400; padding: 2px 8px; border-radius: 999px; font-variant-numeric: tabular-nums; }
+        .pz-texto { font-size: 13px; color: #555; margin-top: 3px; line-height: 1.45; }
+        @media (prefers-reduced-motion: reduce) { .pz-reloj { animation: none; } }
         .pr-card { border-color: #e9e3c6; background: linear-gradient(180deg, #fffdf3 0%, #fff 70%); }
         .pr-dias { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; }
         .pr-dia { flex: 0 0 auto; width: 58px; padding: 8px 0; border-radius: 14px; border: 1px solid #eee; background: #fff; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; font-family: inherit; transition: transform .15s ease, background .2s ease, border-color .2s ease; }
@@ -725,6 +736,15 @@ export default async function PortalPage({ params }: { params: { token: string }
               Aprobá si todo va bien, o pedinos cambios con un click. Lo que respondas acá
               llega directo al equipo.
             </p>
+            {/* La aprobación tácita de la carta acuerdo, con cuenta regresiva (19/10/2026). */}
+            {(() => {
+              const plazos = (toReview as unknown as { fecha_publicacion: string | null; cliente_revision_iniciada_at?: string | null; updated_at?: string | null }[])
+                .filter((x) => x.fecha_publicacion)
+                .map((x) => plazoAprobacion(x.fecha_publicacion!, x.cliente_revision_iniciada_at ?? x.updated_at ?? null))
+                .filter((d) => d.getTime() > Date.now())
+                .sort((a, b) => a.getTime() - b.getTime());
+              return plazos[0] ? <PortalPlazo hastaIso={plazos[0].toISOString()} etiqueta={etiquetaPlazo(plazos[0])} /> : null;
+            })()}
             <PortalDeslizar piezas={toReview} token={params.token} />
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {toReview.map((p) => (

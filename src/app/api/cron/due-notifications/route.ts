@@ -21,6 +21,7 @@ import { runCuentasEnRojo } from "@/lib/retencion/cuentas-rojo-run";
 import { runGuionesPrevios } from "@/lib/retencion/guion-previo-run";
 import { runTuLunes } from "@/lib/direccion/tu-lunes-run";
 import { runAlarma48h } from "@/lib/contenidos/alarma-48h-run";
+import { runAprobacionTacita } from "@/lib/contenidos/aprobacion-tacita-run";
 import { runConciliacionDiaria } from "@/lib/social/conciliar-run";
 import { runAccountAlerts } from "@/lib/social/alerts";
 import { checkMetaToken } from "@/lib/meta/health";
@@ -471,6 +472,14 @@ export async function GET(req: NextRequest) {
     alarma48h = { error: e instanceof Error ? e.message : String(e) };
   }
 
+  // Aprobación tácita de la carta acuerdo (19/10/2026).
+  let tacitas: unknown = null;
+  try {
+    tacitas = await runAprobacionTacita(admin, hoyYmd());
+  } catch (e) {
+    tacitas = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   // Conciliación Instagram ↔ calendario: con el feed recién sincronizado, marca
   // como publicadas las piezas que ya salieron. Nadie marca a mano, así que sin
   // esto la puntualidad y el reporte del cliente miden cualquier cosa.
@@ -590,6 +599,7 @@ export async function GET(req: NextRequest) {
     guiones,
     lunes,
     alarma48h,
+    tacitas,
     rutinas,
     revision_creativa: revisionCreativa,
     aprobaciones,

@@ -28,8 +28,11 @@ export function InspoFuentes({
     e.preventDefault();
     const v = valor.trim();
     if (!v) return;
+    // Los hashtags necesitan el permiso «Instagram Public Content Access» de Meta
+    // (revisión de la app): todavía no lo tenemos (19/10/2026).
+    if (v.startsWith("#")) return void toast.error("Por ahora solo cuentas: los hashtags necesitan un permiso de Meta que todavía no tenemos.");
+    const tipo = "cuenta";
     setCargando(true);
-    const tipo = v.startsWith("#") ? "hashtag" : "cuenta";
     const r = await agregarFuente(clienteId, tipo, v);
     setCargando(false);
     if ("error" in r && r.error) return void toast.error(r.error);
@@ -54,7 +57,7 @@ export function InspoFuentes({
         <input
           value={valor}
           onChange={(e) => setValor(e.target.value)}
-          placeholder="@cuentadereferencia, link de Instagram o #hashtag"
+          placeholder="@cuentadereferencia o link de Instagram"
           className="h-10 min-w-0 flex-1 rounded-md border bg-background px-3 text-sm"
         />
         <Button type="submit" disabled={cargando || !valor.trim()}>

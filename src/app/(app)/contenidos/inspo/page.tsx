@@ -107,6 +107,27 @@ export default async function InspoPage({ searchParams }: { searchParams?: { cli
   }[]).map((p) => ({ ...p, id: p.media_id, formato: p.producto, rendimiento: p.rendimiento == null ? null : Number(p.rendimiento) }));
 
   const formatos = formatosQueRinden(piezas);
+  // Tendencias: qué formato rinde más en las referencias de TODAS las cuentas, último mes.
+  const { data: tRaw } = await admin
+    .from("inspo_piezas")
+    .select("producto, rendimiento, media_id")
+    .gte("publicado_at", new Date(Date.now() - 30 * 86_400_000).toISOString())
+    .not("rendimiento", "is", null)
+    .limit(5000);
+  const tendencias = formatosQueRinden(
+    ((tRaw ?? []) as { producto: Formato; rendimiento: number; media_id: string }[]).map((x) => ({
+      id: x.media_id,
+      cuenta: null,
+      permalink: null,
+      caption: null,
+      formato: x.producto,
+      publicado_at: null,
+      likes: null,
+      comentarios: null,
+      imagen: null,
+      rendimiento: Number(x.rendimiento),
+    }))
+  );
   const maxF = Math.max(1, ...formatos.map((f) => f.rendimiento));
   const semana = deEstaSemana(piezas, Date.now());
   const top = lasQueLaRompieron(piezas);
@@ -149,7 +170,7 @@ export default async function InspoPage({ searchParams }: { searchParams?: { cli
             <p className="mb-3 text-xs text-muted-foreground">
               Sumá cuentas que comuniquen como queremos que comunique {actual.nombre}
               {actual.rubro ? ` (${actual.rubro.toLowerCase()})` : ""}: competencia que lo hace bien, marcas de otro país del mismo rubro, o
-              referentes de estilo. También podés sumar un #hashtag del rubro para ver tendencias. Se actualizan solas cada semana.
+              referentes de estilo (tienen que ser públicas y de empresa o creador). Traemos sus últimas 50 publicaciones y se actualizan solas cada semana.
             </p>
             {fErr ? (
               <p className="text-sm text-red-600">Falta aplicar la migración 0207.</p>
@@ -188,6 +209,23 @@ export default async function InspoPage({ searchParams }: { searchParams?: { cli
                       </li>
                     ))}
                   </ul>
+                </section>
+              )}
+
+              {tendencias.length > 0 && (
+                <section className="rounded-xl border bg-gradient-to-r from-primary/10 via-transparent to-transparent p-4">
+                  <h2 className="text-sm font-semibold">🌎 Tendencia del mes en todas las referencias de la agencia</h2>
+                  <p className="mb-2 text-xs text-muted-foreground">Qué formato le está rindiendo más a las cuentas que seguimos, de todos los rubros.</p>
+                  <div className="flex flex-wrap gap-2">
+                    {tendencias.map((t, i) => (
+                      <span
+                        key={t.formato}
+                        className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm", i === 0 && "border-primary bg-primary/15 font-semibold")}
+                      >
+                        {EMOJI[t.formato]} {ETIQUETA_FORMATO[t.formato]} <b className="tabular-nums">{t.rendimiento.toLocaleString("es-AR")}×</b>
+                      </span>
+                    ))}
+                  </div>
                 </section>
               )}
 

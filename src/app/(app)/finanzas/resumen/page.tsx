@@ -180,7 +180,10 @@ export default async function ResumenPage({
     (a, g) => a + ars(g.monto, g.moneda),
     0
   );
-  const faltante = faltaEquipo + faltaEstructura;
+  // Los gastos del mes ya entran a la cuenta por su período aunque no estén
+  // marcados pagados: sumarlos acá los contaba dos veces (19/10/2026, octubre
+  // daba un sueldo de -$27.484 en vez de +$640.508). Solo se corrige la nómina.
+  const faltante = faltaEquipo;
   // Solo avisamos si el agujero cambia el resultado de forma relevante.
   const hayAgujero = !sinDatos && faltante > mes.entro * 0.05;
   const quedoReal = mes.quedo - faltante;
@@ -193,7 +196,7 @@ export default async function ResumenPage({
     ? {
         ...mes,
         equipo: mes.equipo + faltaEquipo,
-        gastos: mes.gastos + faltaEstructura,
+        gastos: mes.gastos,
         salio: mes.salio + faltante,
         quedo: quedoReal,
         pctQuedo: mes.entro > 0 ? (quedoReal / mes.entro) * 100 : 0,
@@ -259,7 +262,7 @@ export default async function ResumenPage({
                 <span>
                   La estructura del mes{" "}
                   <span className="text-xs text-muted-foreground">
-                    {fmtARS(estructura)} de plataformas y monotributo, sin un gasto cargado
+                    {fmtARS(faltaEstructura)} de plataformas y monotributo: ya está en la cuenta, falta marcarla como pagada
                   </span>
                 </span>
                 <Link

@@ -31,12 +31,26 @@ interface ClientFull {
 
 export default async function CartaAcuerdoPage({
   params,
+  searchParams,
 }: {
   params: { id: string };
+  searchParams?: { token?: string };
 }) {
-  await requireUser();
-  const supabase = createClient();
   const admin = createAdmin();
+  // El cliente la ve desde su portal con su token (19/10/2026): la carta acuerdo
+  // tiene que estar siempre a mano. Sin token válido, solo el equipo logueado.
+  let porToken = false;
+  if (searchParams?.token) {
+    const { data: tok } = await admin
+      .from("client_portal_tokens")
+      .select("cliente_id, revoked_at, expires_at")
+      .eq("token", searchParams.token)
+      .maybeSingle();
+    const t = tok as { cliente_id: string; revoked_at: string | null; expires_at: string | null } | null;
+    porToken = !!t && t.cliente_id === params.id && !t.revoked_at && !(t.expires_at && new Date(t.expires_at) < new Date());
+  }
+  if (!porToken) await requireUser();
+  const supabase = porToken ? admin : createClient();
 
   const [{ data: client }, { data: services }, { data: settingsRow }] =
     await Promise.all([

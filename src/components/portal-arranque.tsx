@@ -4,7 +4,7 @@
  */
 import type { PasoArranque } from "@/lib/portal/tu-arranque";
 
-export function PortalArranque({ pasos }: { pasos: PasoArranque[] }) {
+export function PortalArranque({ pasos, cartaHref }: { pasos: PasoArranque[]; cartaHref?: string }) {
   const hechos = pasos.filter((p) => p.hecho).length;
   const completo = hechos === pasos.length;
   const pct = Math.round((hechos / pasos.length) * 100);
@@ -28,6 +28,15 @@ export function PortalArranque({ pasos }: { pasos: PasoArranque[] }) {
           </li>
         ))}
       </ul>
+      {cartaHref && !completo && (
+        <p style={{ fontSize: 12, color: "#777", margin: "12px 0 0" }}>
+          Los plazos de cada paso están en tu{" "}
+          <a href={cartaHref} target="_blank" rel="noreferrer" style={{ color: "inherit", fontWeight: 700 }}>
+            carta acuerdo
+          </a>
+          : el contenido sale a los 15 días del onboarding si cada uno cumple su parte.
+        </p>
+      )}
     </div>
   );
 }

@@ -17,7 +17,7 @@ function falta(ms: number): string {
   return `${m} min`;
 }
 
-export function PortalPlazo({ hastaIso, etiqueta }: { hastaIso: string; etiqueta: string }) {
+export function PortalPlazo({ hastaIso, etiqueta, cartaHref }: { hastaIso: string; etiqueta: string; cartaHref: string }) {
   const [ahora, setAhora] = useState<number | null>(null);
   useEffect(() => {
     setAhora(Date.now());
@@ -35,8 +35,11 @@ export function PortalPlazo({ hastaIso, etiqueta }: { hastaIso: string; etiqueta
           {ms != null && ms > 0 && <span className="pz-falta">faltan {falta(ms)}</span>}
         </div>
         <div className="pz-texto">
-          Si para entonces no nos respondés, las piezas <b>se dan por aprobadas</b> y se publican en su fecha, como acordamos en tu
-          carta acuerdo.
+          Si para entonces no nos respondés, las piezas <b>se dan por aprobadas</b> y se publican en su fecha, como acordamos en tu{" "}
+          <a href={cartaHref} target="_blank" rel="noreferrer" style={{ color: "inherit", fontWeight: 700 }}>
+            carta acuerdo
+          </a>
+          .
         </div>
       </div>
     </div>

@@ -676,7 +676,7 @@ export default async function PortalPage({ params }: { params: { token: string }
           />
         )}
 
-        {arranque && <PortalArranque pasos={arranque} />}
+        {arranque && <PortalArranque pasos={arranque} cartaHref={`/contrato/cliente/${cliente_id}?token=${params.token}`} />}
 
         {tuMes && <PortalTuMes placas={tuMes.placas} mesLabel={tuMes.mesLabel} refCode={mostrarRecomendar ? ref?.ref_code ?? null : null} />}
 
@@ -743,7 +743,7 @@ export default async function PortalPage({ params }: { params: { token: string }
                 .map((x) => plazoAprobacion(x.fecha_publicacion!, x.cliente_revision_iniciada_at ?? x.updated_at ?? null))
                 .filter((d) => d.getTime() > Date.now())
                 .sort((a, b) => a.getTime() - b.getTime());
-              return plazos[0] ? <PortalPlazo hastaIso={plazos[0].toISOString()} etiqueta={etiquetaPlazo(plazos[0])} /> : null;
+              return plazos[0] ? <PortalPlazo hastaIso={plazos[0].toISOString()} etiqueta={etiquetaPlazo(plazos[0])} cartaHref={`/contrato/cliente/${cliente_id}?token=${params.token}`} /> : null;
             })()}
             <PortalDeslizar piezas={toReview} token={params.token} />
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -834,7 +834,11 @@ export default async function PortalPage({ params }: { params: { token: string }
             <div className="card-label">Para arrancar</div>
             <h2 className="card-title">Necesitamos tus fotos y videos</h2>
             <p style={{ fontSize: 13, color: "#666", margin: "0 0 12px", lineHeight: 1.5 }}>
-              Con tu material salen tus primeras publicaciones: productos, el local, tu equipo, lo que tengas. Subilo a tu carpeta y avisanos acá; tu equipo lo revisa ese mismo día.
+              Con tu material salen tus primeras publicaciones: productos, el local, tu equipo, lo que tengas. Subilo a tu carpeta y avisanos acá; tu equipo lo revisa ese mismo día. Según tu{" "}
+              <a href={`/contrato/cliente/${cliente_id}?token=${params.token}`} target="_blank" rel="noreferrer" style={{ color: "inherit", fontWeight: 700 }}>
+                carta acuerdo
+              </a>
+              , va dentro de los 2 días de aprobado el calendario.
             </p>
             <PortalMaterial token={params.token} driveUrl={material.driveUrl} avisado={material.avisado} />
           </div>
@@ -1146,6 +1150,10 @@ export default async function PortalPage({ params }: { params: { token: string }
           {AGENCY.brand} · {AGENCY.legal_name}
           <br />
           ¿Querés cambiar algo? Hablanos por WhatsApp.
+          <br />
+          <a href={`/contrato/cliente/${cliente_id}?token=${params.token}`} target="_blank" rel="noreferrer" style={{ color: "inherit", fontWeight: 600 }}>
+            📄 Tu carta acuerdo
+          </a>
         </div>
       </div>
     </>

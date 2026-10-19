@@ -46,22 +46,22 @@ export function avisoSinMedir(lista: SinMedir[]): string | null {
 export const BUSINESS_JD = "570336019465694";
 
 /**
- * Parte 1 — la página de Facebook vinculada al Instagram. A cargo de la PM
- * (Luz): la hace la CM, que tiene el Instagram, y si la marca no tiene página
- * la crea paid media. La PM se asegura de que se termine y apura a todos.
+ * Parte 1 — la página de Facebook vinculada al Instagram. A cargo de paid media
+ * (Guille), que crea la página si falta y la vincula; la PM (Luz) colabora
+ * apurando hasta que esté (decisión del dueño, 19/10/2026: antes era de la CM).
  */
 export function tareaVincularPagina(c: SinMedir): { titulo: string; descripcion: string } {
   return {
     titulo: `🔗 Página de Facebook vinculada al Instagram · ${c.nombre}`,
     descripcion: [
-      `**A cargo de la project manager.** Sin la página vinculada, el Instagram de ${c.nombre}${c.igUsername ? ` (@${c.igUsername})` : ""} no se puede compartir con JD Media y la plataforma no mide nada.`,
+      `**A cargo de paid media**, con la project manager de colaboradora para apurar. Sin la página vinculada, el Instagram de ${c.nombre}${c.igUsername ? ` (@${c.igUsername})` : ""} no se puede compartir con JD Media y la plataforma no mide nada.`,
       "",
       "**Paso a paso:**",
-      "1. **¿Tiene página de Facebook?** Si no tiene, la crea paid media (Guille) con el nombre y el logo de la marca, y avisa acá.",
-      "2. **La CM la vincula** (es quien tiene el Instagram): en la app de Instagram de la marca → **Editar perfil** → **Página** → **Conectar** → elegir la página.",
-      "3. **La PM lo verifica:** en la página de Facebook → **Configuración** → **Cuentas vinculadas** tiene que figurar el Instagram. Ahí se avisa a paid media para que siga con su parte.",
+      "1. **¿Tiene página de Facebook?** Si no tiene, creala con el nombre y el logo de la marca.",
+      "2. **Vinculala al Instagram:** desde la página de Facebook → **Configuración** → **Cuentas vinculadas** → **Instagram** → **Conectar cuenta** (con el usuario y la contraseña del Instagram, que están en la ficha del cliente → Credenciales, o se los pide la PM al cliente). También se puede desde la app de Instagram → Editar perfil → Página.",
+      "3. **Chequeá:** en la página → Configuración → Cuentas vinculadas tiene que figurar el Instagram. Avisá acá y seguí con la tarea de compartir y conectar.",
       "",
-      "La PM apura a quien corresponda hasta que esté. La tarea se cierra sola cuando la plataforma trae los datos del Instagram.",
+      "La PM sigue esta tarea y apura hasta que esté. Se cierra sola cuando la plataforma trae los datos del Instagram.",
     ].join("\n"),
   };
 }

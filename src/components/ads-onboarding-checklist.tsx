@@ -43,7 +43,7 @@ const STEPS: {
   {
     key: "pagina_fb_at",
     titulo: "Página de Facebook lista y VINCULADA a su Instagram",
-    desc: "Que la marca tenga su página de Facebook (si no tiene, se la creamos) y que su Instagram esté vinculado a esa página. Cómo: en la app de Instagram de la marca → Editar perfil → Página → Conectar con la página. Cómo chequearlo: en la página de Facebook → Configuración → Cuentas vinculadas tiene que figurar el Instagram. Sin esto no se puede asignar el Instagram al system user.",
+    desc: "Lo hace paid media. Si la marca no tiene página, se la creás. Después la vinculás al Instagram: página de Facebook → Configuración → Cuentas vinculadas → Instagram → Conectar cuenta (usuario y contraseña en la ficha → Credenciales, o pedíselos a la PM). Chequeo: en Cuentas vinculadas tiene que figurar el Instagram. Sin esto no se puede asignar el Instagram al system user.",
     grupo: "Accesos",
   },
   {

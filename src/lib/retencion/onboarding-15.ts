@@ -146,20 +146,20 @@ export function planOnboarding(input: {
   // paid media, para toda cuenta con redes o pauta. Se cierra sola cuando la
   // plataforma trae los datos; mientras tanto avisa todos los días.
   if (svc.has("gestion_redes") || svc.has("paid_media")) {
-    // Parte 1, a cargo de la PM: la página vinculada al Instagram (la hace la
-    // CM; si no hay página, la crea paid media). Pedido del dueño, 19/10/2026.
+    // Parte 1, a cargo de paid media: crear la página si falta y vincularla al
+    // Instagram; la PM lo sigue y apura (decisión del dueño, 19/10/2026).
     add(
       2,
       "Página de Facebook vinculada al Instagram",
-      `**A cargo de la project manager**, que se asegura de que se termine y apura a quien haga falta. Paso a paso:
+      `**A cargo de paid media.** La project manager lo sigue y apura hasta que esté. Paso a paso:
 
-1. **¿Tiene página de Facebook?** Si no tiene, la crea paid media con el nombre y el logo de ${nombreCliente}.
-2. **La CM la vincula** (tiene el Instagram): app de Instagram → **Editar perfil** → **Página** → **Conectar** → elegir la página.
-3. **La PM lo verifica:** en la página → **Configuración** → **Cuentas vinculadas** tiene que figurar el Instagram. Ahí le avisa a paid media para que comparta y conecte.
+1. **¿Tiene página de Facebook?** Si no tiene, creala con el nombre y el logo de ${nombreCliente}.
+2. **Vinculala al Instagram:** página de Facebook → **Configuración** → **Cuentas vinculadas** → **Instagram** → **Conectar cuenta** (con el usuario y la contraseña del Instagram de la ficha → Credenciales, o pedíselos a la PM).
+3. **Chequeá** que figure en Cuentas vinculadas y seguí con el paso de compartir y conectar.
 
-Sin esto no se puede seguir con el paso de paid media y la plataforma no mide nada.`,
-      "Coordinación",
-      equipo.fallback
+Sin esto no se puede compartir con JD Media y la plataforma no mide nada.`,
+      "Paid Media",
+      mb
     );
     add(
       3,

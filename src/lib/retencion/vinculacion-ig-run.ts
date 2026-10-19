@@ -66,18 +66,16 @@ export async function runAlarmaVinculacion(
     return (mb && activos.has(mb) ? mb : null) ?? paid ?? pm ?? dueno ?? null;
   };
 
-  // Dos tareas por cuenta (19/10/2026): la página vinculada (a cargo de la PM,
-  // con la CM y paid media como colaboradores) y compartir/conectar (paid
-  // media). Si alguna se cerró a mano sin estar medida, se reabre urgente.
+  // Dos tareas por cuenta, las dos de paid media (19/10/2026): la página
+  // vinculada al Instagram (con la PM de colaboradora para apurar) y
+  // compartir/conectar. Si alguna se cerró a mano sin estar medida, se reabre.
   const claves = lista.flatMap((x) => [`vincular-ig:${x.id}`, `vincular-pagina:${x.id}`]);
   const { data: yaRaw } = await admin.from("tasks").select("id, rutina_key, estado").in("rutina_key", claves);
   const ya = new Map(((yaRaw ?? []) as { id: string; rutina_key: string; estado: string }[]).map((t) => [t.rutina_key, t]));
   for (const x of lista) {
-    const cli = clientes.find((c) => c.id === x.id);
     const paidDe = quienDe(x.id);
-    const cm = cli?.cm_id && activos.has(cli.cm_id) ? cli.cm_id : null;
     const partes = [
-      { k: `vincular-pagina:${x.id}`, quien: pm ?? paidDe, area: "Coordinación", ...tareaVincularPagina(x), colaboradores: [cm, paidDe].filter((u): u is string => !!u && u !== (pm ?? paidDe)) },
+      { k: `vincular-pagina:${x.id}`, quien: paidDe, area: "Paid Media", ...tareaVincularPagina(x), colaboradores: [pm].filter((u): u is string => !!u && u !== paidDe) },
       { k: `vincular-ig:${x.id}`, quien: paidDe, area: "Paid Media", ...tareaVincular(x), colaboradores: [] as string[] },
     ];
     for (const p of partes) {

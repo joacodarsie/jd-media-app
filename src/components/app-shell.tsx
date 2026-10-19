@@ -43,6 +43,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EfectosGlobales } from "@/components/efectos-globales";
 import { visibleNavGroups, visibleNav, matchNavItem } from "@/lib/nav";
 import { ROLE_LABEL } from "@/lib/constants";
 import type { AppUser } from "@/lib/types";
@@ -188,9 +189,9 @@ function SidebarContent({
     });
   }
   return (
-    <div className="flex h-full max-h-[100dvh] min-h-0 flex-col bg-sidebar text-sidebar-foreground">
-      <div className="flex items-center gap-2 px-5 py-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#FFD400]">
+    <div className="jd-sidebar flex h-full max-h-[100dvh] min-h-0 flex-col bg-sidebar text-sidebar-foreground">
+      <div className="group/logo flex items-center gap-2 px-5 py-5">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#FFD400] shadow-[0_0_24px_rgba(255,212,0,.35)] transition-transform duration-500 group-hover/logo:-rotate-6 group-hover/logo:scale-110">
           <span className="text-sm font-extrabold text-black">JD</span>
         </div>
         <span className="text-lg font-bold">JD Media</span>
@@ -249,9 +250,9 @@ function SidebarContent({
                     onNavigate?.();
                   }}
                   className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    "jd-nav group/nav flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
                     active
-                      ? "bg-[#FFD400] text-black"
+                      ? "jd-nav-activo bg-[#FFD400] text-black"
                       : isPending
                       ? "bg-sidebar-accent/70 text-sidebar-accent-foreground"
                       : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
@@ -260,9 +261,9 @@ function SidebarContent({
                   {isPending ? (
                     <span className="h-[18px] w-[18px] animate-spin rounded-full border-2 border-sidebar-foreground/30 border-t-sidebar-foreground/80" />
                   ) : (
-                    <Icon className="h-[18px] w-[18px]" />
+                    <Icon className="h-[18px] w-[18px] transition-transform duration-300 group-hover/nav:scale-110 group-hover/nav:-rotate-6" />
                   )}
-                  <span className="flex-1 truncate">{item.label}</span>
+                  <span className="flex-1 truncate transition-transform duration-200 group-hover/nav:translate-x-0.5">{item.label}</span>
                   {badge > 0 && (
                     <span
                       className={cn(
@@ -352,7 +353,7 @@ export function AppShell({
       </Sheet>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur">
+        <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-border/60 bg-background/70 px-4 backdrop-blur-xl backdrop-saturate-150">
           <Button
             variant="ghost"
             size="icon"
@@ -406,7 +407,8 @@ export function AppShell({
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
-        <main className="flex-1 p-4 md:p-6">
+        <main className="jd-fondo flex-1 p-4 md:p-6">
+          <EfectosGlobales />
           {/* Cada pantalla entra con un fundido corto: la navegación se siente viva (18/10/2026). */}
           <div key={pathname} className="jd-pagina">{children}</div>
         </main>

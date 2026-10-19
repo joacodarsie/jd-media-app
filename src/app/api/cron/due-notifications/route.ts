@@ -17,6 +17,7 @@ import { runPaidMediaDaily } from "@/lib/paid-media/sync";
 import { runInstagramDaily } from "@/lib/social/sync";
 import { runAlarmaVinculacion } from "@/lib/retencion/vinculacion-ig-run";
 import { runTareaEncuesta } from "@/lib/retencion/encuesta-tarea-run";
+import { runCuentasEnRojo } from "@/lib/retencion/cuentas-rojo-run";
 import { runConciliacionDiaria } from "@/lib/social/conciliar-run";
 import { runAccountAlerts } from "@/lib/social/alerts";
 import { checkMetaToken } from "@/lib/meta/health";
@@ -435,6 +436,14 @@ export async function GET(req: NextRequest) {
     encuestaMes = { error: e instanceof Error ? e.message : String(e) };
   }
 
+  // Las 3 cuentas más en riesgo del semáforo de salud, como tarea (19/10/2026).
+  let enRojo: unknown = null;
+  try {
+    enRojo = await runCuentasEnRojo(admin, hoyYmd());
+  } catch (e) {
+    enRojo = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   // Conciliación Instagram ↔ calendario: con el feed recién sincronizado, marca
   // como publicadas las piezas que ya salieron. Nadie marca a mano, así que sin
   // esto la puntualidad y el reporte del cliente miden cualquier cosa.
@@ -550,6 +559,7 @@ export async function GET(req: NextRequest) {
     rescates,
     sinMedir,
     encuestaMes,
+    enRojo,
     rutinas,
     revision_creativa: revisionCreativa,
     aprobaciones,

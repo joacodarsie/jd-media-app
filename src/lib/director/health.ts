@@ -143,14 +143,27 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
   // sus tablas (0137) pueden no estar aplicadas todavía: si fallan, se ignoran.
   const satByC = new Map<string, { puntaje: number; periodo: string; mejorar: string | null }>();
   const reunionByC = new Set<string>();
-  const [satRes, meetRes] = await Promise.all([
+  const [satRes, meetRes, svcRes] = await Promise.all([
     admin
       .from("client_satisfaction")
       .select("cliente_id, periodo, puntaje, que_mejorar")
       .in("cliente_id", ids)
       .order("periodo", { ascending: false }),
     admin.from("client_meetings").select("cliente_id").in("cliente_id", ids).eq("periodo", period),
+    // Quién necesita Instagram medido (redes o pauta): sin datos reales no hay
+    // reporte que muestre resultados (19/10/2026).
+    admin
+      .from("client_services")
+      .select("cliente_id")
+      .eq("activo", true)
+      .in("cliente_id", ids)
+      .in("tipo", ["gestion_redes", "paid_media"]),
   ]);
+  const necesitaIg = new Set(((svcRes.data ?? []) as { cliente_id: string }[]).map((x) => x.cliente_id));
+  const hace3 = new Date(now.getTime() - 3 * 86_400_000).toISOString().slice(0, 10);
+  const medidaHace3 = new Set(
+    ((snapsRaw ?? []) as { cliente_id: string; fecha: string }[]).filter((x) => x.fecha >= hace3).map((x) => x.cliente_id)
+  );
   for (const s of (satRes.data ?? []) as {
     cliente_id: string;
     periodo: string;
@@ -287,6 +300,12 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
       } else if (igDelta > 0) {
         buenas.push(`Creciendo (+${igDelta} seguidores)`);
       }
+    }
+
+    // 2b) Instagram sin medir: sin datos reales no se puede mostrar resultados.
+    // No suma puntaje: tiene su propia alarma diaria (vinculacion-ig-run).
+    if (necesitaIg.has(c.id) && !medidaHace3.has(c.id)) {
+      alertas.push("Instagram sin medir: no hay datos reales para el reporte");
     }
 
     // 3) Tareas vencidas.

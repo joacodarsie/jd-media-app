@@ -10,6 +10,8 @@ import { ClientFormDialog } from "@/components/client-form-dialog";
 import { missingTeam } from "@/lib/team-coverage";
 import { createAdmin } from "@/lib/supabase/admin";
 import { lineaDeServicio, type LineaServicio } from "@/lib/clientes/linea-de-servicio";
+import { computeAccountHealth } from "@/lib/director/health";
+import { SemaforoCartera } from "@/components/semaforo-cartera";
 
 export const dynamic = "force-dynamic";
 
@@ -154,6 +156,10 @@ export default async function ClientesPage() {
     return falta ? { ...(c as object), faltaEquipo: falta } : c;
   }) as typeof visibleClients;
 
+  // El semáforo de salud de la cartera, a la vista (19/10/2026): antes vivía
+  // solo en /director y nadie lo miraba.
+  const salud = isAdmin ? await computeAccountHealth(createAdmin()).catch(() => null) : null;
+
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-3">
@@ -204,6 +210,12 @@ export default async function ClientesPage() {
             Conectar
           </span>
         </Link>
+      )}
+      {salud && salud.cuentas.length > 0 && (
+        <SemaforoCartera
+          resumen={salud.resumen}
+          peores={salud.cuentas.slice(0, 3).map((c) => ({ id: c.id, nombre: c.nombre, motivo: c.alertas[0] ?? "", semaforo: c.semaforo }))}
+        />
       )}
       <ClientsDashboard
         clients={visibleClients as never}

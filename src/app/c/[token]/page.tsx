@@ -46,6 +46,7 @@ import { CicloNave } from "@/components/ciclo-nave";
 import { PortalAccesos } from "@/components/portal-accesos";
 import { PortalMaterial } from "@/components/portal-material";
 import { PortalMovimiento } from "@/components/portal-movimiento";
+import { PortalDeslizar } from "@/components/portal-deslizar";
 import { SALUDO, momentoDelDia } from "@/lib/saludo-del-dia";
 import { estadoDeRedes, type Credencial } from "@/lib/accesos/portal";
 // Programa de referidos (13/10/2026).
@@ -320,6 +321,51 @@ export default async function PortalPage({ params }: { params: { token: string }
         .hero-rubro { margin-top: 6px; font-size: 14px; color: #aaa; }
         .hero-pack { margin-top: 16px; display: inline-block; padding: 4px 10px; background: #FFD400; color: #1a1a1a; font-weight: 700; font-size: 11px; border-radius: 999px; }
 
+        /* Aprobar deslizando (18/10/2026) */
+        .pd-abrir { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin: 0 0 14px; padding: 13px 16px; border: 0; border-radius: 12px; background: #1a1a1a; color: #fff; font: 700 14px Inter, system-ui, sans-serif; cursor: pointer; }
+        .pd-abrir span { animation: pd-dedo 1.8s ease-in-out infinite; display: inline-block; }
+        @keyframes pd-dedo { 0%,100% { transform: translateX(-4px); } 50% { transform: translateX(6px); } }
+        .pd-fondo { position: fixed; inset: 0; z-index: 60; background: #111; color: #fff; display: flex; flex-direction: column; align-items: center; padding: 16px 16px 24px; animation: pd-entra .3s ease both; overflow: hidden; touch-action: none; }
+        @keyframes pd-entra { from { opacity: 0; transform: scale(.98); } }
+        .pd-arriba { width: 100%; max-width: 420px; display: flex; justify-content: space-between; align-items: center; font: 600 13px Inter, sans-serif; color: rgba(255,255,255,.6); }
+        .pd-arriba button { background: rgba(255,255,255,.1); color: #fff; border: 0; width: 34px; height: 34px; border-radius: 50%; font-size: 15px; cursor: pointer; }
+        .pd-mazo { position: relative; width: 100%; max-width: 380px; flex: 1; max-height: 560px; margin: 14px 0; }
+        .pd-carta { position: absolute; inset: 0; background: #fff; color: #111; border-radius: 22px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 30px 60px rgba(0,0,0,.45); cursor: grab; user-select: none; touch-action: none; }
+        .pd-carta:active { cursor: grabbing; }
+        .pd-quieta { transition: transform .35s cubic-bezier(.2,.8,.2,1); }
+        .pd-sale { transition: transform .32s ease-in; }
+        .pd-atras { transform: scale(.94) translateY(14px); opacity: .55; cursor: default; }
+        .pd-img { width: 100%; flex: 1; min-height: 0; object-fit: cover; pointer-events: none; }
+        .pd-sin-img { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: linear-gradient(160deg, #fff7d6, #f4f4f1); font-size: 64px; }
+        .pd-sin-img a { font: 700 14px Inter, sans-serif; color: #111; background: #FFD400; padding: 10px 16px; border-radius: 999px; text-decoration: none; }
+        .pd-info { padding: 14px 18px 18px; }
+        .pd-meta { font: 600 11px Inter, sans-serif; text-transform: uppercase; letter-spacing: .08em; color: #888; }
+        .pd-titulo { font: 800 17px Inter, sans-serif; margin-top: 4px; }
+        .pd-copy { margin-top: 6px; font-size: 13px; line-height: 1.45; color: #555; max-height: 5.8em; overflow: auto; white-space: pre-wrap; }
+        .pd-sello { position: absolute; top: 22px; z-index: 2; font: 900 22px Inter, sans-serif; letter-spacing: .08em; padding: 4px 12px; border: 4px solid; border-radius: 10px; pointer-events: none; }
+        .pd-sello-si { left: 18px; color: #16a34a; border-color: #16a34a; transform: rotate(-14deg); background: rgba(255,255,255,.85); }
+        .pd-sello-no { right: 18px; color: #ea580c; border-color: #ea580c; transform: rotate(14deg); background: rgba(255,255,255,.85); }
+        .pd-botones { display: flex; gap: 28px; }
+        .pd-botones button { width: 74px; height: 74px; border-radius: 50%; border: 0; font-size: 28px; font-weight: 900; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; transition: transform .15s ease; }
+        .pd-botones button span { font-size: 10px; font-weight: 700; }
+        .pd-botones button:active { transform: scale(.9); }
+        .pd-no { background: #fff; color: #ea580c; }
+        .pd-si { background: #FFD400; color: #111; box-shadow: 0 0 30px rgba(255,212,0,.4); }
+        .pd-ayuda { margin-top: 12px; font-size: 12px; color: rgba(255,255,255,.45); text-align: center; }
+        .pd-error { color: #fca5a5; font-size: 13px; margin: 0 0 8px; }
+        .pd-cambios { width: 100%; max-width: 380px; }
+        .pd-cambios textarea { width: 100%; border-radius: 14px; border: 0; padding: 12px 14px; font: 14px Inter, sans-serif; resize: none; }
+        .pd-cambios-botones { display: flex; gap: 10px; margin-top: 10px; }
+        .pd-cambios-botones button { flex: 1; padding: 12px; border-radius: 12px; border: 0; font: 700 14px Inter, sans-serif; cursor: pointer; background: rgba(255,255,255,.12); color: #fff; }
+        .pd-cambios-botones .pd-mandar { background: #FFD400; color: #111; }
+        .pd-fin { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; animation: pd-entra .4s ease both; }
+        .pd-fin-emoji { font-size: 72px; animation: pd-salta .7s cubic-bezier(.34,1.56,.64,1) both; }
+        @keyframes pd-salta { from { transform: scale(.3) rotate(-20deg); opacity: 0; } }
+        .pd-fin h2 { font: 800 26px Inter, sans-serif; margin: 12px 0 6px; }
+        .pd-fin p { margin: 0; color: rgba(255,255,255,.75); }
+        .pd-fin .pd-sub { margin-top: 4px; font-size: 13px; color: rgba(255,255,255,.5); }
+        .pd-cerrar { margin-top: 22px; padding: 13px 22px; border: 0; border-radius: 999px; background: #FFD400; color: #111; font: 800 14px Inter, sans-serif; cursor: pointer; }
+        @media (prefers-reduced-motion: reduce) { .pd-abrir span, .pd-fondo, .pd-fin, .pd-fin-emoji { animation: none; } }
         .card { background: #fff; border: 1px solid #ececec; border-radius: 14px; padding: 20px; margin-bottom: 16px; }
         /* Movimiento (18/10/2026): ver components/portal-movimiento. */
         .card { transition: box-shadow .25s ease, transform .25s ease; }
@@ -419,6 +465,7 @@ export default async function PortalPage({ params }: { params: { token: string }
               Aprobá si todo va bien, o pedinos cambios con un click. Lo que respondas acá
               llega directo al equipo.
             </p>
+            <PortalDeslizar piezas={toReview} token={params.token} />
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {toReview.map((p) => (
                 <PortalReviewCard key={p.id} pub={p} token={params.token} />

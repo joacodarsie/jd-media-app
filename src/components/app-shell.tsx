@@ -297,6 +297,74 @@ function SidebarContent({
 }
 
 /** Etiqueta de la sección actual según el pathname, para orientar al usuario. */
+/**
+ * La barra de abajo en el celular (18/10/2026), como una app: las 4 secciones
+ * que más se usan (según lo que cada uno puede ver) y «Más», que abre el menú.
+ * El ícono activo salta y se marca en amarillo.
+ */
+const PREFERIDAS = ["/dashboard", "/tareas", "/contenidos", "/chat", "/clientes", "/agenda"];
+function BarraCelular({
+  user,
+  isLiveOwner,
+  badges,
+  onMas,
+}: {
+  user: AppUser;
+  isLiveOwner?: boolean;
+  badges: Record<string, number>;
+  onMas: () => void;
+}) {
+  const pathname = usePathname();
+  const items = visibleNav(user, isLiveOwner);
+  const elegidas = PREFERIDAS.map((h) => items.find((i) => i.href === h)).filter((x): x is (typeof items)[number] => !!x).slice(0, 4);
+  const activo = matchNavItem(pathname, items)?.href;
+  return (
+    <nav
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-background/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden"
+      aria-label="Secciones principales"
+    >
+      <div className="grid grid-cols-5">
+        {elegidas.map((item) => {
+          const Icon = ICONS[item.icon] ?? ListChecks;
+          const on = item.href === activo;
+          const badge = badges[item.href] ?? 0;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "relative flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
+                on ? "text-foreground" : "text-muted-foreground"
+              )}
+            >
+              <span
+                className={cn(
+                  "relative flex h-8 w-12 items-center justify-center rounded-full transition-all duration-300",
+                  on && "jd-barra-activo bg-[#FFD400] text-black"
+                )}
+              >
+                <Icon className="h-5 w-5" />
+                {badge > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+                    {badge > 9 ? "9+" : badge}
+                  </span>
+                )}
+              </span>
+              <span className="max-w-full truncate px-1">{item.label}</span>
+            </Link>
+          );
+        })}
+        <button type="button" onClick={onMas} className="flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium text-muted-foreground">
+          <span className="flex h-8 w-12 items-center justify-center rounded-full">
+            <Menu className="h-5 w-5" />
+          </span>
+          Más
+        </button>
+      </div>
+    </nav>
+  );
+}
+
 function currentSectionLabel(
   pathname: string,
   user: AppUser,
@@ -407,12 +475,13 @@ export function AppShell({
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
-        <main className="jd-fondo flex-1 p-4 md:p-6">
+        <main className="jd-fondo flex-1 p-4 pb-24 md:p-6">
           <EfectosGlobales />
           {/* Cada pantalla entra con un fundido corto: la navegación se siente viva (18/10/2026). */}
           <div key={pathname} className="jd-pagina">{children}</div>
         </main>
       </div>
+      <BarraCelular user={user} isLiveOwner={isLiveOwner} badges={badges ?? {}} onMas={() => setOpen(true)} />
     </div>
   );
 }

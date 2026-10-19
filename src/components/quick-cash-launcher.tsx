@@ -388,7 +388,7 @@ export function QuickCashLauncher({
         onClick={() => setOpen(true)}
         aria-label="Carga rápida de plata"
         title="Carga rápida: cobré / pagué"
-        className="fixed bottom-[4.75rem] right-5 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 text-white opacity-80 shadow-lg ring-1 ring-black/5 transition hover:scale-105 hover:opacity-100"
+        className="fixed bottom-[9.5rem] right-5 z-40 flex h-10 w-10 md:bottom-[4.75rem] items-center justify-center rounded-full bg-emerald-600 text-white opacity-80 shadow-lg ring-1 ring-black/5 transition hover:scale-105 hover:opacity-100"
       >
         <Banknote className="h-5 w-5" />
       </button>

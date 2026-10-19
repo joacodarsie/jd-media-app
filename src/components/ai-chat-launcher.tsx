@@ -44,7 +44,7 @@ export function AIChatLauncher() {
       className={cn(
         "fixed right-5 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-80 shadow-lg ring-1 ring-black/5 transition hover:scale-105 hover:opacity-100",
         // En /chat lo subimos sobre el input bar para que no tape el botón "Enviar".
-        shifted ? "bottom-24" : "bottom-5"
+        shifted ? "bottom-24" : "bottom-24 md:bottom-5"
       )}
     >
       <Sparkles className="h-5 w-5" />

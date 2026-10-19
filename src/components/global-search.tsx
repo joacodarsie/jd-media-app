@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+/**
+ * Ctrl/Cmd + K: saltá a cualquier lado (18/10/2026). Sin escribir muestra las
+ * secciones para ir directo; escribiendo busca secciones, clientes, tareas,
+ * piezas, documentos y personas del equipo. Se maneja con el teclado.
+ */
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -10,11 +15,14 @@ import {
   FileText,
   Loader2,
   X,
+  CornerDownLeft,
+  UserRound,
+  Compass,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SearchResult {
-  kind: "tarea" | "cliente" | "publicacion" | "documento";
+  kind: "tarea" | "cliente" | "publicacion" | "documento" | "persona" | "pagina";
   id: string;
   titulo: string;
   subtitle: string;
@@ -26,16 +34,52 @@ const ICON_FOR: Record<SearchResult["kind"], typeof ListChecks> = {
   cliente: Users,
   publicacion: CalendarDays,
   documento: FileText,
+  persona: UserRound,
+  pagina: Compass,
 };
+
+const ETIQUETA: Record<SearchResult["kind"], string> = {
+  tarea: "Tarea",
+  cliente: "Cliente",
+  publicacion: "Pieza",
+  documento: "Doc",
+  persona: "Equipo",
+  pagina: "Ir a",
+};
+
+// Las secciones para saltar directo (si alguien no tiene permiso, la página lo manda a Mi día).
+const PAGINAS: { titulo: string; href: string; emoji: string; claves?: string }[] = [
+  { titulo: "Mi día", href: "/dashboard", emoji: "☀️", claves: "inicio dashboard hoy" },
+  { titulo: "Tareas", href: "/tareas", emoji: "✅", claves: "tickets pendientes" },
+  { titulo: "Contenidos", href: "/contenidos", emoji: "🗓️", claves: "calendario piezas publicaciones" },
+  { titulo: "Agenda", href: "/agenda", emoji: "📅", claves: "reuniones" },
+  { titulo: "Clientes", href: "/clientes", emoji: "🏢", claves: "cuentas marcas" },
+  { titulo: "Cuentas nuevas", href: "/onboarding", emoji: "🚀", claves: "arranque onboarding" },
+  { titulo: "Comercial", href: "/comercial", emoji: "🎯", claves: "propuestas ventas leads" },
+  { titulo: "Paid Media", href: "/paid-media", emoji: "📈", claves: "pauta anuncios meta ads" },
+  { titulo: "Cobros y pagos", href: "/cobros", emoji: "💰", claves: "plata facturas" },
+  { titulo: "El resumen", href: "/finanzas/resumen", emoji: "📊", claves: "finanzas mes" },
+  { titulo: "Dirección", href: "/direccion", emoji: "🧭", claves: "coordinadores" },
+  { titulo: "Equipo", href: "/equipo", emoji: "👥", claves: "puestos personas" },
+  { titulo: "Chat del equipo", href: "/chat", emoji: "💬", claves: "mensajes" },
+  { titulo: "JDmedIA", href: "/jdmedia", emoji: "✨", claves: "ia asistente" },
+  { titulo: "Métricas y objetivos", href: "/objetivos", emoji: "🏁", claves: "metas" },
+  { titulo: "Quejas", href: "/quejas", emoji: "📣", claves: "reclamos" },
+  { titulo: "Contratos", href: "/contratos", emoji: "📄", claves: "acuerdos" },
+  { titulo: "Mi perfil", href: "/mi-perfil", emoji: "🙂", claves: "foto sueldo datos" },
+];
+
+const sinTildes = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 export function GlobalSearch() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [remotos, setRemotos] = useState<SearchResult[]>([]);
   const [active, setActive] = useState(0);
   const [pending, start] = useTransition();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const listaRef = useRef<HTMLUListElement>(null);
 
   // Atajos: Cmd/Ctrl+K abre el modal, Esc cierra
   useEffect(() => {
@@ -45,9 +89,7 @@ export function GlobalSearch() {
         e.preventDefault();
         setOpen((v) => !v);
       }
-      if (e.key === "Escape" && open) {
-        setOpen(false);
-      }
+      if (e.key === "Escape" && open) setOpen(false);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -57,8 +99,9 @@ export function GlobalSearch() {
   useEffect(() => {
     if (!open) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    setActive(0);
     if (q.trim().length < 2) {
-      setResults([]);
+      setRemotos([]);
       return;
     }
     debounceRef.current = setTimeout(() => {
@@ -66,22 +109,33 @@ export function GlobalSearch() {
         try {
           const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
           const data = (await res.json()) as { results: SearchResult[] };
-          setResults(data.results ?? []);
-          setActive(0);
+          setRemotos(data.results ?? []);
         } catch {
-          setResults([]);
+          setRemotos([]);
         }
       });
-    }, 180);
+    }, 160);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [q, open]);
 
+  const paginas: SearchResult[] = useMemo(() => {
+    const t = sinTildes(q.trim());
+    return PAGINAS.filter((p) => !t || sinTildes(`${p.titulo} ${p.claves ?? ""}`).includes(t))
+      .slice(0, t ? 4 : PAGINAS.length)
+      .map((p) => ({ kind: "pagina", id: p.href, titulo: `${p.emoji}  ${p.titulo}`, subtitle: "", href: p.href }));
+  }, [q]);
+  const results = q.trim().length < 2 ? paginas : [...paginas, ...remotos];
+
+  useEffect(() => {
+    listaRef.current?.querySelector<HTMLElement>(`[data-i="${active}"]`)?.scrollIntoView({ block: "nearest" });
+  }, [active]);
+
   function go(r: SearchResult) {
     setOpen(false);
     setQ("");
-    setResults([]);
+    setRemotos([]);
     router.push(r.href);
   }
 
@@ -101,27 +155,27 @@ export function GlobalSearch() {
     }
   }
 
+  const vacio = q.trim().length < 2;
+
   return (
     <>
       <button
         onClick={() => setOpen(true)}
-        title="Buscar (Ctrl/Cmd + K)"
-        className="inline-flex items-center gap-1.5 rounded-md border bg-card px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+        title="Buscar o ir a cualquier sección (Ctrl/Cmd + K)"
+        className="group inline-flex items-center gap-1.5 rounded-full border bg-card/70 px-3 py-1 text-xs text-muted-foreground transition hover:border-primary/50 hover:text-foreground hover:shadow-sm"
       >
-        <Search className="h-3.5 w-3.5" />
-        <span className="hidden sm:inline">Buscar…</span>
-        <kbd className="hidden rounded border bg-muted px-1 text-[10px] sm:inline">
-          Ctrl K
-        </kbd>
+        <Search className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
+        <span className="hidden sm:inline">Buscar o ir a…</span>
+        <kbd className="hidden rounded border bg-muted px-1 text-[10px] sm:inline">Ctrl K</kbd>
       </button>
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-20"
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 px-4 pt-[12vh] backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => setOpen(false)}
         >
           <div
-            className="w-full max-w-xl overflow-hidden rounded-xl border bg-card shadow-2xl"
+            className="w-full max-w-xl overflow-hidden rounded-2xl border bg-card shadow-2xl animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-2 border-b px-4 py-3">
@@ -131,86 +185,58 @@ export function GlobalSearch() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={onListKey}
-                placeholder="Buscar tarea, cliente, publicación o documento…"
+                placeholder="Buscá un cliente, tarea, pieza, persona… o una sección"
                 className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               />
               {pending && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-              <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">
+              <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground" aria-label="Cerrar">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <div className="max-h-[60vh] overflow-y-auto">
-              {q.trim().length < 2 ? (
-                <div className="space-y-3 px-4 py-5 text-xs">
-                  <div className="text-muted-foreground">
-                    Buscá por nombre o palabra clave. Ejemplos:
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {["Boxescar", "reel", "diseño", "factura"].map((sug) => (
-                      <button
-                        key={sug}
-                        onClick={() => setQ(sug)}
-                        className="rounded-md border bg-muted/40 px-2 py-1 hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
-                      >
-                        {sug}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="space-y-1 border-t pt-3 text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <ListChecks className="h-3 w-3" />
-                      <span>Tareas — por título o cliente</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Users className="h-3 w-3" />
-                      <span>Clientes — por nombre o rubro</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CalendarDays className="h-3 w-3" />
-                      <span>Publicaciones — por título o cliente</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-3 w-3" />
-                      <span>Documentos — por nombre o categoría</span>
-                    </div>
-                  </div>
+              {vacio && (
+                <div className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Ir a
                 </div>
-              ) : results.length === 0 && !pending ? (
-                <div className="px-4 py-8 text-center text-xs">
-                  <div className="mb-1 text-muted-foreground">
-                    Sin resultados para &quot;{q}&quot;.
-                  </div>
-                  <div className="text-muted-foreground/70">
-                    Probá con menos palabras o revisá la ortografía.
-                  </div>
+              )}
+              {!vacio && results.length === 0 && !pending ? (
+                <div className="px-4 py-10 text-center text-sm">
+                  <div className="mb-1 text-2xl">🔎</div>
+                  <div className="text-muted-foreground">Nada con &quot;{q}&quot;.</div>
+                  <div className="text-xs text-muted-foreground/70">Probá con menos palabras o revisá la ortografía.</div>
                 </div>
               ) : (
-                <ul className="py-1">
+                <ul ref={listaRef} className={cn("p-1.5", vacio && "grid grid-cols-2 gap-0.5 sm:grid-cols-3")}>
                   {results.map((r, i) => {
                     const Icon = ICON_FOR[r.kind];
+                    const elegido = i === active;
                     return (
-                      <li key={r.kind + r.id}>
+                      <li
+                        key={r.kind + r.id}
+                        data-i={i}
+                        className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-200"
+                        style={{ animationDelay: `${Math.min(i, 12) * 18}ms` }}
+                      >
                         <button
                           onClick={() => go(r)}
                           onMouseEnter={() => setActive(i)}
                           className={cn(
-                            "flex w-full items-start gap-2 px-4 py-2 text-left",
-                            i === active && "bg-muted"
+                            "flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-colors",
+                            elegido ? "bg-primary/15" : "hover:bg-muted"
                           )}
                         >
-                          <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                          {r.kind !== "pagina" && <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />}
                           <div className="min-w-0 flex-1">
-                            <div className="truncate text-sm font-medium">
-                              {r.titulo}
-                            </div>
-                            <div className="truncate text-xs text-muted-foreground">
-                              {r.subtitle}
-                            </div>
+                            <div className="truncate text-sm font-medium">{r.titulo}</div>
+                            {r.subtitle && <div className="truncate text-xs text-muted-foreground">{r.subtitle}</div>}
                           </div>
-                          <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-muted-foreground">
-                            {r.kind === "publicacion" ? "pub" : r.kind}
-                          </span>
+                          {!vacio && (
+                            <span className="ml-auto shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-muted-foreground">
+                              {ETIQUETA[r.kind]}
+                            </span>
+                          )}
+                          {elegido && !vacio && <CornerDownLeft className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
                         </button>
                       </li>
                     );
@@ -221,8 +247,7 @@ export function GlobalSearch() {
 
             <div className="flex items-center justify-between border-t px-3 py-1.5 text-[10px] text-muted-foreground">
               <span>
-                <kbd className="rounded border bg-muted px-1">↑↓</kbd> navegar ·{" "}
-                <kbd className="rounded border bg-muted px-1">Enter</kbd> abrir
+                <kbd className="rounded border bg-muted px-1">↑↓</kbd> moverse · <kbd className="rounded border bg-muted px-1">Enter</kbd> abrir
               </span>
               <span>
                 <kbd className="rounded border bg-muted px-1">Esc</kbd> cerrar

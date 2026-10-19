@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export interface SearchResult {
-  kind: "tarea" | "cliente" | "publicacion" | "documento";
+  kind: "tarea" | "cliente" | "publicacion" | "documento" | "persona";
   id: string;
   titulo: string;
   subtitle: string;
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   const supabase = createClient();
   const pattern = `%${q}%`;
 
-  const [tasksRes, clientsRes, pubsRes, docsRes] = await Promise.all([
+  const [tasksRes, clientsRes, pubsRes, docsRes, usersRes] = await Promise.all([
     supabase
       .from("tasks")
       .select("id, titulo, estado, cliente:clients(nombre)")
@@ -43,6 +43,8 @@ export async function GET(req: Request) {
       .select("id, titulo, categoria, cliente_id")
       .ilike("titulo", pattern)
       .limit(5),
+    // Las personas del equipo (18/10/2026).
+    supabase.from("users").select("id, nombre, area").eq("activo", true).ilike("nombre", pattern).limit(4),
   ]);
 
   const results: SearchResult[] = [];
@@ -101,6 +103,10 @@ export async function GET(req: Request) {
       subtitle: `Documento · ${d.categoria}`,
       href: d.cliente_id ? `/clientes/${d.cliente_id}` : "/documentos",
     });
+  }
+
+  for (const u of (usersRes.data ?? []) as { id: string; nombre: string; area: string | null }[]) {
+    results.unshift({ kind: "persona", id: u.id, titulo: u.nombre, subtitle: u.area ?? "Equipo", href: `/equipo/persona/${u.id}` });
   }
 
   return NextResponse.json({ results });

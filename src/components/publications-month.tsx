@@ -175,6 +175,9 @@ export function PublicationsMonth({
   }
 
   /** Soltar una pieza en una columna del kanban: la etapa decide el estado. */
+  // La última pieza movida en el kanban: cae con una animación (18/10/2026).
+  const [recienMovida, setRecienMovida] = useState<string | null>(null);
+
   function moveToEtapa(id: string, etapa: Etapa) {
     const pub = publications.find((p) => p.id === id);
     if (!pub) return;
@@ -186,6 +189,8 @@ export function PublicationsMonth({
   function moveToStatus(id: string, status: PublicationStatus) {
     setHoverKey(null);
     setDraggingId(null);
+    setRecienMovida(id);
+    setTimeout(() => setRecienMovida((x) => (x === id ? null : x)), 1600);
     startMove(async () => {
       const res = await changePublicationStatus(id, status);
       if (res?.error) {
@@ -895,14 +900,14 @@ export function PublicationsMonth({
                   if (id) moveToEtapa(id, s);
                 }}
                 className={cn(
-                  "flex w-72 shrink-0 flex-col rounded-lg border bg-card transition-colors",
-                  dropHover && "ring-2 ring-inset ring-primary"
+                  "flex w-72 shrink-0 flex-col rounded-2xl bg-card shadow-sm ring-1 ring-border/50 transition-all duration-200",
+                  dropHover && "scale-[1.02] bg-primary/5 shadow-lg ring-2 ring-primary"
                 )}
               >
-                <div className="border-b px-3 py-2">
+                <div className="border-b border-border/60 px-3 py-2">
                   <div className="flex items-center justify-between">
                     <span
-                      className="rounded px-2 py-0.5 text-[11px] font-semibold text-foreground"
+                      className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-foreground"
                       style={{ backgroundColor: ETAPA_HEX[s] + "33" }}
                     >
                       {ETAPA_LABEL[s]}
@@ -911,10 +916,10 @@ export function PublicationsMonth({
                   </div>
                   <p className="mt-0.5 text-[10px] text-muted-foreground">{ETAPA_AYUDA[s]}</p>
                 </div>
-                <div className="flex-1 space-y-1.5 overflow-y-auto p-2">
+                <div className="jd-cascada flex-1 space-y-1.5 overflow-y-auto p-2">
                   {arr.length === 0 ? (
-                    <p className="px-1 py-3 text-center text-[11px] text-muted-foreground">
-                      Vacío.
+                    <p className={cn("rounded-xl border-2 border-dashed border-transparent px-1 py-5 text-center text-[11px] text-muted-foreground transition-colors", dropHover && "border-primary/50 text-foreground")}>
+                      {dropHover ? "Soltala acá" : "Nada en esta etapa"}
                     </p>
                   ) : (
                     arr.map((p) => (
@@ -929,6 +934,7 @@ export function PublicationsMonth({
                           setHoverKey(null);
                         }}
                         dragging={draggingId === p.id}
+                        recien={recienMovida === p.id}
                       />
                     ))
                   )}
@@ -1007,6 +1013,7 @@ function PubKanbanCard({
   onDragStart,
   onDragEnd,
   dragging,
+  recien = false,
 }: {
   pub: PublicationWithRels;
   clients: ClientForPub[];
@@ -1014,6 +1021,8 @@ function PubKanbanCard({
   onDragStart?: (id: string) => void;
   onDragEnd?: () => void;
   dragging?: boolean;
+  /** Se acaba de mover a esta columna: cae con una animación. */
+  recien?: boolean;
 }) {
   const fechaShort = pub.fecha_publicacion
     ? new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", {
@@ -1036,8 +1045,9 @@ function PubKanbanCard({
           }}
           onDragEnd={() => onDragEnd?.()}
           className={cn(
-            "block w-full cursor-grab rounded-md border bg-background p-2 text-left text-xs transition-colors hover:border-primary/40 active:cursor-grabbing",
-            dragging && "opacity-40"
+            "block w-full cursor-grab rounded-xl border border-border/60 bg-background p-2.5 text-left text-xs shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md active:cursor-grabbing",
+            dragging && "scale-95 opacity-40",
+            recien && "jd-aterriza"
           )}
         >
           <div className="line-clamp-2 font-medium">{pub.titulo}</div>

@@ -45,6 +45,7 @@ import { CrecimientoVista } from "@/components/crecimiento-vista";
 import { CicloNave } from "@/components/ciclo-nave";
 import { PortalAccesos } from "@/components/portal-accesos";
 import { PortalMaterial } from "@/components/portal-material";
+import { PortalMovimiento } from "@/components/portal-movimiento";
 import { estadoDeRedes, type Credencial } from "@/lib/accesos/portal";
 // Programa de referidos (13/10/2026).
 import { PortalRecomendar } from "@/components/portal-recomendar";
@@ -308,6 +309,18 @@ export default async function PortalPage({ params }: { params: { token: string }
         .hero-pack { margin-top: 16px; display: inline-block; padding: 4px 10px; background: #FFD400; color: #1a1a1a; font-weight: 700; font-size: 11px; border-radius: 999px; }
 
         .card { background: #fff; border: 1px solid #ececec; border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+        /* Movimiento (18/10/2026): ver components/portal-movimiento. */
+        .card { transition: box-shadow .25s ease, transform .25s ease; }
+        .card:hover { box-shadow: 0 10px 30px -12px rgba(0,0,0,.18); }
+        .pm-vivo .card { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease; }
+        .pm-vivo .card.pm-visto { opacity: 1; transform: none; }
+        .pm-vivo .card .pilar-bar-fill { transform: scaleX(0); transform-origin: left; transition: transform 1s cubic-bezier(.2,.8,.2,1) .2s; }
+        .pm-vivo .card.pm-visto .pilar-bar-fill { transform: none; }
+        .hero { animation: pm-hero .7s cubic-bezier(.2,.8,.2,1) both; }
+        .hero:before { animation: pm-brillo 9s ease-in-out infinite alternate; }
+        @keyframes pm-hero { from { opacity: 0; transform: translateY(10px) scale(.99); } to { opacity: 1; transform: none; } }
+        @keyframes pm-brillo { from { transform: translate(0,0); } to { transform: translate(-12%, 8%); } }
+        @media (prefers-reduced-motion: reduce) { .hero, .hero:before { animation: none; } }
         .card-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; color: #888; margin-bottom: 6px; }
         .card-title { font-size: 20px; font-weight: 700; margin: 0 0 12px; }
 
@@ -353,6 +366,7 @@ export default async function PortalPage({ params }: { params: { token: string }
       ` }} />
 
       <div className="wrap">
+        <PortalMovimiento />
         <div className="hero">
           <div style={{ position: "relative" }}>
             <div className="hero-brand">{AGENCY.brand}</div>

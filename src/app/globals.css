@@ -165,3 +165,13 @@
 /* La línea de tiempo de la ficha se dibuja de izquierda a derecha (18/10/2026). */
 .jd-linea { transform-origin: left center; animation: jd-llena 1.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 @media (prefers-reduced-motion: reduce) { .jd-linea { animation: none; } }
+
+
+/* La pieza que se suelta en otra columna del kanban cae y brilla (18/10/2026). */
+@keyframes jd-aterriza {
+  0% { transform: translateY(-14px) scale(1.04); box-shadow: 0 0 0 3px hsl(var(--primary)); }
+  60% { transform: translateY(2px) scale(.99); }
+  100% { transform: none; box-shadow: 0 0 0 0 transparent; }
+}
+.jd-aterriza { animation: jd-aterriza .7s cubic-bezier(.2, .8, .2, 1) both; }
+@media (prefers-reduced-motion: reduce) { .jd-aterriza { animation: none; } }

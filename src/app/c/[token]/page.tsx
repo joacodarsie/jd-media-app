@@ -220,8 +220,8 @@ export default async function PortalPage({ params }: { params: { token: string }
   // Cadencia consolidada (red principal)
   // «Recomendanos»: solo a quien ya lleva 2 meses (ya sabe cómo trabajamos).
   // Si la migración 0198 no está, no se muestra.
-  const { data: refRow } = await admin.from("clients").select("ref_code, fecha_inicio, canva_plantillas_url").eq("id", cliente_id).maybeSingle();
-  const ref = refRow as { ref_code: string | null; fecha_inicio: string | null; canva_plantillas_url?: string | null } | null;
+  const { data: refRow } = await admin.from("clients").select("ref_code, fecha_inicio, canva_plantillas_url, onboarding_reunion").eq("id", cliente_id).maybeSingle();
+  const ref = refRow as { ref_code: string | null; fecha_inicio: string | null; canva_plantillas_url?: string | null; onboarding_reunion?: string | null } | null;
   // Qué cuentas ya cargó (sin las contraseñas: al portal nunca vuelven).
   const { data: credRow } = await admin.from("clients").select("credenciales").eq("id", cliente_id).maybeSingle();
   const estadoCuentas = estadoDeRedes(((credRow as { credenciales: Credencial[] | null } | null)?.credenciales ?? []) as Credencial[]);
@@ -782,7 +782,7 @@ export default async function PortalPage({ params }: { params: { token: string }
         {/* Dónde estamos con su cuenta y qué le toca a él (17/10/2026). */}
         {ref?.fecha_inicio && (conRedes ?? 0) > 0 && (
           <div style={{ marginBottom: 16 }}>
-            <CicloNave inicio={ref.fecha_inicio} hoy={hoyYmd()} portal />
+            <CicloNave inicio={(ref.onboarding_reunion ?? ref.fecha_inicio).slice(0, 10)} hoy={hoyYmd()} portal />
           </div>
         )}
 

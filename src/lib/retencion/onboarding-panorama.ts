@@ -35,6 +35,8 @@ export interface ArranqueCrudo {
   clienteNombre: string;
   /** "YYYY-MM-DD". El día 1 del arranque. */
   fechaInicio: string;
+  /** La fecha sale de la reunión de onboarding cargada (0208), no del alta. */
+  reunionMarcada?: boolean;
   pasos: PasoCrudo[];
 }
 
@@ -52,6 +54,7 @@ export interface ArranqueEnCurso {
   clienteId: string;
   clienteNombre: string;
   fechaInicio: string;
+  reunionMarcada?: boolean;
   /** "YYYY-MM-DD" del último día de los 15. */
   fechaFin: string;
   /** En qué día del arranque está hoy (1..15, o más si se pasó). */
@@ -109,6 +112,7 @@ export function panoramaDeArranques(
         clienteId: a.clienteId,
         clienteNombre: a.clienteNombre,
         fechaInicio: a.fechaInicio,
+        reunionMarcada: !!a.reunionMarcada,
         fechaFin: sumarDias(a.fechaInicio, DIAS_ONBOARDING),
         diaActual,
         pct: total ? hechos / total : 0,

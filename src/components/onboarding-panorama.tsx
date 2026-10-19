@@ -15,6 +15,7 @@ import type { ArranqueEnCurso } from "@/lib/retencion/onboarding-panorama";
 import { OnboardingCamino } from "@/components/onboarding-camino";
 import { TareaPeekProvider, useTareaPeek } from "@/components/tarea-peek";
 import { cn } from "@/lib/utils";
+import { FechaReunionOnboarding } from "@/components/fecha-reunion-onboarding";
 
 /**
  * Los arranques de todas las cuentas nuevas, en una pantalla.
@@ -117,6 +118,12 @@ function Lista({ filas }: { filas: ArranqueEnCurso[] }) {
                 </span>
               </span>
             </button>
+            {/* El día de la reunión de onboarding: desde ahí se cuentan los 15 días. */}
+            {!f.terminado && (
+              <div className="-mt-1 flex px-4 pb-3 pl-11">
+                <FechaReunionOnboarding clienteId={f.clienteId} fecha={f.fechaInicio} marcada={!!f.reunionMarcada} />
+              </div>
+            )}
 
             {abierta && (
               <div className="border-t">

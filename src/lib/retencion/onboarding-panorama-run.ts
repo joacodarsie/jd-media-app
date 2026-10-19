@@ -13,7 +13,7 @@ export async function cargarPanoramaArranques(admin: SupabaseClient, hoy: string
   // Los tickets madre del arranque y, de una, sus pasos.
   const { data: madresRaw } = await admin
     .from("tasks")
-    .select("id, numero, titulo, cliente_id, cliente:clients(id, nombre, fecha_inicio)")
+    .select("id, numero, titulo, cliente_id, cliente:clients(id, nombre, fecha_inicio, onboarding_reunion)")
     .like("titulo", "Onboarding 15 días — %")
     .is("parent_id", null)
     // Un arranque archivado no cuenta: el de «Nahuel» (Nazar Hogar antes de
@@ -25,7 +25,7 @@ export async function cargarPanoramaArranques(admin: SupabaseClient, hoy: string
     numero: number | null;
     titulo: string;
     cliente_id: string | null;
-    cliente: { id: string; nombre: string; fecha_inicio: string | null } | null;
+    cliente: { id: string; nombre: string; fecha_inicio: string | null; onboarding_reunion?: string | null } | null;
   }[]).filter((m) => m.cliente);
 
   let pasos: (PasoCrudo & { parent_id: string })[] = [];
@@ -67,7 +67,10 @@ export async function cargarPanoramaArranques(admin: SupabaseClient, hoy: string
     clienteNombre: m.cliente!.nombre,
     // Si la cuenta no tiene fecha de inicio cargada, el plan se ancla al primer
     // paso; peor sería no mostrar el arranque.
+    // El día 1 es la reunión de onboarding si está cargada (0208, pedido de Luz).
+    reunionMarcada: !!m.cliente!.onboarding_reunion,
     fechaInicio:
+      m.cliente!.onboarding_reunion?.slice(0, 10) ??
       m.cliente!.fecha_inicio?.slice(0, 10) ??
       pasos
         .filter((p) => p.parent_id === m.id)

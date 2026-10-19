@@ -537,7 +537,7 @@ export default async function ClientDetail({
 
       {/* Dónde estamos en el ciclo quincenal (17/10/2026). */}
       {c.estado === "activo" && c.fecha_inicio && svcList.some((s) => s.activo && s.tipo === "gestion_redes") && (
-        <CicloNave inicio={c.fecha_inicio} hoy={hoyYmd()} />
+        <CicloNave inicio={((c as { onboarding_reunion?: string | null }).onboarding_reunion ?? c.fecha_inicio).slice(0, 10)} hoy={hoyYmd()} />
       )}
 
       {/* La historia de la cuenta en una línea (18/10/2026). */}

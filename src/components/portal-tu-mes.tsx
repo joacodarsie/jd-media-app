@@ -7,6 +7,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import type { Placa } from "@/lib/portal/tu-mes";
+import { PCT_RECOMENDADO, PCT_REFERIDO, linkWhatsappReferido } from "@/lib/referidos/referidos";
 
 const DURACION = 5000;
 const FONDOS = [
@@ -40,7 +41,11 @@ function Cuenta({ valor, prefijo = "" }: { valor: number; prefijo?: string }) {
   );
 }
 
-export function PortalTuMes({ placas, mesLabel }: { placas: Placa[]; mesLabel: string }) {
+/**
+ * `refCode`: si ya puede recomendar, la última placa le pide que nos
+ * recomiende (19/10/2026): es el momento en que acaba de ver sus números.
+ */
+export function PortalTuMes({ placas, mesLabel, refCode = null }: { placas: Placa[]; mesLabel: string; refCode?: string | null }) {
   const [abierto, setAbierto] = useState(false);
   const [i, setI] = useState(0);
   const [pausa, setPausa] = useState(false);
@@ -138,9 +143,24 @@ export function PortalTuMes({ placas, mesLabel }: { placas: Placa[]; mesLabel: s
                   <div className="tm-emoji">🚀</div>
                   <h2 className="tm-titulo-gigante">{p.titulo}</h2>
                   <p className="tm-sub">{p.sub}</p>
-                  <button type="button" className="tm-link" onClick={cerrar}>
-                    Volver a mi plataforma
-                  </button>
+                  {refCode ? (
+                    <>
+                      <p className="tm-sub" style={{ marginTop: 14 }}>
+                        ¿Conocés a alguien que necesite lo mismo? Con tu link tiene <b>{PCT_RECOMENDADO}% en su primer mes</b> y vos{" "}
+                        <b>{PCT_REFERIDO}% en tu próxima factura</b>.
+                      </p>
+                      <a href={linkWhatsappReferido(refCode)} target="_blank" rel="noreferrer" className="tm-link">
+                        Recomendanos por WhatsApp
+                      </a>
+                      <button type="button" className="tm-link tm-link-sec" onClick={cerrar}>
+                        Volver a mi plataforma
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" className="tm-link" onClick={cerrar}>
+                      Volver a mi plataforma
+                    </button>
+                  )}
                 </>
               )}
             </div>

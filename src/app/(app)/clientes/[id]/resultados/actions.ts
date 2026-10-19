@@ -1,4 +1,5 @@
 "use server";
+import { ERROR_ID_IG, esIdDeEmpresa } from "@/lib/social/ig-id";
 
 import { revalidatePath } from "next/cache";
 import { requireUser, isStaffUser, userInRoles } from "@/lib/auth";
@@ -52,6 +53,7 @@ export async function connectIgAccount(
   if (!/^\d+$/.test(id))
     return { error: "El ID de Instagram debe ser numérico (ej: 17841400000000000)." };
 
+  if (!esIdDeEmpresa(id)) return { error: ERROR_ID_IG };
   const { error } = await admin
     .from("clients")
     .update({ ig_user_id: id, ig_username: igUsername?.trim() || null })

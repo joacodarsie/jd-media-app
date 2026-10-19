@@ -66,6 +66,15 @@ export default async function PublicidadOnboardingPage({
     paidMedia: tiposSvc.includes("paid_media"),
   });
 
+  // El Instagram está bien vinculado si la plataforma trajo sus datos hace poco (19/10/2026).
+  const hace3 = new Date(Date.now() - 3 * 86_400_000).toISOString().slice(0, 10);
+  const { count: snapsRecientes } = await createAdmin()
+    .from("ig_snapshots")
+    .select("id", { count: "exact", head: true })
+    .eq("cliente_id", client.id)
+    .gte("fecha", hace3);
+  const igVerificado = (snapsRecientes ?? 0) > 0;
+
   return (
     <div className="space-y-5">
       <OnboardingTabs
@@ -100,7 +109,7 @@ export default async function PublicidadOnboardingPage({
 
       <JdMediaPartnerCard />
 
-      <AdsOnboardingChecklist clientId={client.id} initial={state} />
+      <AdsOnboardingChecklist clientId={client.id} initial={state} igVerificado={igVerificado} />
 
       {/* Conexión con Paid Media */}
       <Card>

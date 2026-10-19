@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser, isStaffUser, userInRoles } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { normalizarHandle } from "@/lib/social/ig-handle";
+import { ERROR_ID_IG, esIdDeEmpresa } from "@/lib/social/ig-id";
 
 const CAN_MANAGE = ["admin", "coordinador", "paid_media"];
 
@@ -59,10 +60,10 @@ export async function bulkConnectIg(
   if (!Array.isArray(pares) || pares.length === 0) return { ok: true, conectadas: 0 };
 
   const limpios = pares
-    .filter((p) => p.clienteId && /^\d+$/.test(p.igUserId.trim()))
+    .filter((p) => p.clienteId && esIdDeEmpresa(p.igUserId))
     .slice(0, 100);
   if (limpios.length === 0)
-    return { error: "No hay ninguna cuenta válida para conectar (el ID debe ser numérico)." };
+    return { error: ERROR_ID_IG };
 
   // Una misma cuenta de IG no puede quedar en dos clientes: sería mostrarle a
   // uno los números del otro.

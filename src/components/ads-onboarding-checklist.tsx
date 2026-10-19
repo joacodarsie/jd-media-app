@@ -42,8 +42,8 @@ const STEPS: {
   },
   {
     key: "pagina_fb_at",
-    titulo: "Página de Facebook lista",
-    desc: "Confirmar que el cliente tenga su página de Facebook. Si no tiene, se la creamos (la cuenta de Instagram tiene que estar vinculada a esa página).",
+    titulo: "Página de Facebook lista y VINCULADA a su Instagram",
+    desc: "Que la marca tenga su página de Facebook (si no tiene, se la creamos) y que su Instagram esté vinculado a esa página. Cómo: en la app de Instagram de la marca → Editar perfil → Página → Conectar con la página. Cómo chequearlo: en la página de Facebook → Configuración → Cuentas vinculadas tiene que figurar el Instagram. Sin esto no se puede asignar el Instagram al system user.",
     grupo: "Accesos",
   },
   {
@@ -68,14 +68,14 @@ const STEPS: {
   {
     key: "su_pagina_at",
     titulo: "Asignar la PÁGINA de Facebook al system user",
-    desc: "En TU Business → Configuración → Páginas → la del cliente → Asignar usuarios del sistema → 'jdmedia' → acceso total. Necesario para los Resultados de Instagram.",
+    desc: "En el Business de JD Media → Configuración → Usuarios del sistema → 'jdmedia' → ··· → Asignar activos → Páginas de Facebook → tildar la del cliente → todos los permisos. Si la página no aparece en la lista, el cliente todavía no la compartió con el Business de JD Media (paso «socio»).",
     grupo: "System User",
     clave: true,
   },
   {
     key: "su_ig_at",
-    titulo: "Asignar la CUENTA DE INSTAGRAM al system user",
-    desc: "En TU Business → Configuración → Cuentas de Instagram → la del cliente → asignarla al system user 'jdmedia'. Después conectala en la sección Resultados del cliente.",
+    titulo: "Asignar la CUENTA DE INSTAGRAM al system user y conectarla",
+    desc: "Mismo lugar → Asignar activos → Cuentas de Instagram → tildar la del cliente → todos los permisos. Después, en la plataforma: Clientes → Conectar Instagram → elegirla de la lista. Este paso NO se tilda a mano: se marca solo cuando la plataforma ya trae los datos de la cuenta.",
     grupo: "System User",
     clave: true,
   },
@@ -109,12 +109,19 @@ function fmtWhen(iso: string) {
   return new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "short" });
 }
 
+// Estos dos pasos los verifica la plataforma con datos reales (19/10/2026):
+// se tildaban a mano sin estar hechos y la cuenta quedaba sin medir.
+const VERIFICADOS: AdsStepKey[] = ["su_pagina_at", "su_ig_at"];
+
 export function AdsOnboardingChecklist({
   clientId,
   initial,
+  igVerificado = false,
 }: {
   clientId: string;
   initial: AdsOnboardingState;
+  /** La plataforma trajo datos del Instagram de la cuenta en los últimos días. */
+  igVerificado?: boolean;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -122,11 +129,16 @@ export function AdsOnboardingChecklist({
   const [campanas, setCampanas] = useState(initial.campanas_notas ?? "");
   const [notas, setNotas] = useState(initial.notas ?? "");
 
-  const stepVal = (k: AdsStepKey) => (initial[k] as string | null | undefined) ?? null;
+  const stepVal = (k: AdsStepKey) =>
+    VERIFICADOS.includes(k) ? (igVerificado ? "verificado" : null) : ((initial[k] as string | null | undefined) ?? null);
   const doneCount = STEPS.filter((s) => stepVal(s.key)).length;
   const pct = Math.round((doneCount / STEPS.length) * 100);
 
   function toggle(step: AdsStepKey, current: string | null) {
+    if (VERIFICADOS.includes(step)) {
+      toast.message(igVerificado ? "Verificado: la plataforma ya trae los datos de este Instagram." : "Este paso se marca solo cuando la plataforma trae los datos del Instagram. Revisá Clientes → Conectar Instagram.");
+      return;
+    }
     start(async () => {
       const res = await toggleAdsStep(clientId, step, !current);
       if (res?.error) return void toast.error(res.error);
@@ -206,8 +218,13 @@ export function AdsOnboardingChecklist({
                             <span className={cn("font-medium", done && "text-emerald-800 dark:text-emerald-200")}>
                               {s.titulo}
                             </span>
-                            {done && val && (
+                            {done && val && val !== "verificado" && (
                               <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">✓ {fmtWhen(val)}</span>
+                            )}
+                            {VERIFICADOS.includes(s.key) && (
+                              <span className={cn("ml-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold", done ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-rose-500/10 text-rose-700 dark:text-rose-300")}>
+                                {done ? "✓ Verificado con datos reales" : "Sin datos todavía"}
+                              </span>
                             )}
                           </span>
                           <span className="mt-0.5 block text-xs text-muted-foreground">{s.desc}</span>

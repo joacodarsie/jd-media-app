@@ -15,6 +15,7 @@ import {
 } from "@/lib/director/monthly";
 import { runPaidMediaDaily } from "@/lib/paid-media/sync";
 import { runInstagramDaily } from "@/lib/social/sync";
+import { runAlarmaVinculacion } from "@/lib/retencion/vinculacion-ig-run";
 import { runConciliacionDiaria } from "@/lib/social/conciliar-run";
 import { runAccountAlerts } from "@/lib/social/alerts";
 import { checkMetaToken } from "@/lib/meta/health";
@@ -416,6 +417,15 @@ export async function GET(req: NextRequest) {
     instagram = { error: e instanceof Error ? e.message : String(e) };
   }
 
+  // Cuentas sin medir: tarea y aviso diario hasta que el Instagram traiga datos
+  // de verdad (pedido del dueño, 19/10/2026). Va después del sync de Instagram.
+  let sinMedir: unknown = null;
+  try {
+    sinMedir = await runAlarmaVinculacion(admin, hoyYmd());
+  } catch (e) {
+    sinMedir = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   // Conciliación Instagram ↔ calendario: con el feed recién sincronizado, marca
   // como publicadas las piezas que ya salieron. Nadie marca a mano, así que sin
   // esto la puntualidad y el reporte del cliente miden cualquier cosa.
@@ -529,6 +539,7 @@ export async function GET(req: NextRequest) {
     reunionesNuevas,
     cuentasEnRiesgo,
     rescates,
+    sinMedir,
     rutinas,
     revision_creativa: revisionCreativa,
     aprobaciones,

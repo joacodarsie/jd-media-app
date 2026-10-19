@@ -140,6 +140,28 @@ export function planOnboarding(input: {
     equipo.fallback
   );
 
+  // Vincular el Instagram y el Facebook a la plataforma (19/10/2026, pedido
+  // del dueño): sin esto no hay datos reales para el cliente ni el reporte, y
+  // 12 cuentas estuvieron meses «conectadas» sin traer un dato. Va el día 2, a
+  // paid media, para toda cuenta con redes o pauta. Se cierra sola cuando la
+  // plataforma trae los datos; mientras tanto avisa todos los días.
+  if (svc.has("gestion_redes") || svc.has("paid_media")) {
+    add(
+      2,
+      "Vincular Instagram y Facebook a la plataforma",
+      `Que la plataforma lea el Instagram de ${nombreCliente} desde el primer día. En orden:
+
+1. **Página de Facebook vinculada al Instagram.** Si la marca no tiene página, se la creamos. En la app de Instagram de la marca → Editar perfil → Página → Conectar. Se chequea en la página → Configuración → Cuentas vinculadas.
+2. **El cliente comparte la página y el Instagram con el Business de JD Media** como socio, con acceso total (si no sabe, se hace con él en una llamada de 10 minutos).
+3. **En el Business de JD Media** → Configuración → Usuarios del sistema → «jdmedia» → ··· → Asignar activos: tildar su **Página de Facebook** y su **Cuenta de Instagram**, con todos los permisos.
+4. **En la plataforma:** Clientes → Conectar Instagram → elegir la cuenta de la lista → Conectar.
+
+**Cómo saber que está hecho:** en Resultados del cliente aparecen los seguidores. Este paso se controla con datos reales: hasta que lleguen, la plataforma te lo recuerda todos los días a vos y a dirección.`,
+      "Paid Media",
+      mb
+    );
+  }
+
   if (svc.has("gestion_redes")) {
     // El kit de marca (decisión del dueño con Luz, 17/10/2026): lo básico para
     // trabajar, entregado el día 3 con las portadas y las plantillas. El manual
@@ -261,8 +283,15 @@ Lo aprueba el director creativo el día 4 y el cliente el día 5. Se manda **una
   if (svc.has("paid_media")) {
     add(
       3,
-      "Accesos al Business Manager y píxel",
-      "Pedir acceso a Meta Business Manager y Google Ads, y verificar que el píxel y las conversiones midan de verdad. Sin esto la campaña corre a ciegas.",
+      "Cuenta publicitaria, píxel y medio de pago",
+      `Seguí el onboarding de publicidad de ${nombreCliente} (pestaña «Publicidad» del arranque), paso por paso:
+
+1. Acceso como **socio** al Business del cliente, con administración total.
+2. **Cuenta publicitaria** (act_…) cargada en la plataforma y asignada al usuario del sistema «jdmedia» con «Administrar campañas».
+3. **Píxel y conversiones** midiendo de verdad: hacé una prueba (una consulta o compra) y fijate que aparezca en el Administrador de eventos.
+4. **Medio de pago**: Dólar App descargada y la tarjeta vinculada a la cuenta publicitaria.
+
+**Cómo saber que está hecho:** en Paid Media la cuenta muestra gasto y resultados del día. Sin esto la campaña corre a ciegas.`,
       "Paid Media",
       mb
     );

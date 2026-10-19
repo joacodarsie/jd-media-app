@@ -46,7 +46,7 @@ export async function DireccionWeb() {
   };
 
   return (
-    <section className="rounded-xl border bg-card">
+    <section id="web" className="scroll-mt-20 rounded-xl border bg-card">
       <div className="flex items-center gap-2 border-b px-4 py-2.5">
         <Globe className="h-4 w-4 text-primary" />
         <h2 className="text-sm font-semibold">La web esta semana</h2>

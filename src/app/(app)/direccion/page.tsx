@@ -13,6 +13,8 @@ import { Suspense } from "react";
 import { DireccionWeb } from "@/components/direccion-web";
 import { DireccionReferidos } from "@/components/direccion-referidos";
 import { DireccionUso } from "@/components/direccion-uso";
+import { PulsoAgencia } from "@/components/pulso-agencia";
+import { CargaEquipo } from "@/components/carga-equipo";
 
 export const dynamic = "force-dynamic";
 
@@ -90,6 +92,13 @@ export default async function DireccionPage() {
         </p>
       </div>
 
+      {/* El pulso de la agencia: los números que importan, de un vistazo (19/10/2026). */}
+      {esDireccion && (
+        <Suspense fallback={<div className="h-28 animate-pulse rounded-2xl bg-muted/40" />}>
+          <PulsoAgencia />
+        </Suspense>
+      )}
+
       {esDireccion && (
         <section className="rounded-xl border bg-card">
           <div className="border-b px-4 py-2.5">
@@ -154,6 +163,12 @@ export default async function DireccionPage() {
           />
         ))}
       </div>
+
+      {esDireccion && (
+        <Suspense fallback={null}>
+          <CargaEquipo />
+        </Suspense>
+      )}
 
       {esDireccion && (
         <Suspense fallback={null}>

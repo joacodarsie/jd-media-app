@@ -18,8 +18,9 @@ export function NumeroVivo({
   sufijo?: string;
   duracion?: number;
 }) {
-  // Arranca en 0 y cuenta: hidrata en milisegundos, no llega a verse quieto en 0.
-  const [v, setV] = useState(0);
+  // El servidor ya manda el número real (si el JS no carga, igual se lee bien);
+  // al montar, cuenta desde 0 hasta el valor (19/10/2026).
+  const [v, setV] = useState(valor);
   const desde = useRef(0);
 
   useEffect(() => {

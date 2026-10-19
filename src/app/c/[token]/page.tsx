@@ -46,6 +46,7 @@ import { CicloNave } from "@/components/ciclo-nave";
 import { PortalAccesos } from "@/components/portal-accesos";
 import { PortalMaterial } from "@/components/portal-material";
 import { PortalMovimiento } from "@/components/portal-movimiento";
+import { SALUDO, momentoDelDia } from "@/lib/saludo-del-dia";
 import { estadoDeRedes, type Credencial } from "@/lib/accesos/portal";
 // Programa de referidos (13/10/2026).
 import { PortalRecomendar } from "@/components/portal-recomendar";
@@ -303,6 +304,17 @@ export default async function PortalPage({ params }: { params: { token: string }
           inset: 0;
           background: radial-gradient(ellipse at top right, rgba(255,212,0,.15), transparent 60%);
         }
+        .hero-saludo { font-size: 13px; color: rgba(255,255,255,.75); margin-bottom: 14px; font-weight: 500; }
+        .hero-astro { position: absolute; right: 18px; top: 14px; font-size: 52px; line-height: 1; filter: drop-shadow(0 0 20px rgba(255,212,0,.5)); animation: pm-astro 6s ease-in-out infinite; }
+        @keyframes pm-astro { 0%,100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(6px) rotate(6deg); } }
+        .hero--manana { background: linear-gradient(135deg, #2a2412 0%, #1a1a1a 60%); }
+        .hero--tarde { background: linear-gradient(135deg, #14233a 0%, #1a1a1a 60%); }
+        .hero--atardecer { background: linear-gradient(135deg, #3a1f2a 0%, #241a2e 50%, #1a1a1a 100%); }
+        .hero--noche, .hero--madrugada { background: linear-gradient(135deg, #1d2140 0%, #15172b 60%); }
+        .hero--noche:after, .hero--madrugada:after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+          background-image: radial-gradient(rgba(255,255,255,.8) 1px, transparent 1.5px); background-size: 34px 34px;
+          -webkit-mask-image: linear-gradient(90deg, transparent, #000 70%); mask-image: linear-gradient(90deg, transparent, #000 70%); }
+        @media (prefers-reduced-motion: reduce) { .hero-astro { animation: none; } }
         .hero-brand { font-size: 11px; letter-spacing: 0.2em; color: #FFD400; text-transform: uppercase; margin-bottom: 8px; }
         .hero-title { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; margin: 0; }
         .hero-rubro { margin-top: 6px; font-size: 14px; color: #aaa; }
@@ -367,14 +379,30 @@ export default async function PortalPage({ params }: { params: { token: string }
 
       <div className="wrap">
         <PortalMovimiento />
-        <div className="hero">
-          <div style={{ position: "relative" }}>
-            <div className="hero-brand">{AGENCY.brand}</div>
+        {(() => {
+          // El saludo según la hora de Córdoba y lo que sale esta semana (18/10/2026).
+          const horaCba = Number(new Intl.DateTimeFormat("es-AR", { hour: "numeric", hour12: false, timeZone: "America/Argentina/Cordoba" }).format(new Date())) % 24;
+          const momento = momentoDelDia(horaCba);
+          const en7 = Date.now() + 7 * 86_400_000;
+          const semana = ((pubs ?? []) as { fecha_publicacion: string | null; estado: string }[]).filter((x) => {
+            const t = x.fecha_publicacion ? new Date(x.fecha_publicacion).getTime() : 0;
+            return t >= Date.now() - 3_600_000 && t <= en7 && x.estado !== "publicado";
+          }).length;
+          return (
+            <div className={`hero hero--${momento}`}>
+              <span className="hero-astro" aria-hidden="true">{SALUDO[momento].emoji}</span>
+              <div style={{ position: "relative" }}>
+                <div className="hero-saludo">
+                  {momento === "madrugada" ? "Hola" : SALUDO[momento].saludo}, {client.nombre}
+                  {semana > 0 ? ` · Esta semana ${semana === 1 ? "sale 1 pieza" : `salen ${semana} piezas`}` : ""}
+                </div>
             <h1 className="hero-title">{client.nombre}</h1>
             {client.rubro && <div className="hero-rubro">{client.rubro}</div>}
             {client.pack && <span className="hero-pack">Pack {client.pack}</span>}
-          </div>
-        </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Pendientes de revisión — se muestra primero porque es lo urgente */}
         {toReview.length > 0 && (

@@ -208,10 +208,7 @@
 }
 @keyframes jd-destello { to { transform: translateX(120%); } }
 
-/* Tarjetas: una luz que sigue al mouse (la pone EfectosGlobales) */
-.jd-luz {
-  background-image: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(255, 212, 0, .07), transparent 45%);
-}
+/* Tarjetas que son links: se levantan un poco (sin luz que siga al mouse). */
 a.rounded-2xl.bg-card, a.rounded-xl.bg-card { transition: transform .2s ease, box-shadow .2s ease; }
 a.rounded-2xl.bg-card:hover, a.rounded-xl.bg-card:hover { transform: translateY(-2px); box-shadow: 0 12px 30px -14px rgba(0, 0, 0, .25); }
 
@@ -283,3 +280,14 @@ a.rounded-2xl.bg-card:hover, a.rounded-xl.bg-card:hover { transform: translateY(
 
 /* De noche, los botoncitos claros del saludo (la ayuda «?») van translúcidos. */
 .jd-cielo--noche .bg-muted, .jd-cielo--madrugada .bg-muted, .jd-cielo--noche .bg-background, .jd-cielo--madrugada .bg-background { background: rgba(255, 255, 255, .15) !important; }
+
+/* El «hoy» de la historia de la cuenta late suave (18/10/2026). */
+.jd-hoy-pulso::after { content: ''; position: absolute; inset: 0; border-radius: 9999px; animation: jd-hoy-pulso 2.4s ease-in-out infinite; }
+@keyframes jd-hoy-pulso { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 212, 0, .55); } 50% { box-shadow: 0 0 0 8px rgba(255, 212, 0, 0); } }
+@media (prefers-reduced-motion: reduce) { .jd-hoy-pulso::after { animation: none; } }
+
+/* Logros de Mi día: entran con un saltito (18/10/2026). */
+.jd-logro { animation: jd-logro .55s cubic-bezier(.34, 1.56, .64, 1) both; }
+@keyframes jd-logro { from { opacity: 0; transform: scale(.6) translateY(6px); } to { opacity: 1; transform: none; } }
+.jd-cielo--noche .jd-logro, .jd-cielo--madrugada .jd-logro { background: rgba(255, 255, 255, .14); color: #fff; }
+@media (prefers-reduced-motion: reduce) { .jd-logro { animation: none; } }

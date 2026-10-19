@@ -102,23 +102,23 @@ export async function LineaTiempoCuenta({ clienteId, fechaInicio }: { clienteId:
       <div className="relative overflow-x-auto pb-1">
         <div className="relative w-max">
           {/* La línea se dibuja de izquierda a derecha. */}
-          <div className="absolute left-4 right-[112px] top-[15px] sm:right-[128px] h-0.5 bg-border" aria-hidden="true" />
-          <div className="jd-linea absolute left-4 right-[112px] top-[15px] sm:right-[128px] h-0.5 bg-primary/70" aria-hidden="true" />
+          <div className="absolute left-4 right-[112px] top-[17px] sm:right-[128px] h-0.5 bg-border" aria-hidden="true" />
+          <div className="jd-linea absolute left-4 right-[112px] top-[17px] sm:right-[128px] h-0.5 bg-primary/70" aria-hidden="true" />
           <ol className="jd-cascada relative flex gap-2">
             {hitos.map((h, i) => (
               <li key={`${h.tipo}-${h.fecha}-${i}`} className="flex w-32 shrink-0 flex-col items-start px-1 sm:w-36">
                 <span
                   className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-full bg-card text-base shadow-sm ring-2",
-                    h.tipo === "hoy" ? "ring-primary" : "ring-border"
+                    "relative flex h-9 w-9 items-center justify-center rounded-full text-base leading-none ring-4 ring-card",
+                    h.tipo === "hoy" ? "jd-hoy-pulso bg-primary" : "bg-muted"
                   )}
                   aria-hidden="true"
                 >
                   {ICONO[h.tipo]}
                 </span>
                 <span className="mt-2 text-[11px] tabular-nums text-muted-foreground">{fecha(h.fecha)}</span>
-                <span className={cn("text-sm font-medium leading-tight", h.tipo === "hoy" && "text-primary-foreground dark:text-primary")}>
-                  {h.tipo === "hoy" ? <span className="rounded bg-primary px-1">{h.titulo}</span> : h.titulo}
+                <span className="text-sm font-medium leading-tight">
+                  {h.tipo === "hoy" ? <span className="rounded-full bg-primary px-2 py-0.5 text-black">{h.titulo}</span> : h.titulo}
                 </span>
                 {h.detalle && <span className="mt-0.5 text-xs leading-snug text-muted-foreground">{h.detalle}</span>}
               </li>

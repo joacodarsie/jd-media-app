@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { TaskList } from "@/components/task-list";
 import { AnilloDelDia } from "@/components/anillo-del-dia";
 import { SALUDO, fraseDelDia, momentoDelDia } from "@/lib/saludo-del-dia";
+import { logrosDelDia } from "@/lib/logros";
 import { HelpTrigger } from "@/components/help-trigger";
 import { DashboardAvisos } from "@/components/dashboard-avisos";
 import { MiPuesto } from "@/components/mi-puesto";
@@ -303,6 +304,10 @@ export default async function DashboardPage() {
   const hechasHoy = tasks.filter(
     (t) => t.estado === "completada" && new Date((t as { updated_at?: string }).updated_at ?? 0).getTime() >= inicioHoy
   ).length;
+  const hace7 = Date.now() - 7 * 86_400_000;
+  const hechasSemana = tasks.filter(
+    (t) => t.estado === "completada" && new Date((t as { updated_at?: string }).updated_at ?? 0).getTime() >= hace7
+  ).length;
 
   // Eventos hoy y resto de la semana
   const eventsHoy = calendarEvents.filter((e) => isToday(new Date(e.start)));
@@ -505,6 +510,23 @@ export default async function DashboardPage() {
               <HelpTrigger slug="mi-dia" label="¿Qué es Mi día?" size="md" />
             </h1>
             <p className="max-w-xl text-foreground/70">{frase}</p>
+            {/* Logros chiquitos: solo los que se ganaron (18/10/2026). */}
+            {(() => {
+              const logros = logrosDelDia({ vencidas: vencidas.length, hechasHoy, pendientesHoy: venceHoy.length + vencidas.length, hechasSemana });
+              return logros.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {logros.map((l, i) => (
+                    <span
+                      key={l.clave}
+                      className="jd-logro inline-flex items-center gap-1 rounded-full bg-background/70 px-2.5 py-1 text-xs font-semibold shadow-sm ring-1 ring-black/5 backdrop-blur"
+                      style={{ animationDelay: `${300 + i * 120}ms` }}
+                    >
+                      <span aria-hidden="true">{l.emoji}</span> {l.texto}
+                    </span>
+                  ))}
+                </div>
+              ) : null;
+            })()}
           </div>
 
           <AnilloDelDia hechas={hechasHoy} total={hechasHoy + venceHoy.length + vencidas.length} hoy={hoy} />

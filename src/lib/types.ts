@@ -213,6 +213,7 @@ export interface Task {
   /** «Estoy trabado» (0206): qué la frena y a quién espera. */
   bloqueo?: "cliente" | "persona" | null;
   bloqueo_quien?: string | null;
+  bloqueo_detalle?: string | null;
   created_at: string;
   updated_at: string;
 }

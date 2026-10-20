@@ -29,6 +29,7 @@ import { TaskComments } from "@/components/task-comments";
 import { TaskTimer, type TimeEntry } from "@/components/task-timer";
 import { Pencil } from "lucide-react";
 import { TicketGuia } from "@/components/ticket-guia";
+import { TrabadaBoton } from "@/components/trabada-boton";
 import { personasClave } from "@/lib/tareas/personas-clave";
 import {
   estadoAprobacion,
@@ -341,6 +342,15 @@ export default async function TaskDetail({
           usuarios={users ?? []}
           asignadoId={t.asignado_a_id}
         />
+      )}
+
+      {/* Pausar por el cliente (o avisar a un compañero) desde cualquier tarea abierta, no solo las vencidas (20/10/2026). */}
+      {t.estado !== "completada" && t.estado !== "archivada" && (
+        <div className="-mb-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <TrabadaBoton taskId={t.id} titulo={t.titulo} bloqueo={t.bloqueo ?? null} bloqueoQuien={t.bloqueo_quien ?? null} />
+          {t.bloqueo === "cliente" && t.bloqueo_detalle && <span>Lo que falta: {t.bloqueo_detalle}</span>}
+          {!t.bloqueo && <span>¿Espera al cliente? Pausala: el reloj se frena y el cliente lo ve en su portal.</span>}
+        </div>
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">

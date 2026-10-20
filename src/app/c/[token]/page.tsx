@@ -62,6 +62,8 @@ import { lineaDeProduccion } from "@/lib/portal/produccion";
 import { armarPlacas, hayTuMes, piezaEstrella } from "@/lib/portal/tu-mes";
 import { SALUDO, momentoDelDia } from "@/lib/saludo-del-dia";
 import { estadoDeRedes, type Credencial } from "@/lib/accesos/portal";
+import { itemsTeToca, type PausadaPorCliente } from "@/lib/portal/te-toca";
+import { periodoCartaEnPortal } from "@/lib/contratos/carta-mensual";
 // Programa de referidos (13/10/2026).
 import { PortalRecomendar } from "@/components/portal-recomendar";
 import { labelEstado, puedeRecomendar, type EstadoReferido } from "@/lib/referidos/referidos";
@@ -317,6 +319,15 @@ export default async function PortalPage({ params }: { params: { token: string }
   })().catch(() => null);
   // Su reunión mensual: la elige él (19/10/2026).
   const reunion = await cargarReunionPortal(admin, cliente_id, hoyYmd()).catch(() => null);
+  // Lo que el equipo pausó esperándolo (20/10/2026): sin la 0206 viene vacío.
+  const { data: pausadasRaw } = await admin
+    .from("tasks")
+    .select("titulo, bloqueo_detalle")
+    .eq("cliente_id", cliente_id)
+    .eq("bloqueo", "cliente")
+    .not("estado", "in", "(completada,archivada)")
+    .order("bloqueo_at", { ascending: true });
+  const pausadas = (pausadasRaw ?? []) as PausadaPorCliente[];
   // «Tu mes en JD Media»: el resumen del mes cerrado en historias (19/10/2026).
   const tuMes = await (async () => {
     const d = new Date(Date.parse(`${hoyYmd().slice(0, 7)}-15T12:00:00Z`) - 30 * 86_400_000);
@@ -686,7 +697,62 @@ export default async function PortalPage({ params }: { params: { token: string }
           );
         })()}
 
+        {/* Lo que te toca a vos (20/10/2026): todo lo que el equipo espera de él, arriba de todo. */}
+        {(() => {
+          const items = itemsTeToca({
+            piezasParaRevisar: toReview.length,
+            pausadas,
+            faltaMaterial: !!material && !material.avisado,
+            faltanAccesos: Object.values(estadoCuentas).some((e) => e === "falta"),
+            abonoPendiente: abono && !abono.avisado ? abono.mes : null,
+            elegirReunion: reunion?.estado === "elegir",
+            encuesta: !!pedirEncuesta,
+            cartaDelMes: (() => {
+              const p = periodoCartaEnPortal(hoyYmd());
+              return p ? { mes: periodLabel(p).replace(/ de \d{4}$/, ""), href: `/contrato/cliente/${cliente_id}?token=${params.token}` } : null;
+            })(),
+          });
+          if (!items.length)
+            return (
+              <div className="card" style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px" }}>
+                <span style={{ fontSize: 20 }}>✅</span>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>Estás al día: no hay nada pendiente de tu lado.</span>
+              </div>
+            );
+          return (
+            <div className="card" style={{ borderColor: "#111", boxShadow: "0 10px 30px rgba(0,0,0,.08)" }}>
+              <div className="card-label">Lo que te toca a vos</div>
+              <h2 className="card-title" style={{ marginBottom: 10 }}>
+                {items.length === 1 ? "Tenés 1 cosa pendiente" : `Tenés ${items.length} cosas pendientes`}
+              </h2>
+              <div style={{ display: "grid", gap: 8 }}>
+                {items.map((i) => {
+                  const fila = (
+                    <>
+                      <span style={{ width: 9, height: 9, borderRadius: 99, flexShrink: 0, background: i.urgente ? "#f59e0b" : "#d4d4d4" }} />
+                      <span style={{ flex: 1, fontSize: 14, fontWeight: 600, lineHeight: 1.4 }}>{i.texto}</span>
+                      {i.href && <span style={{ fontSize: 13, fontWeight: 700 }}>→</span>}
+                    </>
+                  );
+                  const estilo = { display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", border: "1px solid #ececec", borderRadius: 12, color: "inherit", textDecoration: "none", background: "#fff" } as const;
+                  return i.href ? (
+                    <a key={i.clave} href={i.href} style={estilo}>{fila}</a>
+                  ) : (
+                    <div key={i.clave} style={{ ...estilo, background: "#fffbeb", borderColor: "#fde68a" }}>{fila}</div>
+                  );
+                })}
+              </div>
+              {pausadas.length > 0 && (
+                <p style={{ fontSize: 12, color: "#777", margin: "10px 0 0", lineHeight: 1.5 }}>
+                  Mientras esperamos, esas tareas quedan en pausa. Mandalo por el grupo de WhatsApp o subilo a tu carpeta y seguimos.
+                </p>
+              )}
+            </div>
+          );
+        })()}
+
         {abono && (
+          <div id="abono">
           <PortalAbono
             token={params.token}
             mes={abono.mes}
@@ -696,56 +762,12 @@ export default async function PortalPage({ params }: { params: { token: string }
             titular={AGENCY.bank.titular}
             avisado={abono.avisado}
           />
-        )}
-
-        {arranque && <PortalArranque pasos={arranque} cartaHref={`/contrato/cliente/${cliente_id}?token=${params.token}`} />}
-
-        {tuMes && <PortalTuMes placas={tuMes.placas} mesLabel={tuMes.mesLabel} refCode={mostrarRecomendar ? ref?.ref_code ?? null : null} />}
-
-        {/* Tu reunión del mes: el cliente elige el día y la hora. */}
-        {reunion && (
-          <div className="card pr-card">
-            <div className="card-label">Tu reunión del mes</div>
-            <h2 className="card-title" style={{ marginBottom: 4 }}>
-              {reunion.estado === "agendada" ? "Nos vemos pronto" : "Elegí cuándo nos juntamos"}
-            </h2>
-            <p style={{ fontSize: 13, color: "#666", margin: "0 0 14px", lineHeight: 1.5 }}>
-              30 minutos por videollamada para ver los resultados del mes y planear el que viene
-              {reunion.estado === "elegir" && reunion.conQuien ? `, con ${reunion.conQuien}` : ""}.
-            </p>
-            <PortalReunion
-              token={params.token}
-              turnos={reunion.estado === "elegir" ? reunion.turnos : []}
-              agendada={reunion.estado === "agendada" ? reunion.etiqueta : null}
-            />
-          </div>
-        )}
-
-        {/* La encuesta del mes: un toque en la carita y abre la encuesta con esa nota. */}
-        {pedirEncuesta && (
-          <div className="card" style={{ textAlign: "center" }}>
-            <div className="card-label">30 segundos</div>
-            <h2 className="card-title" style={{ marginBottom: 4 }}>¿Cómo venimos este mes?</h2>
-            <p style={{ fontSize: 13, color: "#666", margin: "0 0 14px" }}>Tu opinión nos sirve para mejorar nuestros servicios. Son 3 preguntas.</p>
-            <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
-              {["😞", "😕", "😐", "🙂", "😍"].map((cara, i) => (
-                <a
-                  key={cara}
-                  href={`/encuesta/${params.token}?p=${i + 1}`}
-                  aria-label={`${i + 1} de 5`}
-                  className="enc-cara"
-                  style={{ fontSize: 32, width: 56, height: 56, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 14, background: "#fafafa", border: "1px solid #eee", textDecoration: "none" }}
-                >
-                  {cara}
-                </a>
-              ))}
-            </div>
           </div>
         )}
 
         {/* Pendientes de revisión — se muestra primero porque es lo urgente */}
         {toReview.length > 0 && (
-          <div className="card" style={{ borderColor: "#fde68a", background: "linear-gradient(180deg, #fffbeb 0%, #fff 100%)" }}>
+          <div id="revisar" className="card" style={{ borderColor: "#fde68a", background: "linear-gradient(180deg, #fffbeb 0%, #fff 100%)" }}>
             <div className="card-label" style={{ color: "#92400e" }}>
               Necesitamos tu mirada
             </div>
@@ -775,6 +797,80 @@ export default async function PortalPage({ params }: { params: { token: string }
             </div>
           </div>
         )}
+
+        {/* Tu material: lo que el arranque necesita de su lado (18/10/2026). */}
+        {material && (
+          <div id="material" className="card">
+            <div className="card-label">Para arrancar</div>
+            <h2 className="card-title">Necesitamos tus fotos y videos</h2>
+            <p style={{ fontSize: 13, color: "#666", margin: "0 0 12px", lineHeight: 1.5 }}>
+              Con tu material salen tus primeras publicaciones: productos, el local, tu equipo, lo que tengas. Subilo a tu carpeta y avisanos acá; tu equipo lo revisa ese mismo día. Según tu{" "}
+              <a href={`/contrato/cliente/${cliente_id}?token=${params.token}`} target="_blank" rel="noreferrer" style={{ color: "inherit", fontWeight: 700 }}>
+                carta acuerdo
+              </a>
+              , va dentro de los 2 días de aprobado el calendario.
+            </p>
+            <PortalMaterial token={params.token} driveUrl={material.driveUrl} avisado={material.avisado} />
+          </div>
+        )}
+
+        {/* Tus cuentas: el cliente carga sus accesos (pedido de Luz, 17/10/2026).
+            Solo aparece mientras falte alguna red: cuando está todo, no ocupa lugar. */}
+        {Object.values(estadoCuentas).some((e) => e === "falta") && (
+        <div id="accesos" className="card">
+          <div className="card-label">Tus cuentas</div>
+          <h2 className="card-title">Tus redes y accesos</h2>
+          <p style={{ fontSize: 13, color: "#666", margin: "0 0 12px", lineHeight: 1.5 }}>
+            Para manejar tus redes, tu equipo necesita poder entrar. Marcá cuáles tenés y dejanos el usuario y la contraseña; las que no tengas, las creamos nosotros.
+          </p>
+          <PortalAccesos token={params.token} estado={estadoCuentas} />
+        </div>
+        )}
+
+        {/* Tu reunión del mes: el cliente elige el día y la hora. */}
+        {reunion && (
+          <div id="reunion" className="card pr-card">
+            <div className="card-label">Tu reunión del mes</div>
+            <h2 className="card-title" style={{ marginBottom: 4 }}>
+              {reunion.estado === "agendada" ? "Nos vemos pronto" : "Elegí cuándo nos juntamos"}
+            </h2>
+            <p style={{ fontSize: 13, color: "#666", margin: "0 0 14px", lineHeight: 1.5 }}>
+              30 minutos por videollamada para ver los resultados del mes y planear el que viene
+              {reunion.estado === "elegir" && reunion.conQuien ? `, con ${reunion.conQuien}` : ""}.
+            </p>
+            <PortalReunion
+              token={params.token}
+              turnos={reunion.estado === "elegir" ? reunion.turnos : []}
+              agendada={reunion.estado === "agendada" ? reunion.etiqueta : null}
+            />
+          </div>
+        )}
+
+        {/* La encuesta del mes: un toque en la carita y abre la encuesta con esa nota. */}
+        {pedirEncuesta && (
+          <div id="encuesta" className="card" style={{ textAlign: "center" }}>
+            <div className="card-label">30 segundos</div>
+            <h2 className="card-title" style={{ marginBottom: 4 }}>¿Cómo venimos este mes?</h2>
+            <p style={{ fontSize: 13, color: "#666", margin: "0 0 14px" }}>Tu opinión nos sirve para mejorar nuestros servicios. Son 3 preguntas.</p>
+            <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
+              {["😞", "😕", "😐", "🙂", "😍"].map((cara, i) => (
+                <a
+                  key={cara}
+                  href={`/encuesta/${params.token}?p=${i + 1}`}
+                  aria-label={`${i + 1} de 5`}
+                  className="enc-cara"
+                  style={{ fontSize: 32, width: 56, height: 56, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 14, background: "#fafafa", border: "1px solid #eee", textDecoration: "none" }}
+                >
+                  {cara}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {arranque && <PortalArranque pasos={arranque} cartaHref={`/contrato/cliente/${cliente_id}?token=${params.token}`} />}
+
+        {tuMes && <PortalTuMes placas={tuMes.placas} mesLabel={tuMes.mesLabel} refCode={mostrarRecomendar ? ref?.ref_code ?? null : null} />}
 
         {/* Informe del último mes cerrado — el documento que sale de la reunión */}
         {ultimoInforme && (
@@ -849,35 +945,6 @@ export default async function PortalPage({ params }: { params: { token: string }
             </div>
           );
         })()}
-
-        {/* Tu material: lo que el arranque necesita de su lado (18/10/2026). */}
-        {material && (
-          <div className="card">
-            <div className="card-label">Para arrancar</div>
-            <h2 className="card-title">Necesitamos tus fotos y videos</h2>
-            <p style={{ fontSize: 13, color: "#666", margin: "0 0 12px", lineHeight: 1.5 }}>
-              Con tu material salen tus primeras publicaciones: productos, el local, tu equipo, lo que tengas. Subilo a tu carpeta y avisanos acá; tu equipo lo revisa ese mismo día. Según tu{" "}
-              <a href={`/contrato/cliente/${cliente_id}?token=${params.token}`} target="_blank" rel="noreferrer" style={{ color: "inherit", fontWeight: 700 }}>
-                carta acuerdo
-              </a>
-              , va dentro de los 2 días de aprobado el calendario.
-            </p>
-            <PortalMaterial token={params.token} driveUrl={material.driveUrl} avisado={material.avisado} />
-          </div>
-        )}
-
-        {/* Tus cuentas: el cliente carga sus accesos (pedido de Luz, 17/10/2026).
-            Solo aparece mientras falte alguna red: cuando está todo, no ocupa lugar. */}
-        {Object.values(estadoCuentas).some((e) => e === "falta") && (
-        <div className="card">
-          <div className="card-label">Tus cuentas</div>
-          <h2 className="card-title">Tus redes y accesos</h2>
-          <p style={{ fontSize: 13, color: "#666", margin: "0 0 12px", lineHeight: 1.5 }}>
-            Para manejar tus redes, tu equipo necesita poder entrar. Marcá cuáles tenés y dejanos el usuario y la contraseña; las que no tengas, las creamos nosotros.
-          </p>
-          <PortalAccesos token={params.token} estado={estadoCuentas} />
-        </div>
-        )}
 
         {/* Resultados del mes — Instagram + pauta, en vivo */}
         {hayResultados && (

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AREA_PM } from "@/lib/tareas/puerta";
 import { createAdmin } from "@/lib/supabase/admin";
+import { runCartasDelMes } from "@/lib/contratos/carta-mensual-run";
+import { hoyYmd } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -160,6 +162,10 @@ export async function GET(req: NextRequest) {
   // cliente). Corre siempre, aparte del chequeo de planes.
   const encuestas = await recordarEncuestas(admin, clientList);
 
+  // La carta acuerdo del mes que viene, con los plazos del material crudo
+  // (20/10/2026): una tarea por cuenta para la PM con el mensaje listo.
+  const cartas = await runCartasDelMes(admin, hoyYmd()).catch((e: unknown) => ({ error: e instanceof Error ? e.message : "falló" }));
+
   // 2) Buscar planes ya creados que matcheen el mes siguiente.
   // El periodo_label es texto libre (ej "Junio 2026", "Q2 2026"). Hacemos
   // un match permisivo por nombre del mes y año.
@@ -192,6 +198,7 @@ export async function GET(req: NextRequest) {
       missing: [],
       period: periodHint,
       encuestas,
+      cartas,
     });
   }
 
@@ -251,6 +258,7 @@ export async function GET(req: NextRequest) {
       notified: 0,
       period: periodHint,
       encuestas,
+      cartas,
       note: "ya estaban notificados hoy",
     });
   }
@@ -267,5 +275,6 @@ export async function GET(req: NextRequest) {
     notified: rows.length,
     period: periodHint,
       encuestas,
+      cartas,
   });
 }

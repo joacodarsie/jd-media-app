@@ -56,7 +56,7 @@ export function TrabadaBoton({
     const r = await marcarTrabada({ taskId, tipo, esperandoId: tipo === "persona" ? esperando : null, detalle });
     setEnviando(false);
     if ("error" in r && r.error) return void toast.error(r.error);
-    toast.success(tipo === "cliente" ? "Listo: le avisamos a la PM para que apure al cliente." : "Listo: ya le avisamos que lo estás esperando.");
+    toast.success(tipo === "cliente" ? "En pausa: el reloj se frena, el cliente lo ve en su portal y le avisamos a la PM." : "Listo: ya le avisamos que lo estás esperando.");
     setAbierto(false);
     setTipo(null);
     setDetalle("");
@@ -67,7 +67,7 @@ export function TrabadaBoton({
     frenar(e);
     const r = await destrabar(taskId);
     if ("error" in r && r.error) return void toast.error(r.error);
-    toast.success("¡Destrabada! A seguir.");
+    toast.success("nuevaFecha" in r && r.nuevaFecha ? `¡Sigue! La fecha límite se corrió al ${r.nuevaFecha.slice(8, 10)}/${r.nuevaFecha.slice(5, 7)} por los días en pausa.` : "¡Destrabada! A seguir.");
     router.refresh();
   }
 
@@ -110,7 +110,7 @@ export function TrabadaBoton({
           <div className="grid gap-2 sm:grid-cols-2">
             {(
               [
-                ["cliente", "🙋 Espero al cliente", "Material, aprobación, accesos"],
+                ["cliente", "⏸️ Espera al cliente", "Material, aprobación, accesos. Se pausa el reloj"],
                 ["persona", "👥 Espero a alguien del equipo", "Otra parte que no está lista"],
               ] as const
             ).map(([k, t, s]) => (
@@ -146,19 +146,19 @@ export function TrabadaBoton({
             <Textarea
               value={detalle}
               onChange={(e) => setDetalle(e.target.value)}
-              placeholder="Qué te falta, en una línea (opcional)"
+              placeholder={tipo === "cliente" ? "Qué necesitamos del cliente: lo va a leer en su portal" : "Qué te falta, en una línea (opcional)"}
               rows={2}
             />
           )}
           <p className="text-xs text-muted-foreground">
-            Le avisamos {tipo === "persona" ? "a esa persona" : "a la PM, que apura al cliente"}. Mientras espera, la tarea no cuenta como atraso de la cuenta.
+            {tipo === "cliente" ? "Le avisamos a la PM y el cliente lo ve en su portal. Mientras tanto no cuenta como atraso, y al reanudar la fecha límite se corre los días en pausa." : "Le avisamos a esa persona. Mientras espera, la tarea no cuenta como atraso de la cuenta."}
           </p>
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setAbierto(false)}>
               Cancelar
             </Button>
             <Button onClick={enviar} disabled={!tipo || enviando || (tipo === "persona" && !esperando)}>
-              {enviando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Avisar
+              {enviando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {tipo === "cliente" ? "Pausar y avisar" : "Avisar"}
             </Button>
           </div>
         </DialogContent>

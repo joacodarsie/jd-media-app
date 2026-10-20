@@ -59,7 +59,7 @@ export async function POST(req: Request) {
   try {
     const res = await new Anthropic().messages.create({
       model: AI_MODEL_FAST,
-      max_tokens: 400,
+      max_tokens: 250,
       system: SISTEMA_BOTLY,
       messages: mensajes,
     });

@@ -85,7 +85,7 @@ export default async function OnboardingRedesPage({
           key: s.key,
           titulo: s.title,
           hecho: !!s.done,
-          fecha: typeof s.done === "string" ? fmtDate(s.done) : null,
+          fecha: typeof s.done === "string" && /^\d{4}-/.test(s.done) ? fmtDate(s.done) : null,
         }))}
       />
 

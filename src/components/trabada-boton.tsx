@@ -28,12 +28,15 @@ export function TrabadaBoton({
   bloqueo,
   bloqueoQuien,
   className,
+  texto = "¿Trabada?",
 }: {
   taskId: string;
   titulo: string;
   bloqueo?: TipoTraba | null;
   bloqueoQuien?: string | null;
   className?: string;
+  /** El texto del botón cuando no está trabada (en el tablero de la PM: «Pausar»). */
+  texto?: string;
 }) {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
@@ -97,7 +100,7 @@ export function TrabadaBoton({
             className
           )}
         >
-          🧱 <span className="hidden sm:inline">¿Trabada?</span>
+          🧱 <span className="hidden sm:inline">{texto}</span>
         </button>
       )}
 

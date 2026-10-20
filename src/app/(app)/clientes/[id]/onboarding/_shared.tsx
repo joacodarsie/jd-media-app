@@ -15,6 +15,7 @@ import {
   Package,
   Layers,
   BadgeCheck,
+  Check,
   Link2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -32,6 +33,8 @@ import { PagoRecibidoControl } from "@/components/pago-recibido-control";
 import { GenerateInitialTasksButton } from "@/components/generate-initial-tasks-button";
 import { MeetGuideViewer } from "@/components/meet-guide-viewer";
 import { descifrarCredenciales } from "@/lib/accesos/cifrado";
+import { accesoHecho, credencialDeRed, estadoAcceso, NOTA_NO_TIENE, queFalta, REDES_ONBOARDING, type CredencialRed, type RedOnboarding } from "@/lib/accesos/redes-onboarding";
+import { AccesoRedForm } from "@/components/acceso-red-form";
 
 export interface ClientLite {
   id: string;
@@ -103,6 +106,7 @@ export type StepDef = {
     | "perfiles_rediseno_at"
     | "tareas_iniciales_at"
     | "cm_accesos_at"
+    | `cm_acceso_${RedOnboarding}`
     | "cm_perfiles_at"
     | "cm_vinculacion_at"
     | "dg_manual_marca_at"
@@ -116,6 +120,12 @@ export type StepDef = {
   icon: typeof FileText;
   description?: string;
   autoDerived?: boolean;
+  /** Pasos de acceso por red: se completan cargando el acceso, no con un tilde. */
+  acceso?: {
+    red: RedOnboarding;
+    ejemploUrl: string;
+    inicial: { url: string; usuario: string; tienePassword: boolean; notas: string; noTiene: boolean };
+  };
 };
 
 export interface OnboardingData {
@@ -363,15 +373,37 @@ export async function loadOnboarding(clientId: string): Promise<OnboardingData |
         "Genera automáticamente las tareas según los servicios (auditoría, manual, calendario, etc.).",
     },
     // ── ETAPA · COMMUNITY MANAGER (arranque operativo de la cuenta) ──
-    {
-      key: "cm_accesos_at",
-      stage: "cm",
-      title: "Acceso a todas las cuentas del cliente",
-      done: onb.cm_accesos_at,
-      icon: KeyRound,
-      description:
-        "Confirmá que podés entrar a TODAS las cuentas del cliente (Instagram, TikTok, Facebook y las que correspondan) para operarlas.",
-    },
+    // Un paso por red (20/10/2026): se marcan solos con link + usuario cargados
+    // (o «no tiene esta red»). Reemplazan a «Acceso a todas las cuentas».
+    ...REDES_ONBOARDING.map((r): StepDef => {
+      const cred = credencialDeRed(credenciales as CredencialRed[], r.clave);
+      const estado = estadoAcceso(cred);
+      return {
+        key: `cm_acceso_${r.clave}`,
+        stage: "cm",
+        title: r.titulo,
+        done: accesoHecho(estado) ? "auto" : null,
+        autoDerived: accesoHecho(estado),
+        icon: KeyRound,
+        description:
+          estado === "no_tiene"
+            ? "Resuelto: el cliente no tiene esta red."
+            : estado === "listo"
+              ? "Cargado: link y usuario en la ficha. Podés corregirlo acá."
+              : `${queFalta(cred)} Cargá el link de la cuenta, el usuario, la contraseña y las notas: se marca solo.`,
+        acceso: {
+          red: r.clave,
+          ejemploUrl: r.ejemploUrl,
+          inicial: {
+            url: cred?.url ?? "",
+            usuario: cred?.usuario ?? "",
+            tienePassword: !!cred?.password,
+            notas: (cred?.notas ?? "").replace(NOTA_NO_TIENE, "").trim(),
+            noTiene: estado === "no_tiene",
+          },
+        },
+      };
+    }),
     {
       key: "cm_perfiles_at",
       stage: "cm",
@@ -499,7 +531,14 @@ export function OnboardingStepRow({
           : ""
       }`}
     >
-      {step.key === "meet_guide" ? (
+      {step.acceso ? (
+        <span
+          aria-label={isDone ? "Listo" : "Pendiente"}
+          className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${isDone ? "border-emerald-500 bg-emerald-500 text-white" : "border-muted-foreground/40"}`}
+        >
+          {isDone && <Check className="h-3.5 w-3.5" />}
+        </span>
+      ) : step.key === "meet_guide" ? (
         <OnboardingStepToggle
           clientId={client.id}
           stepKey="meet_guide_generated_at"
@@ -508,7 +547,7 @@ export function OnboardingStepRow({
       ) : (
         <OnboardingStepToggle
           clientId={client.id}
-          stepKey={step.key as Exclude<StepDef["key"], "meet_guide">}
+          stepKey={step.key as Exclude<StepDef["key"], "meet_guide" | `cm_acceso_${RedOnboarding}`>}
           initialDone={isDone}
           autoDerived={!!step.autoDerived}
         />
@@ -527,7 +566,7 @@ export function OnboardingStepRow({
               </span>
             )}
           </div>
-          {isDone && step.done && typeof step.done === "string" && (
+          {isDone && step.done && typeof step.done === "string" && /^\d{4}-/.test(step.done) && (
             <span className="text-[11px] text-muted-foreground">{fmtDate(step.done)}</span>
           )}
         </div>
@@ -535,6 +574,9 @@ export function OnboardingStepRow({
           <p className="mt-0.5 text-xs text-muted-foreground">{step.description}</p>
         )}
         <div className="mt-2 flex flex-wrap gap-2">
+          {step.acceso && (
+            <AccesoRedForm clientId={client.id} red={step.acceso.red} ejemploUrl={step.acceso.ejemploUrl} inicial={step.acceso.inicial} />
+          )}
           {step.key === "meet_guide" && (
             <div className="w-full">
               <MeetGuideGenerator

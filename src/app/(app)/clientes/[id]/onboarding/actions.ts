@@ -13,6 +13,8 @@ import { calcularPrimerMes } from "@/lib/finanzas/primer-mes";
 import { COBRO_DESDE_DIA, VENTANA_COBRO_TEXTO } from "@/lib/finanzas/ciclo-cobro";
 import { mensajesDeBienvenida } from "@/lib/onboarding/bienvenida";
 import { anotarPaseDeCuenta, ROLES_CON_HISTORIAL } from "@/lib/payroll/asignaciones-run";
+import { cifrarCredenciales, descifrarCredenciales } from "@/lib/accesos/cifrado";
+import { guardarAccesoDeRed, REDES_ONBOARDING, type CredencialRed, type RedOnboarding } from "@/lib/accesos/redes-onboarding";
 
 /** Lo que baja el abono de gestión de redes sin la gestión de pauta (igual que en el alta). */
 const DESCUENTO_SIN_PAUTA = 50000;
@@ -671,3 +673,31 @@ export async function buildPaymentMessage(clientId: string): Promise<
 }
 
 void SERVICE_TYPE_LABEL; // mantener import por si lo usamos más adelante
+
+/**
+ * Un acceso del arranque, red por red (20/10/2026): link, usuario, contraseña
+ * y notas, o «el cliente no tiene esta red». Se guarda en la misma lista de la
+ * ficha (`clients.credenciales`), con la contraseña cifrada; el paso del
+ * onboarding se marca solo cuando la red queda cargada.
+ */
+export async function guardarAccesoRed(
+  clientId: string,
+  red: RedOnboarding,
+  datos: { url?: string; usuario?: string; password?: string; notas?: string; noTiene?: boolean }
+) {
+  const me = await requireUser();
+  const puede = ["admin", "coordinador", "community_manager"].some((r) => me.rol === r || me.rol_secundario === r);
+  if (!puede) return { error: "No tenés permiso para cargar accesos." };
+  if (!REDES_ONBOARDING.some((r) => r.clave === red)) return { error: "Red desconocida." };
+  const admin = createAdmin();
+  const { data, error: e1 } = await admin.from("clients").select("credenciales").eq("id", clientId).maybeSingle();
+  if (e1 || !data) return { error: "No encontré la cuenta." };
+  const actuales = descifrarCredenciales(((data as { credenciales: CredencialRed[] | null }).credenciales ?? []) as CredencialRed[]);
+  const nuevas = cifrarCredenciales(guardarAccesoDeRed(actuales, red, datos));
+  const { error } = await admin.from("clients").update({ credenciales: nuevas }).eq("id", clientId);
+  if (error) return { error: error.message };
+  revalidatePath(`/clientes/${clientId}`);
+  revalidatePath(`/clientes/${clientId}/onboarding/cm`);
+  revalidatePath(`/clientes/${clientId}/onboarding`);
+  return { ok: true as const };
+}

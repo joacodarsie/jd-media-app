@@ -54,7 +54,7 @@ const PAGINAS: { titulo: string; href: string; emoji: string; claves?: string }[
   { titulo: "Contenidos", href: "/contenidos", emoji: "🗓️", claves: "calendario piezas publicaciones" },
   { titulo: "Agenda", href: "/agenda", emoji: "📅", claves: "reuniones" },
   { titulo: "Clientes", href: "/clientes", emoji: "🏢", claves: "cuentas marcas" },
-  { titulo: "Cuentas nuevas", href: "/onboarding", emoji: "🚀", claves: "arranque onboarding" },
+  { titulo: "Project Manager", href: "/onboarding", emoji: "🚀", claves: "arranque onboarding cuentas nuevas pm luz" },
   { titulo: "Comercial", href: "/comercial", emoji: "🎯", claves: "propuestas ventas leads" },
   { titulo: "Paid Media", href: "/paid-media", emoji: "📈", claves: "pauta anuncios meta ads" },
   { titulo: "Cobros y pagos", href: "/cobros", emoji: "💰", claves: "plata facturas" },

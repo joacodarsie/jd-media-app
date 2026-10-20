@@ -2,6 +2,14 @@
 title: Novedades
 ---
 
+## 2026-10-20 — Project Manager y accesos red por red
+
+- 🚀 **«Cuentas nuevas» ahora es «Project Manager».** Una tarjeta por cuenta nueva con gestión de redes, la que tiene algo para hacer hoy arriba:
+  - **Para responder hoy:** los controles del arranque («¿Llegó el material?», «¿Hace falta jornada?») son preguntas **Sí / No**, no tareas. Si el material no llegó, escribís qué falta y la tarea queda **en pausa esperando al cliente** (lo ve en su plataforma). Si hace falta jornada, se arma la tarea para coordinarla.
+  - **Atrasados:** cada paso vencido con quién lo tiene, para **Avisar** (le llega un recordatorio) o **Pausar** si lo frena el cliente. Tocá «N atrasados →» y baja directo.
+  - Los proyectos de marca (como Simple Snack) ya no aparecen acá.
+- 🔑 **Accesos red por red en el onboarding de la community.** «Acceso a todas las cuentas» ahora son tres pasos: **Instagram, TikTok y la página de Facebook**, cada uno con link, usuario, contraseña y notas. **Se marcan solos** cuando tienen link y usuario, o con «No tiene esta red». Es la misma lista de la ficha del cliente.
+
 ## 2026-10-20 — Pausa por el cliente y la carta acuerdo de cada mes
 
 - ⏸️ **Pausá una tarea cuando la frena el cliente.** En el detalle de cualquier tarea abierta (no solo las vencidas) tocá **🧱 ¿Trabada?** → **Espera al cliente** y escribí qué falta («los videos del local»). El reloj se frena: no cuenta como atraso, y **cuando la reanudás la fecha límite se corre los días que estuvo en pausa**. La pueden pausar quien tiene la tarea, la PM o el responsable de la cuenta.

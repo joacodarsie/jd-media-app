@@ -33,7 +33,7 @@ export async function cargarPanoramaArranques(admin: SupabaseClient, hoy: string
     const { data: pasosRaw } = await admin
       .from("tasks")
       .select(
-        "id, numero, titulo, estado, area, fecha_limite, parent_id, asignado:users!tasks_asignado_a_id_fkey(nombre)"
+        "id, numero, titulo, estado, area, fecha_limite, parent_id, asignado_a_id, bloqueo, bloqueo_detalle, asignado:users!tasks_asignado_a_id_fkey(nombre)"
       )
       .in(
         "parent_id",
@@ -47,6 +47,9 @@ export async function cargarPanoramaArranques(admin: SupabaseClient, hoy: string
       area: string | null;
       fecha_limite: string | null;
       parent_id: string;
+      asignado_a_id: string | null;
+      bloqueo: "cliente" | "persona" | null;
+      bloqueo_detalle: string | null;
       asignado: { nombre: string } | null;
     }[]).map((p) => ({
       id: p.id,
@@ -57,6 +60,9 @@ export async function cargarPanoramaArranques(admin: SupabaseClient, hoy: string
       fecha_limite: p.fecha_limite,
       parent_id: p.parent_id,
       asignado_nombre: p.asignado?.nombre ?? null,
+      asignado_a_id: p.asignado_a_id,
+      bloqueo: p.bloqueo,
+      bloqueo_detalle: p.bloqueo_detalle,
     }));
   }
 

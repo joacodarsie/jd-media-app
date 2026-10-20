@@ -67,7 +67,7 @@ export const NAV_GROUPS: NavGroup[] = [
       // había dónde verlos de conjunto, así que no los miraba nadie.
       {
         href: "/onboarding",
-        label: "Cuentas nuevas",
+        label: "Project Manager",
         icon: "Rocket",
         roles: ["admin", "coordinador"],
       },

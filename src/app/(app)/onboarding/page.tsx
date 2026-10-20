@@ -1,31 +1,30 @@
 import { requireUser, userInRoles } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { hoyYmd } from "@/lib/dates";
-import { tituloMadre, DIAS_ONBOARDING } from "@/lib/retencion/onboarding-15";
-import { resumenDeArranques } from "@/lib/retencion/onboarding-panorama";
+import { tituloMadre } from "@/lib/retencion/onboarding-15";
 import { arranquesPorCuenta, cargarPanoramaArranques } from "@/lib/retencion/onboarding-panorama-run";
-import { OnboardingPanorama } from "@/components/onboarding-panorama";
-import { CuentasNuevasTablero } from "@/components/cuentas-nuevas-tablero";
 import { computeAccountHealth } from "@/lib/director/health";
 import { cargarCuentasNuevas } from "@/lib/retencion/cuentas-nuevas-run";
-import { resumenCuentasNuevas, tableroCuentasNuevas } from "@/lib/retencion/cuentas-nuevas";
+import { tableroCuentasNuevas } from "@/lib/retencion/cuentas-nuevas";
+import { cuentaParaPm, ordenarPm, resumenPm } from "@/lib/pm/tablero";
+import { PmTablero } from "@/components/pm-tablero";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Arranques: los onboardings de todas las cuentas nuevas, juntos.
+ * Project Manager (antes «Cuentas nuevas», 20/10/2026): el tablero de Luz.
+ * Una tarjeta por cuenta nueva con gestión de redes: lo que hay que responder
+ * hoy (las preguntas del arranque, Sí o No), los pasos atrasados con quién los
+ * tiene, lo que está en pausa esperando al cliente y lo que viene.
  *
- * Nace el 21/9/2026 de dos problemas del mismo día: el onboarding no se creaba
- * nunca (cero tickets en la historia de la app) y, cuando se creaba, vivía
- * repartido en cuatro botones dentro de la ficha de cada cliente. Sin un lugar
- * donde verlos todos, nadie mira cómo arranca una cuenta — y el arranque es
- * donde se mueren: ninguna de las 7 bajas pasó de 3,2 meses.
+ * Por qué: los arranques son donde se mueren las cuentas (ninguna baja pasó de
+ * 3,2 meses) y la sección anterior mostraba números («13 de 14 · 1 atrasado»)
+ * sin decir qué paso ni dejar resolverlo desde ahí.
  */
-export default async function OnboardingPage() {
+export default async function ProjectManagerPage() {
   const me = await requireUser();
   const admin = createAdmin();
-  const puedeVer = userInRoles(me, ["admin", "coordinador"]);
-  if (!puedeVer) {
+  if (!userInRoles(me, ["admin", "coordinador"])) {
     return (
       <div className="rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">
         Esta sección la ven la dirección y la coordinación.
@@ -35,101 +34,85 @@ export default async function OnboardingPage() {
 
   const hoy = hoyYmd();
   const { filas, madres } = await cargarPanoramaArranques(admin, hoy);
-  const resumen = resumenDeArranques(filas);
-
-  // El tablero de los primeros 90 días cruza el arranque con el semáforo de
-  // salud, la primera pieza, la reunión del mes y el cobro.
-  const porCuenta = arranquesPorCuenta(filas);
   const salud = await computeAccountHealth(admin).catch(() => null);
   const { cuentas } = await cargarCuentasNuevas(admin, hoy, {
-    arranques: porCuenta,
+    arranques: arranquesPorCuenta(filas),
     salud: new Map((salud?.cuentas ?? []).map((c) => [c.id, { semaforo: c.semaforo, alertas: c.alertas }])),
   });
-  const tablero = tableroCuentasNuevas(cuentas, hoy);
-  const resTablero = resumenCuentasNuevas(tablero);
+  // Solo las cuentas con gestión de redes: un proyecto de marca (Simple Snack)
+  // o una web no se manejan desde acá.
+  const conRedes = new Set(cuentas.filter((c) => c.conRedes !== false).map((c) => c.id));
+  const tablero = tableroCuentasNuevas(cuentas, hoy).filter((c) => conRedes.has(c.id));
+  // Si una cuenta tiene dos arranques (cambio de nombre), manda el que sigue abierto.
+  const arranqueDe = new Map<string, (typeof filas)[number]>();
+  for (const f of filas) {
+    const ya = arranqueDe.get(f.clienteId);
+    if (!ya || ya.terminado) arranqueDe.set(f.clienteId, f);
+  }
+  const pm = ordenarPm(tablero.map((c) => cuentaParaPm(c, arranqueDe.get(c.id) ?? null, hoy)));
+  const res = resumenPm(pm);
 
-  // Cuentas activas recientes que todavía no tienen su ticket: no debería
-  // pasar (el cron lo arma solo), pero si pasa hay que verlo acá y no en la
-  // base. Es el mismo problema que estuvo escondido tres meses.
+  // Cuentas activas recientes sin su plan de arranque: no debería pasar (el
+  // cron lo arma solo), pero si pasa hay que verlo acá y no en la base.
   const { data: activasRaw } = await admin
     .from("clients")
     .select("id, nombre, fecha_inicio")
     .eq("estado", "activo")
     .eq("es_interno", false);
   const conTicket = new Set(madres.map((m) => m.cliente!.nombre));
-  const sinArranque = ((activasRaw ?? []) as {
-    id: string;
-    nombre: string;
-    fecha_inicio: string | null;
-  }[]).filter((c) => {
-    if (conTicket.has(c.nombre) || madres.some((m) => m.titulo === tituloMadre(c.nombre)))
-      return false;
+  const sinArranque = ((activasRaw ?? []) as { id: string; nombre: string; fecha_inicio: string | null }[]).filter((c) => {
+    if (!conRedes.has(c.id)) return false;
+    if (conTicket.has(c.nombre) || madres.some((m) => m.titulo === tituloMadre(c.nombre))) return false;
     if (!c.fecha_inicio) return false;
-    const dias =
-      (Date.parse(`${hoy}T00:00:00Z`) - Date.parse(`${c.fecha_inicio.slice(0, 10)}T00:00:00Z`)) /
-      86_400_000;
+    const dias = (Date.parse(`${hoy}T00:00:00Z`) - Date.parse(`${c.fecha_inicio.slice(0, 10)}T00:00:00Z`)) / 86_400_000;
     return dias <= 30;
   });
 
+  const nada = res.preguntas + res.atrasados === 0;
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Cuentas nuevas</h1>
+        <h1 className="text-2xl font-bold">Project Manager</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Los primeros 90 días de cada cuenta. Es donde se decide si se queda: ninguna de las
-          bajas de la agencia pasó de 3,2 meses.
+          Cómo viene cada cuenta en sus primeros 90 días y qué destrabar hoy. Ninguna de las bajas de la agencia pasó de 3,2 meses: acá se decide si se queda.
         </p>
       </div>
 
-      {tablero.length > 0 && (
-        <div className="flex flex-wrap gap-2 text-xs">
-          <span className="rounded-full border bg-card px-3 py-1">
-            <b>{resTablero.total}</b> cuentas nuevas
-          </span>
-          {resTablero.mal > 0 && (
-            <span className="rounded-full border border-red-500/50 px-3 py-1 text-red-700 dark:text-red-300">
-              <b>{resTablero.mal}</b> en riesgo
-            </span>
-          )}
-          {resTablero.atento > 0 && (
-            <span className="rounded-full border border-amber-500/50 px-3 py-1 text-amber-800 dark:text-amber-300">
-              <b>{resTablero.atento}</b> para mirar
-            </span>
-          )}
-        </div>
-      )}
-
-      <CuentasNuevasTablero filas={tablero} />
-
-      <h2 className="pt-4 text-lg font-semibold">Arranque de {DIAS_ONBOARDING} días</h2>
-
-      {filas.length > 0 && (
-        <div className="flex flex-wrap gap-2 text-xs">
-          <span className="rounded-full border bg-card px-3 py-1">
-            <b>{resumen.enCurso}</b> arrancando
-          </span>
-          {resumen.conAtraso > 0 && (
-            <span className="rounded-full border border-amber-400/50 bg-amber-50 px-3 py-1 text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-              <b>{resumen.conAtraso}</b> con pasos atrasados ({resumen.pasosAtrasados} en total)
-            </span>
-          )}
-        </div>
-      )}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Cifra n={res.preguntas} texto={res.preguntas === 1 ? "pregunta para responder" : "preguntas para responder"} tono={res.preguntas ? "primario" : "neutro"} />
+        <Cifra n={res.atrasados} texto={res.atrasados === 1 ? "paso atrasado" : "pasos atrasados"} tono={res.atrasados ? "rojo" : "neutro"} />
+        <Cifra n={res.pausados} texto="en pausa por el cliente" tono={res.pausados ? "naranja" : "neutro"} />
+        <Cifra n={res.enRiesgo} texto={`de ${res.cuentas} cuentas en riesgo`} tono={res.enRiesgo ? "rojo" : "neutro"} />
+      </div>
+      {nada && pm.length > 0 && <p className="text-sm text-emerald-700 dark:text-emerald-400">Todo al día: no hay preguntas ni pasos atrasados.</p>}
 
       {sinArranque.length > 0 && (
         <div className="rounded-xl border border-amber-400/50 bg-amber-50 p-3 text-sm dark:bg-amber-950/30">
           <p className="font-medium text-amber-900 dark:text-amber-200">
-            {sinArranque.length} cuenta{sinArranque.length === 1 ? "" : "s"} activa
-            {sinArranque.length === 1 ? "" : "s"} sin plan de arranque
+            {sinArranque.length === 1 ? "1 cuenta activa sin plan de arranque" : `${sinArranque.length} cuentas activas sin plan de arranque`}
           </p>
           <p className="mt-0.5 text-xs text-amber-900/80 dark:text-amber-200/80">
-            {sinArranque.map((c) => c.nombre).join(", ")}. El cron de la noche lo arma solo; si
-            mañana sigue acá, avisá.
+            {sinArranque.map((c) => c.nombre).join(", ")}. El cron de la noche lo arma solo; si mañana sigue acá, avisá.
           </p>
         </div>
       )}
 
-      <OnboardingPanorama filas={filas} />
+      <PmTablero cuentas={pm} />
+    </div>
+  );
+}
+
+function Cifra({ n, texto, tono }: { n: number; texto: string; tono: "primario" | "rojo" | "naranja" | "neutro" }) {
+  const cls = {
+    primario: "border-primary/40 bg-primary/5",
+    rojo: "border-rose-400/50 bg-rose-50/60 text-rose-800 dark:bg-rose-950/20 dark:text-rose-300",
+    naranja: "border-orange-400/50 bg-orange-50/60 text-orange-800 dark:bg-orange-950/20 dark:text-orange-300",
+    neutro: "bg-card text-muted-foreground",
+  }[tono];
+  return (
+    <div className={`rounded-xl border px-4 py-3 ${cls}`}>
+      <div className="text-2xl font-bold tabular-nums">{n}</div>
+      <div className="text-xs">{texto}</div>
     </div>
   );
 }

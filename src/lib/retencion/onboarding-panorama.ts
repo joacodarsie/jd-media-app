@@ -26,6 +26,10 @@ export interface PasoCrudo {
   area: string | null;
   fecha_limite: string | null;
   asignado_nombre: string | null;
+  /** Para el tablero de la PM (20/10/2026): a quién avisar y si está en pausa. */
+  asignado_a_id?: string | null;
+  bloqueo?: "cliente" | "persona" | null;
+  bloqueo_detalle?: string | null;
 }
 
 export interface ArranqueCrudo {

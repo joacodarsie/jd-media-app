@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { AREA_PM } from "@/lib/tareas/puerta";
 import { REDES, unirCredenciales, type CargaDelCliente, type Credencial } from "@/lib/accesos/portal";
+import { cifrarCredenciales, descifrarCredenciales } from "@/lib/accesos/cifrado";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,7 +46,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
   if (!cliente) return NextResponse.json({ error: "No encontramos la cuenta." }, { status: 404 });
 
   const hoy = new Date().toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba" });
-  const credenciales = unirCredenciales(cliente.credenciales ?? [], items, hoy);
+  const credenciales = cifrarCredenciales(unirCredenciales(descifrarCredenciales(cliente.credenciales ?? []), items, hoy));
   const { error } = await admin.from("clients").update({ credenciales }).eq("id", cliente.id);
   if (error) return NextResponse.json({ error: "No se pudo guardar. Probá de nuevo." }, { status: 500 });
 

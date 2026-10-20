@@ -31,6 +31,7 @@ import { PaymentMessageDialog } from "@/components/payment-message-dialog";
 import { PagoRecibidoControl } from "@/components/pago-recibido-control";
 import { GenerateInitialTasksButton } from "@/components/generate-initial-tasks-button";
 import { MeetGuideViewer } from "@/components/meet-guide-viewer";
+import { descifrarCredenciales } from "@/lib/accesos/cifrado";
 
 export interface ClientLite {
   id: string;
@@ -232,7 +233,7 @@ export async function loadOnboarding(clientId: string): Promise<OnboardingData |
     mediaBuyerName = client.media_buyer_id ? byId.get(client.media_buyer_id) ?? null : null;
   }
 
-  const credenciales = (client.credenciales ?? []) as Record<string, string>[];
+  const credenciales = descifrarCredenciales((client.credenciales ?? []) as Record<string, string>[]);
   // Gestión de redes ya incluye el paid media básico en Meta Ads, así que la
   // etapa/sección de publicidad se muestra con cualquiera de los dos servicios.
   const tienePauta = services.some(

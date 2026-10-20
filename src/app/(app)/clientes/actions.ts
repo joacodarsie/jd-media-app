@@ -1,6 +1,7 @@
 "use server";
 
 import { PACK_MARCA_REAL } from "@/lib/pack-marca-real";
+import { cifrarCredenciales } from "@/lib/accesos/cifrado";
 import { esOrigen } from "@/lib/clientes/origen";
 import { sincronizarReferido } from "@/lib/referidos/run";
 import { hoyYmd } from "@/lib/dates";
@@ -402,9 +403,11 @@ export async function updateClientJsonbArray(
     return { error: "campo no permitido" };
   }
   const { supabase } = await ctx();
+  // Las contraseñas se guardan cifradas (lib/accesos/cifrado).
+  const valor = field === "credenciales" ? cifrarCredenciales(array) : array;
   const { error } = await supabase
     .from("clients")
-    .update({ [field]: array })
+    .update({ [field]: valor })
     .eq("id", id);
   if (error) return { error: error.message };
   revalidatePath(`/clientes/${id}`);

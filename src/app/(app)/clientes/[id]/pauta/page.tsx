@@ -11,6 +11,7 @@ import { ClientListEditor } from "@/components/client-list-editor";
 import { MetaAdAccountField } from "@/components/meta-ad-account-field";
 import { JdMediaPartnerCard } from "@/components/jdmedia-partner-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { descifrarCredenciales } from "@/lib/accesos/cifrado";
 
 export const dynamic = "force-dynamic";
 
@@ -30,9 +31,10 @@ export default async function PublicidadOnboardingPage({
     .maybeSingle();
   if (!client) notFound();
 
-  const credenciales =
+  const credenciales = descifrarCredenciales(
     ((client as unknown as { credenciales?: Record<string, string>[] }).credenciales ??
-      []) as Record<string, string>[];
+      []) as Record<string, string>[]
+  );
 
   const [{ data: onboarding }, { data: paidSvc }] = await Promise.all([
     admin

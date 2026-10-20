@@ -65,6 +65,7 @@ import { Suspense } from "react";
 import { CicloNave } from "@/components/ciclo-nave";
 import { LineaTiempoCuenta } from "@/components/linea-tiempo-cuenta";
 import type { ClientService } from "@/lib/types";
+import { descifrarCredenciales } from "@/lib/accesos/cifrado";
 
 export const dynamic = "force-dynamic";
 
@@ -887,10 +888,10 @@ export default async function ClientDetail({
                   title="Credenciales del cliente"
                   description="Accesos que el cliente nos comparte (Meta, Google, plataformas). Solo admin/coordinación ven esto."
                   addLabel="Agregar credencial"
-                  initial={
+                  initial={descifrarCredenciales(
                     ((c as unknown as { credenciales?: Record<string, string>[] })
                       .credenciales ?? []) as Record<string, string>[]
-                  }
+                  )}
                   itemFields={[
                     { name: "servicio", label: "Servicio", placeholder: "Ej: Meta Business" },
                     { name: "url", label: "URL (opcional)", type: "url", placeholder: "https://business.facebook.com" },

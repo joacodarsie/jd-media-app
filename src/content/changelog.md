@@ -2,6 +2,13 @@
 title: Novedades
 ---
 
+## 2026-10-20 — Pausa por el cliente y la carta acuerdo de cada mes
+
+- ⏸️ **Pausá una tarea cuando la frena el cliente.** En el detalle de cualquier tarea abierta (no solo las vencidas) tocá **🧱 ¿Trabada?** → **Espera al cliente** y escribí qué falta («los videos del local»). El reloj se frena: no cuenta como atraso, y **cuando la reanudás la fecha límite se corre los días que estuvo en pausa**. La pueden pausar quien tiene la tarea, la PM o el responsable de la cuenta.
+  - **El cliente lo ve en su plataforma**, arriba de todo, en «Lo que te toca a vos», con lo que escribiste. Escribilo para él.
+- 📄 **La carta acuerdo de cada mes.** El 25, la PM recibe una tarea por cuenta: «Carta acuerdo de <mes> — <cuenta>», con el mensaje listo para WhatsApp (link a la carta, el abono del mes y los plazos del material crudo con fechas). Se manda antes del 28.
+- 🙋 **La plataforma del cliente, ordenada.** Arriba, «Lo que te toca a vos» junta todo lo que esperamos de él: piezas para revisar, material, accesos, abono, la carta del mes, la reunión y la encuesta.
+
 ## 2026-10-19 — Instagram vinculado y arranques más claros
 
 - 🔗 **Instagram vinculado = datos reales.** Desde hoy, cada cuenta que no trae datos de Instagram tiene dos tareas, las dos a cargo de **Paid Media**:

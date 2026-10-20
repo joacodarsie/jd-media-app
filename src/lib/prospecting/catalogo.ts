@@ -57,6 +57,16 @@ const CATALOGO_FALLBACK: ServicioAgencia[] = [
     nombre: "Botly",
     descripcion: "Automatización de respuestas y mensajes por WhatsApp.",
   },
+  {
+    slug: "edicion_audiovisual",
+    nombre: "Edición audiovisual",
+    descripcion: "Edición de video para YouTube, podcasts, entrevistas, reels y shorts.",
+  },
+  {
+    slug: "email_marketing",
+    nombre: "Email marketing",
+    descripcion: "Campañas de email: armado de la lista, diseño, redacción, envío y medición.",
+  },
 ];
 
 /** Servicios activos del catálogo. Nunca devuelve vacío. */
@@ -118,7 +128,7 @@ export function bloqueServiciosParaPrompt(
 
   lineas.push(
     `REGLA DURA — NO PROMETER LO QUE NO TENEMOS
-Está PROHIBIDO ofrecer, nombrar o insinuar cualquier servicio que no esté en la lista de arriba. En particular, y porque la IA los inventa seguido, NO existen en JD Media: SEO / posicionamiento en Google, SEO local, fichas de Google Business, gestión de LinkedIn, email marketing, newsletters, CRM, automatizaciones que no sean Botly (WhatsApp), influencers, prensa, ni consultoría suelta.
+Está PROHIBIDO ofrecer, nombrar o insinuar cualquier servicio que no esté en la lista de arriba. En particular, y porque la IA los inventa seguido, NO existen en JD Media: SEO / posicionamiento en Google, SEO local, fichas de Google Business, gestión de LinkedIn, CRM, automatizaciones que no sean Botly (WhatsApp), influencers, prensa, ni consultoría suelta.
 Si el rubro pide algo que no tenemos (por ejemplo, un estudio de abogados donde lo obvio sería LinkedIn o Google), NO lo menciones: buscá el ángulo desde lo que SÍ hacemos. Un prospecto que dice que sí a algo que no podemos entregar es peor que no tenerlo.`
   );
 

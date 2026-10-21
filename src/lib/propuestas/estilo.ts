@@ -272,7 +272,10 @@ export const CSS_PROPUESTA = `
   .chips span{ padding:3px 10px; }
   .grupos{ gap:12px 24px; }
   .doc ul.checks{ margin-top:6px; }
-  .doc ul.checks li{ margin-bottom:2px; line-height:1.38; }
+  .doc ul.checks li{ margin-bottom:1px; line-height:1.35; font-size:var(--t-min); }
+  .persona{ font-size:var(--t-min); gap:5px; }
+  .grupo h4 .ic{ width:24px; height:24px; font-size:11pt; }
+  .doc ul.vinetas li{ font-size:var(--t-apo); }
   .doc ul.vinetas li{ margin-bottom:5px; line-height:1.45; }
 }
 `;

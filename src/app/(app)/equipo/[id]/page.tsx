@@ -25,7 +25,7 @@ export default async function PositionDetail({
 
   const [
     { data: position },
-    { data: integrantes },
+    { data: activos },
     { data: allPositions },
     { data: servicesData },
   ] = await Promise.all([
@@ -38,8 +38,7 @@ export default async function PositionDetail({
       .maybeSingle(),
     supabase
       .from("users")
-      .select("id, nombre, avatar_url, position_id, area")
-      .eq("position_id", params.id)
+      .select("id, nombre, avatar_url, position_id, area, area_secundaria")
       .eq("activo", true)
       .order("nombre"),
     supabase.from("positions").select("id, nombre").order("nombre"),
@@ -53,6 +52,10 @@ export default async function PositionDetail({
 
   if (!position) notFound();
   const p = position as Position;
+  // Quién ocupa el puesto sale del área (uno por área), no de una asignación a mano (21/10/2026).
+  const integrantes = ((activos ?? []) as (AppUser & { area_secundaria?: string | null })[]).filter(
+    (x) => x.area === p.area || x.area_secundaria === p.area
+  );
   const isAdmin = me.rol === "admin";
 
   return (

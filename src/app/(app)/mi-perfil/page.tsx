@@ -28,11 +28,13 @@ export default async function MiPerfilPage() {
 
   const periodo = currentPeriod();
   const [{ data: position }, payroll] = await Promise.all([
-    me.position_id
+    // El puesto sale del área (uno por área), no de una asignación a mano (21/10/2026).
+    me.area
       ? supabase
           .from("positions")
           .select("id, nombre, area, descripcion, alcance_incluye, alcance_excluye, kpis, procesos, services, pago_default_monto, pago_default_moneda, pago_default_frecuencia")
-          .eq("id", me.position_id)
+          .eq("area", me.area)
+          .limit(1)
           .maybeSingle()
       : Promise.resolve({ data: null }),
     // Nómina del mes en curso; solo renderizamos la fila de la persona logueada.

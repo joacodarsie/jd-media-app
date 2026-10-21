@@ -84,15 +84,14 @@ export default async function PersonaDetail({
     ]);
   if (!user) notFound();
   const u = user as AppUser;
-  const position = u.position_id
-    ? ((
-        await supabase
-          .from("positions")
-          .select("id, nombre, area, descripcion, services")
-          .eq("id", u.position_id)
-          .maybeSingle()
-      ).data as Position | null)
-    : null;
+  // El puesto sale del área (hay uno por área): ya no se asigna a mano por
+  // persona, que quedaba a medio cargar o desactualizado (21/10/2026).
+  const areasDe = [u.area, (u as { area_secundaria?: string | null }).area_secundaria].filter(Boolean) as string[];
+  const { data: puestosDeArea } = areasDe.length
+    ? await supabase.from("positions").select("id, nombre, area, descripcion, services").in("area", areasDe)
+    : { data: [] };
+  const position =
+    ((puestosDeArea ?? []) as Position[]).sort((a, b) => areasDe.indexOf(a.area) - areasDe.indexOf(b.area))[0] ?? null;
 
   // Sueldo calculado del mes en curso para esta persona.
   const miSueldo = payroll?.people.find((p) => p.userId === params.id) ?? null;

@@ -1,37 +1,22 @@
 import { CaraPersona } from "@/components/cara-persona";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Mail } from "lucide-react";
+import { ArrowLeft, Mail } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import type { AppUser, Position } from "@/lib/types";
+import type { AppUser } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AssignPositionSelect } from "@/components/assign-position-select";
-import { SecondaryPositionsEditor } from "@/components/secondary-positions-editor";
 
 export const dynamic = "force-dynamic";
 
 export default async function EquipoPersonasPage() {
-  const me = await requireRole(["admin", "coordinador"]);
+  await requireRole(["admin", "coordinador"]);
   const supabase = createClient();
-  const isAdmin = me.rol === "admin";
 
-  const [{ data: users }, { data: positions }] = await Promise.all([
-    supabase
-      .from("users")
-      .select(
-        "id, nombre, email, area, rol, position_id, secondary_position_ids, avatar_url, activo"
-      )
-      .eq("activo", true)
-      .order("nombre"),
-    supabase
-      .from("positions")
-      .select("id, nombre, area")
-      .order("nombre"),
-  ]);
-
-  const posMap = new Map<string, Position>(
-    ((positions ?? []) as Position[]).map((p) => [p.id, p])
-  );
+  const { data: users } = await supabase
+    .from("users")
+    .select("id, nombre, email, area, area_secundaria, rol, avatar_url, activo")
+    .eq("activo", true)
+    .order("nombre");
 
   return (
     <div className="space-y-5">
@@ -58,7 +43,6 @@ export default async function EquipoPersonasPage() {
         <CardContent>
           <div className="divide-y">
             {((users ?? []) as AppUser[]).map((u) => {
-              const pos = u.position_id ? posMap.get(u.position_id) : null;
               return (
                 <div
                   key={u.id}
@@ -72,68 +56,20 @@ export default async function EquipoPersonasPage() {
                     <div className="min-w-0">
                       <div className="font-medium">{u.nombre}</div>
                       <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-                        {/* El puesto NO se escribe acá cuando a la derecha está
-                            el desplegable para cambiarlo: decía lo mismo dos
-                            veces en la misma fila. Para quien no puede
-                            editarlo (no-admin) sí se muestra, porque si no, no
-                            lo ve en ningún lado. */}
-                        {!isAdmin && <span>{pos ? pos.nombre : "Sin puesto"} ·</span>}
-                        <span>{u.area}</span>
+                        {/* Lo que hace cada uno = su área (la del organigrama).
+                            El «puesto» asignado por persona se sacó (21/10/2026):
+                            repetía el área y estaba a medio cargar. */}
+                        <span>
+                          {[u.area, (u as { area_secundaria?: string | null }).area_secundaria].filter(Boolean).join(" · ")}
+                        </span>
                         {u.email && (
                           <span className="inline-flex items-center gap-1">
                             <Mail className="h-3 w-3" /> {u.email}
                           </span>
                         )}
                       </div>
-                      {(u.secondary_position_ids?.length ?? 0) > 0 && (
-                        <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground">
-                          <span>también:</span>
-                          {(u.secondary_position_ids ?? []).map((sid) => {
-                            const sp = posMap.get(sid);
-                            if (!sp) return null;
-                            return (
-                              <span
-                                key={sid}
-                                className="rounded-full bg-muted px-1.5 py-0.5"
-                              >
-                                {sp.nombre}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      )}
                     </div>
                   </Link>
-
-                  <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:justify-end">
-                    {isAdmin && (
-                      <div className="flex flex-1 flex-col items-stretch gap-1 sm:flex-initial sm:items-end">
-                        <div className="w-full sm:w-44">
-                          <AssignPositionSelect
-                            userId={u.id}
-                            current={u.position_id}
-                            positions={(positions ?? []) as Position[]}
-                          />
-                        </div>
-                        <SecondaryPositionsEditor
-                          userId={u.id}
-                          userName={u.nombre}
-                          primaryId={u.position_id}
-                          current={u.secondary_position_ids ?? []}
-                          positions={(positions ?? []) as Position[]}
-                        />
-                      </div>
-                    )}
-                    {!isAdmin && pos && (
-                      <Link
-                        href={`/equipo/${pos.id}`}
-                        className="text-muted-foreground hover:text-foreground"
-                        title="Ver puesto"
-                      >
-                        <ArrowRight className="h-4 w-4" />
-                      </Link>
-                    )}
-                  </div>
                 </div>
               );
             })}

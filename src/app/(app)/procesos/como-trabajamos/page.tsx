@@ -131,7 +131,7 @@ export default async function ComoTrabajamosPage() {
         <p className="text-xs text-muted-foreground">Cada fila es un rol; cada cuadradito, un día. Pasá el mouse para ver qué toca.</p>
         <div className="mt-4 overflow-x-auto">
           <div className="min-w-[760px] space-y-1">
-            <div className="grid items-end gap-0.5" style={{ gridTemplateColumns: "150px repeat(31, minmax(0, 1fr))" }}>
+            <div className="grid items-end gap-0.5" style={{ gridTemplateColumns: "170px repeat(31, minmax(0, 1fr))" }}>
               <span />
               {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                 <span
@@ -149,9 +149,9 @@ export default async function ComoTrabajamosPage() {
               const deDia = new Map<number, string>();
               for (const h of r.ciclo) for (const d of h.dias) if (!deDia.has(d)) deDia.set(d, h.que);
               return (
-                <div key={r.area} className="grid items-center gap-0.5" style={{ gridTemplateColumns: "150px repeat(31, minmax(0, 1fr))" }}>
+                <div key={r.area} className="grid items-center gap-0.5" style={{ gridTemplateColumns: "170px repeat(31, minmax(0, 1fr))" }}>
                   <Link href={puestoDe.get(r.area) ? `/equipo/${puestoDe.get(r.area)}` : "/equipo"} className="flex items-center gap-1.5 truncate pr-2 text-xs font-medium hover:underline">
-                    <span aria-hidden="true">{r.emoji}</span> {NOMBRE_ROL[r.area] ?? r.area}
+                    <span aria-hidden="true">{r.emoji}</span> <span className="truncate">{(NOMBRE_ROL[r.area] ?? r.area).replace("Coordinación de ", "Coord. ")}</span>
                   </Link>
                   {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => {
                     const que = deDia.get(d);

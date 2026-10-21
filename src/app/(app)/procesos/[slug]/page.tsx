@@ -15,7 +15,9 @@ export default async function ProcessDetail({ params }: { params: { slug: string
   await requireUser();
 
   const paraTodos = proceso.roles.length >= ROLES.length;
-  const otros = PROCESOS.filter((p) => p.slug !== proceso.slug && p.roles.some((r) => proceso.roles.includes(r))).slice(0, 3);
+  const otros = PROCESOS.filter((p) => p.slug !== proceso.slug && p.roles.some((r) => proceso.roles.includes(r)))
+    .sort((a, b) => a.roles.length - b.roles.length)
+    .slice(0, 3);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">

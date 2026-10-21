@@ -7,11 +7,8 @@ import { toARSFijos, fmtARS } from "@/lib/finanzas";
 import { Card, CardContent } from "@/components/ui/card";
 import { ExpensesTable, type ExpenseTableRow } from "@/components/expenses-table";
 import { expenseCategoryLabel } from "@/lib/finanzas/expense-categories";
-import {
-  SubscriptionsManager,
-  type SubscriptionRow,
-  monthlyARS,
-} from "@/components/subscriptions-manager";
+import { SubscriptionsManager, type SubscriptionRow } from "@/components/subscriptions-manager";
+import { costoMensual } from "@/lib/finanzas/suscripcion-mensual";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -75,7 +72,7 @@ export default async function GastosPage({
     const activas = subs.filter((s) => s.activa);
     // Suscripciones en USD → dólar cripto (así se pagan), igual que el Panorama.
     const totalMensualARS = activas.reduce(
-      (a, s) => a + toARSFijos(monthlyARS(s), s.moneda, rates),
+      (a, s) => a + toARSFijos(costoMensual(s), s.moneda, rates),
       0
     );
     const totalAnualARS = totalMensualARS * 12;

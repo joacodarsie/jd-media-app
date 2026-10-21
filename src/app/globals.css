@@ -316,6 +316,9 @@ a.rounded-2xl.bg-card:hover, a.rounded-xl.bg-card:hover { transform: translateY(
    pantalla: antes un título largo empujaba la página a 768 px y el teléfono la
    achicaba entera (18/10/2026). */
 .jd-pagina .grid > *, .jd-pagina .flex > * { min-width: 0; }
+/* …salvo los que piden un mínimo a propósito (buscadores con min-w-44/48): sin esto
+   quedaban aplastados en el celular, tapados por los filtros de al lado (21/10/2026). */
+.jd-pagina .flex > [class*="min-w-4"] { min-width: min(11rem, 100%); }
 .jd-pagina { max-width: 100%; }
 
 /* La racha de Mi día (19/10/2026): la llama titila y el hito tira chispas. */

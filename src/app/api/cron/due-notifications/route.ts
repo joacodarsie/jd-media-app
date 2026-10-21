@@ -24,6 +24,7 @@ import { runAlarma48h } from "@/lib/contenidos/alarma-48h-run";
 import { runAprobacionTacita } from "@/lib/contenidos/aprobacion-tacita-run";
 import { runInspoSemanal } from "@/lib/inspo/run";
 import { runInspoAuto } from "@/lib/inspo/auto-run";
+import { runArchivarCuentasInactivas } from "@/lib/clientes/baja";
 import { runPerfilesIncompletos } from "@/lib/equipo/perfil-completo-run";
 import { runConciliacionDiaria } from "@/lib/social/conciliar-run";
 import { runAccountAlerts } from "@/lib/social/alerts";
@@ -493,6 +494,14 @@ export async function GET(req: NextRequest) {
     inspo = { error: e instanceof Error ? e.message : String(e) };
   }
 
+  // Cuentas perdidas o en pausa: su trabajo pendiente se archiva (21/10/2026).
+  let inactivas: unknown = null;
+  try {
+    inactivas = { archivadas: await runArchivarCuentasInactivas(admin) };
+  } catch (e) {
+    inactivas = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   // «Completá tus datos»: una tarea a quien le falte algo; se cierra sola (19/10/2026).
   let perfiles: unknown = null;
   try {
@@ -622,6 +631,7 @@ export async function GET(req: NextRequest) {
     alarma48h,
     tacitas,
     inspo,
+    inactivas,
     perfiles,
     rutinas,
     revision_creativa: revisionCreativa,

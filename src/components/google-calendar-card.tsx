@@ -13,6 +13,7 @@ interface Connection {
   label: string;
   visibility: "private" | "shared";
   google_email: string;
+  reconectar_desde?: string | null;
 }
 
 export function GoogleCalendarCard({
@@ -109,15 +110,27 @@ export function GoogleCalendarCard({
                   <div className="text-xs text-muted-foreground">
                     {c.google_email} · {c.visibility === "shared" ? "Compartido" : "Privado"}
                   </div>
+                  {c.reconectar_desde && (
+                    <div className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+                      ⚠️ Google cortó el permiso: tus reuniones de este Calendar no se ven en la app.
+                    </div>
+                  )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => disconnect(c.id)}
-                  disabled={pending}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div className="flex shrink-0 items-center gap-1">
+                  {c.reconectar_desde && (
+                    <Button size="sm" onClick={() => connect(c.visibility, c.label)}>
+                      Reconectar
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => disconnect(c.id)}
+                    disabled={pending}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             ))}
 

@@ -35,6 +35,7 @@ import {
   type SubscriptionInput,
 } from "@/app/(app)/finanzas/suscripciones/actions";
 import { fmtARS, fmtCurrency } from "@/lib/finanzas";
+import { costoMensual } from "@/lib/finanzas/suscripcion-mensual";
 import { cn } from "@/lib/utils";
 
 export interface SubscriptionRow {
@@ -58,11 +59,7 @@ const CICLOS: { value: SubscriptionCiclo; label: string; div: number }[] = [
   { value: "anual", label: "Anual", div: 12 },
 ];
 
-/** Costo normalizado a mensual, en la moneda de la suscripción. */
-export function monthlyARS(s: { costo: number; ciclo: SubscriptionCiclo }): number {
-  const div = CICLOS.find((c) => c.value === s.ciclo)?.div ?? 1;
-  return s.costo / div;
-}
+const monthlyARS = costoMensual;
 
 export function SubscriptionsManager({
   subs,

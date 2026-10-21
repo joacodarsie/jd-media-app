@@ -14,6 +14,7 @@ import { requireUser } from "@/lib/auth";
 import { SERVICE_TYPE_LABEL } from "@/lib/constants";
 import { reasignarTareasDeCuenta } from "@/lib/tareas/reasignar-run";
 import { runOnboarding15 } from "@/lib/retencion/onboarding-15-run";
+import { archivarTrabajoDeCuenta, cuentaSinTrabajo } from "@/lib/clientes/baja";
 import {
   anotarPaseDeCuenta,
   ROLES_CON_HISTORIAL,
@@ -363,6 +364,8 @@ export async function updateClientRow(
   // pasan al responsable nuevo. Sin esto quedaban a nombre de quien ya no la
   // lleva, para siempre.
   const { movidas } = await reasignarTareasDeCuenta(id);
+  // Pasarla a perdida o en pausa desde la ficha archiva su trabajo pendiente.
+  if (cuentaSinTrabajo(patch.estado as string | undefined)) await archivarTrabajoDeCuenta(admin, id);
   // Pasar la cuenta a activa desde la ficha es otro camino al arranque.
   await armarArranque(id, patch.estado as string | undefined, me.id);
   revalidatePath("/clientes");
@@ -449,6 +452,8 @@ export async function toggleClientStatus(id: string, currentStatus: string) {
 
   // Volver a activar una cuenta también dispara el arranque, si nunca lo tuvo.
   await armarArranque(id, next);
+  // Darla de baja archiva su trabajo pendiente.
+  if (cuentaSinTrabajo(next)) await archivarTrabajoDeCuenta(createAdmin(), id);
 
   revalidatePath("/clientes");
   revalidatePath(`/clientes/${id}`);
@@ -565,6 +570,7 @@ export async function marcarEnPausa(id: string) {
       return { error: "Falta aplicar la migración 0162." };
     return { error: error.message };
   }
+  await archivarTrabajoDeCuenta(createAdmin(), id);
   revalidatePath("/clientes");
   revalidatePath(`/clientes/${id}`);
   revalidatePath("/cobros");

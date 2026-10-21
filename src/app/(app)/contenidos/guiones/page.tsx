@@ -164,9 +164,12 @@ export default async function GuionesPage({
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
   const persona = searchParams?.persona;
+  // Solo cuentas activas: las piezas de las que se fueron o están en pausa
+  // aparecían como «¿?» y alguien podía seguir produciéndolas (21/10/2026).
+  const deActivas = pubs.filter((p) => clientById.has(p.cliente_id));
   const filtradas = persona
-    ? pubs.filter((p) => esDePersona(p, clientById.get(p.cliente_id), persona))
-    : pubs;
+    ? deActivas.filter((p) => esDePersona(p, clientById.get(p.cliente_id), persona))
+    : deActivas;
 
   // Pestañas de cuentas (solo las que tienen piezas este mes, tras el filtro).
   const porCliente = new Map<string, PubRow[]>();

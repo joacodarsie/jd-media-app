@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import { createAdmin } from "@/lib/supabase/admin";
 import { marcasParaWeb } from "@/lib/web/marcas";
 import { corsHeaders } from "@/lib/web/cors";
+import { achicarImagenes } from "@/lib/web/imagenes";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,7 @@ export async function OPTIONS(req: Request) {
 }
 
 export async function GET(req: Request) {
-  const marcas = await cargar().catch(() => []);
+  const marcas = achicarImagenes(await cargar().catch(() => []), 240);
   return NextResponse.json(
     { marcas },
     {

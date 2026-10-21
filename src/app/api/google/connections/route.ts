@@ -12,7 +12,7 @@ export async function GET() {
   const admin = createAdmin();
   const { data, error } = await admin
     .from("google_calendar_connections")
-    .select("id, owner_user_id, label, visibility, google_email, created_at")
+    .select("id, owner_user_id, label, visibility, google_email, created_at, reconectar_desde")
     .or(`owner_user_id.eq.${user.id},visibility.eq.shared`)
     .order("created_at", { ascending: true });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

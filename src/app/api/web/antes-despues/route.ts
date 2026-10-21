@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { createAdmin } from "@/lib/supabase/admin";
 import { corsHeaders } from "@/lib/web/cors";
+import { achicarImagenes } from "@/lib/web/imagenes";
 import { cargarCrecimiento } from "@/lib/crecimiento/cargar";
 import { elegirCasos, type CandidatoCaso } from "@/lib/web/vitrina";
 
@@ -45,7 +46,7 @@ export async function OPTIONS(req: Request) {
 }
 
 export async function GET(req: Request) {
-  const casos = await cargar().catch(() => []);
+  const casos = achicarImagenes(await cargar().catch(() => []), 360);
   return NextResponse.json(
     { casos },
     { headers: { ...corsHeaders(req.headers.get("origin")), "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=21600" } }

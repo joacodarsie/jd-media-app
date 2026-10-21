@@ -24,6 +24,8 @@ export interface GoogleCalendarConnection {
   refresh_token: string;
   token_expiry: string;
   scope: string;
+  /** Google invalidó el permiso: hay que volver a conectar (0211). */
+  reconectar_desde?: string | null;
 }
 
 export interface CalendarEvent {
@@ -117,7 +119,10 @@ export async function refreshAccessToken(refreshToken: string) {
   });
   if (!res.ok) {
     const txt = await res.text();
-    throw new Error(`Refresh token falló: ${res.status} ${txt}`);
+    const e = new Error(`Refresh token falló: ${res.status} ${txt}`);
+    // invalid_grant = Google revocó el permiso: reintentar no sirve, hay que reconectar.
+    if (txt.includes("invalid_grant")) e.name = "PermisoVencido";
+    throw e;
   }
   return (await res.json()) as {
     access_token: string;
@@ -132,7 +137,23 @@ export async function getValidAccessToken(conn: GoogleCalendarConnection): Promi
   const now = Date.now();
   if (expiry - now > 60_000) return conn.access_token;
 
-  const refreshed = await refreshAccessToken(conn.refresh_token);
+  let refreshed: Awaited<ReturnType<typeof refreshAccessToken>>;
+  try {
+    refreshed = await refreshAccessToken(conn.refresh_token);
+  } catch (e) {
+    if (e instanceof Error && e.name === "PermisoVencido" && !conn.reconectar_desde) {
+      // Se marca una sola vez; si la columna todavía no existe, no pasa nada.
+      await createAdmin()
+        .from("google_calendar_connections")
+        .update({ reconectar_desde: new Date().toISOString() })
+        .eq("id", conn.id)
+        .then(
+          () => undefined,
+          () => undefined
+        );
+    }
+    throw e;
+  }
   const newExpiry = new Date(now + refreshed.expires_in * 1000).toISOString();
   const admin = createAdmin();
   await admin
@@ -161,6 +182,8 @@ export async function listEvents(
   timeMin: string,
   timeMax: string
 ): Promise<CalendarEvent[]> {
+  // Conexión vencida: no se reintenta en cada carga (Mi perfil pide reconectarla).
+  if (conn.reconectar_desde) return [];
   const token = await getValidAccessToken(conn);
   const url = new URL(`${CALENDAR_API}/calendars/primary/events`);
   url.searchParams.set("timeMin", timeMin);

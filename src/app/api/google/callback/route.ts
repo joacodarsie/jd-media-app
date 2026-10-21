@@ -52,6 +52,7 @@ export async function GET(req: Request) {
           refresh_token: tokens.refresh_token,
           token_expiry: expiry,
           scope: tokens.scope,
+          reconectar_desde: null,
         },
         { onConflict: "owner_user_id,google_email" }
       );

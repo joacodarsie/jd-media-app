@@ -1,3 +1,4 @@
+import { CaraPersona } from "@/components/cara-persona";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink, Pencil, Users } from "lucide-react";
@@ -175,9 +176,7 @@ export default async function PositionDetail({
               {(integrantes as AppUser[]).map((u) => (
                 <li key={u.id} className="flex items-center justify-between gap-2 py-2">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-semibold">
-                      {u.nombre.charAt(0)}
-                    </div>
+                    <CaraPersona nombre={u.nombre} url={u.avatar_url} className="h-7 w-7 text-xs" />
                     <span className="text-sm">{u.nombre}</span>
                   </div>
                   {isAdmin && (

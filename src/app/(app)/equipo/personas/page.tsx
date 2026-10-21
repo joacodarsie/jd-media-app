@@ -1,3 +1,4 @@
+import { CaraPersona } from "@/components/cara-persona";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Mail } from "lucide-react";
 import { requireRole } from "@/lib/auth";
@@ -67,9 +68,7 @@ export default async function EquipoPersonasPage() {
                     href={`/equipo/persona/${u.id}`}
                     className="-mx-2 -my-1 flex flex-1 items-center gap-3 rounded-md px-2 py-1 hover:bg-muted/30"
                   >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-xs font-semibold">
-                      {u.nombre.charAt(0)}
-                    </div>
+                    <CaraPersona nombre={u.nombre} url={u.avatar_url} className="h-9 w-9 text-xs" />
                     <div className="min-w-0">
                       <div className="font-medium">{u.nombre}</div>
                       <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CaraPersona } from "@/components/cara-persona";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
@@ -123,9 +124,7 @@ export default async function PersonaDetail({
       {/* Header */}
       <div className="rounded-xl border bg-card p-5">
         <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/15 text-2xl font-bold text-foreground">
-            {u.nombre.charAt(0)}
-          </div>
+          <CaraPersona nombre={u.nombre} url={u.avatar_url} className="h-16 w-16 bg-primary/15 text-2xl font-bold text-foreground" />
           <div className="min-w-0">
             <h1 className="text-2xl font-bold">{u.nombre}</h1>
             <p className="text-sm text-muted-foreground">

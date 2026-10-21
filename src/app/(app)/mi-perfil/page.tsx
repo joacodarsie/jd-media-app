@@ -19,6 +19,12 @@ import { Bell } from "lucide-react";
 import { MiFoto } from "@/components/mi-foto";
 import { SonidosToggle } from "@/components/sonidos-toggle";
 import { MisDatosCard, MiAccesoCard } from "@/components/mis-datos-card";
+import { Suspense } from "react";
+import { Wallet } from "lucide-react";
+import { TusObjetivos } from "@/components/tus-objetivos";
+import { mergeSettings } from "@/lib/coordinacion";
+import { comoCobras, proximoCobro } from "@/lib/equipo/como-cobras";
+import { hoyYmd } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -27,16 +33,16 @@ export default async function MiPerfilPage() {
   const supabase = createClient();
 
   const periodo = currentPeriod();
-  const [{ data: position }, payroll] = await Promise.all([
-    // El puesto sale del área (uno por área), no de una asignación a mano (21/10/2026).
-    me.area
+  // El puesto sale del área (uno por área), no de una asignación a mano (21/10/2026).
+  // Con dos áreas (ej. Comercial + Dirección Creativa) se ven los dos manuales.
+  const misAreas = [me.area, (me as { area_secundaria?: string | null }).area_secundaria].filter(Boolean) as string[];
+  const [{ data: puestosRaw }, payroll] = await Promise.all([
+    misAreas.length
       ? supabase
           .from("positions")
           .select("id, nombre, area, descripcion, alcance_incluye, alcance_excluye, kpis, procesos, services, pago_default_monto, pago_default_moneda, pago_default_frecuencia")
-          .eq("area", me.area)
-          .limit(1)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
+          .in("area", misAreas)
+      : Promise.resolve({ data: [] }),
     // Nómina del mes en curso; solo renderizamos la fila de la persona logueada.
     buildPeriodPayroll(createAdmin(), periodo).catch(() => null),
   ]);
@@ -90,7 +96,9 @@ export default async function MiPerfilPage() {
         );
       })()}
 
-      {position && (() => {
+      {((puestosRaw ?? []) as Position[])
+        .sort((a, b) => misAreas.indexOf(a.area) - misAreas.indexOf(b.area))
+        .map((position) => (() => {
         const p = position as Position & {
           alcance_incluye?: string | null;
           alcance_excluye?: string | null;
@@ -162,7 +170,24 @@ export default async function MiPerfilPage() {
             </CardContent>
           </Card>
         );
-      })()}
+      })())}
+
+      {/* Cómo y cuándo cobrás: de las mismas tarifas que la nómina (21/10/2026). */}
+      <ComoCobrasCard me={me as unknown as { id: string; rol: string; rol_secundario?: string | null; area?: string | null; area_secundaria?: string | null }} />
+
+      {/* Tus objetivos, los mismos de Mi día. */}
+      <Suspense fallback={null}>
+        <TusObjetivos
+          persona={{
+            id: me.id,
+            nombre: me.nombre,
+            rol: me.rol,
+            rol_secundario: (me as { rol_secundario?: string | null }).rol_secundario ?? null,
+            area: me.area ?? null,
+            area_secundaria: (me as { area_secundaria?: string | null }).area_secundaria ?? null,
+          }}
+        />
+      </Suspense>
 
       <MiSueldoCard person={miSueldo} periodo={periodo} />
 
@@ -199,5 +224,48 @@ export default async function MiPerfilPage() {
         }
       />
     </div>
+  );
+}
+
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+async function ComoCobrasCard({
+  me,
+}: {
+  me: { id: string; rol: string; rol_secundario?: string | null; area?: string | null; area_secundaria?: string | null };
+}) {
+  const admin = createAdmin();
+  const [{ data: settingsRow }, { data: extra }] = await Promise.all([
+    admin.from("agency_settings").select("packs, rates").eq("id", 1).maybeSingle(),
+    admin.from("users").select("comercial_sin_fijo").eq("id", me.id).maybeSingle(),
+  ]);
+  const rates = mergeSettings(settingsRow).rates;
+  const lineas = comoCobras({ ...me, comercial_sin_fijo: (extra as { comercial_sin_fijo?: boolean } | null)?.comercial_sin_fijo ?? false }, rates);
+  const prox = proximoCobro(hoyYmd());
+  const mesTrabajo = MESES[+prox.periodo.slice(5, 7) - 1];
+  const diaPago = `7 de ${MESES[+prox.fecha.slice(5, 7) - 1]}`;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Wallet className="h-4 w-4" /> Cómo y cuándo cobrás
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        {lineas.length > 0 ? (
+          <ul className="list-disc space-y-1.5 pl-5">
+            {lineas.map((l) => (
+              <li key={l}>{l}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground">Tu forma de cobro la acordás con la dirección.</p>
+        )}
+        <div className="rounded-lg bg-primary/10 px-3 py-2.5 ring-1 ring-primary/30">
+          Se cobra <b>a mes vencido, el día 7</b>: lo que trabajás en {mesTrabajo} se transfiere el <b>{diaPago}</b>, al alias o CBU
+          que cargues más abajo. El estimado del mes en curso lo ves en «Tu sueldo».
+        </div>
+      </CardContent>
+    </Card>
   );
 }

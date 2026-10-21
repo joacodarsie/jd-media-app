@@ -152,7 +152,7 @@ export const METRICAS: Record<MetricaId, MetricaDef> = {
     unidad: "%",
     metaManual: false,
     soloMes: true,
-    metaFija: 90,
+    // Sin meta fija: si nadie respondió la encuesta no hay nada que medir (la meta de 90% la pone el cálculo cuando hay respuestas).
   },
   tareas_a_tiempo: {
     id: "tareas_a_tiempo",

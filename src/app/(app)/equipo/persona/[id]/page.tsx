@@ -3,7 +3,6 @@ import { CaraPersona } from "@/components/cara-persona";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
-  Briefcase,
   CalendarDays,
   CreditCard,
   KeyRound,
@@ -24,6 +23,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PersonalInfoDialog } from "@/components/personal-info-dialog";
 import { MiSueldoCard } from "@/components/mi-sueldo-card";
+import { Suspense } from "react";
+import { TusObjetivos } from "@/components/tus-objetivos";
+import { RolVista, type PuestoDB } from "@/components/rol-vista";
+import { rolDe } from "@/lib/equipo/roles";
 import {
   MovimientosHistorialCard,
   type MovimientoRow,
@@ -88,7 +91,7 @@ export default async function PersonaDetail({
   // persona, que quedaba a medio cargar o desactualizado (21/10/2026).
   const areasDe = [u.area, (u as { area_secundaria?: string | null }).area_secundaria].filter(Boolean) as string[];
   const { data: puestosDeArea } = areasDe.length
-    ? await supabase.from("positions").select("id, nombre, area, descripcion, services").in("area", areasDe)
+    ? await supabase.from("positions").select("id, nombre, area, descripcion, alcance_incluye, alcance_excluye, kpis, procesos, services").in("area", areasDe)
     : { data: [] };
   const position =
     ((puestosDeArea ?? []) as Position[]).sort((a, b) => areasDe.indexOf(a.area) - areasDe.indexOf(b.area))[0] ?? null;
@@ -163,6 +166,21 @@ export default async function PersonaDetail({
           </div>
         </div>
       </div>
+
+      {/* Sus objetivos, en vivo (21/10/2026): el dueño ve cómo viene cada uno. */}
+      <Suspense fallback={null}>
+        <TusObjetivos
+          titulo={isSelf ? "Tus objetivos" : "Sus objetivos"}
+          persona={{
+            id: u.id,
+            nombre: u.nombre,
+            rol: u.rol,
+            rol_secundario: (u as { rol_secundario?: string | null }).rol_secundario ?? null,
+            area: u.area ?? null,
+            area_secundaria: (u as { area_secundaria?: string | null }).area_secundaria ?? null,
+          }}
+        />
+      </Suspense>
 
       {/* Sueldo calculado del mes en curso (automático, real) */}
       <MiSueldoCard person={miSueldo} periodo={periodo} title="Sueldo de este mes" />
@@ -242,31 +260,12 @@ export default async function PersonaDetail({
         emptyText="Todavía no hay pagos registrados para esta persona."
       />
 
-      {position && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Briefcase className="h-4 w-4" /> Puesto
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm">
-            <Link
-              href={`/equipo/${position.id}`}
-              className="text-base font-semibold hover:underline"
-            >
-              {position.nombre}
-            </Link>
-            {position.descripcion && (
-              <p className="mt-1 text-muted-foreground">{position.descripcion}</p>
-            )}
-            <Link
-              href={`/equipo/${position.id}`}
-              className="mt-3 inline-block text-xs font-medium text-primary hover:underline"
-            >
-              Ver alcance y procesos completos →
-            </Link>
-          </CardContent>
-        </Card>
+      {/* Su rol, completo (la misma ficha del Directorio). */}
+      {position && rolDe(position.area) && (
+        <section className="space-y-2">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Su rol y cómo se trabaja</h2>
+          <RolVista rol={rolDe(position.area)!} puesto={position as unknown as PuestoDB} hoy={Number(hoy.slice(8, 10))} compacto />
+        </section>
       )}
 
       {u.notas_personales && (

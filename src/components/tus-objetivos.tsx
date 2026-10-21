@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
  * su objetivo del mes bajado a la semana y al día, para ir viendo cómo lo
  * cumple. Todo se mide solo con lo que pasa en la plataforma.
  */
-export async function TusObjetivos({ persona }: { persona: PersonaObj }) {
+export async function TusObjetivos({ persona, titulo = "Tus objetivos" }: { persona: PersonaObj; titulo?: string }) {
   if (metricasDe(persona).length === 0) return null;
   const admin = createAdmin();
   const hoy = hoyYmd();
@@ -49,7 +49,7 @@ export async function TusObjetivos({ persona }: { persona: PersonaObj }) {
     <section className="rounded-2xl border bg-card p-4 md:p-5">
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-sm font-semibold">
-          <Target className="h-4 w-4 text-primary" /> Tus objetivos
+          <Target className="h-4 w-4 text-primary" /> {titulo}
         </h2>
         <Link href="/objetivos/equipo" className="text-xs font-medium text-muted-foreground hover:text-foreground">
           Ver los de todos →

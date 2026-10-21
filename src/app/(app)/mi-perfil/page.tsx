@@ -1,5 +1,3 @@
-import Link from "next/link";
-import { Briefcase } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -14,7 +12,6 @@ import { GoogleCalendarCard } from "@/components/google-calendar-card";
 import { BrowserNotificationsCard } from "@/components/browser-notifications-card";
 import { ReplayTourButton } from "@/components/replay-tour-button";
 import { PushToggle } from "@/components/push-toggle";
-import { Markdown } from "@/components/markdown";
 import { Bell } from "lucide-react";
 import { MiFoto } from "@/components/mi-foto";
 import { SonidosToggle } from "@/components/sonidos-toggle";
@@ -25,6 +22,8 @@ import { TusObjetivos } from "@/components/tus-objetivos";
 import { mergeSettings } from "@/lib/coordinacion";
 import { comoCobras, proximoCobro } from "@/lib/equipo/como-cobras";
 import { hoyYmd } from "@/lib/dates";
+import { RolVista, type PuestoDB } from "@/components/rol-vista";
+import { rolDe } from "@/lib/equipo/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -96,81 +95,18 @@ export default async function MiPerfilPage() {
         );
       })()}
 
+      {/* Tu rol, completo y visual (21/10/2026): la misma ficha del Directorio. */}
       {((puestosRaw ?? []) as Position[])
         .sort((a, b) => misAreas.indexOf(a.area) - misAreas.indexOf(b.area))
-        .map((position) => (() => {
-        const p = position as Position & {
-          alcance_incluye?: string | null;
-          alcance_excluye?: string | null;
-          kpis?: string | null;
-          procesos?: string | null;
-        };
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Briefcase className="h-4 w-4" /> Tu puesto y tu proceso
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <div>
-                <Link href={`/equipo/${p.id}`} className="font-semibold hover:underline">
-                  {p.nombre}
-                </Link>
-                {p.descripcion && (
-                  <p className="mt-1 text-muted-foreground">{p.descripcion}</p>
-                )}
-              </div>
-
-              {(p.alcance_incluye || p.alcance_excluye) && (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {p.alcance_incluye && (
-                    <div className="rounded-lg border bg-muted/20 p-3">
-                      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
-                        Qué entra
-                      </div>
-                      <Markdown>{p.alcance_incluye}</Markdown>
-                    </div>
-                  )}
-                  {p.alcance_excluye && (
-                    <div className="rounded-lg border bg-muted/20 p-3">
-                      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-red-700 dark:text-red-300">
-                        Qué no entra
-                      </div>
-                      <Markdown>{p.alcance_excluye}</Markdown>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {p.kpis && (
-                <div>
-                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    KPIs / objetivos
-                  </div>
-                  <Markdown>{p.kpis}</Markdown>
-                </div>
-              )}
-
-              {p.procesos && (
-                <div>
-                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Tu proceso (SOP)
-                  </div>
-                  <Markdown>{p.procesos}</Markdown>
-                </div>
-              )}
-
-              <Link
-                href={`/equipo/${p.id}`}
-                className="inline-block text-xs font-medium text-primary hover:underline"
-              >
-                Ver el puesto completo →
-              </Link>
-            </CardContent>
-          </Card>
-        );
-      })())}
+        .map((p) => {
+          const rol = rolDe(p.area);
+          return rol ? (
+            <section key={p.id} className="space-y-2">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tu rol y cómo se trabaja</h2>
+              <RolVista rol={rol} puesto={p as unknown as PuestoDB} hoy={Number(hoyYmd().slice(8, 10))} compacto />
+            </section>
+          ) : null;
+        })}
 
       {/* Cómo y cuándo cobrás: de las mismas tarifas que la nómina (21/10/2026). */}
       <ComoCobrasCard me={me as unknown as { id: string; rol: string; rol_secundario?: string | null; area?: string | null; area_secundaria?: string | null }} />

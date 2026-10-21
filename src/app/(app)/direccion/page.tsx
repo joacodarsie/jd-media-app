@@ -14,6 +14,7 @@ import { DireccionWeb } from "@/components/direccion-web";
 import { DireccionReferidos } from "@/components/direccion-referidos";
 import { DireccionUso } from "@/components/direccion-uso";
 import { PulsoAgencia } from "@/components/pulso-agencia";
+import { ObjetivosTablero } from "@/components/objetivos-tablero";
 import { CargaEquipo } from "@/components/carga-equipo";
 
 export const dynamic = "force-dynamic";
@@ -96,6 +97,13 @@ export default async function DireccionPage() {
       {esDireccion && (
         <Suspense fallback={<div className="h-28 animate-pulse rounded-2xl bg-muted/40" />}>
           <PulsoAgencia />
+        </Suspense>
+      )}
+
+      {/* Objetivos de todo el equipo en una mirada (21/10/2026). */}
+      {esDireccion && (
+        <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-muted/40" />}>
+          <ObjetivosTablero />
         </Suspense>
       )}
 

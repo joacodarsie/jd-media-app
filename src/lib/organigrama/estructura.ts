@@ -280,6 +280,8 @@ export interface PersonaOrg {
   id: string;
   nombre: string;
   rol: string | null;
+  /** Foto de perfil (21/10/2026): en el organigrama se ve la cara de cada uno. */
+  avatar_url?: string | null;
 }
 
 /** Carga real de una persona, para mostrarla arriba del nombre. */
@@ -330,7 +332,7 @@ export function resolverOrganigrama(
 
 /** Agrupa a la gente por área, contando también el área secundaria. */
 export function agruparPorArea(
-  usuarios: Array<{ id: string; nombre: string; rol: string | null; area: string | null; area_secundaria: string | null }>
+  usuarios: Array<{ id: string; nombre: string; rol: string | null; area: string | null; area_secundaria: string | null; avatar_url?: string | null }>
 ): Map<string, PersonaOrg[]> {
   const mapa = new Map<string, PersonaOrg[]>();
   const push = (area: string | null, p: PersonaOrg) => {
@@ -340,7 +342,7 @@ export function agruparPorArea(
     mapa.set(area, lista);
   };
   for (const u of usuarios) {
-    const p = { id: u.id, nombre: u.nombre, rol: u.rol };
+    const p = { id: u.id, nombre: u.nombre, rol: u.rol, avatar_url: u.avatar_url ?? null };
     push(u.area, p);
     push(u.area_secundaria, p);
   }

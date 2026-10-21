@@ -23,7 +23,7 @@ export default async function OrganigramaPage() {
   const [usuariosRes, clientesRes, tareasRes] = await Promise.all([
     supabase
       .from("users")
-      .select("id, nombre, rol, area, area_secundaria")
+      .select("id, nombre, rol, area, area_secundaria, avatar_url")
       .eq("activo", true)
       .order("nombre"),
     supabase.from("clients").select("id").in("estado", ESTADOS_VIVOS),
@@ -39,6 +39,7 @@ export default async function OrganigramaPage() {
     rol: string | null;
     area: string | null;
     area_secundaria: string | null;
+    avatar_url: string | null;
   }>;
   const vivos = new Set(((clientesRes.data ?? []) as Array<{ id: string }>).map((c) => c.id));
   const tareas = (tareasRes.data ?? []) as Array<{

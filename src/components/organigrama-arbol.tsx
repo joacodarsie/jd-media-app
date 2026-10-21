@@ -115,6 +115,7 @@ const CSS = `
   font-weight: 800;
   flex: 0 0 auto;
 }
+.org-avatar--foto { object-fit: cover; background: hsl(var(--muted)); box-shadow: 0 0 0 2px hsl(var(--card)), 0 0 0 3px #FFD400; }
 .org-name { font-size: 13px; font-weight: 600; color: hsl(var(--foreground)); }
 .org-vencidas {
   margin-left: auto;
@@ -147,12 +148,21 @@ const CSS = `
 .org-fila { display: flex; flex-wrap: wrap; gap: 10px; }
 `;
 
-function Persona({ nombre, carga }: { nombre: string; carga?: CargaPersona }) {
+/** La carita: la foto si la subió, si no las iniciales. */
+function Cara({ nombre, foto }: { nombre: string; foto?: string | null }) {
+  if (foto) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={foto} alt="" className="org-avatar org-avatar--foto" loading="lazy" />;
+  }
+  return <span className="org-avatar">{iniciales(nombre)}</span>;
+}
+
+function Persona({ nombre, foto, carga }: { nombre: string; foto?: string | null; carga?: CargaPersona }) {
   // Todo span: esta tarjeta vive dentro de un <button> y un <div> ahí adentro
   // es HTML inválido.
   return (
     <span className="org-person">
-      <span className="org-avatar">{iniciales(nombre)}</span>
+      <Cara nombre={nombre} foto={foto} />
       <span className="org-name">{nombre}</span>
       {carga && carga.vencidas > 0 && (
         <span className="org-vencidas" title={`${carga.vencidas} tareas vencidas`}>
@@ -183,7 +193,7 @@ function Caja({
       {nodo.gente.length > 0 ? (
         <span className="org-people">
           {nodo.gente.map((p) => (
-            <Persona key={p.id} nombre={p.nombre} carga={cargas[p.id]} />
+            <Persona key={p.id} nombre={p.nombre} foto={p.avatar_url} carga={cargas[p.id]} />
           ))}
         </span>
       ) : (
@@ -296,7 +306,7 @@ export function OrganigramaArbol({
                             href={`/equipo/persona/${p.id}`}
                             className="flex items-center gap-2.5 rounded-lg border p-2 transition-colors hover:bg-accent"
                           >
-                            <span className="org-avatar">{iniciales(p.nombre)}</span>
+                            <Cara nombre={p.nombre} foto={p.avatar_url} />
                             <span className="flex-1 text-sm font-medium">{p.nombre}</span>
                             {carga && (
                               <span className="text-xs text-muted-foreground">

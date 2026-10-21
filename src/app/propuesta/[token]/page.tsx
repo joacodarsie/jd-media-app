@@ -20,6 +20,7 @@ import {
 import { INCLUIDO_EN_TODOS, LETRA_CHICA } from "@/lib/propuestas/incluido";
 import { CSS_PROPUESTA } from "@/lib/propuestas/estilo";
 import { armarExtras } from "@/lib/propuestas/extras";
+import { CAMINO_MES_1, EQUIPO_PROPUESTA, iconoDePunto, volumenTotal } from "@/lib/propuestas/iconos";
 import { PropuestaAcciones, BotonPdf } from "@/components/propuesta-acciones";
 import { BarraPropuesta } from "@/components/propuesta-editor";
 import { createClient } from "@/lib/supabase/server";
@@ -170,6 +171,12 @@ export default async function PropuestaPage({
   const prop = proporcionalPrimerMes(inv.total, row.fecha_inicio);
   const variasCuentas = inv.lineas.length > 1;
   const extras = armarExtras(row.extras);
+  const vol = volumenTotal(inv.lineas.map((l) => l.pack));
+  const vistazo = [
+    { icono: "🎬", n: vol.reels, que: "reels por mes" },
+    { icono: "🖼️", n: vol.posts, que: "carruseles por mes" },
+    { icono: "📱", n: vol.historias, que: "días de historias" },
+  ].filter((x) => x.n > 0);
 
   const hoy = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" }).format(new Date());
   const waHref = `https://wa.me/${AGENCIA.whatsapp}?text=${encodeURIComponent(mensajeWhatsapp(p.empresa))}`;
@@ -223,11 +230,18 @@ export default async function PropuestaPage({
         <span className="n">{num()}</span>
         <h2>El equipo que te devuelve el tiempo</h2>
       </div>
-      <p className="lead" style={{ marginTop: 0 }}>
-        <b>Community manager, diseñador gráfico, editor audiovisual y un especialista en Meta Ads</b>{" "}
-        asignados a la cuenta. Un director creativo revisa cada pieza y una project manager cuida los
-        tiempos. Grupo de WhatsApp con el equipo y la plataforma para aprobar el calendario.
-      </p>
+      <div className="equipo">
+        {EQUIPO_PROPUESTA.map((e) => (
+          <div className="persona" key={e.rol}>
+            <span className="ic">{e.icono}</span>
+            <span>{e.rol}</span>
+          </div>
+        ))}
+      </div>
+      <div className="chips">
+        <span>💬 Grupo de WhatsApp con el equipo</span>
+        <span>💻 Plataforma para aprobar y ver todo</span>
+      </div>
     </section>
   );
   const packActual = cuentas[0]?.packSlug ?? p.packRecomendado?.slug ?? "presencia";
@@ -285,6 +299,23 @@ export default async function PropuestaPage({
             </div>
           )}
 
+          {vistazo.length > 0 && (
+            <div className="vistazo">
+              {vistazo.map((v) => (
+                <div className="dato" key={v.que}>
+                  <span className="ic">{v.icono}</span>
+                  <b>{v.n}</b>
+                  <span>{v.que}</span>
+                </div>
+              ))}
+              <div className="dato">
+                <span className="ic">📈</span>
+                <b>Meta</b>
+                <span>pauta gestionada</span>
+              </div>
+            </div>
+          )}
+
           <div className="linea" />
 
           {ver.puntos && (
@@ -298,7 +329,7 @@ export default async function PropuestaPage({
                 const { titulo, texto } = partirPunto(punto);
                 return (
                   <div className="paso" key={i}>
-                    <span className="i">{i + 1}</span>
+                    <span className="ic">{iconoDePunto(texto, titulo)}</span>
                     <div>
                       {titulo && <h4>{titulo}</h4>}
                       <p style={titulo ? undefined : { marginTop: 0 }}>{texto}</p>
@@ -331,10 +362,14 @@ export default async function PropuestaPage({
               {INCLUIDO_EN_TODOS.map((g) => (
                 <div className="grupo" key={g.titulo}>
                   <h4>
-                    <span>✦</span>
+                    <span className="ic">{g.icono}</span>
                     {g.titulo}
                   </h4>
-                  <p>{g.items.join(" · ")}.</p>
+                  <ul className="checks">
+                    {g.items.map((it) => (
+                      <li key={it}>{it}</li>
+                    ))}
+                  </ul>
                 </div>
               ))}
             </div>
@@ -348,7 +383,7 @@ export default async function PropuestaPage({
                 <h2>Con qué arrancamos</h2>
                 <span className="aside">Primeras piezas</span>
               </div>
-              <ul className="vinetas">
+              <ul className="vinetas ideas">
                 {p.ideas.slice(0, 4).map((idea, i) => (
                   <li key={i}>{idea}</li>
                 ))}
@@ -420,37 +455,29 @@ export default async function PropuestaPage({
                 <span className="n">{num()}</span>
                 <h2>Qué se entrega el primer mes</h2>
               </div>
-              <div className="etapas">
-                <div className="etapa">
-                  <div className="w">Semanas 1 y 2</div>
-                  <h4>Se ordena, todavía no se publica</h4>
-                  <ul>
-                    <li>Reunión de onboarding con todo el equipo.</li>
-                    <li>Informe de diagnóstico y plan de acción.</li>
-                    <li>Manual de marca y moodboard de cada cuenta.</li>
-                    <li>Rediseño de perfiles, biografías, destacadas y links.</li>
-                    <li>Calendario del mes, para que lo apruebes antes de producir.</li>
-                  </ul>
-                </div>
-                <div className="etapa marcada">
-                  <div className="w">Semanas 3 y 4</div>
-                  <h4>Sale el contenido</h4>
-                  <ul>
-                    {mes1.map((m) => (
-                      <li key={m.handle}>
-                        {variasCuentas ? <b>{m.handle}: </b> : null}
-                        {m.texto}.
-                      </li>
-                    ))}
-                    <li>Las campañas de Meta al aire y optimizándose cada semana.</li>
-                    <li>Reporte de cierre con las métricas del mes.</li>
-                  </ul>
-                </div>
+              <ol className="camino">
+                {CAMINO_MES_1.map((h) => (
+                  <li key={h.dia} className={h.dia === "Día 15" ? "marcado" : undefined}>
+                    <span className="ic">{h.icono}</span>
+                    <span className="d">{h.dia}</span>
+                    <span className="q">{h.que}</span>
+                  </li>
+                ))}
+              </ol>
+              <div className="mes1">
+                {mes1.map((m) => (
+                  <div key={m.handle}>
+                    <span className="ic">📣</span>
+                    <span>
+                      {variasCuentas ? <b>{m.handle}: </b> : <b>Del 15 al 30: </b>}
+                      {m.texto}
+                    </span>
+                  </div>
+                ))}
               </div>
               <div className="aviso">
-                <b>Por qué el primer mes publica la mitad:</b> las dos primeras semanas se usan para
-                armar las bases y no se publica; reemplazan el cargo de puesta en marcha, que no
-                cobramos.{" "}
+                <b>El primer mes publica la mitad:</b> las dos primeras semanas armamos las bases, sin
+                cargo de puesta en marcha.{" "}
                 <b>Desde el segundo mes, {variasCuentas ? "los packs van completos" : "el pack va completo"}.</b>
               </div>
             </section>
@@ -461,6 +488,7 @@ export default async function PropuestaPage({
               <div className="claras">
                 {LETRA_CHICA.map((l) => (
                   <div key={l.titulo}>
+                    <span className="ic">{l.icono}</span>
                     <b>{l.titulo}.</b> {l.texto}
                   </div>
                 ))}
@@ -569,6 +597,7 @@ export default async function PropuestaPage({
               <div className="claras">
                 {LETRA_CHICA.map((l) => (
                   <div key={l.titulo}>
+                    <span className="ic">{l.icono}</span>
                     <b>{l.titulo}.</b> {l.texto}
                   </div>
                 ))}
@@ -591,9 +620,17 @@ export default async function PropuestaPage({
 
           <div className="cierre">
             <h2>Próximos pasos</h2>
-            <p>
-              Con tu confirmación coordinamos la <b>reunión de onboarding</b> y arrancamos con las bases.
-            </p>
+            <ol className="siguientes">
+              <li>
+                <span className="ic">✅</span>Nos confirmás
+              </li>
+              <li>
+                <span className="ic">🤝</span>Reunión de onboarding
+              </li>
+              <li>
+                <span className="ic">📣</span>A los 15 días, publicamos
+              </li>
+            </ol>
             <div className="datos">
               {AGENCIA.whatsappLabel} · {AGENCIA.webLabel} · @{AGENCIA.instagram}
             </div>

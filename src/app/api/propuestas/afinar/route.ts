@@ -61,7 +61,7 @@ Te paso el contexto de un prospecto —lo que dijo por WhatsApp, la captura del 
 {
   "titular": "Una frase de 6 a 12 palabras que resuma el foco del trabajo. Uso interno, no se publica. Sin signos de admiración.",
   "diagnostico": "2 o 3 oraciones que abren la propuesta. ARRANCÁ por lo que el negocio TIENE (trayectoria, reconocimiento, productos, equipo, agenda) y recién después decí qué falta ordenar o potenciar. Es lo primero que lee: tiene que sentir que entendimos su negocio, no que le estamos marcando lo que hace mal.",
-  "puntos": ["3 o 4 acciones concretas, cada una escrita como 'Título corto: descripción de una o dos oraciones.' El título va antes de los dos puntos y no lleva punto final. Ej: 'Cada cuenta con un rol claro: la principal lleva lo institucional y la segunda, su propia comunicación.'"],
+  "puntos": ["3 o 4 acciones concretas, cada una escrita como 'Título corto: descripción de UNA oración corta, de 20 palabras como máximo.' El título va antes de los dos puntos y no lleva punto final. Ej: 'Cada cuenta con un rol claro: la principal lleva lo institucional y la segunda, su propia comunicación.'"],
   "ideas": ["3 o 4 ideas de contenido para ESTE negocio en particular, no para su rubro en general. Si el contexto menciona sus productos, su local, su equipo o algo que lo distingue, usalo. Una idea por elemento, en una línea."]
 }
 

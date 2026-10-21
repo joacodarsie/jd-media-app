@@ -177,6 +177,58 @@ export const CSS_PROPUESTA = `
   font-size:var(--t-eti); text-transform:uppercase; letter-spacing:.12em; color:var(--b40);
 }
 
+/* ── Visual (21/10/2026): menos texto, más íconos ─────────── */
+.doc .ic{ display:inline-grid; place-items:center; flex:0 0 auto; line-height:1; }
+
+.vistazo{ margin-top:22px; display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+.vistazo .dato{
+  border:1px solid var(--borde); border-radius:14px; padding:13px 14px;
+  display:flex; flex-direction:column; gap:3px; background:rgba(255,255,255,.02);
+}
+.vistazo .dato .ic{ font-size:17pt; margin-bottom:4px; align-self:flex-start; }
+.vistazo .dato b{ font-size:21pt; font-weight:900; letter-spacing:-.03em; line-height:1; }
+.vistazo .dato span:last-child{ font-size:var(--t-apo); color:var(--b55); }
+
+.paso .ic{
+  width:34px; height:34px; border-radius:11px; font-size:15pt;
+  background:rgba(255,212,0,.12); border:1px solid rgba(255,212,0,.3);
+}
+
+.equipo{ display:grid; grid-template-columns:repeat(6,1fr); gap:10px; }
+.persona{ display:flex; flex-direction:column; align-items:center; gap:7px; text-align:center; font-size:var(--t-apo); font-weight:600; line-height:1.3; color:var(--b85); }
+.persona .ic{
+  width:48px; height:48px; border-radius:50%; font-size:18pt;
+  background:rgba(255,212,0,.1); border:1px solid rgba(255,212,0,.35);
+}
+.chips{ margin-top:14px; display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+.chips span{ border:1px solid var(--borde); border-radius:999px; padding:5px 12px; font-size:var(--t-apo); color:var(--b70); }
+
+.grupo h4{ align-items:center; gap:9px; }
+.grupo h4 .ic{ width:28px; height:28px; border-radius:9px; font-size:13pt; background:rgba(255,212,0,.12); }
+.doc ul.checks{ margin-top:8px; }
+.doc ul.checks li{ position:relative; padding-left:17px; margin-bottom:4px; font-size:var(--t-apo); line-height:1.45; color:var(--b55); }
+.doc ul.checks li::before{ content:"✓"; position:absolute; left:0; top:0; color:var(--amarillo); font-weight:900; }
+.doc ul.vinetas.ideas li::before{ content:"💡"; font-size:9pt; }
+.doc ul.vinetas.ideas li{ padding-left:22px; }
+
+.camino{ list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(5,1fr); gap:8px; position:relative; }
+.camino::before{ content:""; position:absolute; left:10%; right:10%; top:24px; height:2px; background:linear-gradient(to right, rgba(255,255,255,.15), var(--amarillo), rgba(255,255,255,.15)); }
+.camino li{ position:relative; display:flex; flex-direction:column; align-items:center; text-align:center; gap:5px; }
+.camino .ic{ width:48px; height:48px; border-radius:50%; font-size:18pt; background:#151517; border:1px solid var(--borde); }
+.camino li.marcado .ic{ border-color:var(--amarillo); background:#2a2508; }
+.camino .d{ font-size:var(--t-eti); font-weight:900; text-transform:uppercase; letter-spacing:.12em; color:var(--amarillo); }
+.camino .q{ font-size:var(--t-apo); line-height:1.35; color:var(--b85); }
+.mes1{ margin-top:16px; display:grid; gap:8px; }
+.mes1 > div{ display:flex; align-items:center; gap:10px; border:1px solid rgba(255,212,0,.35); background:rgba(255,212,0,.06); border-radius:12px; padding:10px 14px; font-size:var(--t-apo); color:var(--b85); }
+.mes1 .ic{ font-size:14pt; }
+.mes1 b{ color:#fff; }
+
+.claras > div .ic{ display:block; font-size:16pt; margin-bottom:6px; }
+
+.siguientes{ list-style:none; margin:16px 0 0; padding:0; display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.siguientes li{ display:flex; flex-direction:column; align-items:center; gap:7px; font-size:var(--t-apo); font-weight:700; color:var(--b85); }
+.siguientes .ic{ width:44px; height:44px; border-radius:50%; font-size:16pt; background:rgba(255,212,0,.12); border:1px solid rgba(255,212,0,.4); }
+
 /* ── En el celular, las rejillas de dos y tres se apilan ───── */
 @media (max-width: 640px){
   :root{ --t-tit:34pt; --t-sec:15pt; }
@@ -184,6 +236,12 @@ export const CSS_PROPUESTA = `
   .fila, .arranque{ flex-direction:column; align-items:flex-start; gap:10px; }
   .arranque .d, .top .fecha{ text-align:left; max-width:none; }
   .fila.total .m{ font-size:24pt; }
+  .vistazo{ grid-template-columns:1fr 1fr; }
+  .equipo{ grid-template-columns:repeat(3,1fr); row-gap:14px; }
+  .camino{ grid-template-columns:1fr; gap:12px; }
+  .camino::before{ display:none; }
+  .camino li{ flex-direction:row; text-align:left; gap:12px; }
+  .camino .d{ min-width:54px; }
 }
 
 /* ── Impresión: hojas A4 de verdad ────────────────────────── */
@@ -198,7 +256,7 @@ export const CSS_PROPUESTA = `
   }
   .hoja + .hoja{ break-before:page; }
   .empuja{ display:block; margin-top:auto; }
-  .doc section, .paso, .grupo, .cuenta, .etapa, .tabla, .cierre, .pie, .arranque{ break-inside:avoid; }
+  .doc section, .paso, .grupo, .cuenta, .etapa, .tabla, .cierre, .pie, .arranque, .vistazo, .equipo, .camino{ break-inside:avoid; }
   .cab{ break-after:avoid; }
   .pasos, .grupos, .etapas, .claras{ grid-template-columns:1fr 1fr; }
   .claras{ grid-template-columns:1fr 1fr 1fr; }
@@ -206,5 +264,15 @@ export const CSS_PROPUESTA = `
   .fila.sub{ padding-top:10px; padding-bottom:10px; }
   .fila.total{ padding-top:16px; padding-bottom:16px; }
   .cierre{ padding-top:16px; padding-bottom:16px; }
+  /* Los íconos suman alto: la hoja 2 (equipo + incluye + ideas) se pasaba. */
+  .doc section{ margin-top:22px; }
+  .cab{ margin-bottom:12px; }
+  .persona .ic{ width:38px; height:38px; font-size:15pt; }
+  .chips{ margin-top:10px; }
+  .chips span{ padding:3px 10px; }
+  .grupos{ gap:12px 24px; }
+  .doc ul.checks{ margin-top:6px; }
+  .doc ul.checks li{ margin-bottom:2px; line-height:1.38; }
+  .doc ul.vinetas li{ margin-bottom:5px; line-height:1.45; }
 }
 `;

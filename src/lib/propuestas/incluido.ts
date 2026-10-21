@@ -13,8 +13,9 @@
  * aclaración la propuesta se compara contra un freelance que cobra por pieza.
  */
 
-export const INCLUIDO_EN_TODOS: { titulo: string; items: string[] }[] = [
+export const INCLUIDO_EN_TODOS: { icono: string; titulo: string; items: string[] }[] = [
   {
+    icono: "🧭",
     titulo: "Estrategia y marca",
     items: [
       "Manual de marca y moodboard de la cuenta",
@@ -24,6 +25,7 @@ export const INCLUIDO_EN_TODOS: { titulo: string; items: string[] }[] = [
     ],
   },
   {
+    icono: "🎨",
     titulo: "Producción y publicación",
     items: [
       "Creación del contenido: reels, posts y historias según el plan",
@@ -34,6 +36,7 @@ export const INCLUIDO_EN_TODOS: { titulo: string; items: string[] }[] = [
     ],
   },
   {
+    icono: "📈",
     titulo: "Publicidad en Meta",
     items: [
       "Definición del objetivo de la campaña (visibilidad, tráfico, ventas, contactos)",
@@ -43,6 +46,7 @@ export const INCLUIDO_EN_TODOS: { titulo: string; items: string[] }[] = [
     ],
   },
   {
+    icono: "🤝",
     titulo: "Equipo y seguimiento",
     items: [
       "Community manager, editor audiovisual y diseñador gráfico asignados",
@@ -63,18 +67,21 @@ export const ADICIONALES: string[] = [
  * La del presupuesto de pauta es la más importante: gestionamos las campañas,
  * pero la plata que se invierte en Meta la pone el cliente.
  */
-export const LETRA_CHICA: { titulo: string; texto: string }[] = [
+export const LETRA_CHICA: { icono: string; titulo: string; texto: string }[] = [
   {
+    icono: "💳",
     titulo: "El presupuesto de pauta va aparte",
     texto:
       "El abono incluye la gestión de pauta de base en Meta: armar, configurar y optimizar tus campañas. La plata que se invierte en los anuncios la ponés vos y la definimos juntos. Cuando la inversión crece, la pauta profesional (especialistas en Ads, campañas a medida, Google Ads) se cotiza aparte.",
   },
   {
+    icono: "🔓",
     titulo: "Sin permanencia mínima",
     texto:
       "La relación es mes a mes: si en algún momento no te sirve, avisás y damos de baja. Lo único que fijamos por tres meses es el precio, así sabés cuánto vas a pagar.",
   },
   {
+    icono: "🔑",
     titulo: "Las cuentas y el material son tuyos",
     texto:
       "Los accesos quedan a tu nombre y todo lo que producimos —fotos, videos, piezas, manual de marca— es tuyo, pase lo que pase con la relación.",

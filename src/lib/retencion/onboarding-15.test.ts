@@ -42,10 +42,9 @@ describe("planOnboarding", () => {
     expect(plan(["paid_media"]).pasos.some((p) => p.titulo === "Entrega del arranque al cliente")).toBe(false);
   });
 
-  it("después del diagnóstico se le pregunta al cliente, y el manual y el calendario exigen contenido mínimo", () => {
+  it("no hay una ronda de preguntas aparte (va en el diagnóstico), y el manual y el calendario exigen contenido mínimo", () => {
     const p = plan(["gestion_redes"]).pasos;
-    const preguntas = p.find((x) => x.titulo === "Ronda de preguntas al cliente");
-    expect(preguntas).toMatchObject({ dia: 2, asignado_a_id: "cm" });
+    expect(p.some((x) => x.titulo === "Ronda de preguntas al cliente")).toBe(false);
     const manual = p.find((x) => x.titulo === "Kit de marca")!.descripcion;
     for (const parte of ["Logo y sus variaciones", "Paleta", "Tipografías", "Tono de voz", "Portadas", "Plantillas", "director creativo", "Pack Marca Real"]) {
       expect(manual).toContain(parte);

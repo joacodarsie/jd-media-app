@@ -81,7 +81,6 @@ const HECHO: Record<string, { quien: string; hecho: string }> = {
   "Subir el logo de la cuenta a su ficha": { quien: "La project manager.", hecho: "el logo se ve en la ficha. Se marca sola al subirlo." },
   "Mandarle al cliente el link de su plataforma": { quien: "La project manager.", hecho: "en la ficha figura que el cliente abrió su link al menos una vez." },
   "Kit de marca": { quien: "Diseño. Lo revisa el director creativo el día 4.", hecho: "los 6 elementos están en el Drive de la cuenta y el cliente los aprobó por escrito." },
-  "Ronda de preguntas al cliente": { quien: "La CM.", hecho: "las respuestas del cliente están anotadas en su ficha." },
   "Lista del contenido crudo que necesitamos": { quien: "La CM.", hecho: "la lista se le mandó al cliente y está pegada en esta tarea." },
   "Calendario de contenidos para aprobar": { quien: "La CM. Lo revisa el director creativo.", hecho: "el calendario está cargado en Contenidos, pieza por pieza, aprobado por el director creativo y por el cliente." },
   "Día 7: ¿llegó el material?": { quien: "La project manager.", hecho: "el material está en el Drive de la cuenta, o hay jornada de producción con fecha." },
@@ -245,15 +244,9 @@ Lo aprueba el director creativo el día 4 y el cliente el día 5. Se manda **una
       "Diseño",
       dis
     );
-    // El mismo cliente ofreció el canal abierto y nadie le preguntó nada en dos
-    // semanas. Preguntar es lo que evita entregar algo que no sirve.
-    add(
-      2,
-      "Ronda de preguntas al cliente",
-      `Después del diagnóstico, juntar TODAS las dudas sobre ${nombreCliente} (servicios y precios, a quién le vende, qué lo diferencia, qué no quiere mostrar, promociones que puede ofrecer) y hacerlas en una sola tanda: por el grupo o en una llamada de 15 minutos. Anotar las respuestas en la ficha. Sin estas respuestas no se arma ni el manual ni el calendario.`,
-      "Community Manager",
-      cm
-    );
+    // Las dudas sobre el cliente (precios, público, diferencial, qué no mostrar,
+    // promociones) se preguntan en la reunión de diagnóstico: están en su guía
+    // (lib/diagnostics/meet-guide-prompt). Lo puntual, por el grupo de WhatsApp.
     add(
       3,
       "Lista del contenido crudo que necesitamos",

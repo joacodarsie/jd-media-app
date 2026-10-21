@@ -31,14 +31,14 @@ La guía estándar de onboarding cubre 10 bloques que alimentan los campos del i
 
 0. Apertura (2 min) — encuadre, confirmar grabación.
 1. Contexto del negocio (6 min) — identidad, historia, etapa, brecha actual.
-2. Modelo de negocio (6 min) — productos/servicios con ticket, modalidad, canales actuales, cómo se vende hoy, operativa.
+2. Modelo de negocio (6 min) — productos/servicios con precios y ticket, modalidad, canales actuales, cómo se vende hoy, operativa.
 3. Público objetivo (8 min) — segmentos, **insight clave (dolor o deseo psicológico)**, anti-público.
 4. Marca e identidad (5 min) — personalidad, percepción deseada, estado del manual, tono de voz.
 5. Diferenciales (4 min) — qué hace mejor que la competencia.
 6. Problemas que ven hoy (4 min) — qué sienten que no funciona.
 7. Competencia + referencias (4 min) — competidores directos + marcas inspo.
 8. Objetivos del trimestre (3 min) — qué esperan, urgencias.
-9. Recursos y limitaciones (3 min) — qué aporta el cliente, líneas rojas.
+9. Recursos y limitaciones (3 min) — qué aporta el cliente, líneas rojas (qué NO quiere mostrar), y qué promociones, descuentos o beneficios puede ofrecer (para el lanzamiento y por recomendar).
 10. Cierre (3 min) — resumen + próximos pasos.
 
 # Tu tarea

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { avance, mesDe, metricasDe, pctCumplido, semanaDe, type DatosObjetivos } from "./equipo";
+import { avance, mesDe, metricasDe, objetivosDePersona, pctCumplido, semaforoObjetivo, semanaDe, type DatosObjetivos } from "./equipo";
 
 describe("períodos", () => {
   it("la semana va de lunes a domingo", () => {
@@ -18,7 +18,7 @@ describe("metricasDe", () => {
     expect(metricasDe({ id: "m", nombre: "Mati", rol: "comercial", area: "Comercial" })).toContain("leads_contactados");
     expect(metricasDe({ id: "b", nombre: "Brisa", rol: "diseno", area: "Diseño" })).toEqual(["piezas_diseno"]);
     expect(metricasDe({ id: "a", nombre: "Ailen", rol: "audiovisual" })).toEqual(["piezas_edicion"]);
-    expect(metricasDe({ id: "l", nombre: "Luz", rol: "coordinador", area: "Coordinación" })).toEqual(["reuniones_mensuales"]);
+    expect(metricasDe({ id: "l", nombre: "Luz", rol: "coordinador", area: "Coordinación" })).toEqual(["reuniones_mensuales", "tareas_a_tiempo", "cambios_de_fecha", "piezas_al_dia"]);
     const santi = metricasDe({
       id: "s",
       nombre: "Santi",
@@ -124,5 +124,69 @@ describe("piezas publicadas", () => {
       ],
     };
     expect(avance("piezas_publicadas", "belu", d, mes, null)).toEqual({ valor: 1, meta: 2, proyeccion: null });
+  });
+});
+
+describe("objetivos de coordinación y dirección (21/10/2026)", () => {
+  const mes = mesDe("2026-10-21");
+  const clientes = [
+    { id: "a", estado: "activo", cm_id: null, disenador_id: null, audiovisual_id: null, responsable_id: "santi" },
+    { id: "b", estado: "activo", cm_id: null, disenador_id: null, audiovisual_id: null, responsable_id: "otro" },
+    { id: "x", estado: "perdido", cm_id: null, disenador_id: null, audiovisual_id: null, fecha_inactivado: "2026-10-13" },
+  ];
+
+  it("aprobación creativa: % de diseño y edición cerrado que pasó por revisión", () => {
+    const d = {
+      ...base,
+      clientes,
+      tareasCerradas: [
+        { id: "t1", asignado_a_id: "x", area: "Diseño", fecha_completada: "2026-10-05T10:00:00Z" },
+        { id: "t2", asignado_a_id: "x", area: "Edición Audiovisual", fecha_completada: "2026-10-06T10:00:00Z" },
+        { id: "t3", asignado_a_id: "x", area: "Coordinación", fecha_completada: "2026-10-06T10:00:00Z" },
+      ],
+      revisadas: ["t1", "t3"],
+    };
+    expect(avance("aprobacion_creativa", "santi", d, mes, null)).toMatchObject({ valor: 50, meta: 100 });
+  });
+
+  it("tareas a tiempo y cambios de fecha (menos es mejor)", () => {
+    const d = {
+      ...base,
+      tareasCerradas: [
+        { asignado_a_id: "x", area: "Diseño", fecha_completada: "2026-10-10T12:00:00Z", fecha_limite: "2026-10-10" },
+        { asignado_a_id: "x", area: "Diseño", fecha_completada: "2026-10-12T12:00:00Z", fecha_limite: "2026-10-10" },
+      ],
+      cambiosFecha: [{ fecha: "2026-10-02T10:00:00Z" }, { fecha: "2026-10-20T10:00:00Z" }, { fecha: "2026-09-30T10:00:00Z" }],
+    };
+    expect(avance("tareas_a_tiempo", "luz", d, mes, null).valor).toBe(50);
+    expect(avance("cambios_de_fecha", "luz", d, mes, 60).valor).toBe(2);
+  });
+
+  it("reuniones de SUS cuentas, bajas del mes y cuentas activas", () => {
+    const d = { ...base, clientes, reunionesMensuales: [{ cliente_id: "a", fecha: "2026-10-08" }] };
+    expect(avance("reuniones_mis_cuentas", "santi", d, mes, null)).toMatchObject({ valor: 1, meta: 1 });
+    expect(avance("bajas", "joaco", d, mes, null)).toMatchObject({ valor: 1, meta: 0 });
+    expect(avance("cuentas_activas", "joaco", d, mes, null)).toMatchObject({ valor: 2, meta: 18 });
+  });
+
+  it("la meta del mes se baja a la semana y al día por días hábiles", () => {
+    const d = { ...base, contactos: [{ asignado_a: "mati", contactado_at: "2026-10-21T15:00:00Z", reunion_at: null }] };
+    const filas = objetivosDePersona(
+      { id: "mati", nombre: "Mati", rol: "comercial", area: "Comercial" },
+      d,
+      new Map([["mati:leads_contactados", { semanal: null, mensual: 1320 }]]),
+      "2026-10-21"
+    );
+    const leads = filas.find((f) => f.id === "leads_contactados")!;
+    expect(leads.mes.meta).toBe(1320);
+    expect(leads.semana?.meta).toBe(300); // 5 hábiles de 22
+    expect(leads.hoy?.meta).toBe(60);
+    expect(leads.hoy?.valor).toBe(1);
+  });
+
+  it("semáforo: con «menos es mejor» la meta es un techo", () => {
+    expect(semaforoObjetivo({ valor: 10, meta: 60, proyeccion: null }, true, mes)).toBe("bien");
+    expect(semaforoObjetivo({ valor: 70, meta: 60, proyeccion: null }, true, mes)).toBe("mal");
+    expect(semaforoObjetivo({ valor: 20, meta: 100, proyeccion: 95 }, false, mes)).toBe("bien");
   });
 });

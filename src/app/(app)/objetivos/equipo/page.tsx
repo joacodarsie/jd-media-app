@@ -8,73 +8,13 @@ import {
   mesDe,
   metricasDe,
   semanaDe,
-  type DatosObjetivos,
   type MetricaId,
   type PersonaObj,
 } from "@/lib/objetivos/equipo";
 import { ObjetivosEquipo, type FichaPersona } from "@/components/objetivos-equipo";
+import { cargarDatosObjetivos } from "@/lib/objetivos/cargar";
 
 export const dynamic = "force-dynamic";
-
-type Admin = ReturnType<typeof createAdmin>;
-
-/** Una consulta entera, de a 1.000 filas (la base corta en 1.000). */
-async function todo<T>(armar: (desde: number, hasta: number) => PromiseLike<{ data: unknown; error: unknown }>): Promise<T[]> {
-  const out: T[] = [];
-  for (let i = 0; ; i += 1000) {
-    const { data, error } = await armar(i, i + 999);
-    if (error) break;
-    const filas = (data ?? []) as T[];
-    out.push(...filas);
-    if (filas.length < 1000) break;
-  }
-  return out;
-}
-
-async function cargarDatos(admin: Admin, desde: string, hasta: string): Promise<DatosObjetivos> {
-  const [contactos, propuestas, clientes, publicaciones, tareasCerradas, reunionesMensuales] = await Promise.all([
-    todo<DatosObjetivos["contactos"][number]>((a, b) =>
-      admin
-        .from("prospecting_contacts")
-        .select("asignado_a, contactado_at, reunion_at")
-        .or(`contactado_at.gte.${desde},reunion_at.gte.${desde}`)
-        .order("id")
-        .range(a, b)
-    ),
-    todo<DatosObjetivos["propuestas"][number]>((a, b) =>
-      admin.from("proposals").select("creada_por_id, created_at").gte("created_at", desde).order("id").range(a, b)
-    ),
-    todo<DatosObjetivos["clientes"][number]>((a, b) =>
-      admin
-        .from("clients")
-        .select("id, estado, es_interno, cm_id, disenador_id, audiovisual_id, cerrado_por_id, fecha_activado")
-        .order("id")
-        .range(a, b)
-    ),
-    todo<DatosObjetivos["publicaciones"][number]>((a, b) =>
-      admin
-        .from("publications")
-        .select("cliente_id, tipo, estado, fecha_publicacion")
-        .gte("fecha_publicacion", desde)
-        .lt("fecha_publicacion", hasta)
-        .order("id")
-        .range(a, b)
-    ),
-    todo<DatosObjetivos["tareasCerradas"][number]>((a, b) =>
-      admin
-        .from("tasks")
-        .select("asignado_a_id, area, fecha_completada")
-        .in("area", ["Diseño", "Edición Audiovisual"])
-        .gte("fecha_completada", desde)
-        .order("id")
-        .range(a, b)
-    ),
-    todo<DatosObjetivos["reunionesMensuales"][number]>((a, b) =>
-      admin.from("client_meetings").select("cliente_id, fecha").gte("fecha", desde).order("id").range(a, b)
-    ),
-  ]);
-  return { contactos, propuestas, clientes, publicaciones, tareasCerradas, reunionesMensuales };
-}
 
 export default async function ObjetivosEquipoPage() {
   const me = await requireUser();
@@ -95,7 +35,7 @@ export default async function ObjetivosEquipoPage() {
       .eq("activo", true)
       .order("nombre"),
     admin.from("objetivos_persona").select("user_id, metrica, meta_semanal, meta_mensual"),
-    cargarDatos(admin, desde, hasta),
+    cargarDatosObjetivos(admin, desde, hasta),
   ]);
 
   const metas = new Map<string, { semanal: number | null; mensual: number | null }>();
@@ -121,8 +61,8 @@ export default async function ObjetivosEquipoPage() {
           ayuda: def.ayuda,
           unidad: def.unidad,
           metaManual: def.metaManual,
-          semana: def.soloMes ? null : avance(id, p.id, datos, semana, manual.semanal),
-          mes: avance(id, p.id, datos, mes, manual.mensual),
+          semana: def.soloMes || def.foto ? null : avance(id, p.id, datos, semana, manual.semanal),
+          mes: avance(id, p.id, datos, mes, manual.mensual ?? def.metaFija ?? null),
           metaSemanalGuardada: manual.semanal,
           metaMensualGuardada: manual.mensual,
         };

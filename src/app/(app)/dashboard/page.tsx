@@ -35,6 +35,7 @@ import { PrimeraSemanaMiDia } from "@/components/primera-semana";
 import { HelpTrigger } from "@/components/help-trigger";
 import { DashboardAvisos } from "@/components/dashboard-avisos";
 import { MiPuesto } from "@/components/mi-puesto";
+import { TusObjetivos } from "@/components/tus-objetivos";
 import { EfemeridesProximas } from "@/components/efemerides-proximas";
 
 export const dynamic = "force-dynamic";
@@ -568,6 +569,20 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
           <span className="font-semibold text-foreground/80 transition-transform group-hover:translate-x-0.5">Subirla →</span>
         </Link>
       )}
+
+      {/* Tus objetivos: el del mes bajado a la semana y al día, medido solo (21/10/2026). */}
+      <Suspense fallback={null}>
+        <TusObjetivos
+          persona={{
+            id: user.id,
+            nombre: user.nombre,
+            rol: user.rol,
+            rol_secundario: (user as { rol_secundario?: string | null }).rol_secundario ?? null,
+            area: user.area ?? null,
+            area_secundaria: (user as { area_secundaria?: string | null }).area_secundaria ?? null,
+          }}
+        />
+      </Suspense>
 
       {/* Coordinadores: lo de su puesto + su tarjeta de la dirección (no frena el resto). */}
       <Suspense fallback={null}>

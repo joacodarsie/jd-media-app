@@ -636,14 +636,23 @@ export async function updateContact(id: string, patch: ContactPatch) {
     if (estado === "nuevo") {
       update.contactado_at = null;
       update.reunion_at = null;
+      update.contactado_por = null;
     } else {
       const { data: prev } = await supabase
         .from("prospecting_contacts")
-        .select("contactado_at, asignado_a")
+        .select("contactado_at, asignado_a, contactado_por")
         .eq("id", id)
         .maybeSingle();
-      const p = prev as { contactado_at: string | null; asignado_a: string | null } | null;
+      const p = prev as { contactado_at: string | null; asignado_a: string | null; contactado_por?: string | null } | null;
       if (!p?.contactado_at) update.contactado_at = new Date().toISOString();
+      // La primera PERSONA que lo marca se lo lleva, con la fecha de hoy (21/10/2026):
+      // si antes lo tocó el mail automático (fecha sin persona) o estaba pre-asignado
+      // a otro, igual le cuenta a quien le escribió de verdad.
+      if (p && !p.contactado_por && patch.asignado_a === undefined) {
+        update.contactado_por = userId;
+        update.asignado_a = userId;
+        update.contactado_at = new Date().toISOString();
+      }
       // Fecha de la reunión: la sella el momento en que se agenda, para poder
       // medir el flujo por semana en el tablero (y no solo la foto de hoy).
       if (estado === "reunion") update.reunion_at = new Date().toISOString();
@@ -665,6 +674,7 @@ export async function updateContact(id: string, patch: ContactPatch) {
   // sitio_web), reintentamos sin esas columnas para no romper la edición.
   if (res.error && (res.error as { code?: string }).code === "42703") {
     delete update.contactado_at;
+    delete update.contactado_por;
     delete update.instagram;
     delete update.sitio_web;
     delete update.contactable;
@@ -722,7 +732,7 @@ export async function bulkSetContactoEstado(ids: string[], estado: string) {
   if (est === "nuevo") {
     let res = await supabase
       .from("prospecting_contacts")
-      .update({ estado: est, contactado_at: null, reunion_at: null })
+      .update({ estado: est, contactado_at: null, reunion_at: null, contactado_por: null })
       .in("id", clean);
     if (res.error && (res.error as { code?: string }).code === "42703")
       res = await supabase
@@ -749,6 +759,15 @@ export async function bulkSetContactoEstado(ids: string[], estado: string) {
       .in("id", clean)
       .is("asignado_a", null);
     if (assign.error) console.warn("bulk asignado_a:", assign.error.message);
+    // La primera PERSONA que los marca se los lleva con la fecha de hoy, aunque
+    // los haya tocado antes el mail automático o estuvieran pre-asignados (21/10/2026).
+    const humano = await supabase
+      .from("prospecting_contacts")
+      .update({ contactado_por: userId, asignado_a: userId, contactado_at: new Date().toISOString() })
+      .in("id", clean)
+      .is("contactado_por", null);
+    if (humano.error && (humano.error as { code?: string }).code !== "42703")
+      console.warn("bulk contactado_por:", humano.error.message);
     // Sellar la fecha de la reunión a los que la agendan ahora (sin pisar).
     if (est === "reunion") {
       const r = await supabase

@@ -114,6 +114,7 @@ export function ClientFormDialog({
   const [cerradoPorId, setCerradoPorId] = useState<string>(
     client?.cerrado_por_id ?? NONE
   );
+  const [cerradoConId, setCerradoConId] = useState<string>(client?.cerrado_con_id ?? NONE);
   const [contactoNombre, setContactoNombre] = useState(
     client?.contacto_nombre ?? ""
   );
@@ -230,6 +231,7 @@ export function ClientFormDialog({
       media_buyer_id: mediaBuyerId === NONE ? null : mediaBuyerId,
       coordinador_id: coordinadorId === NONE ? null : coordinadorId,
       cerrado_por_id: cerradoPorId === NONE ? null : cerradoPorId,
+      cerrado_con_id: cerradoPorId === NONE || cerradoConId === NONE || cerradoConId === cerradoPorId ? null : cerradoConId,
       responsable_id: responsableId === NONE ? null : responsableId,
       origen,
       origen_detalle: origenDetalle,
@@ -369,6 +371,29 @@ export function ClientFormDialog({
                 Solo si la cerró un comercial: de acá sale su comisión.
               </p>
             </div>
+            {cerradoPorId !== NONE && (
+              <div className="space-y-2">
+                <Label>La cerró junto con</Label>
+                <Select value={cerradoConId} onValueChange={setCerradoConId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Nadie más</SelectItem>
+                    {opciones("comercial", cerradoConId)
+                      .filter((u) => u.id !== cerradoPorId)
+                      .map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.nombre}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  Si la cerraron entre dos, cada uno cobra la mitad de la comisión.
+                </p>
+              </div>
+            )}
             {mode === "edit" && (
               <div className="space-y-2">
                 <Label>Monto mensual (ARS)</Label>

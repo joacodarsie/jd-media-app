@@ -90,6 +90,8 @@ export interface PayrollClient {
   coordinador_id: string | null;
   /** Quién cerró la venta (comercial). Dispara la comisión del primer mes. */
   cerrado_por_id: string | null;
+  /** Segundo comercial que la cerró junto con el primero: cada uno cobra la mitad (0212). */
+  cerrado_con_id?: string | null;
   /** Quién atiende la cuenta hoy: cobra la cartera todos los meses (0177). */
   responsable_id?: string | null;
   /** Fecha de inicio del cliente: su primer mes es el período de esta fecha. */

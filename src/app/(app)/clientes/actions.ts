@@ -69,6 +69,8 @@ export interface ClientInput {
   media_buyer_id: string | null;
   coordinador_id: string | null;
   cerrado_por_id: string | null;
+  /** Segundo comercial que la cerró: cada uno cobra la mitad (0212). undefined = no tocar. */
+  cerrado_con_id?: string | null;
   /** Quién atiende la cuenta hoy: cobra la cartera (0177). */
   responsable_id?: string | null;
   /** De dónde vino (0191). undefined = no tocar. */
@@ -106,6 +108,7 @@ function clean(input: ClientInput) {
     media_buyer_id: input.media_buyer_id || null,
     coordinador_id: input.coordinador_id || null,
     cerrado_por_id: input.cerrado_por_id || null,
+    ...(input.cerrado_con_id !== undefined ? { cerrado_con_id: input.cerrado_con_id || null } : {}),
     responsable_id: input.responsable_id || null,
     ...(input.origen !== undefined
       ? {

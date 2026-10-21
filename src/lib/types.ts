@@ -169,6 +169,8 @@ export interface Client {
   media_buyer_id: string | null;
   coordinador_id: string | null;
   cerrado_por_id: string | null;
+  /** Segundo comercial que la cerró: cada uno cobra la mitad (0212). */
+  cerrado_con_id?: string | null;
   /** Quién atiende la cuenta hoy: cobra la cartera todos los meses (0177). */
   responsable_id?: string | null;
   /** De dónde vino (0191): ver lib/clientes/origen. */

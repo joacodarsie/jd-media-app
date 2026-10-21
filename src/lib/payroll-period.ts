@@ -116,7 +116,7 @@ export async function buildPeriodPayroll(
     admin
       .from("clients")
       .select(
-        "id, nombre, cm_id, disenador_id, audiovisual_id, media_buyer_id, coordinador_id, cerrado_por_id, responsable_id, fecha_inicio, pausas"
+        "id, nombre, cm_id, disenador_id, audiovisual_id, media_buyer_id, coordinador_id, cerrado_por_id, cerrado_con_id, responsable_id, fecha_inicio, pausas"
       )
       .eq("estado", "activo")
       .eq("es_interno", false),
@@ -128,7 +128,7 @@ export async function buildPeriodPayroll(
       .eq("activo", true),
     admin
       .from("users")
-      .select("id, nombre, rol, rol_secundario, area, area_secundaria, alias_cbu, cbu, titular_cuenta")
+      .select("id, nombre, rol, rol_secundario, area, area_secundaria, alias_cbu, cbu, titular_cuenta, comercial_sin_fijo")
       .eq("activo", true),
     admin
       .from("payroll_items")
@@ -319,6 +319,8 @@ export async function buildPeriodPayroll(
   for (const u of users) {
     if (!isRole(u, "comercial")) continue;
     if (comercialFijo <= 0) continue;
+    // Hay comerciales solo a variable (Matías Castello, 21/10/2026): sin fijo.
+    if ((u as { comercial_sin_fijo?: boolean }).comercial_sin_fijo) continue;
     if (!autoByUser.has(u.id)) autoByUser.set(u.id, []);
     autoByUser.get(u.id)!.push({
       clienteId: null,

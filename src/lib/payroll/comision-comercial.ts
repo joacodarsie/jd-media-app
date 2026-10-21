@@ -116,17 +116,34 @@ export function selectCloserCommissions(
     if (hasManualCommission(c.id)) continue;
     const base = recurringByClient.get(c.id) ?? 0;
     if (base <= 0) continue;
-    out.push({
-      closerId: c.cerrado_por_id,
-      clienteId: c.id,
-      cliente: c.nombre,
-      base,
-      pct,
-      monto: Math.round(base * pct),
-      concepto: `Comisión cliente nuevo (${pctTxt(pct)}) · mes 1`,
-    });
+    for (const { userId, fraccion } of quienesCerraron(c)) {
+      out.push({
+        closerId: userId,
+        clienteId: c.id,
+        cliente: c.nombre,
+        base: Math.round(base * fraccion),
+        pct,
+        monto: Math.round(base * pct * fraccion),
+        concepto: `Comisión cliente nuevo (${pctTxt(pct)}) · mes 1${fraccion < 1 ? " · cierre compartido (mitad)" : ""}`,
+      });
+    }
   }
   return out;
+}
+
+/**
+ * Quiénes cerraron la cuenta y qué parte les toca (21/10/2026): si la cerraron
+ * dos comerciales (`cerrado_con_id`), mitad y mitad; si no, todo para uno.
+ */
+export function quienesCerraron(c: { cerrado_por_id: string | null; cerrado_con_id?: string | null }): { userId: string; fraccion: number }[] {
+  if (!c.cerrado_por_id) return [];
+  if (c.cerrado_con_id && c.cerrado_con_id !== c.cerrado_por_id) {
+    return [
+      { userId: c.cerrado_por_id, fraccion: 0.5 },
+      { userId: c.cerrado_con_id, fraccion: 0.5 },
+    ];
+  }
+  return [{ userId: c.cerrado_por_id, fraccion: 1 }];
 }
 
 /**
@@ -180,16 +197,17 @@ export function selectCarteraCommissions(
     // Desde octubre la cartera es COMERCIAL: la cobra quien cerró la cuenta.
     // Lo de quien la atiende pasó a ser la dirección creativa (abajo).
     if (nuevo) {
-      if (!c.cerrado_por_id) continue;
-      out.push({
-        closerId: c.cerrado_por_id,
-        clienteId: c.id,
-        cliente: c.nombre,
-        base,
-        pct,
-        monto: Math.round(base * pct),
-        concepto: `Cartera comercial (${pctTxt(pct)}) · cuenta que cerró`,
-      });
+      for (const { userId, fraccion } of quienesCerraron(c)) {
+        out.push({
+          closerId: userId,
+          clienteId: c.id,
+          cliente: c.nombre,
+          base: Math.round(base * fraccion),
+          pct,
+          monto: Math.round(base * pct * fraccion),
+          concepto: `Cartera comercial (${pctTxt(pct)}) · cuenta que cerró${fraccion < 1 ? " · compartida (mitad)" : ""}`,
+        });
+      }
       continue;
     }
 

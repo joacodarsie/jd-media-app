@@ -256,3 +256,34 @@ describe("selectUpsellCommissions — servicio extra", () => {
     expect(selectUpsellCommissions([sinFecha], [servicio({ tipo: "paid_media", vendido_por_id: "santi" })], "2026-09", rates)).toHaveLength(0);
   });
 });
+
+describe("cierre compartido entre dos comerciales (21/10/2026)", () => {
+  const rec = new Map([["c1", 400_000]]);
+  const noManual = () => false;
+
+  it("mes 1: cada uno cobra la mitad de la comisión de cierre", () => {
+    const c = cliente({ cerrado_por_id: "santi", cerrado_con_id: "mati", fecha_inicio: "2026-10-03" });
+    const out = selectCloserCommissions([c], rec, "2026-10", rates, noManual);
+    expect(out.map((l) => [l.closerId, l.monto])).toEqual([
+      ["santi", 20_000],
+      ["mati", 20_000],
+    ]);
+  });
+
+  it("desde el mes 2: la cartera también se parte a la mitad", () => {
+    const c = cliente({ cerrado_por_id: "santi", cerrado_con_id: "mati", fecha_inicio: "2026-09-03" });
+    const out = selectCarteraCommissions([c], rec, "2026-10", rates, () => true);
+    expect(out.map((l) => [l.closerId, l.monto])).toEqual([
+      ["santi", 10_000],
+      ["mati", 10_000],
+    ]);
+  });
+
+  it("si cerró uno solo (o el mismo figura dos veces) cobra el 100%", () => {
+    const solo = selectCloserCommissions([cliente({ fecha_inicio: "2026-10-03" })], rec, "2026-10", rates, noManual);
+    expect(solo).toHaveLength(1);
+    expect(solo[0].monto).toBe(40_000);
+    const mismo = selectCloserCommissions([cliente({ cerrado_con_id: "santi", fecha_inicio: "2026-10-03" })], rec, "2026-10", rates, noManual);
+    expect(mismo).toHaveLength(1);
+  });
+});

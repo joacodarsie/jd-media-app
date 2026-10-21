@@ -11,7 +11,9 @@ const RENDER = "/storage/v1/render/image/public/";
 /** La versión achicada de una URL pública del storage de Supabase; cualquier otra queda igual. */
 export function imagenChica(url: string, ancho: number): string {
   if (!url.includes(".supabase.co" + PUBLICO) || url.includes("?")) return url;
-  return `${url.replace(PUBLICO, RENDER)}?width=${ancho}&quality=72`;
+  // resize=contain: sin esto Supabase deja el alto original y RECORTA (un logo de
+  // 2000×2000 salía 240×2000: se veía solo el centro, y las grillas con zoom).
+  return `${url.replace(PUBLICO, RENDER)}?width=${ancho}&height=${ancho}&resize=contain&quality=72`;
 }
 
 /** Recorre una respuesta y achica todas las URLs del storage que encuentre. */

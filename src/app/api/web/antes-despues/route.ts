@@ -46,7 +46,7 @@ export async function OPTIONS(req: Request) {
 }
 
 export async function GET(req: Request) {
-  const casos = achicarImagenes(await cargar().catch(() => []), 360);
+  const casos = achicarImagenes(await cargar().catch(() => []), 480);
   return NextResponse.json(
     { casos },
     { headers: { ...corsHeaders(req.headers.get("origin")), "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=21600" } }

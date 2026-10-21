@@ -6,7 +6,7 @@ const LOGO = "https://vjnwswibnrttcljbmysq.supabase.co/storage/v1/object/public/
 describe("imagenChica", () => {
   it("pasa las URLs públicas del storage al endpoint que achica", () => {
     expect(imagenChica(LOGO, 240)).toBe(
-      "https://vjnwswibnrttcljbmysq.supabase.co/storage/v1/render/image/public/publish-media/logos/x.png?width=240&quality=72"
+      "https://vjnwswibnrttcljbmysq.supabase.co/storage/v1/render/image/public/publish-media/logos/x.png?width=240&height=240&resize=contain&quality=72"
     );
   });
   it("no toca otras URLs ni las que ya tienen parámetros", () => {

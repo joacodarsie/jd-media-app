@@ -31,6 +31,23 @@ import {
 
 export const dynamic = "force-dynamic";
 
+/** ¿El puesto dice lo mismo que el área? («Editor/a Audiovisual» ≈ «Edición Audiovisual»). */
+function mismoNombre(puesto: string, area: string | null): boolean {
+  if (!area) return false;
+  const raices = (s: string) =>
+    new Set(
+      s
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .split(/[^a-z]+/)
+        .filter((w) => w.length > 3)
+        .map((w) => w.slice(0, 5))
+    );
+  const a = raices(area);
+  return [...raices(puesto)].some((r) => a.has(r));
+}
+
 export default async function PersonaDetail({
   params,
 }: {
@@ -50,7 +67,7 @@ export default async function PersonaDetail({
       supabase
         .from("users")
         .select(
-          "id, nombre, email, avatar_url, area, rol, position_id, secondary_position_ids, activo, telefono, fecha_ingreso"
+          "id, nombre, email, avatar_url, area, area_secundaria, rol, position_id, secondary_position_ids, activo, telefono, fecha_ingreso"
         )
         .eq("id", params.id)
         .maybeSingle(),
@@ -127,21 +144,22 @@ export default async function PersonaDetail({
           <CaraPersona nombre={u.nombre} url={u.avatar_url} className="h-16 w-16 bg-primary/15 text-2xl font-bold text-foreground" />
           <div className="min-w-0">
             <h1 className="text-2xl font-bold">{u.nombre}</h1>
+            {/* Una sola línea con lo que hace (21/10/2026). Antes: «Sin puesto ·
+                Editor Audiovisual · Edición Audiovisual» = puesto + rol de permisos
+                + área, tres veces lo mismo. Manda el área (la del organigrama); el
+                puesto solo si dice algo distinto. El rol de permisos no va acá. */}
             <p className="text-sm text-muted-foreground">
-              {position ? (
-                <Link
-                  href={`/equipo/${position.id}`}
-                  className="font-medium hover:underline"
-                >
-                  {position.nombre}
-                </Link>
-              ) : (
-                "Sin puesto"
+              {[u.area, (u as { area_secundaria?: string | null }).area_secundaria].filter(Boolean).join(" · ") ||
+                ROLE_LABEL[u.rol as UserRole] ||
+                u.rol}
+              {position && !mismoNombre(position.nombre, u.area) && (
+                <>
+                  {" · "}
+                  <Link href={`/equipo/${position.id}`} className="font-medium hover:underline">
+                    {position.nombre}
+                  </Link>
+                </>
               )}
-              {" · "}
-              {ROLE_LABEL[u.rol as UserRole] ?? u.rol}
-              {" · "}
-              {u.area}
             </p>
           </div>
         </div>

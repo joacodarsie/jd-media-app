@@ -35,6 +35,9 @@ export async function cargarDatosObjetivos(admin: SupabaseClient, desde: string,
     pauta,
     onboarding,
     revisiones,
+    facturas,
+    pagosEquipo,
+    equipo,
   ] = await Promise.all([
     todo<DatosObjetivos["contactos"][number]>((a, b) =>
       admin
@@ -113,6 +116,21 @@ export async function cargarDatosObjetivos(admin: SupabaseClient, desde: string,
         .order("id")
         .range(a, b)
     ),
+    // Coordinación General: cobros del mes, sueldos del anterior y perfiles del equipo.
+    todo<{ periodo: string; fecha_cobro: string | null }>((a, b) =>
+      admin.from("client_invoices").select("periodo, fecha_cobro").gte("periodo", desde.slice(0, 7)).order("id").range(a, b)
+    ),
+    todo<{ periodo: string; fecha_pago: string | null }>((a, b) =>
+      admin
+        .from("team_payments")
+        .select("periodo, fecha_pago")
+        .gte("periodo", new Date(Date.parse(desde) - 40 * 86_400_000).toISOString().slice(0, 7))
+        .order("id")
+        .range(a, b)
+    ),
+    todo<{ avatar_url: string | null; alias_cbu: string | null; cbu: string | null; dni_cuit: string | null; email: string | null }>((a, b) =>
+      admin.from("users").select("avatar_url, alias_cbu, cbu, dni_cuit, email").eq("activo", true).order("id").range(a, b)
+    ),
   ]);
   return {
     contactos,
@@ -128,5 +146,10 @@ export async function cargarDatosObjetivos(admin: SupabaseClient, desde: string,
     conPauta: [...new Set(pauta.map((x) => x.cliente_id))],
     pautaLista: [...new Set(onboarding.map((x) => x.cliente_id))],
     revisadas: [...new Set(revisiones.map((x) => x.task_id))],
+    facturas,
+    pagosEquipo,
+    perfiles: equipo
+      .filter((u) => !(u.email ?? "").startsWith("agenciajdmedia"))
+      .map((u) => !!u.avatar_url && !!(u.alias_cbu || u.cbu) && !!u.dni_cuit),
   };
 }

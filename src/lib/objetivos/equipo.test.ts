@@ -190,3 +190,28 @@ describe("objetivos de coordinación y dirección (21/10/2026)", () => {
     expect(semaforoObjetivo({ valor: 20, meta: 100, proyeccion: 95 }, false, mes)).toBe("bien");
   });
 });
+
+describe("Coordinación General (Leo)", () => {
+  const mes = mesDe("2026-10-21");
+  it("cobros marcados hasta el 5 y sueldos del mes anterior pagados hasta el 7", () => {
+    const d = {
+      ...base,
+      facturas: [
+        { periodo: "2026-10", fecha_cobro: "2026-10-03" },
+        { periodo: "2026-10", fecha_cobro: "2026-10-12" },
+        { periodo: "2026-10", fecha_cobro: null },
+        { periodo: "2026-09", fecha_cobro: "2026-09-02" },
+      ],
+      pagosEquipo: [
+        { periodo: "2026-09", fecha_pago: "2026-10-07" },
+        { periodo: "2026-09", fecha_pago: null },
+        { periodo: "2026-10", fecha_pago: null },
+      ],
+      perfiles: [true, false, true],
+    };
+    expect(avance("cobros_a_tiempo", "leo", d, mes, null)).toMatchObject({ valor: 1, meta: 3 });
+    expect(avance("sueldos_a_tiempo", "leo", d, mes, null)).toMatchObject({ valor: 1, meta: 2 });
+    expect(avance("perfiles_completos", "leo", d, mes, null)).toMatchObject({ valor: 2, meta: 3 });
+    expect(metricasDe({ id: "leo", nombre: "Leo", rol: "admin", area: "Coordinación General" })).toEqual(["cobros_a_tiempo", "sueldos_a_tiempo", "perfiles_completos"]);
+  });
+});

@@ -34,7 +34,11 @@ export type MetricaId =
   | "cuentas_medidas"
   | "onboarding_pauta"
   | "cuentas_activas"
-  | "bajas";
+  | "bajas"
+  // Coordinación General (Leo, 21/10/2026).
+  | "cobros_a_tiempo"
+  | "sueldos_a_tiempo"
+  | "perfiles_completos";
 
 export interface MetricaDef {
   id: MetricaId;
@@ -220,6 +224,30 @@ export const METRICAS: Record<MetricaId, MetricaDef> = {
     menosEsMejor: true,
     metaFija: 0,
   },
+  cobros_a_tiempo: {
+    id: "cobros_a_tiempo",
+    label: "Cobros marcados al día 5",
+    ayuda: "Facturas del mes cobradas y marcadas en la plataforma hasta el día 5.",
+    unidad: "n",
+    metaManual: false,
+    soloMes: true,
+  },
+  sueldos_a_tiempo: {
+    id: "sueldos_a_tiempo",
+    label: "Sueldos pagados el 7",
+    ayuda: "Pagos al equipo del mes anterior marcados como pagados hasta el día 7.",
+    unidad: "n",
+    metaManual: false,
+    soloMes: true,
+  },
+  perfiles_completos: {
+    id: "perfiles_completos",
+    label: "Equipo con el perfil completo",
+    ayuda: "Personas activas con foto, alias o CBU y DNI o CUIT cargados en Mi perfil.",
+    unidad: "n",
+    metaManual: false,
+    foto: true,
+  },
 };
 
 export interface PersonaObj {
@@ -242,6 +270,7 @@ export function metricasDe(p: PersonaObj): MetricaId[] {
   if (areas.includes("Coordinación de Diseño")) out.push("calendario_aprobado", "aprobacion_creativa", "reuniones_mis_cuentas", "satisfaccion");
   if (areas.includes("Coordinación")) out.push("reuniones_mensuales", "tareas_a_tiempo", "cambios_de_fecha", "piezas_al_dia");
   if (areas.includes("Coordinación de Paid Media")) out.push("pauta_activa", "onboarding_pauta", "cuentas_medidas");
+  if (areas.includes("Coordinación General")) out.push("cobros_a_tiempo", "sueldos_a_tiempo", "perfiles_completos");
   if (areas.includes("Estrategia/Dirección")) out.push("cuentas_activas", "bajas", "satisfaccion", "tareas_a_tiempo");
   if (roles.includes("community_manager")) out.push("piezas_publicadas");
   if (roles.includes("diseno")) out.push("piezas_diseno");
@@ -348,6 +377,12 @@ export interface DatosObjetivos {
   pautaLista?: string[];
   /** Tareas que pasaron por «en revisión» (la aprobación de la dirección creativa). */
   revisadas?: string[];
+  /** Facturas a clientes (para los cobros al día 5). */
+  facturas?: { periodo: string; fecha_cobro: string | null }[];
+  /** Pagos al equipo (para los sueldos del 7). */
+  pagosEquipo?: { periodo: string; fecha_pago: string | null }[];
+  /** Si cada persona activa tiene foto, alias y CUIT. */
+  perfiles?: boolean[];
 }
 
 export interface Avance {
@@ -465,6 +500,23 @@ function contarMeta(
       const medidas = new Set(d.medidas ?? []);
       return { valor: activos.filter((c) => medidas.has(c.id)).length, metaAuto: activos.length };
     }
+    case "cobros_a_tiempo": {
+      // El mes del período: lo que se facturó ese mes y se cobró hasta el 5.
+      const mesP = p.desde.slice(0, 7);
+      const del = (d.facturas ?? []).filter((x) => x.periodo === mesP);
+      const limite = `${mesP}-05`;
+      return { valor: del.filter((x) => x.fecha_cobro && x.fecha_cobro.slice(0, 10) <= limite).length, metaAuto: del.length };
+    }
+    case "sueldos_a_tiempo": {
+      // El 7 de este mes se paga el mes anterior.
+      const [y, mm] = p.desde.slice(0, 7).split("-").map(Number);
+      const anterior = mm === 1 ? `${y - 1}-12` : `${y}-${String(mm - 1).padStart(2, "0")}`;
+      const del = (d.pagosEquipo ?? []).filter((x) => x.periodo === anterior);
+      const limite = `${p.desde.slice(0, 7)}-07`;
+      return { valor: del.filter((x) => x.fecha_pago && x.fecha_pago.slice(0, 10) <= limite).length, metaAuto: del.length };
+    }
+    case "perfiles_completos":
+      return { valor: (d.perfiles ?? []).filter(Boolean).length, metaAuto: (d.perfiles ?? []).length };
     case "cuentas_activas":
       return { valor: activos.length, metaAuto: 18 };
     case "bajas":

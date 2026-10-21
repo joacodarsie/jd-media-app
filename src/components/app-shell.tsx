@@ -39,6 +39,7 @@ import {
   Compass,
   Menu,
   LogOut,
+  UserRound,
   ChevronDown,
   type LucideIcon,
 } from "lucide-react";
@@ -455,7 +456,13 @@ export function AppShell({
           <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 rounded-full pl-1 outline-none">
+              <button className="relative flex items-center gap-2 rounded-full pl-1 outline-none" aria-label="Mi perfil">
+                {!user.avatar_url && (
+                  <span
+                    className="absolute -right-0.5 -top-0.5 z-10 h-2.5 w-2.5 rounded-full bg-[#FFD400] ring-2 ring-background"
+                    title="Te falta subir tu foto en Mi perfil"
+                  />
+                )}
                 <Avatar className="h-8 w-8">
                   {user.avatar_url && (
                     <AvatarImage src={user.avatar_url} alt={user.nombre} />
@@ -473,6 +480,14 @@ export function AppShell({
                   {user.email}
                 </div>
               </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {/* Antes no había forma de llegar a Mi perfil sin saber la dirección (21/10/2026). */}
+              <DropdownMenuItem asChild className="cursor-pointer">
+                <Link href="/mi-perfil">
+                  <UserRound className="mr-2 h-4 w-4" />
+                  Mi perfil y mis datos
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <form action="/auth/signout" method="post">
                 <button type="submit" className="w-full">

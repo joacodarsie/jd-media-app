@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath, revalidateTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 
@@ -70,6 +71,7 @@ export async function guardarMiFoto(url: string | null) {
   revalidatePath("/dashboard");
   // La web muestra la foto de la plataforma: se actualiza al toque (21/10/2026).
   revalidateTag("web-equipo");
+  revalidateTag(CACHE_TAGS.users);
   return { ok: true as const };
 }
 

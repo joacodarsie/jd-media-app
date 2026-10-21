@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-10-21 — Procesos paso a paso y «Cómo trabajamos»
+
+- 🗓️ **«Cómo trabajamos»** (en Procesos): las fechas de todo el equipo en una sola página. El camino de cada quincena, el mes de cada rol día por día, los 15 días de una cuenta nueva y las fechas de la plata.
+- 🧩 **16 procesos dibujados en pasos**: cada paso con su ícono, quién lo hace y un botón a la pantalla donde se hace. Desde «Tu primer día en la plataforma» hasta armar el calendario, aprobar, producir, publicar, prospectar, cobros y sueldos.
+- 🧭 **Cada rol muestra sus procesos** y, en «Con quién trabaja», las caras de quienes están en cada lado.
+
 ## 2026-10-20 — Project Manager y accesos red por red
 
 - 🚀 **«Cuentas nuevas» ahora es «Project Manager».** Una tarjeta por cuenta nueva con gestión de redes, la que tiene algo para hacer hoy arriba:

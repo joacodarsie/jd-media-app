@@ -4,6 +4,9 @@ import { Markdown } from "@/components/markdown";
 import { CaraPersona } from "@/components/cara-persona";
 import { NOMBRE_ROL, ROLES, type Rol } from "@/lib/equipo/roles";
 import { METRICAS, metricasDe } from "@/lib/objetivos/equipo";
+import { procesosDe } from "@/lib/procesos/procesos";
+import { getActiveUsers } from "@/lib/cache";
+import { ProcesoCard } from "@/components/proceso-vista";
 import { cn } from "@/lib/utils";
 
 /**
@@ -14,7 +17,7 @@ import { cn } from "@/lib/utils";
  */
 
 /** Clases escritas enteras para que Tailwind las genere. */
-const TONO: Record<Rol["tono"], { suave: string; texto: string; fuerte: string; borde: string }> = {
+export const TONO: Record<Rol["tono"], { suave: string; texto: string; fuerte: string; borde: string }> = {
   amber: { suave: "bg-amber-500/15", texto: "text-amber-700 dark:text-amber-300", fuerte: "bg-amber-500", borde: "ring-amber-500/40" },
   sky: { suave: "bg-sky-500/15", texto: "text-sky-700 dark:text-sky-300", fuerte: "bg-sky-500", borde: "ring-sky-500/40" },
   violet: { suave: "bg-violet-500/15", texto: "text-violet-700 dark:text-violet-300", fuerte: "bg-violet-500", borde: "ring-violet-500/40" },
@@ -50,7 +53,7 @@ export function rangos(dias: number[]): string {
     .join(" · ");
 }
 
-export function RolVista({
+export async function RolVista({
   rol,
   puesto,
   gente,
@@ -68,6 +71,9 @@ export function RolVista({
   const t = TONO[rol.tono];
   const nombre = NOMBRE_ROL[rol.area] ?? puesto?.nombre ?? rol.area;
   const metricas = metricasDe({ id: "x", nombre: "x", rol: "", area: rol.area });
+  const procesos = procesosDe(rol.area);
+  const equipo = (await getActiveUsers().catch(() => [])) as { id: string; nombre: string; avatar_url: string | null; area: string | null; area_secundaria: string | null }[];
+  const genteDe = (area: string) => equipo.filter((u) => u.area === area || u.area_secundaria === area);
   const deDia = new Map<number, string>();
   for (const h of rol.ciclo) for (const d of h.dias) if (!deDia.has(d)) deDia.set(d, h.que);
 
@@ -118,9 +124,9 @@ export function RolVista({
       {rol.ciclo.length > 0 && (
         <section className="rounded-2xl border bg-card p-4 md:p-5">
           <h3 className="text-sm font-semibold">Su mes, día por día</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Todo se trabaja por quincenas con dos semanas de ventaja. Se publica desde el 1 y desde el 16.
-          </p>
+          <Link href="/procesos/como-trabajamos" className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+            🗓️ Cómo funcionan las quincenas <ArrowRight className="h-3 w-3" />
+          </Link>
           <div className="mt-3 space-y-1.5">
             {[
               [1, 15],
@@ -165,7 +171,7 @@ export function RolVista({
       <section className="rounded-2xl border bg-card p-4 md:p-5">
         <h3 className="text-sm font-semibold">Con quién trabaja</h3>
         <div className="mt-3 grid items-center gap-3 md:grid-cols-[1fr_auto_1fr]">
-          <Vinculos titulo="Recibe de" lista={rol.recibeDe} />
+          <Vinculos titulo="Recibe de" lista={rol.recibeDe} genteDe={genteDe} />
           <div className="flex items-center justify-center gap-2 md:flex-col">
             <ArrowRight className="h-4 w-4 rotate-90 text-muted-foreground md:rotate-0" />
             <div className={cn("flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold ring-1", t.suave, t.borde)}>
@@ -173,9 +179,26 @@ export function RolVista({
             </div>
             <ArrowRight className="h-4 w-4 rotate-90 text-muted-foreground md:rotate-0" />
           </div>
-          <Vinculos titulo="Entrega a" lista={rol.entregaA} />
+          <Vinculos titulo="Entrega a" lista={rol.entregaA} genteDe={genteDe} />
         </div>
       </section>
+
+      {/* Sus procesos */}
+      {procesos.length > 0 && (
+        <section className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">🧩 Sus procesos, paso a paso</h3>
+            <Link href={`/procesos?rol=${encodeURIComponent(rol.area)}`} className="text-xs font-medium text-muted-foreground hover:text-foreground">
+              Ver todos →
+            </Link>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {procesos.slice(0, compacto ? 3 : 6).map((p) => (
+              <ProcesoCard key={p.slug} proceso={p} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Arranque */}
@@ -260,7 +283,7 @@ export function RolVista({
 
       {/* Manual paso a paso */}
       {puesto?.procesos && (
-        <details className="group rounded-2xl border bg-card p-4 md:p-5" open={!compacto}>
+        <details className="group rounded-2xl border bg-card p-4 md:p-5">
           <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold">
             El manual paso a paso
             <span className="text-xs font-normal text-muted-foreground group-open:hidden">Abrir</span>
@@ -290,12 +313,21 @@ export function RolVista({
   );
 }
 
-function Vinculos({ titulo, lista }: { titulo: string; lista: { area: string; que: string }[] }) {
+function Vinculos({
+  titulo,
+  lista,
+  genteDe,
+}: {
+  titulo: string;
+  lista: { area: string; que: string }[];
+  genteDe: (area: string) => { id: string; nombre: string; avatar_url: string | null }[];
+}) {
   return (
     <div className="space-y-1.5">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{titulo}</p>
       {lista.map((v) => {
         const otro = ROLES.find((r) => r.area === v.area);
+        const gente = genteDe(v.area);
         return (
           <div key={v.area + v.que} className="flex items-start gap-2 rounded-lg bg-muted/40 px-3 py-2 text-sm">
             <span aria-hidden="true">{otro?.emoji ?? "🌐"}</span>
@@ -303,6 +335,15 @@ function Vinculos({ titulo, lista }: { titulo: string; lista: { area: string; qu
               <b className="block leading-tight">{NOMBRE_ROL[v.area] ?? v.area}</b>
               <span className="text-xs text-muted-foreground">{v.que}</span>
             </span>
+            {gente.length > 0 && (
+              <span className="ml-auto flex shrink-0 -space-x-1.5 self-center">
+                {gente.slice(0, 3).map((g) => (
+                  <span key={g.id} title={g.nombre} className="rounded-full ring-2 ring-card">
+                    <CaraPersona nombre={g.nombre} url={g.avatar_url} className="h-6 w-6 text-[9px]" />
+                  </span>
+                ))}
+              </span>
+            )}
           </div>
         );
       })}

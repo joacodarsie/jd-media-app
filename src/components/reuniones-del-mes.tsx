@@ -75,23 +75,27 @@ export async function ReunionesDelMes({ userId, todas }: { userId: string; todas
         {filas
           .filter((f) => f.estado !== "hecha")
           .map((f) => (
-            <li key={f.ticketId} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-2">
-              <span className="text-lg" aria-hidden="true">{ICONO[f.estado]}</span>
-              <span className="min-w-0 flex-1">
-                <Link href={`/clientes/${f.clienteId}`} className="block truncate text-sm font-medium hover:underline">
-                  {f.cuenta}
-                </Link>
-                <span className="block text-[11px] text-muted-foreground">
-                  {f.ultima ? `Última: ${f.ultima.slice(8, 10)}/${f.ultima.slice(5, 7)}` : "Nunca tuvo reunión"}
-                  {todas && f.responsable ? ` · ${f.responsable.split(" ")[0]}` : ""}
+            <li key={f.ticketId} className="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-center sm:gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <span className="text-lg" aria-hidden="true">{ICONO[f.estado]}</span>
+                <span className="min-w-0">
+                  <Link href={`/clientes/${f.clienteId}`} className="block truncate text-sm font-medium hover:underline">
+                    {f.cuenta}
+                  </Link>
+                  <span className="block text-[11px] text-muted-foreground">
+                    {f.ultima ? `Última: ${f.ultima.slice(8, 10)}/${f.ultima.slice(5, 7)}` : "Nunca tuvo reunión"}
+                    {todas && f.responsable ? ` · ${f.responsable.split(" ")[0]}` : ""}
+                  </span>
                 </span>
-              </span>
-              <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", TONO[f.estado])}>
-                {f.estado === "agendada" && f.agendada ? f.agendada : ESTADO_REUNION[f.estado].label}
-              </span>
-              {f.estado !== "agendada" && (
-                <InvitarReunionBoton clienteId={f.clienteId} ticketId={f.ticketId} yaInvitada={f.estado === "invitada"} />
-              )}
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5 pl-9 sm:justify-end sm:pl-0">
+                <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", TONO[f.estado])}>
+                  {f.estado === "agendada" && f.agendada ? f.agendada : ESTADO_REUNION[f.estado].label}
+                </span>
+                {f.estado !== "agendada" && (
+                  <InvitarReunionBoton clienteId={f.clienteId} ticketId={f.ticketId} yaInvitada={f.estado === "invitada"} />
+                )}
+              </div>
             </li>
           ))}
       </ul>

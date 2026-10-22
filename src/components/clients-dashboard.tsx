@@ -414,6 +414,7 @@ function ClientCard({
   /** "entró el 1 jun 2026" / "se fue el …", según el orden elegido. */
   fecha?: string | null;
 }) {
+  const [abierta, setAbierta] = useState(false);
   const activas = tasks.filter((t) => t.estado !== "completada");
   const vencidas = activas.filter(
     (t) => dueState(t.fecha_limite, t.estado) === "vencida"
@@ -428,6 +429,7 @@ function ClientCard({
 
   return (
     <details
+      onToggle={(e) => setAbierta((e.currentTarget as HTMLDetailsElement).open)}
       data-expande-fila
       className={cn(
         "group bg-card transition-colors hover:bg-muted/30 animate-in fade-in duration-300",
@@ -547,20 +549,27 @@ function ClientCard({
           <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
         </div>
       </summary>
-      <div className="border-t p-4">
-        {tasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Todo al día con esta cuenta ✓</p>
-        ) : (
-          <TaskList tasks={tasks} />
-        )}
-      </div>
+      {/* Las tareas se arman recién al abrir: cerradas sumaban ~10.000 elementos a la página (22/10/2026). */}
+      {abierta && (
+        <div className="border-t p-4">
+          {tasks.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Todo al día con esta cuenta ✓</p>
+          ) : (
+            <TaskList tasks={tasks} />
+          )}
+        </div>
+      )}
     </details>
   );
 }
 
 function Group({ title, tasks }: { title: string; tasks: TaskWithRels[] }) {
+  const [abierta, setAbierta] = useState(false);
   return (
-    <details className="group overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50">
+    <details
+      onToggle={(e) => setAbierta((e.currentTarget as HTMLDetailsElement).open)}
+      className="group overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50"
+    >
       <summary className="flex cursor-pointer list-none items-center justify-between p-4">
         <span className="font-semibold">{title}</span>
         <span className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -568,9 +577,11 @@ function Group({ title, tasks }: { title: string; tasks: TaskWithRels[] }) {
           <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
         </span>
       </summary>
-      <div className="border-t p-4">
-        <TaskList tasks={tasks} />
-      </div>
+      {abierta && (
+        <div className="border-t p-4">
+          <TaskList tasks={tasks} />
+        </div>
+      )}
     </details>
   );
 }

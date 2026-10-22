@@ -888,7 +888,7 @@ export function PublicationsMonth({
       ) : mode === "kanban" ? (
         // Modo kanban — una columna por ETAPA, drag & drop entre columnas
         <div className="flex gap-3 overflow-x-auto pb-2">
-          {ETAPAS.map((s) => {
+          {ETAPAS.map((s, iEtapa) => {
             const arr = byEtapa[s];
             const dropHover = hoverKey === "k_" + s && draggingId;
             return (
@@ -910,7 +910,7 @@ export function PublicationsMonth({
                   if (id) moveToEtapa(id, s);
                 }}
                 className={cn(
-                  "flex w-72 shrink-0 flex-col rounded-2xl bg-card shadow-sm ring-1 ring-border/50 transition-all duration-200",
+                  "relative flex w-72 shrink-0 flex-col rounded-2xl bg-card shadow-sm ring-1 ring-border/50 transition-all duration-200",
                   dropHover && "scale-[1.02] bg-primary/5 shadow-lg ring-2 ring-primary"
                 )}
               >
@@ -920,10 +920,19 @@ export function PublicationsMonth({
                       className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-foreground"
                       style={{ backgroundColor: ETAPA_HEX[s] + "33" }}
                     >
-                      {ETAPA_LABEL[s]}
+                      <span aria-hidden="true">{ETAPA_EMOJI[s]}</span> {ETAPA_LABEL[s]}
                     </span>
                     <span className="text-xs text-muted-foreground">{arr.length}</span>
                   </div>
+                  {/* La flecha a la etapa que sigue: el kanban se lee como un camino (22/10/2026). */}
+                  {iEtapa < ETAPAS.length - 1 && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute -right-[13px] top-3 z-10 flex h-[14px] w-[14px] items-center justify-center rounded-full bg-background text-[10px] leading-none text-muted-foreground ring-1 ring-border"
+                    >
+                      ›
+                    </span>
+                  )}
                   <p className="mt-0.5 text-[10px] text-muted-foreground">{ETAPA_AYUDA[s]}</p>
                 </div>
                 <div className="jd-cascada flex-1 space-y-1.5 overflow-y-auto p-2">
@@ -1015,6 +1024,15 @@ export function PublicationsMonth({
     </div>
   );
 }
+
+/** Un ícono por etapa, para leer el kanban de un vistazo. */
+const ETAPA_EMOJI: Record<(typeof ETAPAS)[number], string> = {
+  idea: "💡",
+  produciendo: "🎨",
+  para_aprobar: "👀",
+  programada: "⏰",
+  publicado: "📣",
+};
 
 function PubKanbanCard({
   pub,

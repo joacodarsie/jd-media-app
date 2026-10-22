@@ -2,6 +2,13 @@
 title: Novedades
 ---
 
+## 2026-10-22 — Seguimientos, más rápido y dibujitos
+
+- 🔁 **Seguimientos como objetivo aparte.** En «Conseguir clientes», los que no contestaron hace 3 días tienen el botón **💬 Mandar** con el seguimiento ya escrito. Cada uno suma a tu objetivo **Seguimientos**, separado de los contactos nuevos.
+- ⚡ **Más rápido.** Las fotos del equipo se cargan achicadas (Dirección bajaba 5,9 MB) y Clientes arma las tareas de cada cuenta recién al abrirla. Mi día ya no salta mientras carga.
+- 🎨 **Dibujitos.** Las pantallas vacías tienen ilustraciones animadas, y el kanban de Contenidos se lee como un camino: 💡 Idea › 🎨 Produciendo › 👀 Para aprobar › ⏰ Programada › 📣 Publicado.
+- 🗂️ **Ideas viejas a «Sin fecha».** Las ideas que nunca se produjeron y pasaron hace 2 semanas vuelven solas a la bandeja «Sin fecha asignada», con una nota de para cuándo eran.
+
 ## 2026-10-22 — Invitá a cada cliente a su reunión de cierre
 
 - 🤝 **En Mi día, «Reuniones de cierre del mes».** Cada cuenta con su reunión pendiente y en qué está: ✉️ sin invitar · ⏳ invitada · 📅 agendada · ✅ hecha.

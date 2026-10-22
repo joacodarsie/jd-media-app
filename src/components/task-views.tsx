@@ -1,5 +1,6 @@
 "use client";
 
+import { Ilustracion, type Escena } from "@/components/ilustracion";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -878,7 +879,7 @@ function BulkActionsBar({
 function EmptyState({ filter }: { filter: QuickFilter }) {
   const content: Record<
     QuickFilter,
-    { title: string; description: string; emoji: string }
+    { title: string; description: string; emoji: string; escena?: Escena }
   > = {
     mias: {
       title: "No tenés tareas asignadas",
@@ -890,11 +891,13 @@ function EmptyState({ filter }: { filter: QuickFilter }) {
       title: "Sin tareas vencidas",
       description: "Perfecto, vas al día. Seguí así.",
       emoji: "🎉",
+      escena: "listo",
     },
     vencidas_equipo: {
       title: "El equipo está al día",
       description: "Ninguna tarea vencida en toda la agencia.",
       emoji: "🎉",
+      escena: "equipo",
     },
     sin_fecha: {
       title: "Todas las tareas tienen fecha",
@@ -906,6 +909,7 @@ function EmptyState({ filter }: { filter: QuickFilter }) {
       title: "Nada vence hoy",
       description: "Aprovechá para adelantar pendientes de la semana.",
       emoji: "☀️",
+      escena: "calendario",
     },
     semana: {
       title: "Sin tareas para esta semana",
@@ -921,7 +925,7 @@ function EmptyState({ filter }: { filter: QuickFilter }) {
   const c = content[filter];
   return (
     <div className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-muted/30 px-6 py-12 text-center animate-in fade-in zoom-in-95 duration-300">
-      <div className="jd-flota text-4xl">{c.emoji}</div>
+      {c.escena ? <Ilustracion escena={c.escena} /> : <div className="jd-flota text-4xl">{c.emoji}</div>}
       <h3 className="text-sm font-semibold tracking-tight">{c.title}</h3>
       <p className="max-w-sm text-xs text-muted-foreground">{c.description}</p>
     </div>

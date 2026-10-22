@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Ilustracion, type Escena } from "@/components/ilustracion";
 
 /**
  * Estado vacío con CTA. Para usar cuando una lista no tiene resultados.
@@ -8,12 +9,15 @@ import { cn } from "@/lib/utils";
  */
 export function EmptyState({
   icon: Icon,
+  escena,
   title,
   description,
   action,
   className,
 }: {
   icon?: LucideIcon;
+  /** Un dibujito en lugar del ícono (components/ilustracion). */
+  escena?: Escena;
   title: string;
   description?: string;
   action?:
@@ -28,7 +32,7 @@ export function EmptyState({
         className
       )}
     >
-      {Icon && (
+      {escena ? <Ilustracion escena={escena} /> : Icon && (
         <div className="jd-flota flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 text-primary">
           <Icon className="h-5 w-5" />
         </div>

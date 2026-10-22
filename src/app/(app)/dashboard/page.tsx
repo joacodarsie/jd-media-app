@@ -35,6 +35,7 @@ import { PrimeraSemanaMiDia } from "@/components/primera-semana";
 import { HelpTrigger } from "@/components/help-trigger";
 import { DashboardAvisos } from "@/components/dashboard-avisos";
 import { MiPuesto } from "@/components/mi-puesto";
+import { Ilustracion, type Escena } from "@/components/ilustracion";
 import { ReunionesDelMes } from "@/components/reuniones-del-mes";
 import { TusObjetivos } from "@/components/tus-objetivos";
 import { EfemeridesProximas } from "@/components/efemerides-proximas";
@@ -622,6 +623,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
               {venceHoy.length === 0 && vencidas.length === 0 ? (
                 <EmptyMini
                   icon={Sparkles}
+                  escena="listo"
                   text={hechasHoy > 0 ? "Cerraste todo lo de hoy. ¡Bien ahí!" : "Nada urgente para hoy: buen momento para adelantar la semana."}
                 />
               ) : (
@@ -645,7 +647,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                     text="Conectá tu Calendar desde Mi perfil o agendá una reunión interna desde Agenda."
                   />
                 ) : (
-                  <EmptyMini icon={CalendarClock} text="Día libre de reuniones." />
+                  <EmptyMini icon={CalendarClock} escena="calendario" text="Día libre de reuniones." />
                 )
               ) : (
                 <div className="space-y-2">
@@ -734,7 +736,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
               }
             >
               {venceEstaSemana.length === 0 && restoActivas.length === 0 ? (
-                <EmptyMini icon={Sparkles} text="No tenés tareas próximas." />
+                <EmptyMini icon={Sparkles} escena="listo" text="No tenés tareas próximas." />
               ) : (
                 <TaskList
                   tasks={[...venceEstaSemana, ...restoActivas].slice(0, 8)}
@@ -889,11 +891,21 @@ function SubBlock({
 
 function EmptyMini({
   icon: Icon,
+  escena,
   text,
 }: {
   icon: typeof Sparkles;
+  escena?: Escena;
   text: string;
 }) {
+  if (escena) {
+    return (
+      <div className="flex items-center gap-3 rounded-xl bg-muted/40 p-3 text-sm text-muted-foreground">
+        <Ilustracion escena={escena} className="h-12 w-14 shrink-0" />
+        {text}
+      </div>
+    );
+  }
   return (
     <div className="flex items-center gap-3 rounded-xl bg-muted/40 p-3 text-sm text-muted-foreground">
       <span className="jd-flota flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">

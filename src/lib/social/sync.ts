@@ -37,25 +37,28 @@ export async function syncClientInstagram(
   const r = await fetchIgResults(igUserId);
   const fecha = hoyYmd();
 
-  await admin.from("ig_snapshots").upsert(
-    {
-      cliente_id: clienteId,
-      fecha,
-      followers: r.profile.followers,
-      follows: r.profile.follows,
-      media_count: r.profile.media_count,
-      reach: r.day.reach,
-      profile_views: r.day.profile_views,
-      interactions: r.day.interactions,
-      detalle: {
-        month: r.month,
-        top_media: r.topMedia,
-        media: r.monthMedia,
-        profile: r.profile,
-      },
-    },
-    { onConflict: "cliente_id,fecha" }
+  const numeros = {
+    cliente_id: clienteId,
+    fecha,
+    followers: r.profile.followers,
+    follows: r.profile.follows,
+    media_count: r.profile.media_count,
+    reach: r.day.reach,
+    profile_views: r.day.profile_views,
+    interactions: r.day.interactions,
+  };
+  // El detalle trae los textos de las publicaciones. Un carácter nulo (\u0000)
+  // en un copy hace que Postgres rechace el JSON entero, y como no se revisaba
+  // el error, el botón decía «Actualizado» sin guardar nada (Amelia, 22/10/2026).
+  const detalle = JSON.parse(
+    JSON.stringify({ month: r.month, top_media: r.topMedia, media: r.monthMedia, profile: r.profile }).replace(/\\u0000/g, "")
   );
+  const { error: conDetalle } = await admin.from("ig_snapshots").upsert({ ...numeros, detalle }, { onConflict: "cliente_id,fecha" });
+  if (conDetalle) {
+    // Sin el detalle, al menos quedan los números del día.
+    const { error: soloNumeros } = await admin.from("ig_snapshots").upsert(numeros, { onConflict: "cliente_id,fecha" });
+    if (soloNumeros) return { error: `No se pudo guardar el resultado: ${soloNumeros.message}` };
+  }
 
   // Si el @usuario cambió o no estaba guardado, lo cacheamos en la ficha.
   const cachedUser = (client as { ig_username?: string | null }).ig_username ?? null;

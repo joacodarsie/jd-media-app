@@ -184,6 +184,23 @@ describe("objetivos de coordinación y dirección (21/10/2026)", () => {
     expect(leads.hoy?.valor).toBe(1);
   });
 
+  it("los seguimientos se cuentan aparte de los contactos nuevos, por quien los mandó", () => {
+    const d = {
+      ...base,
+      contactos: [{ asignado_a: "mati", contactado_at: "2026-10-21T15:00:00Z", reunion_at: null }],
+      seguimientos: [
+        { user_id: "mati", created_at: "2026-10-21T16:00:00Z" },
+        { user_id: "mati", created_at: "2026-10-22T16:00:00Z" },
+        { user_id: "santi", created_at: "2026-10-21T16:00:00Z" },
+      ],
+    };
+    const filas = objetivosDePersona({ id: "mati", nombre: "Mati", rol: "comercial", area: "Comercial" }, d, new Map(), "2026-10-22");
+    expect(filas.find((f) => f.id === "seguimientos")?.mes.valor).toBe(2);
+    expect(filas.find((f) => f.id === "leads_contactados")?.mes.valor).toBe(1);
+    // Sin la tabla (0215) no rompe: da 0.
+    expect(avance("seguimientos", "mati", { ...base }, mes, null).valor).toBe(0);
+  });
+
   it("semáforo: con «menos es mejor» la meta es un techo", () => {
     expect(semaforoObjetivo({ valor: 10, meta: 60, proyeccion: null }, true, mes)).toBe("bien");
     expect(semaforoObjetivo({ valor: 70, meta: 60, proyeccion: null }, true, mes)).toBe("mal");

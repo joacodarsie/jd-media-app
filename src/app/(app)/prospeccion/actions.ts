@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdmin } from "@/lib/supabase/admin";
 import { requireUser, userInRoles } from "@/lib/auth";
 import { friendlyAiError } from "@/lib/ai/errors";
 import {
@@ -718,6 +719,8 @@ export async function marcarSeguimiento(id: string) {
     .update({ seguimientos, seguimiento_at, ...(p.asignado_a ? {} : { asignado_a: userId }) })
     .eq("id", id);
   if (upErr) return { error: upErr.message };
+  // Cada seguimiento queda con quién lo mandó: es un objetivo aparte de los contactos nuevos (0215).
+  await createAdmin().from("prospecting_followups").insert({ contact_id: id, user_id: userId, numero: seguimientos });
   revalidatePath(`/prospeccion/${p.campaign_id}/contactos`);
   return { ok: true as const, seguimientos, seguimiento_at };
 }

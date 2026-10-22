@@ -32,7 +32,7 @@ import {
   personalizarMensaje,
 } from "@/lib/prospecting/shared";
 import { tieneWhatsapp, type ContactoFrio } from "@/lib/captacion/cola-fria";
-import { updateContact, bulkSetContactoEstado } from "@/app/(app)/prospeccion/actions";
+import { updateContact, bulkSetContactoEstado, marcarSeguimiento } from "@/app/(app)/prospeccion/actions";
 import { AgendarReunionDialog } from "@/components/agendar-reunion-dialog";
 
 /** Los escritos sin despachar sobreviven a un refresh o a cerrar la pestaña. */
@@ -71,6 +71,7 @@ export type MensajesPorCampana = Record<string, { texto: string; label: string }
 export function ColaFriaDespacho({
   cola,
   seguimientos,
+  seguimientosTexto = {},
   mensajes,
   hechosHoy,
   faltanHoy,
@@ -79,7 +80,9 @@ export function ColaFriaDespacho({
   conWhatsapp,
 }: {
   cola: ContactoFrio[];
-  seguimientos: ContactoFrio[];
+  seguimientos: (ContactoFrio & { toca?: 1 | 2 })[];
+  /** Los mensajes «Seguimiento 1» y «2» de cada campaña. */
+  seguimientosTexto?: Record<string, { 1: string; 2: string }>;
   mensajes: MensajesPorCampana;
   hechosHoy: number;
   faltanHoy: number;
@@ -97,6 +100,22 @@ export function ColaFriaDespacho({
   // Reunión: se pide día y hora antes de pasarla (24/9).
   const [agendando, setAgendando] = useState<ContactoFrio | null>(null);
   const [, startTransition] = useTransition();
+  // Seguimientos mandados en esta sesión: salen de la lista y suman al contador.
+  const [seguidos, setSeguidos] = useState<Set<string>>(new Set());
+  const porSeguir = seguimientos.filter((c) => !seguidos.has(c.id));
+
+  function mandarSeguimiento(c: ContactoFrio & { toca?: 1 | 2 }) {
+    const tpl = seguimientosTexto[c.campaign_id]?.[c.toca ?? 1];
+    const texto = tpl ? personalizarMensaje(tpl, { empresa: c.empresa, contacto: c.contacto_nombre }) : "";
+    const wa = intlWhatsappLink(c.telefono, texto);
+    if (!wa) return void toast.error("Este contacto no tiene un número usable.");
+    window.open(wa, "_blank", "noopener,noreferrer");
+    setSeguidos((p) => new Set(p).add(c.id));
+    startTransition(async () => {
+      const r = await marcarSeguimiento(c.id);
+      if ("error" in r) toast.error(r.error);
+    });
+  }
 
   // Recuperar los escritos guardados, solo los que siguen en la cola.
   useEffect(() => {
@@ -216,7 +235,7 @@ export function ColaFriaDespacho({
     });
   }
 
-  if (pendientesTotal === 0 && seguimientos.length === 0) {
+  if (pendientesTotal === 0 && porSeguir.length === 0 && seguidos.size === 0) {
     return (
       <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
         No tenés contactos fríos asignados. Pedile al director que te reparta una
@@ -290,10 +309,10 @@ export function ColaFriaDespacho({
         <span>
           <b className="text-foreground tabular-nums">{conWhatsapp}</b> con WhatsApp
         </span>
-        {seguimientos.length > 0 && (
+        {porSeguir.length > 0 && (
           <span>
             <b className="text-amber-600 tabular-nums dark:text-amber-400">
-              {seguimientos.length}
+              {porSeguir.length}
             </b>{" "}
             esperando seguimiento
           </span>
@@ -480,32 +499,44 @@ export function ColaFriaDespacho({
         }}
       />
 
-      {/* ── Los que hay que volver a tocar ── */}
-      {seguimientos.length > 0 && (
+      {/* ── Seguimientos: un objetivo aparte de los contactos nuevos (22/10/2026) ── */}
+      {(porSeguir.length > 0 || seguidos.size > 0) && (
         <div className="mt-4 border-t pt-3">
-          <p className="text-sm font-medium">
-            Esperando respuesta hace 3 días o más
-          </p>
-          <ul className="mt-2 space-y-1">
-            {seguimientos.slice(0, 6).map((c) => (
-              <li
-                key={c.id}
-                className="flex items-center justify-between gap-2 text-sm"
-              >
-                <span className="truncate">{c.empresa}</span>
-                <Link
-                  href={`/prospeccion/${c.campaign_id}/contactos`}
-                  className="shrink-0 text-xs text-muted-foreground underline hover:text-foreground"
-                >
-                  abrir
-                </Link>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="flex items-center gap-2 text-sm font-medium">
+              <span aria-hidden="true">🔁</span> Seguimientos de hoy
+              <span className="text-xs font-normal text-muted-foreground">no contestaron hace 3 días o más</span>
+            </p>
+            {seguidos.size > 0 && (
+              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                {seguidos.size} mandado{seguidos.size === 1 ? "" : "s"} hoy
+              </span>
+            )}
+          </div>
+          <ul className="mt-2 divide-y">
+            {porSeguir.slice(0, 8).map((c) => (
+              <li key={c.id} className="flex items-center justify-between gap-2 py-1.5 text-sm">
+                <span className="min-w-0">
+                  <span className="block truncate">{c.empresa}</span>
+                  <span className="text-[11px] text-muted-foreground">Seguimiento {c.toca ?? 1} de 2</span>
+                </span>
+                {seguimientosTexto[c.campaign_id] && tieneWhatsapp(c.telefono) ? (
+                  <Button size="sm" variant="outline" className="h-7 shrink-0 gap-1 text-xs" onClick={() => mandarSeguimiento(c)}>
+                    <span aria-hidden="true">💬</span> Mandar
+                  </Button>
+                ) : (
+                  <Link
+                    href={`/prospeccion/${c.campaign_id}/contactos`}
+                    className="shrink-0 text-xs text-muted-foreground underline hover:text-foreground"
+                  >
+                    abrir
+                  </Link>
+                )}
               </li>
             ))}
           </ul>
-          {seguimientos.length > 6 && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              y {seguimientos.length - 6} más.
-            </p>
+          {porSeguir.length > 8 && (
+            <p className="mt-1 text-xs text-muted-foreground">y {porSeguir.length - 8} más.</p>
           )}
         </div>
       )}

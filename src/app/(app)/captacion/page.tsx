@@ -7,6 +7,7 @@ import { metaDe } from "@/lib/prospecting/actividad";
 import { mensajeElegido, type CampaignMessages } from "@/lib/prospecting/shared";
 import { META_CLIENTES, META_DEADLINE } from "@/lib/comercial/machine-kpis";
 import { hoyYmd } from "@/lib/dates";
+import { seguimientoQueToca } from "@/lib/prospecting/seguimiento";
 import { CaptacionLista } from "@/components/captacion-lista";
 import {
   ColaFriaDespacho,
@@ -71,7 +72,7 @@ export default async function CaptacionPage() {
     admin
       .from("prospecting_contacts")
       .select(
-        "id, campaign_id, empresa, contacto_nombre, contacto_rol, telefono, instagram, sitio_web, estado, asignado_a, contactado_at, contactable, created_at"
+        "id, campaign_id, empresa, contacto_nombre, contacto_rol, telefono, instagram, sitio_web, estado, asignado_a, contactado_at, contactable, created_at, seguimientos, seguimiento_at"
       )
       .eq("asignado_a", me.id),
     admin.from("prospecting_campaigns").select("id, mensajes_plantilla"),
@@ -126,13 +127,20 @@ export default async function CaptacionPage() {
 
   // El mensaje elegido de cada campaña, para no resolverlo en el cliente.
   const mensajes: MensajesPorCampana = {};
+  const seguimientosTexto: Record<string, { 1: string; 2: string }> = {};
   for (const c of (campsRes.data ?? []) as {
     id: string;
     mensajes_plantilla: CampaignMessages | null;
   }[]) {
     const el = mensajeElegido(c.mensajes_plantilla);
     if (el) mensajes[c.id] = { texto: el.texto, label: el.label };
+    const m = c.mensajes_plantilla as (CampaignMessages & { seguimiento_2?: string }) | null;
+    if (m?.seguimiento_1) seguimientosTexto[c.id] = { 1: m.seguimiento_1, 2: m.seguimiento_2 ?? m.seguimiento_1 };
   }
+  // Solo los que hoy tienen un seguimiento que mandar (1 o 2), con el que toca.
+  const paraSeguir = mia.seguimientos
+    .map((c) => ({ ...c, toca: seguimientoQueToca(c) }))
+    .filter((c): c is typeof c & { toca: 1 | 2 } => c.toca != null);
 
   // Ritmo contra la meta de cuentas, que es la MISMA que la del tablero de la
   // Máquina de clientes (una sola meta en toda la app) y con el ritmo real de
@@ -219,7 +227,8 @@ export default async function CaptacionPage() {
           lista cargada se trabaje. Va arriba de referidos porque es el volumen. */}
       <ColaFriaDespacho
         cola={mia.cola}
-        seguimientos={mia.seguimientos}
+        seguimientos={paraSeguir}
+        seguimientosTexto={seguimientosTexto}
         mensajes={mensajes}
         hechosHoy={mia.hechosHoy}
         faltanHoy={mia.faltanHoy}

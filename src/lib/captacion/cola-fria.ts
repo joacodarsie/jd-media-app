@@ -26,6 +26,9 @@ export interface ContactoFrio {
   estado: string;
   asignado_a: string | null;
   contactado_at: string | null;
+  /** Seguimientos ya mandados y cuándo el último (0192). */
+  seguimientos?: number | null;
+  seguimiento_at?: string | null;
   /** null = sin intentar · true = el dato sirve · false = no se pudo contactar. */
   contactable: boolean | null;
   /** Cuándo se cargó el prospecto (pedido de Santi, 24/9). */

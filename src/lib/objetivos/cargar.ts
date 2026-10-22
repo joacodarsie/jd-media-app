@@ -132,8 +132,13 @@ export async function cargarDatosObjetivos(admin: SupabaseClient, desde: string,
       admin.from("users").select("avatar_url, alias_cbu, cbu, dni_cuit, email").eq("activo", true).order("id").range(a, b)
     ),
   ]);
+  // Los seguimientos de prospección (0215): si la tabla no está, la métrica da 0.
+  const seguimientos = await todo<{ user_id: string | null; created_at: string }>((a, b) =>
+    admin.from("prospecting_followups").select("user_id, created_at").gte("created_at", desde).order("id").range(a, b)
+  ).catch(() => []);
   return {
     contactos,
+    seguimientos,
     propuestas,
     clientes,
     publicaciones,

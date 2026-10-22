@@ -14,6 +14,7 @@
 
 export type MetricaId =
   | "leads_contactados"
+  | "seguimientos"
   | "reuniones_agendadas"
   | "propuestas_enviadas"
   | "cierres"
@@ -64,6 +65,13 @@ export const METRICAS: Record<MetricaId, MetricaDef> = {
     id: "leads_contactados",
     label: "Leads contactados",
     ayuda: "Contactos de prospección marcados como escritos por esta persona.",
+    unidad: "n",
+    metaManual: true,
+  },
+  seguimientos: {
+    id: "seguimientos",
+    label: "Seguimientos",
+    ayuda: "Segundos y terceros mensajes a contactos que no respondieron. Casi nadie contesta el primero.",
     unidad: "n",
     metaManual: true,
   },
@@ -265,7 +273,7 @@ export function metricasDe(p: PersonaObj): MetricaId[] {
   const areas = [p.area, p.area_secundaria].filter(Boolean) as string[];
   const out: MetricaId[] = [];
   if (roles.some((r) => r === "comercial" || r === "prospecting") || areas.includes("Comercial")) {
-    out.push("leads_contactados", "reuniones_agendadas", "propuestas_enviadas", "cierres", "conversion_propuestas");
+    out.push("leads_contactados", "seguimientos", "reuniones_agendadas", "propuestas_enviadas", "cierres", "conversion_propuestas");
   }
   if (areas.includes("Coordinación de Diseño")) out.push("calendario_aprobado", "aprobacion_creativa", "reuniones_mis_cuentas", "satisfaccion");
   if (areas.includes("Coordinación")) out.push("reuniones_mensuales", "tareas_a_tiempo", "cambios_de_fecha", "piezas_al_dia");
@@ -333,6 +341,8 @@ const en = (f: string | null | undefined, p: Periodo) => !!f && f.slice(0, 10) >
 
 export interface DatosObjetivos {
   contactos: { asignado_a: string | null; contactado_at: string | null; reunion_at: string | null }[];
+  /** Cada seguimiento mandado (0215). Opcional: sin la migración, la métrica da 0. */
+  seguimientos?: { user_id: string | null; created_at: string }[];
   propuestas: { creada_por_id: string | null; created_at: string }[];
   clientes: {
     id: string;
@@ -409,6 +419,8 @@ function contarMeta(
   switch (m) {
     case "leads_contactados":
       return { valor: d.contactos.filter((c) => c.asignado_a === persona && en(c.contactado_at, p)).length, metaAuto: null };
+    case "seguimientos":
+      return { valor: (d.seguimientos ?? []).filter((x) => x.user_id === persona && en(x.created_at, p)).length, metaAuto: null };
     case "reuniones_agendadas":
       return { valor: d.contactos.filter((c) => c.asignado_a === persona && en(c.reunion_at, p)).length, metaAuto: null };
     case "propuestas_enviadas":

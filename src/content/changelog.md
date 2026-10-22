@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-10-22 — Invitá a cada cliente a su reunión de cierre
+
+- 🤝 **En Mi día, «Reuniones de cierre del mes».** Cada cuenta con su reunión pendiente y en qué está: ✉️ sin invitar · ⏳ invitada · 📅 agendada · ✅ hecha.
+- 📲 **«Invitar»** abre WhatsApp con el mensaje listo y el link al portal, donde el cliente **elige día y hora** (del 1 al 7 del mes que viene). **«Para el grupo»** lo copia para pegarlo en el grupo de la cuenta. Queda registrado en el ticket que se invitó.
+
 ## 2026-10-21 — Propuestas más visuales
 
 - 📄 **Las propuestas se leen de un vistazo.** Portada con los números grandes (reels, carruseles, historias y pauta), cada punto con su ícono, el equipo en caras, lo que incluye en tildes, el primer mes como un camino del día 1 al 30 y los próximos pasos en tres íconos. Vuelve el **ecosistema**: la marca al centro, las redes alrededor y la publicidad que las conecta (5 hojas).

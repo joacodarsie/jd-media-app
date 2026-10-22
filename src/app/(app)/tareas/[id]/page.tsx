@@ -507,6 +507,7 @@ const CAMPO_LABEL: Record<string, string> = {
   asignado_a_id: "Reasignó",
   fecha_limite: "Cambió fecha límite",
   prioridad: "Cambió prioridad",
+  invitacion: "Invitó al cliente",
 };
 
 function TaskHistory({
@@ -530,7 +531,7 @@ function TaskHistory({
           const ant = h.valor_anterior ? userById.get(h.valor_anterior) ?? "alguien" : "nadie";
           const nue = h.valor_nuevo ? userById.get(h.valor_nuevo) ?? "alguien" : "nadie";
           valor = `${ant} → ${nue}`;
-        } else if (h.campo === "creada") {
+        } else if (h.campo === "creada" || h.campo === "invitacion") {
           valor = h.valor_nuevo ?? "";
         } else {
           valor = `${h.valor_anterior ?? "—"} → ${h.valor_nuevo ?? "—"}`;

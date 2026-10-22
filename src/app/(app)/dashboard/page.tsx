@@ -35,6 +35,7 @@ import { PrimeraSemanaMiDia } from "@/components/primera-semana";
 import { HelpTrigger } from "@/components/help-trigger";
 import { DashboardAvisos } from "@/components/dashboard-avisos";
 import { MiPuesto } from "@/components/mi-puesto";
+import { ReunionesDelMes } from "@/components/reuniones-del-mes";
 import { TusObjetivos } from "@/components/tus-objetivos";
 import { EfemeridesProximas } from "@/components/efemerides-proximas";
 
@@ -582,6 +583,11 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
             area_secundaria: (user as { area_secundaria?: string | null }).area_secundaria ?? null,
           }}
         />
+      </Suspense>
+
+      {/* Las reuniones de cierre del mes: invitar al cliente a elegir su turno (22/10/2026). */}
+      <Suspense fallback={null}>
+        <ReunionesDelMes userId={user.id} todas={user.rol === "admin"} />
       </Suspense>
 
       {/* Coordinadores: lo de su puesto + su tarjeta de la dirección (no frena el resto). */}

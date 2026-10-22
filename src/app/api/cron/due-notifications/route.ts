@@ -314,21 +314,30 @@ export async function GET(req: NextRequest) {
 
   // Y los avisos sin leer de tareas que YA se cerraron: al 20/9 había 108, 45
   // de ellos en la campana de la PM. Avisan de algo que no hay que hacer.
-  const { data: tareasCerradas } = await admin
-    .from("tasks")
-    .select("id")
-    .in("estado", ["completada", "archivada"]);
-  const idsCerradas = ((tareasCerradas ?? []) as { id: string }[]).map((t) => t.id);
-  let purgadosCerrados = 0;
-  // De a tandas: la lista de tareas cerradas crece sin tope y un `in` con
-  // miles de ids no entra en la URL de PostgREST.
-  for (let i = 0; i < idsCerradas.length; i += 200) {
+  // Se parte de los avisos sin leer (pocos) y no de las tareas cerradas: esas
+  // pasaron las 1.000 el 22/10/2026 y PostgREST corta ahí, así que las de más
+  // quedaban afuera y sus avisos no se borraban nunca.
+  const { data: avisosConTarea } = await admin
+    .from("notifications")
+    .select("id, task_id")
+    .eq("leida", false)
+    .not("task_id", "is", null)
+    .limit(5000);
+  const avisos = (avisosConTarea ?? []) as { id: string; task_id: string }[];
+  const idsTareas = [...new Set(avisos.map((a) => a.task_id))];
+  const cerradas = new Set<string>();
+  for (let i = 0; i < idsTareas.length; i += 200) {
     const { data } = await admin
-      .from("notifications")
-      .delete()
-      .eq("leida", false)
-      .in("task_id", idsCerradas.slice(i, i + 200))
-      .select("id");
+      .from("tasks")
+      .select("id")
+      .in("id", idsTareas.slice(i, i + 200))
+      .in("estado", ["completada", "archivada"]);
+    for (const t of (data ?? []) as { id: string }[]) cerradas.add(t.id);
+  }
+  const aBorrar = avisos.filter((a) => cerradas.has(a.task_id)).map((a) => a.id);
+  let purgadosCerrados = 0;
+  for (let i = 0; i < aBorrar.length; i += 200) {
+    const { data } = await admin.from("notifications").delete().in("id", aBorrar.slice(i, i + 200)).select("id");
     purgadosCerrados += (data ?? []).length;
   }
 

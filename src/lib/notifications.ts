@@ -25,6 +25,7 @@ import {
   type IdeaPendiente,
 } from "./contenidos/ideas-para-aprobar";
 import { avisosDeAprobacionVencida, type TareaEsperando } from "./tareas/puerta";
+import { agruparAvisos, type AvisoTarea } from "./notificaciones-agrupar";
 
 /** Roles de los que se espera que prospecten (los que reciben el aviso). */
 const ROLES_PROSPECTAN = ["comercial", "prospecting", "coordinador", "admin"];
@@ -76,12 +77,7 @@ export async function ensureDueNotifications(
     (existentes ?? []).map((n) => `${n.task_id}:${n.tipo}`)
   );
 
-  const nuevas: {
-    user_id: string;
-    task_id: string;
-    tipo: string;
-    mensaje: string;
-  }[] = [];
+  const nuevas: AvisoTarea[] = [];
 
   for (const t of misTareas) {
     const limite = (t.fecha_limite as string).slice(0, 10);
@@ -93,6 +89,7 @@ export async function ensureDueNotifications(
           task_id: t.id,
           tipo: "vencida",
           mensaje: `Tarea vencida: "${t.titulo}"`,
+          titulo: t.titulo,
         });
     } else if (limite === hoy || limite === manana) {
       const key = `${t.id}:proxima_a_vencer`;
@@ -105,11 +102,42 @@ export async function ensureDueNotifications(
             limite === hoy
               ? `Vence hoy: "${t.titulo}"`
               : `Vence mañana: "${t.titulo}"`,
+          titulo: t.titulo,
         });
     }
   }
 
-  if (nuevas.length) await supabase.from("notifications").insert(nuevas);
+  if (!nuevas.length) return;
+  // Más de 3 del mismo tipo van en un solo aviso (22/10/2026, ver notificaciones-agrupar).
+  const finales = agruparAvisos(nuevas);
+  const resumenes = finales.filter((a) => a.task_id === null);
+  if (resumenes.length) {
+    // Un resumen por tipo por día: si ya salió hoy, no se repite (Mi día corre esto en cada carga).
+    const { data: deHoy } = await supabase
+      .from("notifications")
+      .select("tipo")
+      .eq("user_id", userId)
+      .is("task_id", null)
+      .eq("link", "/tareas")
+      .in("tipo", ["vencida", "proxima_a_vencer"])
+      .gte("created_at", inicioHoyCordoba.toISOString());
+    const yaHoy = new Set(((deHoy ?? []) as { tipo: string }[]).map((n) => n.tipo));
+    // El de ayer sin leer queda viejo: lo reemplaza el de hoy.
+    const tipos = resumenes.map((r) => r.tipo).filter((t) => !yaHoy.has(t));
+    if (tipos.length)
+      await supabase
+        .from("notifications")
+        .delete()
+        .eq("user_id", userId)
+        .is("task_id", null)
+        .eq("link", "/tareas")
+        .eq("leida", false)
+        .in("tipo", tipos);
+    const insertar = finales.filter((a) => a.task_id !== null || !yaHoy.has(a.tipo));
+    if (insertar.length) await supabase.from("notifications").insert(insertar);
+    return;
+  }
+  await supabase.from("notifications").insert(finales);
 }
 
 /**

@@ -18,6 +18,8 @@ export interface FilaReunion {
   invitadaEl: string | null;
   /** Fecha de la última reunión registrada, o null si nunca tuvo. */
   ultima: string | null;
+  /** Contestó la encuesta de este mes (para pedirla después de la reunión). */
+  encuesta: boolean;
 }
 
 const PREFIJO = "Reunión mensual";
@@ -59,6 +61,8 @@ export async function cargarReunionesDelMes(
     admin.from("task_history").select("task_id, created_at").eq("campo", CAMPO_INVITACION).in("task_id", ticketIds).order("created_at", { ascending: false }),
     admin.from("users").select("id, nombre"),
   ]);
+  const { data: encRaw } = await admin.from("client_satisfaction").select("cliente_id").in("cliente_id", ids).eq("periodo", periodo);
+  const conEncuesta = new Set(((encRaw ?? []) as { cliente_id: string }[]).map((e) => e.cliente_id));
   const reuniones = (mRaw ?? []) as { cliente_id: string; periodo: string; fecha: string }[];
   const proximas = (imRaw ?? []) as { client_id: string; starts_at: string }[];
   const invitaciones = (hRaw ?? []) as { task_id: string; created_at: string }[];
@@ -88,6 +92,7 @@ export async function cargarReunionesDelMes(
       agendada,
       invitadaEl,
       ultima: suyas.map((r) => r.fecha).sort().pop() ?? null,
+      encuesta: conEncuesta.has(t.cliente_id as string),
     };
   });
   return filas.sort(

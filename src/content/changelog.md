@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-10-22 — 3 meses juntos y la encuesta después de la reunión
+
+- 🎉 **Hito de los 3 meses.** Todas las bajas fueron antes del mes 3. A los 75 días de cada cuenta, el director creativo recibe una tarea con el antes y el después de la cuenta y un mensaje listo para el cliente. En el portal, el cliente ve el festejo «3 meses juntos».
+- ⭐ **La encuesta, apenas termina la reunión.** En el portal aparece sola durante los 10 días siguientes a la reunión, y en Mi día cada reunión hecha tiene **⭐ Pedir encuesta** por WhatsApp.
+- 🎨 **Dibujitos en el portal del cliente**: al día, la reunión, la encuesta y el festejo.
+
 ## 2026-10-22 — Seguimientos, más rápido y dibujitos
 
 - 🔁 **Seguimientos como objetivo aparte.** En «Conseguir clientes», los que no contestaron hace 3 días tienen el botón **💬 Mandar** con el seguimiento ya escrito. Cada uno suma a tu objetivo **Seguimientos**, separado de los contactos nuevos.

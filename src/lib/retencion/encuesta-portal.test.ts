@@ -17,3 +17,13 @@ describe("encuesta en el portal", () => {
     expect(avisoRespuesta("Magic", 5, "")).toBe("⭐ Magic puso 5/5 en la encuesta del mes.");
   });
 });
+
+describe("encuesta después de la reunión (22/10/2026)", () => {
+  it("con la reunión reciente se pide aunque sea la primera quincena", () => {
+    expect(pedirEncuestaEnPortal({ fechaInicio: "2026-07-01", hoy: "2026-11-04", yaRespondio: false })).toBe(false);
+    expect(pedirEncuestaEnPortal({ fechaInicio: "2026-07-01", hoy: "2026-11-04", yaRespondio: false, reunionReciente: true })).toBe(true);
+    expect(pedirEncuestaEnPortal({ fechaInicio: "2026-07-01", hoy: "2026-11-04", yaRespondio: true, reunionReciente: true })).toBe(false);
+    // Una cuenta de menos de 25 días no, aunque haya tenido reunión.
+    expect(pedirEncuestaEnPortal({ fechaInicio: "2026-10-20", hoy: "2026-11-04", yaRespondio: false, reunionReciente: true })).toBe(false);
+  });
+});

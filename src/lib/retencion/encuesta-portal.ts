@@ -14,10 +14,16 @@ export function pedirEncuestaEnPortal(input: {
   /** "YYYY-MM-DD" de hoy (Córdoba). */
   hoy: string;
   yaRespondio: boolean;
+  /**
+   * Tuvo la reunión mensual hace pocos días (22/10/2026): es el mejor momento
+   * para preguntar, con lo hablado fresco. Se pide aunque no sea la segunda
+   * quincena (la reunión de cierre se da del 1 al 7).
+   */
+  reunionReciente?: boolean;
 }): boolean {
-  const { fechaInicio, hoy, yaRespondio } = input;
+  const { fechaInicio, hoy, yaRespondio, reunionReciente } = input;
   if (yaRespondio || !fechaInicio) return false;
-  if (Number(hoy.slice(8, 10)) < DIA_DESDE_ENCUESTA) return false;
+  if (Number(hoy.slice(8, 10)) < DIA_DESDE_ENCUESTA && !reunionReciente) return false;
   const dias = (Date.parse(`${hoy}T12:00:00Z`) - Date.parse(`${fechaInicio.slice(0, 10)}T12:00:00Z`)) / 86_400_000;
   return dias >= DIAS_MINIMOS_ENCUESTA;
 }

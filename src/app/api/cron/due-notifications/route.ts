@@ -26,6 +26,7 @@ import { runInspoSemanal } from "@/lib/inspo/run";
 import { runInspoAuto } from "@/lib/inspo/auto-run";
 import { runArchivarCuentasInactivas } from "@/lib/clientes/baja";
 import { runIdeasViejasAlBanco } from "@/lib/contenidos/ideas-viejas";
+import { runHitoTresMeses } from "@/lib/retencion/hito-tres-meses-run";
 import { runPerfilesIncompletos } from "@/lib/equipo/perfil-completo-run";
 import { runConciliacionDiaria } from "@/lib/social/conciliar-run";
 import { runAccountAlerts } from "@/lib/social/alerts";
@@ -535,6 +536,14 @@ export async function GET(req: NextRequest) {
     ideasViejas = { error: e instanceof Error ? e.message : String(e) };
   }
 
+  // Hito de los 3 meses: al DC le llega la tarea de mostrarle al cliente cuánto creció (22/10/2026).
+  let hito3m: unknown = null;
+  try {
+    hito3m = await runHitoTresMeses(admin, hoyYmd());
+  } catch (e) {
+    hito3m = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   // Salud del token de Meta (punto único de falla de Paid Media + Resultados).
   // Si está caído o vence pronto, avisamos a los admins (deduplicado 20h).
   let metaToken: unknown = null;
@@ -642,6 +651,7 @@ export async function GET(req: NextRequest) {
     inspo,
     inactivas,
     ideas_viejas: ideasViejas,
+    hito_3_meses: hito3m,
     perfiles,
     rutinas,
     revision_creativa: revisionCreativa,

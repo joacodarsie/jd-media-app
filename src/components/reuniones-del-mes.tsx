@@ -4,7 +4,7 @@ import { hoyYmd } from "@/lib/dates";
 import { periodLabel } from "@/lib/finanzas";
 import { cargarReunionesDelMes } from "@/lib/retencion/reuniones-del-mes-run";
 import { ESTADO_REUNION, type EstadoReunion } from "@/lib/retencion/invitar-reunion";
-import { InvitarReunionBoton } from "@/components/invitar-reunion-boton";
+import { InvitarReunionBoton, PedirEncuestaBoton } from "@/components/invitar-reunion-boton";
 import { cn } from "@/lib/utils";
 
 /**
@@ -27,7 +27,9 @@ export async function ReunionesDelMes({ userId, todas }: { userId: string; todas
   if (!filas.length) return null;
   const hechas = filas.filter((f) => f.estado === "hecha").length;
   const faltan = filas.length - hechas;
-  if (faltan === 0) return null;
+  // Las hechas sin encuesta siguen a la vista: después de la reunión se pide (22/10/2026).
+  const sinEncuesta = filas.filter((f) => f.estado === "hecha" && !f.encuesta);
+  if (faltan === 0 && sinEncuesta.length === 0) return null;
   const sinInvitar = filas.filter((f) => f.estado === "sin_invitar").length;
   const mes = periodLabel(hoy.slice(0, 7)).toLowerCase().replace(/\s*(de\s+)?\d{4}$/, "");
 
@@ -73,7 +75,7 @@ export async function ReunionesDelMes({ userId, todas }: { userId: string; todas
 
       <ul className="mt-3 divide-y">
         {filas
-          .filter((f) => f.estado !== "hecha")
+          .filter((f) => f.estado !== "hecha" || !f.encuesta)
           .map((f) => (
             <li key={f.ticketId} className="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-center sm:gap-3">
               <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -92,9 +94,11 @@ export async function ReunionesDelMes({ userId, todas }: { userId: string; todas
                 <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", TONO[f.estado])}>
                   {f.estado === "agendada" && f.agendada ? f.agendada : ESTADO_REUNION[f.estado].label}
                 </span>
-                {f.estado !== "agendada" && (
+                {f.estado === "hecha" ? (
+                  <PedirEncuestaBoton clienteId={f.clienteId} />
+                ) : f.estado !== "agendada" ? (
                   <InvitarReunionBoton clienteId={f.clienteId} ticketId={f.ticketId} yaInvitada={f.estado === "invitada"} />
-                )}
+                ) : null}
               </div>
             </li>
           ))}

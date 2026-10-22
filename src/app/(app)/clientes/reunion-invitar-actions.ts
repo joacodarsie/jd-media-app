@@ -9,6 +9,7 @@ import { hoyYmd } from "@/lib/dates";
 import { linkReunion, mensajeInvitacion, rangoDias } from "@/lib/retencion/invitar-reunion";
 import { CAMPO_INVITACION } from "@/lib/retencion/reuniones-del-mes-run";
 import { diasDeReunion } from "@/lib/retencion/reunion-autoagenda";
+import { buildSurveyMessage, surveyUrl } from "@/lib/clientes/encuesta";
 
 /**
  * Arma la invitación a la reunión mensual para mandar por WhatsApp y deja
@@ -65,5 +66,32 @@ export async function invitarReunion(input: {
     valor_nuevo: "Le mandó al cliente el link para elegir día y hora",
   });
   revalidatePath("/dashboard");
+  return { ok: true, mensaje, telefono: cli.contacto_telefono };
+}
+
+/**
+ * Después de la reunión, la encuesta (22/10/2026): el mejor momento para
+ * preguntar es con lo hablado fresco. Arma el mensaje con el link.
+ */
+export async function pedirEncuestaReunion(clienteId: string): Promise<{ ok: true; mensaje: string; telefono: string | null } | { ok: false; error: string }> {
+  const me = await requireUser();
+  const admin = createAdmin();
+  const [{ data: c }, { data: tk }] = await Promise.all([
+    admin.from("clients").select("nombre, contacto_nombre, contacto_telefono").eq("id", clienteId).maybeSingle(),
+    admin.from("client_portal_tokens").select("token").eq("cliente_id", clienteId).is("revoked_at", null).order("created_at", { ascending: false }).limit(1),
+  ]);
+  const cli = c as { nombre: string; contacto_nombre: string | null; contacto_telefono: string | null } | null;
+  const token = ((tk ?? []) as { token: string }[])[0]?.token;
+  if (!cli) return { ok: false, error: "No encontré la cuenta." };
+  if (!token) return { ok: false, error: "La cuenta no tiene portal: invitala primero a la reunión y se crea solo." };
+  const h = headers();
+  const origin = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("x-forwarded-host") ?? h.get("host")}`;
+  const mensaje = buildSurveyMessage({
+    contactoNombre: cli.contacto_nombre,
+    clienteNombre: cli.nombre,
+    periodo: hoyYmd().slice(0, 7),
+    url: surveyUrl(origin, token),
+    deParte: me.nombre,
+  });
   return { ok: true, mensaje, telefono: cli.contacto_telefono };
 }

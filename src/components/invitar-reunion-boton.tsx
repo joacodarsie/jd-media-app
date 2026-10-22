@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Copy, Send } from "lucide-react";
-import { invitarReunion } from "@/app/(app)/clientes/reunion-invitar-actions";
+import { invitarReunion, pedirEncuestaReunion } from "@/app/(app)/clientes/reunion-invitar-actions";
 import { whatsappLink } from "@/lib/payment-reminder";
 
 /**
@@ -70,5 +70,38 @@ export function InvitarReunionBoton({ clienteId, ticketId, yaInvitada }: { clien
         <Copy className="h-3 w-3" /> Para el grupo
       </button>
     </span>
+  );
+}
+
+/** Después de la reunión: la encuesta del mes por WhatsApp (22/10/2026). */
+export function PedirEncuestaBoton({ clienteId }: { clienteId: string }) {
+  const [pending, start] = useTransition();
+  function pedir() {
+    const ventana = window.open("about:blank", "_blank");
+    start(async () => {
+      const r = await pedirEncuestaReunion(clienteId);
+      if (!r.ok) {
+        ventana?.close();
+        return void toast.error(r.error);
+      }
+      const link = whatsappLink(r.telefono, r.mensaje);
+      if (!link) {
+        ventana?.close();
+        await navigator.clipboard.writeText(r.mensaje).catch(() => {});
+        return void toast.message("La cuenta no tiene un teléfono usable: copié el mensaje para el grupo.");
+      }
+      if (ventana) ventana.location.href = link;
+      else window.location.href = link;
+    });
+  }
+  return (
+    <button
+      type="button"
+      onClick={pedir}
+      disabled={pending}
+      className="inline-flex items-center gap-1 rounded-full bg-violet-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
+    >
+      <span aria-hidden="true">⭐</span> Pedir encuesta
+    </button>
   );
 }

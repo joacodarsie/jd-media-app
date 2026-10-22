@@ -48,6 +48,8 @@ import { PortalMaterial } from "@/components/portal-material";
 import { PortalMovimiento } from "@/components/portal-movimiento";
 import { PortalDeslizar } from "@/components/portal-deslizar";
 import { pedirEncuestaEnPortal } from "@/lib/retencion/encuesta-portal";
+import { enHitoTresMeses } from "@/lib/retencion/hito-tres-meses";
+import { Ilustracion } from "@/components/ilustracion";
 import { cargarReunionPortal } from "@/lib/retencion/reunion-autoagenda-run";
 import { PortalReunion } from "@/components/portal-reunion";
 import { PortalTuMes } from "@/components/portal-tu-mes";
@@ -277,7 +279,17 @@ export default async function PortalPage({ params }: { params: { token: string }
     .eq("cliente_id", cliente_id)
     .eq("periodo", hoyYmd().slice(0, 7))
     .maybeSingle();
-  const pedirEncuesta = !encErr && pedirEncuestaEnPortal({ fechaInicio: ref?.fecha_inicio ?? null, hoy: hoyYmd(), yaRespondio: !!encRow });
+  // Recién salido de la reunión mensual: se pide la encuesta con lo hablado fresco (22/10/2026).
+  const { data: reuRec } = await admin
+    .from("client_meetings")
+    .select("id")
+    .eq("cliente_id", cliente_id)
+    .gte("fecha", new Date(Date.now() - 10 * 86_400_000).toISOString().slice(0, 10))
+    .limit(1);
+  const pedirEncuesta =
+    !encErr &&
+    pedirEncuestaEnPortal({ fechaInicio: ref?.fecha_inicio ?? null, hoy: hoyYmd(), yaRespondio: !!encRow, reunionReciente: !!reuRec?.length });
+  const hito3m = enHitoTresMeses(ref?.fecha_inicio ?? null, hoyYmd());
   // «Tu arranque»: los 6 pasos del primer mes, para las cuentas con redes (19/10/2026).
   const arranque = await (async () => {
     if (!ref?.fecha_inicio || !(conRedes ?? 0)) return null;
@@ -715,7 +727,7 @@ export default async function PortalPage({ params }: { params: { token: string }
           if (!items.length)
             return (
               <div className="card" style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px" }}>
-                <span style={{ fontSize: 20 }}>✅</span>
+                <Ilustracion escena="listo" className="h-12 w-14 shrink-0 text-neutral-800" />
                 <span style={{ fontSize: 14, fontWeight: 600 }}>Estás al día: no hay nada pendiente de tu lado.</span>
               </div>
             );
@@ -829,7 +841,8 @@ export default async function PortalPage({ params }: { params: { token: string }
 
         {/* Tu reunión del mes: el cliente elige el día y la hora. */}
         {reunion && (
-          <div id="reunion" className="card pr-card">
+          <div id="reunion" className="card pr-card" style={{ position: "relative" }}>
+            <Ilustracion escena="calendario" className="absolute right-3 top-3 h-14 w-16 text-neutral-800" />
             <div className="card-label">Tu reunión del mes</div>
             <h2 className="card-title" style={{ marginBottom: 4 }}>
               {reunion.estado === "agendada" ? "Nos vemos pronto" : "Elegí cuándo nos juntamos"}
@@ -849,6 +862,7 @@ export default async function PortalPage({ params }: { params: { token: string }
         {/* La encuesta del mes: un toque en la carita y abre la encuesta con esa nota. */}
         {pedirEncuesta && (
           <div id="encuesta" className="card" style={{ textAlign: "center" }}>
+            <Ilustracion escena="charla" className="mx-auto mb-1 h-16 w-20 text-neutral-800" />
             <div className="card-label">30 segundos</div>
             <h2 className="card-title" style={{ marginBottom: 4 }}>¿Cómo venimos este mes?</h2>
             <p style={{ fontSize: 13, color: "#666", margin: "0 0 14px" }}>Tu opinión nos sirve para mejorar nuestros servicios. Son 3 preguntas.</p>
@@ -1023,8 +1037,22 @@ export default async function PortalPage({ params }: { params: { token: string }
         )}
 
         {/* Tu crecimiento: el antes y el después con las fotos automáticas del Instagram. */}
+        {/* 3 meses juntos (22/10/2026): el festejo, del día 75 al 100. */}
+        {hito3m && (
+          <div className="card" style={{ display: "flex", alignItems: "center", gap: 14, background: "linear-gradient(120deg,#fff8d6,#fff)", borderColor: "#fde68a" }}>
+            <Ilustracion escena="cohete" className="h-20 w-24 shrink-0 text-neutral-800" />
+            <div>
+              <div className="card-label">🎉 3 meses juntos</div>
+              <h2 className="card-title" style={{ margin: "2px 0 4px" }}>¡Gracias por la confianza!</h2>
+              <p style={{ fontSize: 13, color: "#555", margin: 0, lineHeight: 1.5 }}>
+                Mirá cuánto creció tu cuenta desde que arrancamos{crecimiento && (crecimiento.inicio || crecimiento.hoy) ? " acá abajo" : ""}. En la reunión de cierre repasamos todo y lo que viene.
+              </p>
+            </div>
+          </div>
+        )}
+
         {crecimiento && (crecimiento.inicio || crecimiento.hoy) && (
-          <div className="card">
+          <div id="crecimiento" className="card">
             <div className="card-label">Tu crecimiento</div>
             <CrecimientoVista datos={crecimiento} nombre={client.nombre} portal />
           </div>

@@ -40,7 +40,14 @@ export async function runHitoTresMeses(admin: SupabaseClient, hoy: string): Prom
       cargarCrecimiento(admin, c.id).catch(() => null),
       admin.from("client_portal_tokens").select("token").eq("cliente_id", c.id).is("revoked_at", null).limit(1),
     ]);
-    const antes = crec?.inicio?.seguidores ?? crec?.seguidores[0]?.followers ?? null;
+    // El «antes» tiene que ser del arranque: la foto de inicio real, o una medición de las
+    // 2 primeras semanas. Las mediciones diarias empezaron el 19/10/2026: comparar contra
+    // esa sería vender 3 días de crecimiento como 3 meses.
+    const tope = new Date(Date.parse(`${c.inicio}T12:00:00Z`) + 14 * 86_400_000).toISOString().slice(0, 10);
+    const antes =
+      (crec?.inicio?.real && crec.inicio.fecha <= tope ? crec.inicio.seguidores : null) ??
+      crec?.seguidores.find((x) => x.fecha <= tope)?.followers ??
+      null;
     const ahora = crec?.seguidores[crec.seguidores.length - 1]?.followers ?? crec?.hoy?.seguidores ?? null;
     const token = ((tk ?? []) as { token: string }[])[0]?.token;
     const mensaje = mensajeHito({

@@ -59,7 +59,7 @@ export interface CuentaPm {
   mes: number;
   estado: Estado;
   chequeos: CuentaNueva["chequeos"];
-  arranque: { hechos: number; total: number; terminado: boolean; diaActual: number } | null;
+  arranque: { hechos: number; total: number; terminado: boolean; diaActual: number; fechaInicio: string; reunionMarcada: boolean } | null;
   preguntas: PreguntaPm[];
   atrasados: PasoPm[];
   pausados: PasoPm[];
@@ -101,7 +101,9 @@ export function cuentaParaPm(c: CuentaNueva, a: ArranqueEnCurso | null, hoy: str
     mes: c.mes,
     estado: c.estado,
     chequeos: c.chequeos.filter((x) => x.clave !== "arranque"),
-    arranque: a ? { hechos: a.hechos, total: a.total, terminado: a.terminado, diaActual: a.diaActual } : null,
+    arranque: a
+      ? { hechos: a.hechos, total: a.total, terminado: a.terminado, diaActual: a.diaActual, fechaInicio: a.fechaInicio, reunionMarcada: !!a.reunionMarcada }
+      : null,
     preguntas,
     atrasados,
     pausados: pausados.map(aPaso),

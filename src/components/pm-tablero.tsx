@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Bell, Check, ChevronDown, Loader2, X } from "lucide-react";
+import { FechaReunionOnboarding } from "@/components/fecha-reunion-onboarding";
 import { cn } from "@/lib/utils";
 import type { CuentaPm, PasoPm, PreguntaPm } from "@/lib/pm/tablero";
 import { avisarPasoAtrasado, responderPregunta } from "@/app/(app)/onboarding/actions";
@@ -67,6 +68,13 @@ function Tarjeta({ c }: { c: CuentaPm }) {
           <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
             <div className="h-full rounded-full bg-primary transition-[width] duration-700" style={{ width: `${pct ?? 0}%` }} />
           </div>
+          {/* El día de la reunión de onboarding (pedido de Luz, 19/10): el arranque cuenta desde ahí.
+              Se había perdido al rehacer esta pantalla el 20/10; vuelve adentro de cada cuenta (22/10). */}
+          {!c.arranque.terminado && (
+            <div className="mt-2">
+              <FechaReunionOnboarding clienteId={c.id} fecha={c.arranque.fechaInicio} marcada={c.arranque.reunionMarcada} />
+            </div>
+          )}
         </div>
       )}
 

@@ -1,3 +1,4 @@
+import { imagenChica } from "@/lib/web/imagenes";
 import Link from "next/link";
 import { ArrowRight, Plus, Users as UsersIcon } from "lucide-react";
 import { requireUser } from "@/lib/auth";
@@ -201,7 +202,7 @@ function PositionCard({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   key={u.id}
-                  src={u.avatar_url}
+                  src={imagenChica(u.avatar_url, 96)}
                   alt={u.nombre}
                   title={u.nombre}
                   className="h-7 w-7 rounded-full border-2 border-card object-cover transition-transform group-hover:translate-x-0.5"

@@ -1,3 +1,4 @@
+import { imagenChica } from "@/lib/web/imagenes";
 import { cn } from "@/lib/utils";
 
 /**
@@ -17,7 +18,7 @@ export function CaraPersona({
   const base = "flex shrink-0 items-center justify-center rounded-full font-semibold";
   if (url) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url} alt={nombre} className={cn(base, "bg-muted object-cover", className)} loading="lazy" />;
+    return <img src={imagenChica(url, 160)} alt={nombre} className={cn(base, "bg-muted object-cover", className)} loading="lazy" />;
   }
   return <div className={cn(base, "bg-muted", className)}>{nombre.charAt(0)}</div>;
 }

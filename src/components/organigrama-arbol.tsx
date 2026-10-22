@@ -1,5 +1,6 @@
 "use client";
 
+import { imagenChica } from "@/lib/web/imagenes";
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CircleAlert, ListChecks, Users } from "lucide-react";
@@ -152,7 +153,7 @@ const CSS = `
 function Cara({ nombre, foto }: { nombre: string; foto?: string | null }) {
   if (foto) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={foto} alt="" className="org-avatar org-avatar--foto" loading="lazy" />;
+    return <img src={imagenChica(foto, 160)} alt="" className="org-avatar org-avatar--foto" loading="lazy" />;
   }
   return <span className="org-avatar">{iniciales(nombre)}</span>;
 }

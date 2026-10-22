@@ -1,5 +1,7 @@
 "use client"
 
+import { imagenChica } from "@/lib/web/imagenes";
+
 import * as React from "react"
 import * as AvatarPrimitive from "@radix-ui/react-avatar"
 
@@ -23,10 +25,12 @@ Avatar.displayName = AvatarPrimitive.Root.displayName
 const AvatarImage = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Image>,
   React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
->(({ className, ...props }, ref) => (
+>(({ className, src, ...props }, ref) => (
   <AvatarPrimitive.Image
     ref={ref}
     className={cn("aspect-square h-full w-full", className)}
+    // Las fotos del equipo se suben en tamaño original (hasta 2,8 MB): se piden achicadas (22/10/2026).
+    src={typeof src === "string" ? imagenChica(src, 160) : src}
     {...props}
   />
 ))

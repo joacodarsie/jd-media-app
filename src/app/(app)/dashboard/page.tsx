@@ -571,30 +571,6 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
         </Link>
       )}
 
-      {/* Tus objetivos: el del mes bajado a la semana y al día, medido solo (21/10/2026). */}
-      <Suspense fallback={null}>
-        <TusObjetivos
-          persona={{
-            id: user.id,
-            nombre: user.nombre,
-            rol: user.rol,
-            rol_secundario: (user as { rol_secundario?: string | null }).rol_secundario ?? null,
-            area: user.area ?? null,
-            area_secundaria: (user as { area_secundaria?: string | null }).area_secundaria ?? null,
-          }}
-        />
-      </Suspense>
-
-      {/* Las reuniones de cierre del mes: invitar al cliente a elegir su turno (22/10/2026). */}
-      <Suspense fallback={null}>
-        <ReunionesDelMes userId={user.id} todas={user.rol === "admin"} />
-      </Suspense>
-
-      {/* Coordinadores: lo de su puesto + su tarjeta de la dirección (no frena el resto). */}
-      <Suspense fallback={null}>
-        <MiPuesto userId={user.id} />
-      </Suspense>
-
       {/* Avisos importantes del Portal sin leer */}
       <DashboardAvisos
         avisos={avisosSinLeer.map((a) => ({
@@ -699,6 +675,32 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
           </div>
         </div>
       </Section>
+
+      {/* Lo que llega en streaming va DESPUÉS de «Hoy»: si iba arriba, al llegar empujaba
+          la lista que uno ya estaba leyendo (CLS 0,42 medido el 22/10/2026). */}
+      {/* Tus objetivos: el del mes bajado a la semana y al día, medido solo (21/10/2026). */}
+      <Suspense fallback={null}>
+        <TusObjetivos
+          persona={{
+            id: user.id,
+            nombre: user.nombre,
+            rol: user.rol,
+            rol_secundario: (user as { rol_secundario?: string | null }).rol_secundario ?? null,
+            area: user.area ?? null,
+            area_secundaria: (user as { area_secundaria?: string | null }).area_secundaria ?? null,
+          }}
+        />
+      </Suspense>
+
+      {/* Las reuniones de cierre del mes: invitar al cliente a elegir su turno (22/10/2026). */}
+      <Suspense fallback={null}>
+        <ReunionesDelMes userId={user.id} todas={user.rol === "admin"} />
+      </Suspense>
+
+      {/* Coordinadores: lo de su puesto + su tarjeta de la dirección (no frena el resto). */}
+      <Suspense fallback={null}>
+        <MiPuesto userId={user.id} />
+      </Suspense>
 
       {/* Por cliente — vista agrupada con próxima acción urgente */}
       {perClient.length > 0 && (

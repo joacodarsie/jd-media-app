@@ -22,6 +22,7 @@ import { CSS_PROPUESTA } from "@/lib/propuestas/estilo";
 import { armarExtras } from "@/lib/propuestas/extras";
 import { CAMINO_MES_1, EQUIPO_PROPUESTA, iconoDePunto, volumenTotal } from "@/lib/propuestas/iconos";
 import { PropuestaAcciones, BotonPdf } from "@/components/propuesta-acciones";
+import { PropuestaEcosistema } from "@/components/propuesta-ecosistema";
 import { BarraPropuesta } from "@/components/propuesta-editor";
 import { createClient } from "@/lib/supabase/server";
 
@@ -207,7 +208,7 @@ export default async function PropuestaPage({
     </>
   );
 
-  const hojas = 4;
+  const hojas = 5;
 
   // Qué secciones van: las vacías no se muestran (la de puntos salía con el
   // título solo) y las que se sacaron desde "Editar" tampoco.
@@ -221,9 +222,6 @@ export default async function PropuestaPage({
   // La numeración sigue a lo que se ve: sin huecos si se saca una sección.
   let nSec = 0;
   const num = () => String(++nSec).padStart(2, "0");
-  // El equipo va en la hoja 1 solo si la hoja 2 lleva extras: si no, la hoja 1
-  // se pasaba con textos de IA largos (Catch) y la 2 tenía lugar de sobra.
-  const equipoEnHoja1 = extras.lineas.length > 0;
   const seccionEquipo = () => (
     <section>
       <div className="cab">
@@ -341,16 +339,32 @@ export default async function PropuestaPage({
           </section>
           )}
 
-          {equipoEnHoja1 && seccionEquipo()}
-
           {pie(1, hojas)}
         </div>
 
-        {/* ══════════ 2 · qué incluye e ideas ══════════ */}
+        {/* ══════════ 2 · el equipo y el ecosistema ══════════ */}
         <div className="hoja">
           {cabecera}
 
-          {!equipoEnHoja1 && seccionEquipo()}
+          {seccionEquipo()}
+
+          <section>
+            <div className="cab">
+              <span className="n">{num()}</span>
+              <h2>El ecosistema digital de {p.empresa}</h2>
+            </div>
+            <p className="lead" style={{ marginTop: 0, marginBottom: 14 }}>
+              Cada red cumple un rol y todas llevan al mismo lugar: <b>la consulta por WhatsApp</b>.
+            </p>
+            <PropuestaEcosistema empresa={p.empresa} zona={row.ciudad} />
+          </section>
+
+          {pie(2, hojas)}
+        </div>
+
+        {/* ══════════ 3 · qué incluye e ideas ══════════ */}
+        <div className="hoja">
+          {cabecera}
 
           {ver.incluye && (
           <section>
@@ -413,10 +427,10 @@ export default async function PropuestaPage({
             </section>
           )}
 
-          {pie(2, hojas)}
+          {pie(3, hojas)}
         </div>
 
-        {/* ══════════ 3 · las cuentas y el primer mes ══════════ */}
+        {/* ══════════ 4 · las cuentas y el primer mes ══════════ */}
         <div className="hoja">
           {cabecera}
 
@@ -496,10 +510,10 @@ export default async function PropuestaPage({
             </section>
           )}
 
-          {pie(3, hojas)}
+          {pie(4, hojas)}
         </div>
 
-        {/* ══════════ 4 · la inversión ══════════ */}
+        {/* ══════════ 5 · la inversión ══════════ */}
         <div className="hoja">
           {cabecera}
 
@@ -639,7 +653,7 @@ export default async function PropuestaPage({
             </div>
           </div>
 
-          {pie(4, hojas)}
+          {pie(5, hojas)}
         </div>
 
         <div className="no-print flex justify-end px-6 pb-8">

@@ -4,7 +4,7 @@ title: Novedades
 
 ## 2026-10-21 — Propuestas más visuales
 
-- 📄 **Las propuestas se leen de un vistazo.** Portada con los números grandes (reels, carruseles, historias y pauta), cada punto con su ícono, el equipo en caras, lo que incluye en tildes, el primer mes como un camino del día 1 al 30 y los próximos pasos en tres íconos. El PDF sigue en 4 hojas.
+- 📄 **Las propuestas se leen de un vistazo.** Portada con los números grandes (reels, carruseles, historias y pauta), cada punto con su ícono, el equipo en caras, lo que incluye en tildes, el primer mes como un camino del día 1 al 30 y los próximos pasos en tres íconos. Vuelve el **ecosistema**: la marca al centro, las redes alrededor y la publicidad que las conecta (5 hojas).
 
 ## 2026-10-21 — Procesos paso a paso y «Cómo trabajamos»
 

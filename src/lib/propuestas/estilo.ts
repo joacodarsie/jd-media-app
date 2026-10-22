@@ -229,6 +229,16 @@ export const CSS_PROPUESTA = `
 .siguientes li{ display:flex; flex-direction:column; align-items:center; gap:7px; font-size:var(--t-apo); font-weight:700; color:var(--b85); }
 .siguientes .ic{ width:44px; height:44px; border-radius:50%; font-size:16pt; background:rgba(255,212,0,.12); border:1px solid rgba(255,212,0,.4); }
 
+/* ── Ecosistema: la marca al centro y las redes alrededor ──── */
+.eco{ border:1px solid var(--borde); border-radius:16px; background:radial-gradient(circle at 50% 48%, rgba(255,212,0,.07), transparent 62%); }
+.eco svg{ display:block; width:100%; height:auto; }
+.leyenda{ display:flex; flex-wrap:wrap; gap:8px 26px; justify-content:center; margin-top:12px; font-size:var(--t-min); color:var(--b70); }
+.leyenda span{ display:inline-flex; align-items:center; gap:8px; white-space:nowrap; }
+.leyenda i{ width:12px; height:12px; border-radius:50%; display:inline-block; }
+.leyenda .on{ background:var(--amarillo); box-shadow:0 0 10px 3px rgba(255,212,0,.6); }
+.leyenda .next{ border:1.5px dashed rgba(255,255,255,.55); }
+.leyenda .base{ background:#fff; }
+
 /* ── En el celular, las rejillas de dos y tres se apilan ───── */
 @media (max-width: 640px){
   :root{ --t-tit:34pt; --t-sec:15pt; }
@@ -256,7 +266,7 @@ export const CSS_PROPUESTA = `
   }
   .hoja + .hoja{ break-before:page; }
   .empuja{ display:block; margin-top:auto; }
-  .doc section, .paso, .grupo, .cuenta, .etapa, .tabla, .cierre, .pie, .arranque, .vistazo, .equipo, .camino{ break-inside:avoid; }
+  .doc section, .paso, .grupo, .cuenta, .etapa, .tabla, .cierre, .pie, .arranque, .vistazo, .equipo, .camino, .eco{ break-inside:avoid; }
   .cab{ break-after:avoid; }
   .pasos, .grupos, .etapas, .claras{ grid-template-columns:1fr 1fr; }
   .claras{ grid-template-columns:1fr 1fr 1fr; }

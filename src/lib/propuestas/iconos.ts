@@ -54,3 +54,25 @@ export const CAMINO_MES_1: { dia: string; icono: string; que: string }[] = [
   { dia: "Día 15", icono: "📣", que: "Sale el contenido y la pauta" },
   { dia: "Día 30", icono: "📊", que: "Reporte del mes" },
 ];
+
+/** El nombre de la marca en una o dos líneas, con el tamaño que entre en el círculo. */
+export function lineasDeMarca(nombre: string): { lineas: string[]; tam: number } {
+  const n = nombre.trim();
+  if (n.length <= 9) return { lineas: [n], tam: 24 };
+  if (n.length <= 13) return { lineas: [n], tam: 18 };
+  const palabras = n.split(/\s+/);
+  if (palabras.length === 1) return { lineas: [n.slice(0, 18)], tam: 13 };
+  let mejor = 1;
+  let dif = Infinity;
+  for (let i = 1; i < palabras.length; i++) {
+    const a = palabras.slice(0, i).join(" ").length;
+    const b = palabras.slice(i).join(" ").length;
+    if (Math.abs(a - b) <= dif) {
+      dif = Math.abs(a - b);
+      mejor = i;
+    }
+  }
+  const lineas = [palabras.slice(0, mejor).join(" "), palabras.slice(mejor).join(" ")];
+  const largo = Math.max(...lineas.map((l) => l.length));
+  return { lineas, tam: largo <= 10 ? 18 : largo <= 14 ? 15 : 12 };
+}

@@ -62,7 +62,7 @@ export function mensajeInvitacion(input: {
   const firma = input.deParte?.trim() ? `\n\n${input.deParte.trim().split(/\s+/)[0]} — JD Media` : "";
   return (
     `${saludo(input.contacto, input.cuenta)} Queremos juntarnos a repasar ${mes} de ${input.cuenta}: ` +
-    `lo que salió, los números y lo que se viene. Son 45 minutos por Meet.\n\n` +
+    `lo que salió, los números y lo que se viene. Son 30 minutos por Meet.\n\n` +
     `Elegí el día y el horario que te queden cómodos${input.dias ? ` (${input.dias})` : ""} acá:\n${input.link}${firma}`
   );
 }

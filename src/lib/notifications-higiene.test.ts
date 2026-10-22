@@ -21,10 +21,13 @@ describe("avisoVencido", () => {
     }
   });
 
-  it("el de hace cinco días todavía aguanta", () => {
+  it("el de ayer todavía aguanta; el de hace 3 días ya lo reemplazó uno nuevo", () => {
     expect(
-      avisoVencido({ tipo: "vencida", leida: false, created_at: haceDias(5) }, AHORA)
+      avisoVencido({ tipo: "vencida", leida: false, created_at: haceDias(1.5) }, AHORA)
     ).toBe(false);
+    expect(
+      avisoVencido({ tipo: "recordatorio", leida: false, created_at: haceDias(3) }, AHORA)
+    ).toBe(true);
   });
 
   it("una asignación sin leer espera un mes, no una semana", () => {

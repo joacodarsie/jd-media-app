@@ -21,8 +21,13 @@
 /** Avisos que el cron vuelve a generar todos los días. */
 export const TIPOS_REGENERABLES = ["vencida", "proxima_a_vencer", "recordatorio"];
 
-/** Días que vive un recordatorio sin leer antes de que lo reemplace el del día. */
-export const DIAS_REGENERABLE = 7;
+/**
+ * Días que vive un recordatorio sin leer antes de que lo reemplace el del día.
+ * Era 7: el mismo «Boxescar: "Alarmas" está lista…» se apilaba 7 veces y Luz
+ * llegó a 277 sin leer (22/10/2026). El cron lo vuelve a sacar si sigue
+ * pendiente, así que alcanza con que viva 2 días.
+ */
+export const DIAS_REGENERABLE = 2;
 /** Días que vive un hecho sin leer (asignación, mención, comentario). */
 export const DIAS_HECHO = 30;
 /** Días que vive un aviso ya leído. */

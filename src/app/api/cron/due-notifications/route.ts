@@ -25,6 +25,7 @@ import { runAprobacionTacita } from "@/lib/contenidos/aprobacion-tacita-run";
 import { runInspoSemanal } from "@/lib/inspo/run";
 import { runInspoAuto } from "@/lib/inspo/auto-run";
 import { runArchivarCuentasInactivas } from "@/lib/clientes/baja";
+import { runIdeasViejasAlBanco } from "@/lib/contenidos/ideas-viejas";
 import { runPerfilesIncompletos } from "@/lib/equipo/perfil-completo-run";
 import { runConciliacionDiaria } from "@/lib/social/conciliar-run";
 import { runAccountAlerts } from "@/lib/social/alerts";
@@ -526,6 +527,14 @@ export async function GET(req: NextRequest) {
     conciliacion = { error: e instanceof Error ? e.message : String(e) };
   }
 
+  // Ideas que nunca se produjeron y ya pasaron hace 2 semanas: a «Sin fecha» (22/10/2026).
+  let ideasViejas: unknown = null;
+  try {
+    ideasViejas = await runIdeasViejasAlBanco(admin, hoyYmd());
+  } catch (e) {
+    ideasViejas = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   // Salud del token de Meta (punto único de falla de Paid Media + Resultados).
   // Si está caído o vence pronto, avisamos a los admins (deduplicado 20h).
   let metaToken: unknown = null;
@@ -632,6 +641,7 @@ export async function GET(req: NextRequest) {
     tacitas,
     inspo,
     inactivas,
+    ideas_viejas: ideasViejas,
     perfiles,
     rutinas,
     revision_creativa: revisionCreativa,

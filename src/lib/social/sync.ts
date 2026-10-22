@@ -50,11 +50,15 @@ export async function syncClientInstagram(
   // El detalle trae los textos de las publicaciones. Un carácter nulo (\u0000)
   // en un copy hace que Postgres rechace el JSON entero, y como no se revisaba
   // el error, el botón decía «Actualizado» sin guardar nada (Amelia, 22/10/2026).
-  const detalle = JSON.parse(
-    JSON.stringify({ month: r.month, top_media: r.topMedia, media: r.monthMedia, profile: r.profile }).replace(/\\u0000/g, "")
-  );
+  // Lo mismo con un emoji cortado a la mitad (un «surrogate» suelto): toWellFormed lo reemplaza.
+  const limpiar = (_k: string, v: unknown) =>
+    typeof v === "string"
+      ? (v.replace(/\u0000/g, "") as string & { toWellFormed?: () => string }).toWellFormed?.() ?? v.replace(/\u0000/g, "")
+      : v;
+  const detalle = JSON.parse(JSON.stringify({ month: r.month, top_media: r.topMedia, media: r.monthMedia, profile: r.profile }, limpiar));
   const { error: conDetalle } = await admin.from("ig_snapshots").upsert({ ...numeros, detalle }, { onConflict: "cliente_id,fecha" });
   if (conDetalle) {
+    console.error(`[ig] ${clienteId}: no se guardó el detalle: ${conDetalle.message}`);
     // Sin el detalle, al menos quedan los números del día.
     const { error: soloNumeros } = await admin.from("ig_snapshots").upsert(numeros, { onConflict: "cliente_id,fecha" });
     if (soloNumeros) return { error: `No se pudo guardar el resultado: ${soloNumeros.message}` };

@@ -78,7 +78,7 @@ export function JornadasRegistro({
 
   return (
     <div className="space-y-5 pb-12">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <Tarjeta emoji="✍️" titulo="Falta completar" valor={String(res.completar)} detalle="Ya se hicieron: confirmar duración y viáticos." onClick={() => setFiltro("completar")} />
         <Tarjeta emoji="💰" titulo="Falta cobrar" valor={fmtARS(res.faltaCobrar)} detalle={`${cuenta("cobrar")} jornada${cuenta("cobrar") === 1 ? "" : "s"}`} onClick={() => setFiltro("cobrar")} />
         <Tarjeta
@@ -132,13 +132,13 @@ export function JornadasRegistro({
 
 function Tarjeta({ emoji, titulo, valor, detalle, onClick }: { emoji: string; titulo: string; valor: string; detalle: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="rounded-2xl border bg-card p-4 text-left transition hover:border-primary">
-      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-        <span className="text-lg" aria-hidden="true">{emoji}</span>
-        {titulo}
+    <button type="button" onClick={onClick} className="min-w-0 rounded-2xl border bg-card p-3 text-left transition hover:border-primary sm:p-4">
+      <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground sm:gap-2 sm:text-xs">
+        <span className="text-base sm:text-lg" aria-hidden="true">{emoji}</span>
+        <span className="truncate">{titulo}</span>
       </div>
-      <div className="mt-1 text-2xl font-bold tabular-nums">{valor}</div>
-      <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{detalle}</div>
+      <div className="mt-1 truncate text-base font-bold tabular-nums sm:text-2xl">{valor}</div>
+      <div className="mt-0.5 hidden line-clamp-2 text-xs text-muted-foreground sm:block">{detalle}</div>
     </button>
   );
 }

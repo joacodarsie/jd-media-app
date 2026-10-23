@@ -27,6 +27,7 @@ import { runInspoAuto } from "@/lib/inspo/auto-run";
 import { runArchivarCuentasInactivas } from "@/lib/clientes/baja";
 import { runIdeasViejasAlBanco } from "@/lib/contenidos/ideas-viejas";
 import { runHitoTresMeses } from "@/lib/retencion/hito-tres-meses-run";
+import { runAvisoCongeladas } from "@/lib/contenidos/congeladas-run";
 import { runPerfilesIncompletos } from "@/lib/equipo/perfil-completo-run";
 import { runConciliacionDiaria } from "@/lib/social/conciliar-run";
 import { runAccountAlerts } from "@/lib/social/alerts";
@@ -553,6 +554,14 @@ export async function GET(req: NextRequest) {
     hito3m = { error: e instanceof Error ? e.message : String(e) };
   }
 
+  // Piezas congeladas: un aviso por día a la PM con el resumen (22/10/2026).
+  let congeladas: unknown = null;
+  try {
+    congeladas = await runAvisoCongeladas(admin, hoyYmd());
+  } catch (e) {
+    congeladas = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   // Salud del token de Meta (punto único de falla de Paid Media + Resultados).
   // Si está caído o vence pronto, avisamos a los admins (deduplicado 20h).
   let metaToken: unknown = null;
@@ -661,6 +670,7 @@ export async function GET(req: NextRequest) {
     inactivas,
     ideas_viejas: ideasViejas,
     hito_3_meses: hito3m,
+    congeladas,
     perfiles,
     rutinas,
     revision_creativa: revisionCreativa,

@@ -37,6 +37,7 @@ import { DashboardAvisos } from "@/components/dashboard-avisos";
 import { MiPuesto } from "@/components/mi-puesto";
 import { Ilustracion, type Escena } from "@/components/ilustracion";
 import { ReunionesDelMes } from "@/components/reuniones-del-mes";
+import { PiezasCongeladas } from "@/components/piezas-congeladas";
 import { TusObjetivos } from "@/components/tus-objetivos";
 import { EfemeridesProximas } from "@/components/efemerides-proximas";
 
@@ -693,6 +694,13 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
           }}
         />
       </Suspense>
+
+      {/* Piezas congeladas: 5+ días sin moverse, para coordinación y dirección (22/10/2026). */}
+      {(user.rol === "admin" || user.rol === "coordinador") && (
+        <Suspense fallback={null}>
+          <PiezasCongeladas meId={user.id} />
+        </Suspense>
+      )}
 
       {/* Las reuniones de cierre del mes: invitar al cliente a elegir su turno (22/10/2026). */}
       <Suspense fallback={null}>

@@ -2,6 +2,10 @@
 title: Novedades
 ---
 
+## 2026-10-22 — Piezas congeladas
+
+- 🧊 **Piezas congeladas.** En Mi día de coordinación aparece quién tiene piezas que no se mueven hace 5 días o más y tienen que salir esta semana (o ya se pasaron). Con **Avisar**, a la persona le llega un solo aviso con todas las suyas. La PM recibe además un resumen por día.
+
 ## 2026-10-22 — 3 meses juntos y la encuesta después de la reunión
 
 - 🎉 **Hito de los 3 meses.** Todas las bajas fueron antes del mes 3. A los 75 días de cada cuenta, el director creativo recibe una tarea con el antes y el después de la cuenta y un mensaje listo para el cliente. En el portal, el cliente ve el festejo «3 meses juntos».

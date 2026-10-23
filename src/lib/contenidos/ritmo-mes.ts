@@ -35,6 +35,23 @@ export interface RitmoCuenta {
   /** De acá a una semana y todavía sin arrancar (o en diseño a 2 días). */
   enRiesgo: number;
   estado: EstadoRitmo;
+  /** % de lo que ya tenía que salir y salió (sin contar lo que espera al cliente). */
+  cumplimiento: number | null;
+  /** El mismo % del mes anterior completo, para ver si mejora o empeora. */
+  anterior?: number | null;
+}
+
+/** Con menos de 3 piezas con fecha pasada, un porcentaje no dice nada. */
+const BASE_MINIMA = 3;
+
+export type Tendencia = "mejor" | "peor" | "igual";
+
+/** Diez puntos de diferencia para decir que cambió. */
+export function tendencia(actual: number | null, anterior: number | null | undefined): Tendencia | null {
+  if (actual == null || anterior == null) return null;
+  if (actual - anterior >= 10) return "mejor";
+  if (anterior - actual >= 10) return "peor";
+  return "igual";
 }
 
 /** Sin arrancar: todavía no hay diseño ni edición. */
@@ -68,6 +85,8 @@ export function ritmoCuenta(pubs: PubRitmo[], hoy: string): RitmoCuenta {
   }
   // Una sola atrasada es el día a día (12 de 16 cuentas la tenían al 23/10): se
   // ve en la fila, pero la cuenta no se pinta de rojo.
+  const base = deberian - esperandoCliente;
+  const cumplimiento = base >= BASE_MINIMA ? Math.round(((base - atrasadas) / base) * 100) : null;
   const estado: EstadoRitmo = atrasadas >= 2 ? "atrasada" : enRiesgo >= 2 ? "en_riesgo" : "al_dia";
   return {
     clienteId: vivas[0]?.clienteId ?? pubs[0]?.clienteId ?? "",
@@ -79,6 +98,7 @@ export function ritmoCuenta(pubs: PubRitmo[], hoy: string): RitmoCuenta {
     esperandoCliente,
     enRiesgo,
     estado,
+    cumplimiento,
   };
 }
 

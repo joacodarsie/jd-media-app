@@ -5,6 +5,7 @@ title: Novedades
 ## 2026-10-23 — Ritmo del mes
 
 - 🥁 **Ritmo del mes.** En Mi día de coordinación, una barra por cuenta: en verde lo que salió, en rojo lo atrasado, y una rayita que marca dónde tendría que ir hoy. Avisa también si a la cuenta se le vienen esta semana piezas que todavía no arrancaron. Las que van al día quedan en una línea.
+- ↑↓ **Contra el mes anterior.** Cada cuenta se compara con cómo iba el mes pasado a esta misma altura (no con el mes ya cerrado, que engaña porque lo atrasado termina saliendo). Con la flecha se ve enseguida qué cuenta viene empeorando.
 
 ## 2026-10-22 — Piezas congeladas
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ritmoCuenta, ritmoDelMes, type PubRitmo } from "./ritmo-mes";
+import { ritmoCuenta, ritmoDelMes, tendencia, type PubRitmo } from "./ritmo-mes";
 
 const p = (fecha: string, estado: string, extra: Partial<PubRitmo> = {}): PubRitmo => ({
   clienteId: "c1",
@@ -55,5 +55,18 @@ describe("ritmo del mes", () => {
       ["B", "en_riesgo"],
       ["A", "al_dia"],
     ]);
+  });
+
+  it("cumplimiento: lo que salió de lo que ya tenía que salir, sin lo que espera al cliente", () => {
+    const r = ritmoCuenta([p("2026-10-01", "publicado"), p("2026-10-02", "publicado"), p("2026-10-03", "publicado"), p("2026-10-04", "edicion"), p("2026-10-05", "revision_cliente")], hoy);
+    expect(r.cumplimiento).toBe(75);
+    expect(ritmoCuenta([p("2026-10-01", "publicado"), p("2026-10-02", "edicion")], hoy).cumplimiento).toBeNull();
+  });
+
+  it("tendencia: diez puntos para decir que cambió", () => {
+    expect(tendencia(80, 60)).toBe("mejor");
+    expect(tendencia(50, 75)).toBe("peor");
+    expect(tendencia(70, 75)).toBe("igual");
+    expect(tendencia(70, null)).toBeNull();
   });
 });

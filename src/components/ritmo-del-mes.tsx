@@ -3,6 +3,24 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { hoyYmd } from "@/lib/dates";
 import { periodLabel } from "@/lib/finanzas";
 import { cargarRitmoDelMes } from "@/lib/contenidos/ritmo-mes-run";
+import { tendencia, type RitmoCuenta } from "@/lib/contenidos/ritmo-mes";
+
+/** Contra el mes anterior a la misma altura: flecha y los dos porcentajes. */
+function Tendencia({ c, mesAnt }: { c: RitmoCuenta; mesAnt: string }) {
+  const t = tendencia(c.cumplimiento, c.anterior);
+  if (!t) return null;
+  const tono =
+    t === "peor"
+      ? "bg-red-500/15 text-red-700 dark:text-red-300"
+      : t === "mejor"
+        ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200"
+        : "bg-muted text-muted-foreground";
+  return (
+    <span className={`rounded-full px-1.5 tabular-nums ${tono}`} title={`A esta altura de ${mesAnt} iba ${c.anterior}%; ahora va ${c.cumplimiento}%`}>
+      {t === "peor" ? "↓" : t === "mejor" ? "↑" : "="} {mesAnt} {c.anterior}% → {c.cumplimiento}%
+    </span>
+  );
+}
 
 /**
  * Ritmo del mes en Mi día de coordinación y dirección (23/10/2026): una barra
@@ -17,6 +35,8 @@ export async function RitmoDelMes() {
   const problemas = cuentas.filter((c) => c.estado !== "al_dia");
   const alDia = cuentas.filter((c) => c.estado === "al_dia");
   const mes = periodLabel(hoy.slice(0, 7)).toLowerCase().replace(/\s*(de\s+)?\d{4}$/, "");
+  const [y, m] = hoy.split("-").map(Number);
+  const mesAnt = periodLabel(new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 7)).toLowerCase().slice(0, 3);
 
   return (
     <section id="ritmo" className="scroll-mt-24 rounded-2xl border bg-card p-4 md:p-5 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -34,6 +54,7 @@ export async function RitmoDelMes() {
         <span className="inline-flex items-center gap-1.5"><i className="h-2 w-3 rounded-sm bg-emerald-500" /> salió</span>
         <span className="inline-flex items-center gap-1.5"><i className="h-2 w-3 rounded-sm bg-red-500" /> atrasada</span>
         <span className="inline-flex items-center gap-1.5"><i className="h-3 w-0.5 bg-foreground" /> dónde tendría que ir hoy</span>
+        <span>↑↓ contra {mesAnt} a esta misma altura</span>
       </div>
 
       {problemas.length > 0 && (
@@ -49,6 +70,7 @@ export async function RitmoDelMes() {
                       <span className="tabular-nums text-muted-foreground">
                         {c.salieron}/{c.plan}
                       </span>
+                      <Tendencia c={c} mesAnt={mesAnt} />
                       {c.atrasadas > 0 && <span className="rounded-full bg-red-500/15 px-1.5 text-red-700 dark:text-red-300">{c.atrasadas} atrasada{c.atrasadas === 1 ? "" : "s"}</span>}
                       {c.enRiesgo > 0 && <span className="rounded-full bg-amber-500/15 px-1.5 text-amber-800 dark:text-amber-200">⚠ {c.enRiesgo} sin arrancar esta semana</span>}
                       {c.esperandoCliente > 0 && <span className="rounded-full bg-sky-500/15 px-1.5 text-sky-800 dark:text-sky-200">⏳ {c.esperandoCliente} del cliente</span>}
@@ -76,6 +98,11 @@ export async function RitmoDelMes() {
                 {c.cliente}
               </Link>
               {c.atrasadas > 0 && <span className="text-red-600 dark:text-red-400"> (1 atrasada)</span>}
+              {tendencia(c.cumplimiento, c.anterior) === "peor" && (
+                <span className="text-red-600 dark:text-red-400" title={`A esta altura de ${mesAnt} iba ${c.anterior}%; ahora va ${c.cumplimiento}%`}>
+                  {" "}↓
+                </span>
+              )}
             </span>
           ))}
         </p>

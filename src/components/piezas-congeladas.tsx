@@ -48,8 +48,8 @@ export async function PiezasCongeladas({ meId }: { meId: string }) {
                     className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] hover:bg-muted ${p.atrasada ? "border-red-500/40 text-red-700 dark:text-red-300" : ""}`}
                     title={`${p.titulo} · ${p.diasQuieta} días sin moverse`}
                   >
-                    <span className="font-medium">{p.cuenta}</span>
-                    <span className="max-w-[12rem] truncate text-muted-foreground">{p.titulo}</span>
+                    <span className="whitespace-nowrap font-medium">{p.cuenta}</span>
+                    <span className="max-w-[8rem] truncate sm:max-w-[12rem] text-muted-foreground">{p.titulo}</span>
                     <span className="tabular-nums">{p.diasQuieta}d</span>
                   </Link>
                 </li>

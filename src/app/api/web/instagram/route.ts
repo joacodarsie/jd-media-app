@@ -31,7 +31,7 @@ const cargar = unstable_cache(
       ((fotos ?? []) as { fecha: string; followers: number | null }[]).map((f) => ({ fecha: f.fecha, seguidores: f.followers ?? 0 }))
     );
   },
-  ["web-instagram-v1"],
+  ["web-instagram-v2"],
   { revalidate: 21_600, tags: ["web-instagram"] }
 );
 

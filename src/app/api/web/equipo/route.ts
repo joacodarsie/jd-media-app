@@ -15,13 +15,13 @@ const cargar = unstable_cache(
   async () => {
     const { data } = await createAdmin()
       .from("users")
-      .select("nombre, area, area_secundaria, avatar_url, email")
+      .select("nombre, area, area_secundaria, avatar_url, avatar_web_url, foto_web, email")
       .eq("activo", true);
     return equipoParaWeb(
-      (data ?? []) as { nombre: string; area: string | null; area_secundaria: string | null; avatar_url: string | null; email: string | null }[]
+      (data ?? []) as Parameters<typeof equipoParaWeb>[0]
     );
   },
-  ["web-equipo-v1"],
+  ["web-equipo-v2"],
   { revalidate: 3_600, tags: ["web-equipo"] }
 );
 

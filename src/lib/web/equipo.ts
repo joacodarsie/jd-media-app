@@ -38,20 +38,39 @@ function areaPublica(area: string | null, secundaria: string | null): string | n
   return opciones.sort((a, b) => PUBLICO[a].orden - PUBLICO[b].orden)[0];
 }
 
+/** La foto que va en la web: la gris (23/10/2026) salvo que la persona elija la original. */
+function fotoParaWeb(u: { avatar_url: string | null; avatar_web_url?: string | null; foto_web?: string | null }) {
+  return u.foto_web !== "original" && u.avatar_web_url ? { url: u.avatar_web_url, lista: true } : { url: u.avatar_url, lista: false };
+}
+
+/** Las 12 grises armadas a mano viven en la web, con una versión chica al lado. */
+const chica = (url: string, px: number) =>
+  url.includes("/images/equipo/gris/") ? url.replace("/images/equipo/gris/", "/images/equipo/gris/sm/") : imagenChica(url, px);
+
 export function equipoParaWeb(
-  users: { nombre: string; area: string | null; area_secundaria: string | null; avatar_url: string | null; email?: string | null }[]
+  users: {
+    nombre: string;
+    area: string | null;
+    area_secundaria: string | null;
+    avatar_url: string | null;
+    avatar_web_url?: string | null;
+    foto_web?: string | null;
+    email?: string | null;
+  }[]
 ): PersonaWeb[] {
   return users
     .filter((u) => !(u.email ?? "").startsWith("agenciajdmedia"))
     .map((u) => ({ u, area: areaPublica(u.area, u.area_secundaria) }))
     .filter((x): x is { u: (typeof users)[number]; area: string } => !!x.area)
     .sort((a, b) => PUBLICO[a.area].orden - PUBLICO[b.area].orden || a.u.nombre.localeCompare(b.u.nombre))
-    .map(({ u, area }) => ({
+    .map(({ u, area }) => ({ u, area, ...fotoParaWeb(u) }))
+    .map(({ u, area, url, lista }) => ({
       nombre: u.nombre,
       rol: PUBLICO[area].rol,
       texto: PUBLICO[area].texto,
       grupo: PUBLICO[area].grupo,
-      foto: u.avatar_url ? imagenChica(u.avatar_url, 160) : null,
-      fotoGrande: u.avatar_url ? imagenChica(u.avatar_url, 800) : null,
+      foto: url ? chica(url, 160) : null,
+      // La gris ya sale achicada y en WebP (1000×1250): pasarla de nuevo por el render le baja la calidad.
+      fotoGrande: url ? (lista ? url : imagenChica(url, 1000)) : null,
     }));
 }

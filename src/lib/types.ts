@@ -84,6 +84,10 @@ export interface AppUser {
   /** Área secundaria opcional (para figurar también ahí). */
   area_secundaria: string | null;
   avatar_url: string | null;
+  /** La foto con fondo gris para la web (0216). */
+  avatar_web_url?: string | null;
+  /** Qué foto va en la web (0216). */
+  foto_web?: "gris" | "original" | null;
   activo: boolean;
   position_id: string | null;
   secondary_position_ids: string[];

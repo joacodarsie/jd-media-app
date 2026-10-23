@@ -60,7 +60,7 @@ export default async function MiPerfilPage() {
           <CardTitle className="text-base">Datos</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
-          <MiFoto userId={me.id} nombre={me.nombre} url={me.avatar_url ?? null} />
+          <MiFoto userId={me.id} nombre={me.nombre} url={me.avatar_url ?? null} urlWeb={me.avatar_web_url ?? null} fotoWeb={me.foto_web === "original" ? "original" : "gris"} />
           <SonidosToggle />
           <div className="space-y-1 border-t pt-3">
             <div>

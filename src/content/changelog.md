@@ -2,6 +2,10 @@
 title: Novedades
 ---
 
+## 2026-10-23 — Tu foto para la web
+
+- 📸 **Tu foto para la web, sola.** Cuando subís tu foto en Mi perfil, la plataforma arma una versión con el fondo gris del equipo y el mismo encuadre que el resto (tarda unos segundos, en tu navegador). En la plataforma se sigue viendo tu foto original; en jdmedia.com.ar va la gris. Si preferís la original también en la web, la elegís ahí mismo.
+
 ## 2026-10-23 — Ritmo del mes
 
 - 🥁 **Ritmo del mes.** En Mi día de coordinación, una barra por cuenta: en verde lo que salió, en rojo lo atrasado, y una rayita que marca dónde tendría que ir hoy. Avisa también si a la cuenta se le vienen esta semana piezas que todavía no arrancaron. Las que van al día quedan en una línea.

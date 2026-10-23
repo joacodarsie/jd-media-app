@@ -76,6 +76,34 @@ export async function guardarMiFoto(url: string | null) {
 }
 
 /**
+ * La foto de la web, con el fondo gris del equipo (23/10/2026). Se arma sola en
+ * el navegador al subir la foto; la plataforma sigue mostrando la original.
+ */
+export async function guardarMiFotoWeb(url: string | null) {
+  const me = await requireUser();
+  const limpio = url?.trim() || null;
+  if (limpio && !limpio.startsWith(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/`)) {
+    return { error: "La foto tiene que subirse desde acá." };
+  }
+  const { error } = await createClient().from("users").update({ avatar_web_url: limpio }).eq("id", me.id);
+  if (error) return { error: /avatar_web_url/.test(error.message) ? "Falta aplicar la migración 0216." : error.message };
+  revalidatePath("/mi-perfil");
+  revalidateTag("web-equipo");
+  return { ok: true as const };
+}
+
+/** Qué foto va en la web: la del fondo gris o la original (23/10/2026). */
+export async function elegirFotoWeb(modo: "gris" | "original") {
+  const me = await requireUser();
+  if (modo !== "gris" && modo !== "original") return { error: "Opción inválida." };
+  const { error } = await createClient().from("users").update({ foto_web: modo }).eq("id", me.id);
+  if (error) return { error: /foto_web/.test(error.message) ? "Falta aplicar la migración 0216." : error.message };
+  revalidatePath("/mi-perfil");
+  revalidateTag("web-equipo");
+  return { ok: true as const };
+}
+
+/**
  * Los datos personales y de facturación del user logueado (19/10/2026, 0209):
  * nombre completo, teléfono, DNI/CUIT, condición fiscal y domicilio.
  */

@@ -15,4 +15,23 @@ describe("equipoParaWeb", () => {
     expect(out[1].foto).toContain("/render/image/public/");
     expect(out[2].foto).toBeNull();
   });
+
+  it("en la web va la foto gris, salvo que la persona elija la original", () => {
+    const base = { area: "Diseño", area_secundaria: null, avatar_url: "https://x.supabase.co/storage/v1/object/public/a/o.jpg" };
+    const gris = "https://x.supabase.co/storage/v1/object/public/a/web-1.webp";
+    const [a, b, c] = equipoParaWeb([
+      { ...base, nombre: "A", avatar_web_url: gris, foto_web: "gris" },
+      { ...base, nombre: "B", avatar_web_url: gris, foto_web: "original" },
+      { ...base, nombre: "C", avatar_web_url: null, foto_web: "gris" },
+    ]);
+    expect(a.fotoGrande).toBe(gris);
+    expect(b.fotoGrande).toContain("o.jpg");
+    expect(c.fotoGrande).toContain("o.jpg");
+  });
+
+  it("las grises de la web usan su versión chica para las caras", () => {
+    const [p] = equipoParaWeb([{ nombre: "Luz", area: "Coordinación", area_secundaria: null, avatar_url: null, avatar_web_url: "https://jdmedia.com.ar/images/equipo/gris/luz-torres.webp" }]);
+    expect(p.foto).toBe("https://jdmedia.com.ar/images/equipo/gris/sm/luz-torres.webp");
+    expect(p.fotoGrande).toBe("https://jdmedia.com.ar/images/equipo/gris/luz-torres.webp");
+  });
 });

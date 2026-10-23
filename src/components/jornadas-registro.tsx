@@ -111,7 +111,7 @@ export function JornadasRegistro({
       {visibles.length === 0 ? (
         <p className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">No hay jornadas acá.</p>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid items-start gap-4 lg:grid-cols-2">
           {visibles.map(({ j, e }) => (
             <JornadaCard key={j.id} j={j} estado={e} nombre={nombre} esDueno={esDueno} onEditar={() => setEditando(j)} />
           ))}

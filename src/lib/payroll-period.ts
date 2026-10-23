@@ -9,7 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { nextPeriod } from "./finanzas";
 import { mergeSettings, serviceDeliveryCost, type AgencySettings } from "./coordinacion";
 import { SERVICE_TYPE_LABEL } from "./constants";
-import { splitJornada } from "./jornada";
+import { repartoJornada } from "./jornadas/registro";
 import { isClientPausedFor } from "./client-pause";
 import { cargarAsignaciones } from "./payroll/asignaciones-run";
 import { quienLlevaba } from "./payroll/asignaciones";
@@ -501,6 +501,8 @@ export async function buildPeriodPayroll(
     horas?: number | null;
     viaticos?: number | null;
     viaticos_los_paga?: string | null;
+    viaticos_detalle?: unknown;
+    pagos?: unknown;
     cliente_id: string | null;
     lugar: string | null;
     asistentes: string[];
@@ -508,41 +510,35 @@ export async function buildPeriodPayroll(
   for (const s of sessions) {
     const asistentes = s.asistentes ?? [];
     if (asistentes.length === 0) continue;
-    const directorId = asistentes[0];
-    const acompananteId = asistentes[1] ?? null;
+    const detalle = s.lugar ?? new Date(s.fecha + "T12:00:00").toLocaleDateString("es-AR");
     // Las jornadas cargadas antes de 0163 traían los viáticos adentro del monto;
     // las nuevas los tienen aparte. Se distingue por la columna nueva.
-    const viaticos = Number(s.viaticos ?? 0) || 0;
     const tieneCamposNuevos = s.viaticos != null;
-    const split = tieneCamposNuevos
-      ? splitJornada({
-          precio: Number(s.monto),
-          viaticos,
-          hasAcompanante: !!acompananteId,
-          viaticosLosPaga: s.viaticos_los_paga === "agencia" ? "agencia" : "cliente",
-        })
-      : splitJornada({
-          precio: Math.max(0, Number(s.monto) - 25000),
-          viaticos: Math.min(25000, Number(s.monto)),
-          hasAcompanante: !!acompananteId,
-          viaticosLosPaga: "cliente",
-        });
-    const detalle = s.lugar ?? new Date(s.fecha + "T12:00:00").toLocaleDateString("es-AR");
-    if (!autoByUser.has(directorId)) autoByUser.set(directorId, []);
-    autoByUser.get(directorId)!.push({
-      clienteId: s.cliente_id,
-      cliente: "—",
-      concepto: `Jornada de producción (dirige) · ${detalle}`,
-      monto: split.director,
-      kind: "jornada",
+    // Desde 0217 (23/10/2026) cada uno tiene sus viáticos y lo que el dueño ya
+    // pagó desde Jornadas no se vuelve a sumar al sueldo: entra solo lo que falta.
+    const { partes } = repartoJornada({
+      id: s.id,
+      fecha: s.fecha,
+      horaInicio: null,
+      horas: Number(s.horas ?? 1) || 1,
+      monto: tieneCamposNuevos ? Number(s.monto) : Math.max(0, Number(s.monto) - 25000),
+      viaticos: tieneCamposNuevos ? Number(s.viaticos ?? 0) || 0 : Math.min(25000, Number(s.monto)),
+      viaticosDetalle: (s.viaticos_detalle as Record<string, number> | null) ?? {},
+      viaticosLosPaga: tieneCamposNuevos && s.viaticos_los_paga === "agencia" ? "agencia" : "cliente",
+      asistentes,
+      cobrado: null,
+      cobradoAt: null,
+      pagos: (s.pagos as Record<string, { monto: number; fecha: string }> | null) ?? {},
+      confirmadaAt: null,
     });
-    if (acompananteId && split.acompanante != null) {
-      if (!autoByUser.has(acompananteId)) autoByUser.set(acompananteId, []);
-      autoByUser.get(acompananteId)!.push({
+    for (const p of partes) {
+      if (p.debe <= 0) continue;
+      if (!autoByUser.has(p.userId)) autoByUser.set(p.userId, []);
+      autoByUser.get(p.userId)!.push({
         clienteId: s.cliente_id,
         cliente: "—",
-        concepto: `Jornada de producción (acompaña) · ${detalle}`,
-        monto: split.acompanante,
+        concepto: `Jornada de producción (${p.rol === "dirige" ? "dirige" : "acompaña"}) · ${detalle}${p.pagado > 0 ? " · resto" : ""}`,
+        monto: p.debe,
         kind: "jornada",
       });
     }

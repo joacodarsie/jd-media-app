@@ -39,6 +39,7 @@ import { Ilustracion, type Escena } from "@/components/ilustracion";
 import { ReunionesDelMes } from "@/components/reuniones-del-mes";
 import { PiezasCongeladas } from "@/components/piezas-congeladas";
 import { RitmoDelMes } from "@/components/ritmo-del-mes";
+import { JornadasPendientes } from "@/components/jornadas-pendientes";
 import { TusObjetivos } from "@/components/tus-objetivos";
 import { EfemeridesProximas } from "@/components/efemerides-proximas";
 
@@ -695,6 +696,13 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
           }}
         />
       </Suspense>
+
+      {/* Jornadas de producción: a la PM lo que falta completar, a dirección lo que falta cobrar y pagar (23/10/2026). */}
+      {(user.rol === "admin" || user.area === "Coordinación" || user.area_secundaria === "Coordinación") && (
+        <Suspense fallback={null}>
+          <JornadasPendientes esDueno={user.rol === "admin"} />
+        </Suspense>
+      )}
 
       {/* Ritmo del mes por cuenta: lo que salió contra lo que tendría que haber salido (23/10/2026). */}
       {(user.rol === "admin" || user.rol === "coordinador") && (

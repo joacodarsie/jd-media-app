@@ -64,6 +64,11 @@ export interface JornadaInputSplit {
   hasAcompanante: boolean;
   /** Quién pone los viáticos. Si es la agencia, salen de su parte. */
   viaticosLosPaga?: "cliente" | "agencia";
+  /**
+   * Los viáticos de cada uno (23/10/2026): [quien dirige, acompañante]. Si no
+   * vienen, el total se reparte en partes iguales, como antes.
+   */
+  viaticosPersona?: [number, number | null];
 }
 
 /**
@@ -78,10 +83,11 @@ export function splitJornada(input: JornadaInputSplit): JornadaSplit {
   const viaticos = Math.max(0, Number(input.viaticos) || 0);
   const numPersonas = input.hasAcompanante ? 2 : 1;
   const viaticosPorPersona = Math.round(viaticos / numPersonas);
+  const [vDir, vAco] = input.viaticosPersona ?? [viaticosPorPersona, input.hasAcompanante ? viaticosPorPersona : null];
 
-  const director = viaticosPorPersona + Math.round(precio * JORNADA_PCT_DIRECTOR);
+  const director = Math.max(0, vDir) + Math.round(precio * JORNADA_PCT_DIRECTOR);
   const acompanante = input.hasAcompanante
-    ? viaticosPorPersona + Math.round(precio * JORNADA_PCT_ACOMPANANTE)
+    ? Math.max(0, vAco ?? 0) + Math.round(precio * JORNADA_PCT_ACOMPANANTE)
     : null;
 
   const losPagaElCliente = (input.viaticosLosPaga ?? "agencia") === "cliente";

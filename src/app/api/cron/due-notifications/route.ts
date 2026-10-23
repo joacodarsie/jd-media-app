@@ -28,6 +28,7 @@ import { runArchivarCuentasInactivas } from "@/lib/clientes/baja";
 import { runIdeasViejasAlBanco } from "@/lib/contenidos/ideas-viejas";
 import { runHitoTresMeses } from "@/lib/retencion/hito-tres-meses-run";
 import { runAvisoCongeladas } from "@/lib/contenidos/congeladas-run";
+import { runAvisoJornadas } from "@/lib/jornadas/aviso-run";
 import { runPerfilesIncompletos } from "@/lib/equipo/perfil-completo-run";
 import { runConciliacionDiaria } from "@/lib/social/conciliar-run";
 import { runAccountAlerts } from "@/lib/social/alerts";
@@ -554,6 +555,14 @@ export async function GET(req: NextRequest) {
     hito3m = { error: e instanceof Error ? e.message : String(e) };
   }
 
+  // Jornadas ya hechas sin los datos reales: un aviso por día a la PM (23/10/2026).
+  let jornadas: unknown = null;
+  try {
+    jornadas = await runAvisoJornadas(admin, hoyYmd());
+  } catch (e) {
+    jornadas = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   // Piezas congeladas: un aviso por día a la PM con el resumen (22/10/2026).
   let congeladas: unknown = null;
   try {
@@ -671,6 +680,7 @@ export async function GET(req: NextRequest) {
     ideas_viejas: ideasViejas,
     hito_3_meses: hito3m,
     congeladas,
+    jornadas,
     perfiles,
     rutinas,
     revision_creativa: revisionCreativa,

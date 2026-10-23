@@ -54,6 +54,7 @@ const H = {
   clientes: { nombre: "Clientes", href: "/clientes", para: "Ficha, accesos y semáforo de cada cuenta" },
   pm: { nombre: "Project Manager", href: "/onboarding", para: "Arranques de cuentas nuevas" },
   agenda: { nombre: "Agenda", href: "/agenda", para: "Reuniones y jornadas" },
+  jornadas: { nombre: "Jornadas", href: "/jornadas", para: "El registro de cada jornada: cobros y pagos" },
   prospeccion: { nombre: "Prospección", href: "/prospeccion", para: "Contactos para escribir hoy" },
   comercial: { nombre: "Comercial", href: "/comercial", para: "Reuniones, propuestas y cierres" },
   paid: { nombre: "Paid Media", href: "/paid-media", para: "Campañas y resultados de pauta" },
@@ -168,11 +169,11 @@ export const ROLES: Rol[] = [
       { dia: 15, que: "La cuenta empieza a publicar" },
     ],
     ritmo: [
-      { cuando: "Todos los días", que: ["Mirar lo atrasado y avisar a cada uno", "Responder las «¿Trabada?»"] },
+      { cuando: "Todos los días", que: ["Mirar lo atrasado y avisar a cada uno", "Responder las «¿Trabada?»", "Confirmar las jornadas que ya se hicieron: duración y viáticos de cada uno"] },
       { cuando: "Cada semana", que: ["Bajada de prioridades al equipo", "Revisar los arranques en Project Manager"] },
       { cuando: "Cada mes", que: ["Carta acuerdo el 25", "Que los clientes contesten la encuesta"] },
     ],
-    herramientas: [H.miDia, H.tareas, H.pm, H.contenidos, H.objetivos],
+    herramientas: [H.miDia, H.tareas, H.pm, H.contenidos, H.jornadas, H.objetivos],
   },
   {
     area: "Coordinación de Diseño",

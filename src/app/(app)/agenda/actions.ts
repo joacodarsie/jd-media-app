@@ -51,6 +51,8 @@ async function guardarJornada(
   const base = {
     fecha,
     periodo: fecha.slice(0, 7),
+    // La hora de arranque, para el registro de /jornadas (0217).
+    hora_inicio: new Date(new Date(input.starts_at).getTime() - 3 * 3_600_000).toISOString().slice(11, 16),
     horas,
     monto: precioJornada(horas),
     cliente_id: input.client_id || null,
@@ -72,6 +74,7 @@ async function guardarJornada(
 }
 
 function revalidarJornadas() {
+  revalidatePath("/jornadas");
   revalidatePath("/coordinacion/jornadas");
   revalidatePath("/coordinacion/sueldos");
 }

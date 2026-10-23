@@ -39,7 +39,7 @@ export const coordinacionTabs: SectionTab[] = [
   { href: "/coordinacion/riesgo", label: "Riesgo" },
   { href: "/coordinacion/comercial", label: "Comercial" },
   { href: "/coordinacion/sueldos", label: "Sueldos" },
-  { href: "/coordinacion/jornadas", label: "Jornadas" },
+  { href: "/jornadas", label: "Jornadas" },
   { href: "/coordinacion/mes-uno", label: "Mes 1" },
   { href: "/director", label: "Director IA" },
 ];

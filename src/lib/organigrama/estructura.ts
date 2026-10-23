@@ -133,7 +133,7 @@ export const ORGANIGRAMA: NodoOrg = {
         { label: "Contenidos", href: "/contenidos", detalle: "El calendario de todas las cuentas, pieza por pieza." },
         { label: "Tareas del equipo", href: "/tareas", detalle: "Qué tiene cada uno y qué está vencido." },
         { label: "Carga del equipo", href: "/equipo/capacity", detalle: "Quién está saturado y quién tiene lugar." },
-        { label: "Jornadas de producción", href: "/coordinacion/jornadas", detalle: "Coordinar las sesiones de fotos y video." },
+        { label: "Jornadas de producción", href: "/jornadas", detalle: "Coordinar las sesiones de fotos y video." },
         { label: "¿Salió de verdad?", href: "/contenidos/salio", detalle: "Contrastar el calendario contra lo que realmente se publicó." },
         { label: "Mes 1", href: "/coordinacion/mes-uno", detalle: "El arranque de las cuentas nuevas." },
         { label: "Cobros", href: "/cobros", detalle: "Que el cobro del 1 al 5 no se pase." },

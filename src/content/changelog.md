@@ -2,6 +2,13 @@
 title: Novedades
 ---
 
+## 2026-10-23 — Jornadas de producción
+
+- 🎬 **Jornadas, con todo el registro.** Nueva sección **Jornadas** (en el menú, para dirección y la project manager). Cada jornada tiene fecha, hora, quiénes fueron, cuánto duró, lo que vale (1ª hora + horas extra), los **viáticos de cada uno** y lo que hay que cobrarle al cliente.
+- ✍️ **Después de cada jornada, Luz confirma** la duración real y los viáticos. Hasta que no lo hace, le llega un recordatorio por día y aparece en su Mi día.
+- 💰🤝 **Dirección marca lo cobrado y lo pagado** a cada persona. Arriba se ve cuánto falta cobrar y cuánto se le debe a cada uno. Lo que se paga desde acá no se vuelve a sumar al sueldo del mes.
+- Se siguen agendando en la **Agenda**: al agendar, la jornada aparece sola en el registro.
+
 ## 2026-10-23 — Tu foto para la web
 
 - 📸 **Tu foto para la web, sola.** Cuando subís tu foto en Mi perfil, la plataforma arma una versión con el fondo gris del equipo y el mismo encuadre que el resto (tarda unos segundos, en tu navegador). En la plataforma se sigue viendo tu foto original; en jdmedia.com.ar va la gris. Si preferís la original también en la web, la elegís ahí mismo.

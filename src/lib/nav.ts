@@ -8,6 +8,8 @@ export interface NavItem {
   icon: string;
   /** Si se define, sólo estos roles ven el item. */
   roles?: UserRole[];
+  /** Además de los roles, estas áreas (principal o secundaria) también lo ven. */
+  areas?: string[];
   /** Si se define, además requiere esta feature (admin la tiene siempre). */
   feature?: Feature;
   /** Si es true, sólo lo ve la cuenta dueña de JDmedIA en vivo (gate por env). */
@@ -43,6 +45,9 @@ export const NAV_GROUPS: NavGroup[] = [
         roles: ["admin", "coordinador", "paid_media"],
       },
       { href: "/agenda", label: "Agenda", icon: "CalendarClock" },
+      // Jornadas de producción: el registro de cobros y pagos (23/10/2026). Lo
+      // carga la project manager; dirección cobra y paga.
+      { href: "/jornadas", label: "Jornadas", icon: "Clapperboard", roles: ["admin"], areas: ["Coordinación"] },
       // JDmedIA en vivo ya no es ítem: se entra con el botón "Sesión en vivo"
       // dentro de /jdmedia (misma feature jdmedia_live).
       { href: "/jdmedia", label: "JDmedIA", icon: "MessageCircle" },
@@ -209,7 +214,8 @@ function itemVisible(user: AppUser, i: NavItem, isLiveOwner = false) {
     (i.roles.includes(user.rol) ||
       (!!user.rol_secundario && i.roles.includes(user.rol_secundario)));
   const featOk = !!i.feature && userHasFeature(user, i.feature);
-  if (i.roles || i.feature) return roleOk || featOk;
+  const areaOk = !!i.areas && (i.areas.includes(user.area ?? "") || i.areas.includes(user.area_secundaria ?? ""));
+  if (i.roles || i.feature || i.areas) return roleOk || featOk || areaOk;
   return true;
 }
 

@@ -38,6 +38,7 @@ import { MiPuesto } from "@/components/mi-puesto";
 import { Ilustracion, type Escena } from "@/components/ilustracion";
 import { ReunionesDelMes } from "@/components/reuniones-del-mes";
 import { PiezasCongeladas } from "@/components/piezas-congeladas";
+import { RitmoDelMes } from "@/components/ritmo-del-mes";
 import { TusObjetivos } from "@/components/tus-objetivos";
 import { EfemeridesProximas } from "@/components/efemerides-proximas";
 
@@ -694,6 +695,13 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
           }}
         />
       </Suspense>
+
+      {/* Ritmo del mes por cuenta: lo que salió contra lo que tendría que haber salido (23/10/2026). */}
+      {(user.rol === "admin" || user.rol === "coordinador") && (
+        <Suspense fallback={null}>
+          <RitmoDelMes />
+        </Suspense>
+      )}
 
       {/* Piezas congeladas: 5+ días sin moverse, para coordinación y dirección (22/10/2026). */}
       {(user.rol === "admin" || user.rol === "coordinador") && (

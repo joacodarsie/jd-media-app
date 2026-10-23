@@ -2,6 +2,10 @@
 title: Novedades
 ---
 
+## 2026-10-23 — Ritmo del mes
+
+- 🥁 **Ritmo del mes.** En Mi día de coordinación, una barra por cuenta: en verde lo que salió, en rojo lo atrasado, y una rayita que marca dónde tendría que ir hoy. Avisa también si a la cuenta se le vienen esta semana piezas que todavía no arrancaron. Las que van al día quedan en una línea.
+
 ## 2026-10-22 — Piezas congeladas
 
 - 🧊 **Piezas congeladas.** En Mi día de coordinación aparece quién tiene piezas que no se mueven hace 5 días o más y tienen que salir esta semana (o ya se pasaron). Con **Avisar**, a la persona le llega un solo aviso con todas las suyas. La PM recibe además un resumen por día.

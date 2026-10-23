@@ -76,7 +76,11 @@ export function armarHistoria(
   fotos: { fecha: string; seguidores: number }[],
   cuantas = 4
 ): HistoriaIg {
-  const piezas = media.map(aPieza).filter((p): p is PiezaIg => !!p).sort((a, b) => a.fecha.localeCompare(b.fecha));
+  // Por hora exacta: el primer día salieron dos y la bienvenida fue la primera.
+  const piezas = [...media]
+    .sort((a, b) => (a.timestamp ?? "").localeCompare(b.timestamp ?? ""))
+    .map(aPieza)
+    .filter((p): p is PiezaIg => !!p);
   const primeros = piezas.slice(0, cuantas);
   const recientes = piezas.slice(-cuantas).reverse().filter((p) => !primeros.some((x) => x.id === p.id));
   const usados = new Set([...primeros, ...recientes].map((p) => p.id));

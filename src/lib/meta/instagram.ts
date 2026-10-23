@@ -121,6 +121,8 @@ export interface IgMedia {
   comments_count: number;
   reach: number | null;
   saved: number | null;
+  /** El video, si es un reel (la URL del CDN de Meta vence en unos días). */
+  video_url?: string | null;
 }
 
 export interface IgResults {
@@ -235,6 +237,7 @@ function mapMedia(m: RawMedia): IgMedia {
     comments_count: num(m.comments_count),
     reach: reachIt ? num(reachIt.values?.[0]?.value) : null,
     saved: savedIt ? num(savedIt.values?.[0]?.value) : null,
+    video_url: m.media_type === "VIDEO" ? (m.media_url ?? null) : null,
   };
 }
 
@@ -246,7 +249,9 @@ function mapMedia(m: RawMedia): IgMedia {
 export async function fetchIgMediaRange(
   igUserId: string,
   sinceUnix: number,
-  untilUnix: number
+  untilUnix: number,
+  /** Páginas de 50. Para la historia de la cuenta se traen todas (23/10/2026). */
+  maxPaginas = 5
 ): Promise<IgMedia[]> {
   const out: IgMedia[] = [];
   let params: Record<string, string> = {
@@ -255,7 +260,7 @@ export async function fetchIgMediaRange(
     until: String(untilUnix),
     limit: "50",
   };
-  for (let page = 0; page < 5; page++) {
+  for (let page = 0; page < maxPaginas; page++) {
     const res = await graphGetSoft<{
       data: RawMedia[];
       paging?: { cursors?: { after?: string } };

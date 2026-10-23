@@ -11,6 +11,7 @@ import { AREA_PM } from "@/lib/tareas/puerta";
 import { aRegistro } from "@/lib/jornadas/cargar";
 import { avisoJornadaLista } from "@/lib/jornadas/registro";
 import type { AppUser } from "@/lib/types";
+import { anotar, anotarCambios, nombresParaHistorial } from "@/lib/jornadas/historial-run";
 
 /**
  * Jornadas de producción (23/10/2026). Luz las carga y confirma los datos
@@ -107,12 +108,17 @@ export async function guardarJornada(id: string | null, f: JornadaForm) {
     if (err) return { error: err };
     const admin = createAdmin();
     if (id) {
-      const { error } = await admin.from("production_sessions").update(fila(f)).eq("id", id);
+      const { data: antes } = await admin.from("production_sessions").select("*").eq("id", id).maybeSingle();
+      if (!antes) return { error: "No encontré la jornada." };
+      const nueva = fila(f);
+      const { error } = await admin.from("production_sessions").update(nueva).eq("id", id);
       if (error) return { error: error.message };
       await moverEnAgenda(id, f);
+      await anotarCambios(admin, id, me.id, "Modificó la jornada", antes, nueva);
     } else {
-      const { error } = await admin.from("production_sessions").insert({ ...fila(f), creado_por_id: me.id });
-      if (error) return { error: error.message };
+      const { data, error } = await admin.from("production_sessions").insert({ ...fila(f), creado_por_id: me.id }).select("id").single();
+      if (error || !data) return { error: error?.message ?? "No se pudo cargar." };
+      await anotar(admin, data.id, me.id, "Cargó la jornada");
     }
     revalidar();
     return { ok: true as const };
@@ -131,6 +137,7 @@ export async function confirmarJornada(id: string) {
       .update({ confirmada_at: new Date().toISOString(), confirmada_por_id: me.id })
       .eq("id", id);
     if (error) return { error: error.message };
+    await anotar(admin, id, me.id, "Confirmó los datos reales");
 
     const [{ data: cli }, { data: users }] = await Promise.all([
       s.cliente_id ? admin.from("clients").select("id, nombre").eq("id", s.cliente_id).maybeSingle() : Promise.resolve({ data: null }),
@@ -153,13 +160,23 @@ export async function confirmarJornada(id: string) {
 /** Lo que se le cobró al cliente. `null` lo desmarca. */
 export async function marcarCobrado(id: string, monto: number | null) {
   return envolver(async () => {
-    await soloDueno();
+    const me = await soloDueno();
     if (monto != null && !(monto >= 0)) return { error: "El monto no puede ser negativo." };
-    const { error } = await createAdmin()
+    const admin = createAdmin();
+    const { data: antes } = await admin.from("production_sessions").select("cobrado").eq("id", id).maybeSingle();
+    const { error } = await admin
       .from("production_sessions")
       .update(monto == null ? { cobrado: null, cobrado_at: null } : { cobrado: Math.round(monto), cobrado_at: hoyYmd() })
       .eq("id", id);
     if (error) return { error: error.message };
+    const previo = antes?.cobrado == null ? null : Number(antes.cobrado);
+    await anotar(
+      admin,
+      id,
+      me.id,
+      monto == null ? "Desmarcó el cobro" : "Registró un cobro",
+      [`Cobrado: ${previo == null ? "—" : fmtARS(previo)} → ${monto == null ? "—" : fmtARS(Math.round(monto))}`]
+    );
     revalidar();
     return { ok: true as const };
   });
@@ -168,17 +185,22 @@ export async function marcarCobrado(id: string, monto: number | null) {
 /** Lo que se le pagó a una persona por esta jornada. `null` lo desmarca. */
 export async function marcarPagado(id: string, userId: string, monto: number | null) {
   return envolver(async () => {
-    await soloDueno();
+    const me = await soloDueno();
     if (monto != null && !(monto >= 0)) return { error: "El monto no puede ser negativo." };
     const admin = createAdmin();
     const { data: s } = await admin.from("production_sessions").select("pagos, asistentes").eq("id", id).maybeSingle();
     if (!s) return { error: "No encontré la jornada." };
     if (!((s.asistentes as string[]) ?? []).includes(userId)) return { error: "Esa persona no fue a la jornada." };
-    const pagos = { ...((s.pagos as Record<string, unknown>) ?? {}) };
+    const pagos = { ...((s.pagos as Record<string, { monto: number; fecha: string }>) ?? {}) };
+    const previo = pagos[userId]?.monto ?? null;
     if (monto == null) delete pagos[userId];
     else pagos[userId] = { monto: Math.round(monto), fecha: hoyYmd() };
     const { error } = await admin.from("production_sessions").update({ pagos }).eq("id", id);
     if (error) return { error: error.message };
+    const quien = (await nombresParaHistorial(admin)).persona(userId);
+    await anotar(admin, id, me.id, monto == null ? `Desmarcó el pago a ${quien}` : `Le pagó a ${quien}`, [
+      `Pagado a ${quien}: ${previo == null ? "—" : fmtARS(previo)} → ${monto == null ? "—" : fmtARS(Math.round(monto))}`,
+    ]);
     revalidar();
     return { ok: true as const };
   });

@@ -8,6 +8,7 @@ title: Novedades
 - ✍️ **Después de cada jornada, Luz confirma** la duración real y los viáticos. Hasta que no lo hace, le llega un recordatorio por día y aparece en su Mi día.
 - 💰🤝 **Dirección marca lo cobrado y lo pagado** a cada persona. Arriba se ve cuánto falta cobrar y cuánto se le debe a cada uno. Lo que se paga desde acá no se vuelve a sumar al sueldo del mes.
 - Se siguen agendando en la **Agenda**: al agendar, la jornada aparece sola en el registro.
+- 🕓 **Se puede modificar siempre, con historial.** Cada jornada tiene su **Historial**: quién cambió qué, cuándo, y el valor de antes y el de después (también los cobros, los pagos y lo que se mueve desde la Agenda).
 
 ## 2026-10-23 — Tu foto para la web
 

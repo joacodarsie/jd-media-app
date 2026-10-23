@@ -8,6 +8,7 @@ import { sendPushToUsers } from "@/lib/push";
 import { cuandoReunion } from "@/lib/prospecting/reunion";
 import { diaArgentina, horasDeJornada, moverADia } from "@/lib/agenda/eventos";
 import { precioJornada } from "@/lib/jornada";
+import { anotar, anotarCambios } from "@/lib/jornadas/historial-run";
 
 export interface MeetingInput {
   titulo: string;
@@ -60,7 +61,9 @@ async function guardarJornada(
     asistentes: input.attendee_ids,
   };
   if (sesionId) {
+    const { data: antes } = await admin.from("production_sessions").select("*").eq("id", sesionId).maybeSingle();
     const { error } = await admin.from("production_sessions").update(base).eq("id", sesionId);
+    if (!error && antes) await anotarCambios(admin, sesionId, actorId, "Cambió la jornada desde la Agenda", antes, base);
     return error ? error.message : null;
   }
   const { data, error } = await admin
@@ -69,6 +72,7 @@ async function guardarJornada(
     .select("id")
     .single();
   if (error || !data) return error?.message ?? "No se pudo registrar la jornada";
+  await anotar(admin, data.id, actorId, "La agendó en la Agenda");
   await admin.from("internal_meetings").update({ production_session_id: data.id }).eq("id", meetingId);
   return null;
 }

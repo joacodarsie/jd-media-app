@@ -7,7 +7,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, Clock, Loader2, MapPin, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
+import { Check, Clock, History, Loader2, MapPin, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -160,6 +160,7 @@ function JornadaCard({
   const [pending, start] = useTransition();
   const r = repartoJornada(j);
   const [cobro, setCobro] = useState(String(r.faltaCobrar || r.aCobrar));
+  const [verHistorial, setVerHistorial] = useState(false);
   const correr = (fn: () => Promise<{ ok?: true; error?: string } | undefined>, ok: string) =>
     start(async () => {
       const res = await fn();
@@ -266,6 +267,29 @@ function JornadaCard({
 
       {j.notas && j.notas !== "Agendada en la Agenda" && <p className="border-t px-4 py-2 text-xs italic text-muted-foreground">{j.notas}</p>}
 
+      {verHistorial && (
+        <ol className="space-y-2 border-t bg-muted/30 px-4 py-3">
+          {j.historial.map((c, i) => (
+            <li key={i} className="text-xs">
+              <div>
+                <span className="font-medium">{c.quien}</span> · {c.accion}
+                <span className="text-muted-foreground">
+                  {" "}
+                  · {new Date(c.cuando).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Cordoba" })}
+                </span>
+              </div>
+              {c.detalle.length > 0 && (
+                <ul className="mt-0.5 space-y-0.5 pl-3 text-muted-foreground">
+                  {c.detalle.map((d) => (
+                    <li key={d}>{d}</li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
+
       <div className="mt-auto flex flex-wrap items-center gap-2 border-t px-4 py-2.5">
         <Button size="sm" variant="outline" className="gap-1.5" onClick={onEditar} disabled={pending}>
           <Pencil className="h-4 w-4" /> Editar
@@ -276,6 +300,16 @@ function JornadaCard({
           </Button>
         )}
         {j.agendada && <span className="text-[11px] text-muted-foreground">📅 En la Agenda</span>}
+        {j.historial.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setVerHistorial((v) => !v)}
+            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+            aria-expanded={verHistorial}
+          >
+            <History className="h-3.5 w-3.5" /> Historial · {j.historial.length}
+          </button>
+        )}
         {esDueno && (
           <Button
             size="sm"

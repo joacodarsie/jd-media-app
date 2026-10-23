@@ -9,6 +9,15 @@ export interface JornadaFila extends JornadaRegistro {
   notas: string | null;
   /** Tiene su evento en la Agenda. */
   agendada: boolean;
+  /** Quién cambió qué y cuándo, lo más nuevo primero (0218). */
+  historial: CambioJornada[];
+}
+
+export interface CambioJornada {
+  cuando: string;
+  quien: string;
+  accion: string;
+  detalle: string[];
 }
 
 export function aRegistro(s: Record<string, unknown>, clientes: Map<string, string>, agendadas: Set<string>): JornadaFila {
@@ -32,16 +41,39 @@ export function aRegistro(s: Record<string, unknown>, clientes: Map<string, stri
     lugar: (s.lugar as string | null) ?? null,
     notas: (s.notas as string | null) ?? null,
     agendada: agendadas.has(String(s.id)),
+    historial: [],
   };
 }
 
 export async function cargarJornadas(admin: SupabaseClient): Promise<JornadaFila[]> {
-  const [{ data: sesiones }, { data: clientes }, { data: eventos }] = await Promise.all([
+  const [{ data: sesiones }, { data: clientes }, { data: eventos }, { data: users }] = await Promise.all([
     admin.from("production_sessions").select("*").order("fecha", { ascending: false }).limit(500),
     admin.from("clients").select("id, nombre"),
     admin.from("internal_meetings").select("production_session_id").not("production_session_id", "is", null),
+    admin.from("users").select("id, nombre"),
   ]);
   const porId = new Map(((clientes ?? []) as { id: string; nombre: string }[]).map((c) => [c.id, c.nombre]));
   const agendadas = new Set(((eventos ?? []) as { production_session_id: string }[]).map((e) => e.production_session_id));
-  return ((sesiones ?? []) as Record<string, unknown>[]).map((s) => aRegistro(s, porId, agendadas));
+  const filas = ((sesiones ?? []) as Record<string, unknown>[]).map((s) => aRegistro(s, porId, agendadas));
+
+  // El historial de cada una (si 0218 no está, queda vacío).
+  const nombre = new Map(((users ?? []) as { id: string; nombre: string }[]).map((u) => [u.id, u.nombre.split(" ")[0]]));
+  const porSesion = new Map(filas.map((j) => [j.id, j]));
+  const ids = filas.map((j) => j.id);
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data } = await admin
+      .from("production_session_cambios")
+      .select("session_id, user_id, accion, detalle, created_at")
+      .in("session_id", ids.slice(i, i + 200))
+      .order("created_at", { ascending: false });
+    for (const c of (data ?? []) as { session_id: string; user_id: string | null; accion: string; detalle: string[] | null; created_at: string }[]) {
+      porSesion.get(c.session_id)?.historial.push({
+        cuando: c.created_at,
+        quien: c.user_id ? nombre.get(c.user_id) ?? "alguien" : "la plataforma",
+        accion: c.accion,
+        detalle: c.detalle ?? [],
+      });
+    }
+  }
+  return filas;
 }

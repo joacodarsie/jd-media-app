@@ -27,7 +27,8 @@ export async function cargarLogro(admin: Admin, clienteId: string, hoy: string, 
   // Sin foto de inicio, el primer y el último registro diario de Instagram.
   const serie = crec?.seguidores ?? [];
   const antes = seg?.antes ?? (serie.length > 1 ? serie[0].followers : null);
-  const ahora = seg?.hoy ?? (serie.length > 1 ? serie[serie.length - 1].followers : null);
+  // Hoy: el registro diario más nuevo (la foto mensual puede tener semanas).
+  const ahora = serie.length ? serie[serie.length - 1].followers : seg?.hoy ?? null;
   return logroDeLaCuenta({ posts, seguidoresAntes: antes, seguidoresHoy: ahora, hoy });
 }
 

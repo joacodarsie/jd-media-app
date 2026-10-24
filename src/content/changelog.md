@@ -6,6 +6,7 @@ title: Novedades
 
 - ✅ **Cada uno tiene su onboarding en Tareas.** Cuando entra una cuenta, a quien tiene cada pestaña del onboarding (Inicial, Gestión de redes, Creativa, Community, Diseño y Publicidad) le aparece la tarea «Completar el onboarding de … — cliente», con la fecha del arranque en que esa parte tiene que estar y la lista de lo que falta.
 - **Se cierra sola** cuando la pestaña queda completa: no hace falta marcarla.
+- 🎉 **El logro de cada cuenta, en su portal.** Cuando una cuenta tiene un posteo récord (el doble de interacción que el resto del mes) o creció en seguidores desde que arrancamos, el cliente lo ve arriba de todo en su portal, con un botón para contárselo a alguien por WhatsApp con su link de referido. Y la project manager recibe la tarea «Buen momento para pedirle una recomendación», con el mensaje listo (una por cuenta y por mes).
 - 🔑 **Accesos de las redes, conectados con el portal.** Lo que el cliente carga desde su plataforma marca solo el paso de la community (y le avisa), y lo que carga la community ya no se le pide al cliente.
 
 ## 2026-10-24 — El portal del cliente, por pestañas

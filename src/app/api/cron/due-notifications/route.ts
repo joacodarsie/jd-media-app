@@ -44,6 +44,7 @@ import { cortesDeHigiene } from "@/lib/notifications-higiene";
 import { runAvisoLinkFaltante } from "@/lib/contenidos/link-faltante-run";
 import { runOnboardingPendiente } from "@/lib/retencion/onboarding-pendiente-run";
 import { runTareasDePaneles } from "@/lib/onboarding/tareas-paneles-run";
+import { runMomentosParaRecomendar } from "@/lib/referidos/momento-run";
 import { runReunionesMensuales } from "@/lib/retencion/reunion-mensual-run";
 import { runReunionesDesdeCalendario } from "@/lib/retencion/reunion-calendario-run";
 import { runRutinasMensuales } from "@/lib/tareas/rutinas-mensuales-run";
@@ -200,6 +201,15 @@ export async function GET(req: NextRequest) {
     tareasPaneles = await runTareasDePaneles(admin, hoyYmd());
   } catch (e) {
     tareasPaneles = { error: e instanceof Error ? e.message : "falló" };
+  }
+
+  // Referidos: cuando una cuenta tiene un logro (posteo récord, seguidores), la
+  // PM recibe la tarea de pedir la recomendación en ese momento (24/10/2026).
+  let momentos: unknown = null;
+  try {
+    momentos = await runMomentosParaRecomendar(admin, hoyYmd());
+  } catch (e) {
+    momentos = { error: e instanceof Error ? e.message : "falló" };
   }
 
   // La reunión mensual con cada cliente: crea el ticket del mes y, pasado el
@@ -681,6 +691,7 @@ export async function GET(req: NextRequest) {
     prospeccion,
     onboardings,
     tareasPaneles,
+    momentos,
     linksFaltantes,
     reuniones,
     reunionesCalendario,

@@ -68,6 +68,8 @@ import { itemsTeToca, type PausadaPorCliente } from "@/lib/portal/te-toca";
 import { periodoCartaEnPortal } from "@/lib/contratos/carta-mensual";
 // Programa de referidos (13/10/2026).
 import { PortalRecomendar } from "@/components/portal-recomendar";
+import { cargarLogro } from "@/lib/referidos/momento-run";
+import { whatsappConLogro } from "@/lib/referidos/momento";
 import { labelEstado, puedeRecomendar, type EstadoReferido } from "@/lib/referidos/referidos";
 import { hoyYmd } from "@/lib/dates";
 import { PESTANAS, hrefDeAviso, pestanaValida } from "@/lib/portal/pestanas";
@@ -385,6 +387,9 @@ export default async function PortalPage({ params, searchParams }: { params: { t
         .eq("recomienda_id", cliente_id)
         .order("created_at")
     : { data: [] };
+  // Su logro del momento (24/10/2026): se festeja arriba de todo y, si ya puede
+  // recomendar, se lo ofrece mandar por WhatsApp. Ahí es cuando la gente recomienda.
+  const logro = await cargarLogro(admin, cliente_id, hoyYmd(), crecimiento).catch(() => null);
   const recomendados = ((misReferidos ?? []) as unknown as { estado: EstadoReferido; nuevo: { nombre: string } | null }[]).map((r) => ({
     nombre: r.nuevo?.nombre ?? "Una marca",
     estado: labelEstado(r.estado),
@@ -740,6 +745,40 @@ export default async function PortalPage({ params, searchParams }: { params: { t
             </nav>
           );
         })()}
+
+        {ver === "calendario" && logro && (
+          <div className="card" style={{ borderColor: "#FFD400", background: "linear-gradient(180deg, #fffbe6 0%, #fff 100%)", display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+            {logro.imagen ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logro.imagen} alt="" referrerPolicy="no-referrer" style={{ width: 64, height: 64, borderRadius: 12, objectFit: "cover", flex: "none" }} />
+            ) : (
+              <span aria-hidden="true" style={{ fontSize: 36, flex: "none" }}>{logro.emoji}</span>
+            )}
+            <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+              <div className="card-label" style={{ color: "#8a6d00" }}>¡Buena noticia!</div>
+              <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.3 }}>{logro.titulo}</div>
+              <div style={{ fontSize: 13, color: "#555", marginTop: 4 }}>
+                {logro.detalle}
+                {logro.link && (
+                  <>
+                    {" "}
+                    <a href={logro.link} target="_blank" rel="noreferrer" style={{ color: "#1a1a1a", fontWeight: 700 }}>Verlo</a>
+                  </>
+                )}
+              </div>
+            </div>
+            {mostrarRecomendar && ref?.ref_code && (
+              <a
+                href={whatsappConLogro(ref.ref_code, logro)}
+                target="_blank"
+                rel="noreferrer"
+                style={{ flex: "none", display: "inline-flex", alignItems: "center", padding: "11px 16px", borderRadius: 999, background: "#1a1a1a", color: "#fff", fontSize: 13, fontWeight: 700, textDecoration: "none" }}
+              >
+                Contáselo a alguien (10% para los dos)
+              </a>
+            )}
+          </div>
+        )}
 
         {/* Lo que te toca a vos (20/10/2026): todo lo que el equipo espera de él, arriba de todo. */}
         {ver === "calendario" && (() => {

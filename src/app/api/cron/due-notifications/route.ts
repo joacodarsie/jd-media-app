@@ -45,6 +45,7 @@ import { runAvisoLinkFaltante } from "@/lib/contenidos/link-faltante-run";
 import { runOnboardingPendiente } from "@/lib/retencion/onboarding-pendiente-run";
 import { runTareasDePaneles } from "@/lib/onboarding/tareas-paneles-run";
 import { runMomentosParaRecomendar } from "@/lib/referidos/momento-run";
+import { runLimpiezaSemanal } from "@/lib/tareas/limpieza-run";
 import { runReunionesMensuales } from "@/lib/retencion/reunion-mensual-run";
 import { runReunionesDesdeCalendario } from "@/lib/retencion/reunion-calendario-run";
 import { runRutinasMensuales } from "@/lib/tareas/rutinas-mensuales-run";
@@ -210,6 +211,14 @@ export async function GET(req: NextRequest) {
     momentos = await runMomentosParaRecomendar(admin, hoyYmd());
   } catch (e) {
     momentos = { error: e instanceof Error ? e.message : "falló" };
+  }
+
+  // Los lunes, la limpieza de vencidas: un aviso a cada uno con las suyas (24/10/2026).
+  let limpieza: unknown = null;
+  try {
+    limpieza = await runLimpiezaSemanal(admin, hoyYmd());
+  } catch (e) {
+    limpieza = { error: e instanceof Error ? e.message : "falló" };
   }
 
   // La reunión mensual con cada cliente: crea el ticket del mes y, pasado el
@@ -692,6 +701,7 @@ export async function GET(req: NextRequest) {
     onboardings,
     tareasPaneles,
     momentos,
+    limpieza,
     linksFaltantes,
     reuniones,
     reunionesCalendario,

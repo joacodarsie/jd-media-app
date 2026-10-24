@@ -613,16 +613,17 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
       )}
 
       {/* Alertas críticas */}
-      {(vencidasViejas.length > 0 ||
+      {(todasVencidas.length >= 3 ||
         delegatedVencidas.length > 0) && (
         <div className="jd-cascada divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50 animate-in fade-in slide-in-from-bottom-1 duration-300">
-          {vencidasViejas.length > 0 && (
+          {/* La limpieza de vencidas (24/10/2026): ya está, pasala o ya no va. */}
+          {todasVencidas.length >= 3 && (
             <AlertCard
               tone="amber"
               icon={Clock}
-              title={`${vencidasViejas.length} atrasada${vencidasViejas.length === 1 ? "" : "s"} de meses anteriores`}
-              text="Arrastre viejo: muchas ya están hechas y nunca se marcaron. Cerralas en lote para que la lista vuelva a servir."
-              href="/tareas"
+              title={`🧹 ${todasVencidas.length} tareas vencidas`}
+              text={`${vencidasViejas.length ? `${vencidasViejas.length} de meses anteriores. ` : ""}Muchas ya están hechas o ya no van: en 5 minutos las dejás al día.`}
+              href="/tareas/limpieza"
               cta="Limpiar"
             />
           )}

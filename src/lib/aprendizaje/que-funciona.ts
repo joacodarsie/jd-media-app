@@ -99,12 +99,17 @@ function agrupar(posts: PostMedido[], clave: (p: PostMedido) => string | null, p
  */
 export function queFunciona(posts: PostMedido[], hoy: string, dias = 120): QueFunciona {
   const corte = Date.parse(`${hoy}T00:00:00Z`) - dias * 86_400_000;
-  const medidos = posts.filter((p) => p.likes != null && Date.parse(p.timestamp.replace(/\+0000$/, "Z")) >= corte);
+  const recientes = posts.filter((p) => Date.parse(p.timestamp.replace(/\+0000$/, "Z")) >= corte);
+  const medidos = recientes.filter((p) => p.likes != null);
   const total = medidos.reduce((s, p) => s + interaccion(p), 0);
   const promedio = medidos.length ? total / medidos.length : 0;
   const vacio: QueFunciona = { posts: medidos.length, desde: null, promedio: Math.round(promedio), formatos: [], dias: [], franjas: [], top: [], frases: [] };
   if (medidos.length < MIN_POSTS) {
-    return { ...vacio, frases: [`Todavía hay pocas publicaciones para sacar conclusiones (${medidos.length} en los últimos ${dias} días; hacen falta ${MIN_POSTS}).`] };
+    const frase =
+      recientes.length >= MIN_POSTS
+        ? "Instagram no muestra los me gusta de sus publicaciones (puede tenerlos ocultos): sin eso no se puede medir qué funciona."
+        : `Todavía hay pocas publicaciones para sacar conclusiones (${recientes.length} en los últimos ${dias} días; hacen falta ${MIN_POSTS}).`;
+    return { ...vacio, frases: [frase] };
   }
 
   const formatos = agrupar(medidos, formatoDe, promedio);

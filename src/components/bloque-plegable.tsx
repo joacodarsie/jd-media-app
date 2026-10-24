@@ -44,7 +44,7 @@ export function BloquePlegable({
       open={abierto || undefined}
       className={cn("group scroll-mt-24 rounded-2xl border bg-card animate-in fade-in slide-in-from-bottom-2 duration-500", className)}
     >
-      <summary className="flex cursor-pointer list-none items-center gap-3 rounded-2xl px-4 py-3 transition hover:bg-muted/40 md:px-5 [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1.5 sm:flex-nowrap rounded-2xl px-4 py-3 transition hover:bg-muted/40 md:px-5 [&::-webkit-details-marker]:hidden">
         <span className="shrink-0 text-2xl" aria-hidden="true">
           {emoji}
         </span>
@@ -52,7 +52,8 @@ export function BloquePlegable({
           <h2 className="font-semibold leading-tight">{titulo}</h2>
           {resumen && <div className="mt-0.5 text-xs text-muted-foreground">{resumen}</div>}
         </div>
-        {derecha && <div className="shrink-0">{derecha}</div>}
+        {/* En el celular, lo de la derecha baja a su propio renglón para no apretar el título. */}
+        {derecha && <div className="order-last w-full pl-9 sm:order-none sm:w-auto sm:shrink-0 sm:pl-0">{derecha}</div>}
         <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition group-open:rotate-180" />
       </summary>
       <div className={cn("border-t", !pegado && "px-4 pb-4 pt-3 md:px-5")}>{children}</div>

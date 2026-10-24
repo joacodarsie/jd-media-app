@@ -19,9 +19,13 @@
  * nuevos en 30 días. Una barra en 24% que no se puede mover deja de ser una
  * meta y pasa a ser ruido: 18 son dos cuentas nuevas por mes, que es lo que el
  * embudo real puede dar si se trabaja todos los días.
+ *
+ * 24/10/2026: las 18 se superaron (22 activas) y el dueño subió la meta a 50.
+ * Con el 31/12 harían falta 14 cuentas netas por mes —el mismo ruido de
+ * septiembre—, así que el plazo pasa a mitad de 2027: unas 3,5 por mes.
  */
-export const META_CLIENTES = 18;
-export const META_DEADLINE = "2026-12-31";
+export const META_CLIENTES = 50;
+export const META_DEADLINE = "2027-06-30";
 
 /** Referencia del modelo charlado con Leo, para contrastar contra lo real. */
 export const MODELO = {

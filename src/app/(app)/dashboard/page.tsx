@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { unstable_cache } from "next/cache";
 import { filtroDePersona } from "@/lib/tareas/colaboradores";
 import Link from "next/link";
 import {
@@ -83,6 +84,16 @@ function relativeWhen(start: string): string {
   if (m < 60 * 24) return `en ${Math.round(m / 60)} h`;
   return `${formatTime(new Date(start))}`;
 }
+
+/**
+ * Los eventos de Google Calendar, guardados 5 minutos (24/10/2026): refrescar
+ * el permiso y consultar cada cuenta tardaba 1,3 s en cada carga de Mi día.
+ */
+const eventosDeCalendario = unstable_cache(
+  (userId: string, desde: string, hasta: string) => listEventsForUser(userId, desde, hasta),
+  ["mi-dia-calendario"],
+  { revalidate: 300 }
+);
 
 /** Genera los avisos de vencidas / por vencer sin frenar la página (24/10/2026). */
 async function AsegurarAvisos({ userId }: { userId: string }) {
@@ -218,11 +229,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
     { data: clientPubsWeekRaw },
   ] = await Promise.all([
     hasCalendarConnections
-      ? listEventsForUser(
-          user.id,
-          startOfDay.toISOString(),
-          inAWeek.toISOString()
-        ).catch(() => [] as CalEvent[])
+      ? eventosDeCalendario(user.id, startOfDay.toISOString(), inAWeek.toISOString()).catch(() => [] as CalEvent[])
       : Promise.resolve([] as CalEvent[]),
     hasClients
       ? supabase

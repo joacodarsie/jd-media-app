@@ -218,8 +218,9 @@ export default async function ClientesPage() {
           </span>
         </Link>
       )}
+      {/* Le guarda el lugar (192 px) a la salud de la cartera para que la lista no salte. */}
       {isAdmin && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<div className="h-48 animate-pulse rounded-2xl border bg-muted/30" />}>
           <SaludCartera />
         </Suspense>
       )}

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { requireUser, isStaffUser } from "@/lib/auth";
@@ -15,6 +16,21 @@ import { SemaforoCartera } from "@/components/semaforo-cartera";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * El semáforo de salud de la cartera, a la vista (19/10/2026): antes vivía solo
+ * en /director y nadie lo miraba. Se carga aparte para no frenar la lista (24/10/2026).
+ */
+async function SaludCartera() {
+  const salud = await computeAccountHealth(createAdmin()).catch(() => null);
+  if (!salud || !salud.cuentas.length) return null;
+  return (
+    <SemaforoCartera
+      resumen={salud.resumen}
+      peores={salud.cuentas.slice(0, 3).map((c) => ({ id: c.id, nombre: c.nombre, motivo: c.alertas[0] ?? "", semaforo: c.semaforo }))}
+    />
+  );
+}
+
 export default async function ClientesPage() {
   const me = await requireUser();
   const isAdmin = isStaffUser(me);
@@ -22,7 +38,8 @@ export default async function ClientesPage() {
 
   const todayISO = new Date().toISOString();
 
-  const [{ data: clients }, { data: tasks }, users, { data: pubs }, { data: myServices }, { data: allServices }] =
+  // Todo en una sola tanda (24/10/2026): antes eran cuatro esperas en fila.
+  const [{ data: clients }, { data: tasks }, users, { data: pubs }, { data: myServices }, { data: allServices }, { data: svcRaw }, { data: teamsRaw }] =
     await Promise.all([
       supabase
         .from("clients")
@@ -63,15 +80,13 @@ export default async function ClientesPage() {
             .select("cliente_id, tipo, activo, facturacion, costo_override")
             .eq("activo", true)
         : Promise.resolve({ data: [] as never[] }),
+      // Línea de negocio de cada cuenta (redes, publicidad, branding…), para
+      // separar la lista. El tipo de servicio no es sensible: se lee con el admin
+      // para todos; los montos, solo los ve dirección (admin).
+      createAdmin().from("client_services").select("cliente_id, tipo, monto_mensual, facturacion").eq("activo", true),
+      // Equipos de trabajo (si la migración 0126 no está, queda vacío).
+      supabase.from("teams").select("id, nombre").order("orden"),
     ]);
-
-  // Línea de negocio de cada cuenta (redes, publicidad, branding…), para
-  // separar la lista. El tipo de servicio no es sensible: se lee con el admin
-  // para todos; los montos, solo los ve dirección (admin).
-  const { data: svcRaw } = await createAdmin()
-    .from("client_services")
-    .select("cliente_id, tipo, monto_mensual, facturacion")
-    .eq("activo", true);
   const tiposPorCliente = new Map<string, string[]>();
   const montoPorCliente: Record<string, { mensual: number; unico: number }> = {};
   for (const sv of (svcRaw ?? []) as {
@@ -90,11 +105,6 @@ export default async function ClientesPage() {
     lineas[c.id] = lineaDeServicio(tiposPorCliente.get(c.id) ?? []);
   }
 
-  // Equipos de trabajo (si la migración 0126 no está, queda vacío).
-  const { data: teamsRaw } = await supabase
-    .from("teams")
-    .select("id, nombre")
-    .order("orden");
   const teams = (teamsRaw ?? []) as { id: string; nombre: string }[];
 
   // Equipo faltante por cuenta (según servicios contratados): CM/diseño/edición
@@ -156,9 +166,6 @@ export default async function ClientesPage() {
     return falta ? { ...(c as object), faltaEquipo: falta } : c;
   }) as typeof visibleClients;
 
-  // El semáforo de salud de la cartera, a la vista (19/10/2026): antes vivía
-  // solo en /director y nadie lo miraba.
-  const salud = isAdmin ? await computeAccountHealth(createAdmin()).catch(() => null) : null;
 
   return (
     <div className="space-y-5">
@@ -211,11 +218,10 @@ export default async function ClientesPage() {
           </span>
         </Link>
       )}
-      {salud && salud.cuentas.length > 0 && (
-        <SemaforoCartera
-          resumen={salud.resumen}
-          peores={salud.cuentas.slice(0, 3).map((c) => ({ id: c.id, nombre: c.nombre, motivo: c.alertas[0] ?? "", semaforo: c.semaforo }))}
-        />
+      {isAdmin && (
+        <Suspense fallback={null}>
+          <SaludCartera />
+        </Suspense>
       )}
       <ClientsDashboard
         clients={visibleClients as never}

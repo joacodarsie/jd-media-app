@@ -100,13 +100,6 @@ export default async function DireccionPage() {
         </Suspense>
       )}
 
-      {/* Objetivos de todo el equipo en una mirada (21/10/2026). */}
-      {esDireccion && (
-        <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-muted/40" />}>
-          <ObjetivosTablero />
-        </Suspense>
-      )}
-
       {esDireccion && (
         <section className="rounded-xl border bg-card">
           <div className="border-b px-4 py-2.5">
@@ -171,6 +164,15 @@ export default async function DireccionPage() {
           />
         ))}
       </div>
+
+      {/* Objetivos de todo el equipo en una mirada (21/10/2026). Va después de las
+          tarjetas: arriba estaba con un esqueleto de 160 px y al llegar (1.200 px)
+          empujaba toda la página (24/10/2026). */}
+      {esDireccion && (
+        <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-muted/40" />}>
+          <ObjetivosTablero />
+        </Suspense>
+      )}
 
       {esDireccion && (
         <Suspense fallback={null}>

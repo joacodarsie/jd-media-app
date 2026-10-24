@@ -84,6 +84,12 @@ function relativeWhen(start: string): string {
   return `${formatTime(new Date(start))}`;
 }
 
+/** Genera los avisos de vencidas / por vencer sin frenar la página (24/10/2026). */
+async function AsegurarAvisos({ userId }: { userId: string }) {
+  await ensureDueNotifications(createClient(), userId).catch(() => undefined);
+  return null;
+}
+
 export default async function DashboardPage({ searchParams }: { searchParams?: { "primera-semana"?: string } }) {
   const user = await requireUser();
   const supabase = createClient();
@@ -112,8 +118,12 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   // --- Batch 1: todo lo que NO depende de otros resultados, en paralelo. ---
   // Reuniones internas se incluye acá (sólo depende de la ventana de fechas,
   // no de myClientIds) para no encadenar un round-trip extra.
+  // Las completadas viejas no se usan acá (la racha mira 90 días): se cuentan
+  // aparte y no se bajan enteras. A Luz le traía 266 tareas (24/10/2026).
+  const hace95 = new Date(Date.now() - 95 * 86_400_000).toISOString().slice(0, 10);
+  const hace8 = new Date(Date.now() - 8 * 86_400_000).toISOString();
   const [
-    ,
+    { count: completadasTotal },
     { data: myClients },
     { data: taskData },
     { data: calConns },
@@ -123,9 +133,9 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
     { data: portalNoticesRaw },
     { data: portalReadsRaw },
   ] = await Promise.all([
-    // Genera notifs "vencida"/"proxima a vencer" en paralelo. Antes corria en
-    // el layout en CADA nav (~10ms x nav). Ahora solo al entrar al dashboard.
-    ensureDueNotifications(supabase, user.id).catch(() => undefined),
+    // Los avisos de vencimientos se generan en <AsegurarAvisos> mientras la
+    // página ya se ve: tardaban hasta 1,6 s y frenaban todo Mi día (24/10/2026).
+    supabase.from("tasks").select("id", { count: "exact", head: true }).or(filtroDePersona(user.id)).eq("estado", "completada"),
     supabase
       .from("clients")
       .select("id, nombre, pack, estado")
@@ -139,6 +149,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
       )
       // Las suyas y en las que colabora (0199).
       .or(filtroDePersona(user.id))
+      .or(`estado.neq.completada,fecha_limite.gte.${hace95},updated_at.gte.${hace8}`)
       .order("fecha_limite", { ascending: true, nullsFirst: false }),
     admin
       .from("google_calendar_connections")
@@ -307,7 +318,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
     const s = dueState(t.fecha_limite, t.estado);
     return s !== "vencida" && s !== "hoy" && s !== "pronto";
   });
-  const completadas = tasks.filter((t) => t.estado === "completada").length;
+  const completadas = completadasTotal ?? tasks.filter((t) => t.estado === "completada").length;
   // Lo que ya cerró hoy (la última vez que se tocó fue hoy y quedó hecha), para el anillo.
   const inicioHoy = new Date(`${hoy}T00:00:00-03:00`).getTime();
   const hechasHoy = tasks.filter(
@@ -559,6 +570,9 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
       </div>
 
       {/* Tu primera semana: el checklist de quien recién entra (19/10/2026). */}
+      <Suspense fallback={null}>
+        <AsegurarAvisos userId={user.id} />
+      </Suspense>
       <Suspense fallback={null}>
         <PrimeraSemanaMiDia userId={user.id} nombre={user.nombre} rol={user.rol} forzar={searchParams?.["primera-semana"] === "1"} verDatos={searchParams?.["primera-semana"] === "datos"} />
       </Suspense>

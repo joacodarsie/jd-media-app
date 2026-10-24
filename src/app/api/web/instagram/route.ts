@@ -4,6 +4,7 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { corsHeaders } from "@/lib/web/cors";
 import { fetchIgMediaRange, fetchIgProfile } from "@/lib/meta/instagram";
 import { armarHistoria } from "@/lib/web/historia-ig";
+import { guardarMiniaturas } from "@/lib/web/ig-miniaturas";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -25,15 +26,18 @@ const cargar = unstable_cache(
       fetchIgMediaRange(cuenta.ig_user_id, 1_704_067_200, Math.floor(Date.now() / 1000), 20),
       admin.from("ig_snapshots").select("fecha, followers").eq("cliente_id", cuenta.id).order("fecha").limit(1000),
     ]);
-    return armarHistoria(
+    const h = armarHistoria(
       { usuario: perfil.username ?? "jdmedia.digital", seguidores: perfil.followers, publicaciones: perfil.media_count },
       media,
       ((fotos ?? []) as { fecha: string; followers: number | null }[]).map((f) => ({ fecha: f.fecha, seguidores: f.followers ?? 0 })),
       3,
       10
     );
+    // Copias livianas y que no vencen (24/10/2026).
+    const [primeros, destacados, recientes] = await Promise.all([h.primeros, h.destacados, h.recientes].map((l) => guardarMiniaturas(admin, l)));
+    return { ...h, primeros, destacados, recientes };
   },
-  ["web-instagram-v3"],
+  ["web-instagram-v4"],
   { revalidate: 21_600, tags: ["web-instagram"] }
 );
 

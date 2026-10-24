@@ -18,6 +18,8 @@ export interface PiezaIg {
   alcance: number | null;
   link: string;
   imagen: string;
+  /** Versión chica (para tarjetas), cuando ya está copiada en nuestro storage. */
+  miniatura?: string;
   video: string | null;
 }
 

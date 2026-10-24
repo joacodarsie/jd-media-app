@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { QueFuncionaBloque } from "@/components/que-funciona-bloque";
 import { cargarOpcionesEquipo } from "@/lib/equipos/opciones-run";
 import { notFound } from "next/navigation";
 import {
@@ -547,6 +548,13 @@ export default async function ClientDetail({
       {c.estado === "activo" && c.fecha_inicio && (
         <Suspense fallback={null}>
           <LineaTiempoCuenta clienteId={c.id} fechaInicio={c.fecha_inicio} />
+        </Suspense>
+      )}
+
+      {/* Qué funciona en esta cuenta: formato, día y horario que rinden (24/10/2026). */}
+      {c.estado === "activo" && svcList.some((s) => s.activo && s.tipo === "gestion_redes") && (
+        <Suspense fallback={null}>
+          <QueFuncionaBloque clienteId={c.id} />
         </Suspense>
       )}
 

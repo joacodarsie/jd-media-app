@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-10-24 — Limpieza de vencidas y qué funciona en cada cuenta
+
+- 🧹 **Limpieza de vencidas** (Tareas → /tareas/limpieza, o el aviso de Mi día): tus tareas con la fecha pasada, de la más vieja a la más nueva, con tres botones: **Ya está**, **Pasala** (mañana, el lunes, en una semana u otra fecha) o **Ya no va**. Los lunes te llega un recordatorio si tenés vencidas.
+- 🧪 **Qué funciona en esta cuenta** (en la ficha de cada cliente con gestión de redes): mirando sus últimas publicaciones de Instagram, la plataforma dice qué formato, qué día y qué horario traen más interacción, y muestra las 3 piezas que mejor funcionaron. JDmedIA también lo usa al armar el plan del mes.
+
 ## 2026-10-24 — Mi equipo
 
 - 👥 **Nueva sección «Mi equipo»** en el menú. Cada uno ve su equipo: la gente (con sus tareas vencidas) y cada cuenta con lo pendiente: piezas atrasadas, ideas sin aprobar y tareas vencidas. Si está todo bien, dice «al día ✓».

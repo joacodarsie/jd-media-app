@@ -1,4 +1,6 @@
 import { trackAiUsage } from "@/lib/ai/usage";
+import { cargarQueFunciona } from "@/lib/aprendizaje/cargar";
+import { paraLaIa } from "@/lib/aprendizaje/que-funciona";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -159,6 +161,10 @@ export async function POST(
     };
   }
 
+  // Lo que funciona en la cuenta, medido en su Instagram (24/10/2026).
+  const queFunc = await cargarQueFunciona(cliente_id).catch(() => null);
+  const aprendizaje = queFunc?.ok ? paraLaIa(queFunc.datos) : null;
+
   const userMessage = buildPlanUserMessage({
     clienteNombre: client.nombre,
     periodoLabel: periodo_label,
@@ -190,7 +196,9 @@ export async function POST(
     ),
     meetTranscript: meetTranscript || null,
     instruccionesAdHoc: instrucciones || null,
-  });
+  }) + (aprendizaje ? `
+
+${aprendizaje}` : "");
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({

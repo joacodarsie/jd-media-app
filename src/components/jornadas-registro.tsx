@@ -82,7 +82,10 @@ export function JornadasRegistro({
   return (
     <div className="space-y-5 pb-12">
       <div className="flex flex-wrap items-center gap-2">
-        {(["todas", "completar", "cobrar", "pagar", "agendada", "cerrada"] as const).map((f) => (
+        {(["todas", "completar", "cobrar", "pagar", "agendada", "cerrada"] as const)
+          // Los filtros en cero no suman: solo se ven los que tienen algo (o el elegido).
+          .filter((f) => f === "todas" || f === filtro || cuenta(f) > 0)
+          .map((f) => (
           <button
             key={f}
             type="button"

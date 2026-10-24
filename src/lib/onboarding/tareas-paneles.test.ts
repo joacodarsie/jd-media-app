@@ -39,3 +39,11 @@ describe("tareas de las pestañas del onboarding", () => {
     expect(descripcionConFaltantes("Base.", [])).toBe("Base.");
   });
 });
+
+describe("áreas válidas en la base (is_area)", () => {
+  it("cada tarea usa un área que la base acepta", () => {
+    const validas = ["Estrategia/Dirección", "Coordinación", "Coordinación de Diseño", "Community Manager", "Diseño", "Paid Media"];
+    const t = tareasDePaneles({ clienteId: "c", nombreCliente: "X", servicios: { gestionRedes: true, disenoGrafico: true, paidMedia: true }, equipo });
+    for (const x of t) expect(validas).toContain(x.area);
+  });
+});

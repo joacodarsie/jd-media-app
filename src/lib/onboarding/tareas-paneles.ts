@@ -25,7 +25,7 @@ export const DIA_DEL_PANEL: Record<PanelOnboarding, number> = {
 };
 
 const QUIEN: Record<PanelOnboarding, string> = {
-  inicial: "Dirección",
+  inicial: "Estrategia/Dirección",
   redes: "Coordinación",
   creativa: "Coordinación de Diseño",
   cm: "Community Manager",

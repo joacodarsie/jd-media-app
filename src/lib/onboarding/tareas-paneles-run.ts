@@ -169,9 +169,10 @@ export async function asegurarTareasDePaneles(
         parent_id: (madre as { id: string } | null)?.id ?? null,
       };
     });
-  if (nuevas.length) {
-    const { error } = await admin.from("tasks").insert(nuevas);
-    if (!error) creadas = nuevas.length;
+  // Una por una: si una falla, las otras igual nacen.
+  for (const n of nuevas) {
+    const { error } = await admin.from("tasks").insert(n);
+    if (!error) creadas++;
   }
   return { creadas, cerradas };
 }

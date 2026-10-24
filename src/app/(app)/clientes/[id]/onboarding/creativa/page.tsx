@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
+import { cerrarTareaDePanel } from "@/lib/onboarding/tareas-paneles-run";
 import { hoyYmd } from "@/lib/dates";
 import { loadOnboarding } from "../_shared";
 import { OnboardingTabs } from "@/components/onboarding-tabs";
@@ -34,6 +35,8 @@ export default async function OnboardingCreativaPage({ params }: { params: { id:
   const [c] = await cargarCuentasCreativas(createAdmin(), hoyYmd(), params.id);
   if (!c) notFound();
   const hechos = c.pasos.filter((p) => p.hecho).length;
+  // Si la pestaña quedó completa, su tarea se cierra sola (24/10/2026).
+  if (hechos === c.pasos.length) await cerrarTareaDePanel(createAdmin(), client.id, "creativa");
   const entregables = c.docs.filter((d) => (ENTREGABLES_ONBOARDING as string[]).includes(d.entregable));
 
   return (

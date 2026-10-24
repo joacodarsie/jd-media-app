@@ -6,6 +6,7 @@ import { OnboardingTabs } from "@/components/onboarding-tabs";
 import { panelesVisibles } from "@/lib/onboarding/paneles";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
+import { cerrarTareaDePanel, faltantesDePauta } from "@/lib/onboarding/tareas-paneles-run";
 import { AdsOnboardingChecklist, type AdsOnboardingState } from "@/components/ads-onboarding-checklist";
 import { ClientListEditor } from "@/components/client-list-editor";
 import { MetaAdAccountField } from "@/components/meta-ad-account-field";
@@ -76,6 +77,8 @@ export default async function PublicidadOnboardingPage({
     .eq("cliente_id", client.id)
     .gte("fecha", hace3);
   const igVerificado = (snapsRecientes ?? 0) > 0;
+  // Si la pestaña quedó completa, su tarea se cierra sola (24/10/2026).
+  if (faltantesDePauta(onb as Record<string, unknown>, igVerificado).length === 0) await cerrarTareaDePanel(admin, params.id, "pauta");
 
   return (
     <div className="space-y-5">

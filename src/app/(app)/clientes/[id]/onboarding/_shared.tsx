@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { hasFullDriveScope } from "@/lib/google-drive";
 import { fmtDate } from "@/lib/dates";
 import type { ClientService } from "@/lib/types";
@@ -156,8 +157,9 @@ export function calendarUrl(client: ClientLite) {
 }
 
 /** Carga todos los datos del onboarding de un cliente (o null si no existe). */
-export async function loadOnboarding(clientId: string): Promise<OnboardingData | null> {
-  const supabase = createClient();
+export async function loadOnboarding(clientId: string, db?: SupabaseClient): Promise<OnboardingData | null> {
+  // Con `db` (el admin) se puede leer desde el cron, sin sesión (24/10/2026).
+  const supabase = db ?? createClient();
   const admin = createAdmin();
 
   const [

@@ -50,7 +50,7 @@ export interface ServiciosDeLaCuenta {
 }
 
 /** ¿La cuenta contrató algo que haga falta para esta pantalla? */
-function aplicaPorServicio(key: PanelOnboarding, svc: ServiciosDeLaCuenta): boolean {
+export function aplicaPorServicio(key: PanelOnboarding, svc: ServiciosDeLaCuenta): boolean {
   switch (key) {
     case "inicial":
       return true;

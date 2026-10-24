@@ -13,6 +13,7 @@ import { formatInTimeZone } from "date-fns-tz";
 import { TIMEZONE } from "@/lib/constants";
 import { AREA_PM } from "@/lib/tareas/puerta";
 import { planOnboarding, filasDelPlan, tituloMadre } from "./onboarding-15";
+import { asegurarTareasDePaneles } from "@/lib/onboarding/tareas-paneles-run";
 
 type Admin = SupabaseClient;
 
@@ -144,6 +145,9 @@ export async function runOnboarding15(
     await admin.from("tasks").delete().eq("id", madre.id);
     return { creado: false, motivo: "error", error: errSubs.message };
   }
+
+  // Y la tarea de cada pestaña del onboarding, para quien la tiene a cargo.
+  await asegurarTareasDePaneles(admin, clienteId, hoy).catch(() => null);
 
   return {
     creado: true,

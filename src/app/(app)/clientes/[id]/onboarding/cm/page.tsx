@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { cerrarTareaDePanel } from "@/lib/onboarding/tareas-paneles-run";
+import { createAdmin } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CheckCircle2, MessageCircle } from "lucide-react";
 import { requireRole } from "@/lib/auth";
@@ -31,6 +33,8 @@ export default async function OnboardingCmPage({
   });
 
   const cmSteps = steps.filter((s) => s.stage === "cm");
+  // Si la pestaña quedó completa, su tarea se cierra sola (24/10/2026).
+  if (cmSteps.length && cmSteps.every((s) => s.done)) await cerrarTareaDePanel(createAdmin(), client.id, "cm");
   const cmDone = cmSteps.filter((s) => s.done).length;
   const progress = Math.round((cmDone / cmSteps.length) * 100);
 

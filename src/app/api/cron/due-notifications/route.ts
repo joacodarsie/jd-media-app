@@ -43,6 +43,7 @@ import { runRefillContactos } from "@/lib/prospecting/refill";
 import { cortesDeHigiene } from "@/lib/notifications-higiene";
 import { runAvisoLinkFaltante } from "@/lib/contenidos/link-faltante-run";
 import { runOnboardingPendiente } from "@/lib/retencion/onboarding-pendiente-run";
+import { runTareasDePaneles } from "@/lib/onboarding/tareas-paneles-run";
 import { runReunionesMensuales } from "@/lib/retencion/reunion-mensual-run";
 import { runReunionesDesdeCalendario } from "@/lib/retencion/reunion-calendario-run";
 import { runRutinasMensuales } from "@/lib/tareas/rutinas-mensuales-run";
@@ -190,6 +191,15 @@ export async function GET(req: NextRequest) {
     onboardings = await runOnboardingPendiente(admin, hoyYmd());
   } catch (e) {
     onboardings = { error: e instanceof Error ? e.message : "falló" };
+  }
+
+  // Una tarea por pestaña del onboarding para quien la tiene a cargo, que se
+  // cierra sola cuando la pestaña queda completa (24/10/2026).
+  let tareasPaneles: unknown = null;
+  try {
+    tareasPaneles = await runTareasDePaneles(admin, hoyYmd());
+  } catch (e) {
+    tareasPaneles = { error: e instanceof Error ? e.message : "falló" };
   }
 
   // La reunión mensual con cada cliente: crea el ticket del mes y, pasado el
@@ -670,6 +680,7 @@ export async function GET(req: NextRequest) {
     finance_notified: financeNotified,
     prospeccion,
     onboardings,
+    tareasPaneles,
     linksFaltantes,
     reuniones,
     reunionesCalendario,

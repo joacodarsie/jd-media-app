@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { cerrarTareaDePanel } from "@/lib/onboarding/tareas-paneles-run";
+import { createAdmin } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
@@ -43,6 +45,8 @@ export default async function OnboardingPage({
   });
 
   const inicialSteps = steps.filter((s) => s.stage === "inicial");
+  // Si la pestaña quedó completa, su tarea se cierra sola (24/10/2026).
+  if (inicialSteps.length && inicialSteps.every((s) => s.done)) await cerrarTareaDePanel(createAdmin(), client.id, "inicial");
   const inicialDone = inicialSteps.filter((s) => s.done).length;
   const progress = Math.round((inicialDone / inicialSteps.length) * 100);
 

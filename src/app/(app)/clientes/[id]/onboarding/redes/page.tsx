@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cerrarTareaDePanel } from "@/lib/onboarding/tareas-paneles-run";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Megaphone, ChevronRight } from "lucide-react";
 import { requireRole } from "@/lib/auth";
@@ -36,6 +37,8 @@ export default async function OnboardingRedesPage({
   });
 
   const redesSteps = steps.filter((s) => s.stage === "redes");
+  // Si la pestaña quedó completa, su tarea se cierra sola (24/10/2026).
+  if (redesSteps.length && redesSteps.every((s) => s.done)) await cerrarTareaDePanel(createAdmin(), client.id, "redes");
   const redesDone = redesSteps.filter((s) => s.done).length;
   const progress = Math.round((redesDone / redesSteps.length) * 100);
 

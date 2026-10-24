@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-10-24 — Tu onboarding, como tarea
+
+- ✅ **Cada uno tiene su onboarding en Tareas.** Cuando entra una cuenta, a quien tiene cada pestaña del onboarding (Inicial, Gestión de redes, Creativa, Community, Diseño y Publicidad) le aparece la tarea «Completar el onboarding de … — cliente», con la fecha del arranque en que esa parte tiene que estar y la lista de lo que falta.
+- **Se cierra sola** cuando la pestaña queda completa: no hace falta marcarla.
+- 🔑 **Accesos de las redes, conectados con el portal.** Lo que el cliente carga desde su plataforma marca solo el paso de la community (y le avisa), y lo que carga la community ya no se le pide al cliente.
+
 ## 2026-10-24 — El portal del cliente, por pestañas
 
 - 🗂️ **El portal del cliente ya no es una sola página larga.** Tiene cinco pestañas: **📅 Calendario** (la primera: lo pendiente, las piezas para aprobar y el calendario), **🤝 Reunión** (elegir día y hora, la encuesta), **📈 Resultados**, **🧭 Estrategia** (el plan del mes) y **⚙️ Tu cuenta** (abono, material, accesos, plantillas). Cada pestaña muestra un número si tiene algo pendiente.

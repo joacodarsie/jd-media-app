@@ -71,7 +71,7 @@ export function PublicationAutoPublish({
         <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
         <span>
           Publicada automáticamente el{" "}
-          {new Date(publishedAt).toLocaleString("es-AR", {
+          {new Date(publishedAt).toLocaleString("es-AR", { timeZone: "America/Argentina/Cordoba",
             day: "2-digit",
             month: "short",
             hour: "2-digit",

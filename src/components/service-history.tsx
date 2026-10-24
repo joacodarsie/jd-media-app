@@ -126,7 +126,7 @@ export function ServiceHistory({ clienteId }: { clienteId: string }) {
                       </div>
                       <div className="text-[10px] text-muted-foreground">
                         {e.autor?.nombre ?? "Sistema"} ·{" "}
-                        {new Date(e.created_at).toLocaleString("es-AR", {
+                        {new Date(e.created_at).toLocaleString("es-AR", { timeZone: "America/Argentina/Cordoba",
                           dateStyle: "medium",
                           timeStyle: "short",
                         })}

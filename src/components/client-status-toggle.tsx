@@ -69,7 +69,7 @@ export function ClientStatusToggle({
           <div>
             Activado:{" "}
             <b className="text-foreground">
-              {new Date(fechaActivado).toLocaleDateString("es-AR", {
+              {new Date(fechaActivado).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
                 day: "2-digit",
                 month: "short",
                 year: "numeric",
@@ -81,7 +81,7 @@ export function ClientStatusToggle({
           <div>
             Inactivado:{" "}
             <b className="text-foreground">
-              {new Date(fechaInactivado).toLocaleDateString("es-AR", {
+              {new Date(fechaInactivado).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
                 day: "2-digit",
                 month: "short",
                 year: "numeric",

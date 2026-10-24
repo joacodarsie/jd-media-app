@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 function fmtDate(iso?: string | null) {
   if (!iso) return "";
-  return new Date(iso).toLocaleDateString("es-AR", {
+  return new Date(iso).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
     day: "2-digit",
     month: "long",
     year: "numeric",

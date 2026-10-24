@@ -47,10 +47,10 @@ const TONO: Record<EstadoJornada, string> = {
 
 const primerNombre = (n: string) => n.split(" ")[0];
 function fechaLarga(ymd: string) {
-  return new Date(`${ymd}T12:00:00`).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  return new Date(`${ymd}T12:00:00`).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba", weekday: "short", day: "numeric", month: "short", year: "numeric" });
 }
 function fechaCorta(ymd: string) {
-  return new Date(`${ymd}T12:00:00`).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" });
+  return new Date(`${ymd}T12:00:00`).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba", weekday: "short", day: "numeric", month: "short" });
 }
 function duracion(h: number) {
   const extra = Math.max(0, h - 1);
@@ -236,7 +236,7 @@ function JornadaCard({
           {j.cobrado != null ? (
             <span className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300">
               <Check className="h-4 w-4" /> Cobrado {fmtARS(j.cobrado)}
-              {j.cobradoAt && <span className="text-xs text-muted-foreground">el {new Date(`${j.cobradoAt}T12:00:00`).toLocaleDateString("es-AR")}</span>}
+              {j.cobradoAt && <span className="text-xs text-muted-foreground">el {new Date(`${j.cobradoAt}T12:00:00`).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba" })}</span>}
               {r.faltaCobrar > 0 && <span className="text-xs text-red-600 dark:text-red-400">· faltan {fmtARS(r.faltaCobrar)}</span>}
             </span>
           ) : (

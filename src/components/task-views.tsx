@@ -448,7 +448,7 @@ export function TaskViews({
               title={monthCursor ? "Ver todos los meses" : "Volver al mes actual"}
             >
               {monthCursor
-                ? monthCursor.toLocaleDateString("es-AR", {
+                ? monthCursor.toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
                     month: "long",
                     year: "numeric",
                   })

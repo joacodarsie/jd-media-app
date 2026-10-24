@@ -245,7 +245,7 @@ export default async function TaskDetail({
                 {pub.tipo} · {pub.red}
                 {pub.cliente && ` · ${pub.cliente.nombre}`}
                 {pub.fecha_publicacion &&
-                  ` · ${new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", { day: "2-digit", month: "short" })}`}
+                  ` · ${new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba", day: "2-digit", month: "short" })}`}
               </div>
             </div>
             <span className="rounded bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground">

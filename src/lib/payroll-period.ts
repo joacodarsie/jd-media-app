@@ -510,7 +510,7 @@ export async function buildPeriodPayroll(
   for (const s of sessions) {
     const asistentes = s.asistentes ?? [];
     if (asistentes.length === 0) continue;
-    const detalle = s.lugar ?? new Date(s.fecha + "T12:00:00").toLocaleDateString("es-AR");
+    const detalle = s.lugar ?? new Date(s.fecha + "T12:00:00").toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba" });
     // Las jornadas cargadas antes de 0163 traían los viáticos adentro del monto;
     // las nuevas los tienen aparte. Se distingue por la columna nueva.
     const tieneCamposNuevos = s.viaticos != null;

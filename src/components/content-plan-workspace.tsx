@@ -370,7 +370,7 @@ export function ContentPlanWorkspace({
               </Badge>
               {visible.generated_at && (
                 <span className="text-xs text-muted-foreground">
-                  Generado {new Date(visible.generated_at).toLocaleDateString("es-AR")}
+                  Generado {new Date(visible.generated_at).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba" })}
                 </span>
               )}
             </div>
@@ -431,7 +431,7 @@ export function ContentPlanWorkspace({
                       {p.periodo_label}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {p.generated_at ? new Date(p.generated_at).toLocaleDateString("es-AR") : ""}
+                      {p.generated_at ? new Date(p.generated_at).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba" }) : ""}
                       <span className="ml-2 text-primary">Ver →</span>
                     </span>
                   </button>

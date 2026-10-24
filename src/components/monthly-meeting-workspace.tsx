@@ -654,7 +654,7 @@ export function MonthlyMeetingWorkspace(props: MonthlyMeetingWorkspaceProps) {
           {props.diagnosticoAt && (
             <p className="text-xs text-muted-foreground">
               Generado el{" "}
-              {new Date(props.diagnosticoAt).toLocaleDateString("es-AR", {
+              {new Date(props.diagnosticoAt).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
                 day: "numeric",
                 month: "long",
                 year: "numeric",

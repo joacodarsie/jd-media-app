@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 function formatDate(iso: string) {
   const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString("es-AR", {
+  return d.toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
     day: "numeric",
     month: "long",
     year: "numeric",

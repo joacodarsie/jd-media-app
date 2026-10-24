@@ -75,7 +75,7 @@ export function PublicationDetailDialog({
   }
 
   const fecha = p.fecha_publicacion
-    ? new Date(p.fecha_publicacion).toLocaleString("es-AR", {
+    ? new Date(p.fecha_publicacion).toLocaleString("es-AR", { timeZone: "America/Argentina/Cordoba",
         dateStyle: "medium",
         timeStyle: "short",
       })

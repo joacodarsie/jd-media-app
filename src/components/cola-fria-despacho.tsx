@@ -48,7 +48,7 @@ function leerEscritos(): string[] {
 
 function fechaCorta(iso: string | null | undefined): string | null {
   if (!iso) return null;
-  return new Date(iso).toLocaleDateString("es-AR", { day: "numeric", month: "numeric", year: "2-digit" });
+  return new Date(iso).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba", day: "numeric", month: "numeric", year: "2-digit" });
 }
 
 /** Mensaje elegido de cada campaña, resuelto en el server. */

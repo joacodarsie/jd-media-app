@@ -77,7 +77,7 @@ export default async function GastoIaPage() {
   }
   const personas = [...porUser.entries()].sort((a, b) => b[1] - a[1]);
 
-  const mesLabel = now.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
+  const mesLabel = now.toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba", month: "long", year: "numeric" });
 
   return (
     <Wrapper>

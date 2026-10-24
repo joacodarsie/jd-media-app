@@ -280,7 +280,7 @@ export function MeetGuideGenerator({
               {hasGuide
                 ? `Generada ${
                     initialGeneratedAt
-                      ? new Date(initialGeneratedAt).toLocaleString("es-AR", {
+                      ? new Date(initialGeneratedAt).toLocaleString("es-AR", { timeZone: "America/Argentina/Cordoba",
                           dateStyle: "short",
                           timeStyle: "short",
                         })

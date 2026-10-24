@@ -49,7 +49,7 @@ export default async function ReciboSueldoPage({
     })),
   ];
 
-  const hoy = new Date().toLocaleDateString("es-AR", {
+  const hoy = new Date().toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
     day: "2-digit",
     month: "long",
     year: "numeric",

@@ -805,7 +805,7 @@ export function ProspectingContactsTable({
                       {/* Cuándo se cargó el prospecto (pedido de Santi, 24/9). */}
                       <div className="px-1 text-[10px] text-muted-foreground">
                         prospectado el{" "}
-                        {new Date(r.created_at).toLocaleDateString("es-AR", {
+                        {new Date(r.created_at).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
                           day: "numeric",
                           month: "numeric",
                           year: "2-digit",

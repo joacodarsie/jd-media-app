@@ -22,12 +22,12 @@ function formatWhen(start: string, end: string) {
   const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   const isTomorrow = d.toDateString() === tomorrow.toDateString();
   const ed = new Date(end);
-  const timeS = d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-  const timeE = ed.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  const timeS = d.toLocaleTimeString("es-AR", { timeZone: "America/Argentina/Cordoba", hour: "2-digit", minute: "2-digit" });
+  const timeE = ed.toLocaleTimeString("es-AR", { timeZone: "America/Argentina/Cordoba", hour: "2-digit", minute: "2-digit" });
   const range = `${timeS}–${timeE}`;
   if (sameDay) return `Hoy ${range}`;
   if (isTomorrow) return `Mañana ${range}`;
-  return d.toLocaleDateString("es-AR", {
+  return d.toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
     weekday: "short",
     day: "numeric",
     month: "short",

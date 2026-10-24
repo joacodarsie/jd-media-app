@@ -254,13 +254,13 @@ function formatTimeRange(start: string, end: string, isAllDay: boolean) {
   if (isAllDay) return "Todo el día";
   const s = new Date(start);
   const e = new Date(end);
-  const sStr = s.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-  const eStr = e.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  const sStr = s.toLocaleTimeString("es-AR", { timeZone: "America/Argentina/Cordoba", hour: "2-digit", minute: "2-digit" });
+  const eStr = e.toLocaleTimeString("es-AR", { timeZone: "America/Argentina/Cordoba", hour: "2-digit", minute: "2-digit" });
   return `${sStr} – ${eStr}`;
 }
 
 function formatTime(d: Date) {
-  return d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString("es-AR", { timeZone: "America/Argentina/Cordoba", hour: "2-digit", minute: "2-digit" });
 }
 
 function formatDayHeading(date: Date) {
@@ -415,7 +415,7 @@ export function AgendaView({
         });
         return;
       }
-      toast.success(`Movida al ${new Date(`${dia}T12:00:00`).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}`);
+      toast.success(`Movida al ${new Date(`${dia}T12:00:00`).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba", weekday: "long", day: "numeric", month: "long" })}`);
       router.refresh();
     },
     [events, router]

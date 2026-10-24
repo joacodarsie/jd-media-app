@@ -140,9 +140,9 @@ export default async function ContratosPage() {
                   )}
                 </div>
                 <div>
-                  Desde {new Date(c.fecha_inicio).toLocaleDateString("es-AR")}
+                  Desde {new Date(c.fecha_inicio).toLocaleDateString("es-AR", { timeZone: "UTC" })}
                   {c.fecha_fin
-                    ? ` · Hasta ${new Date(c.fecha_fin).toLocaleDateString("es-AR")}`
+                    ? ` · Hasta ${new Date(c.fecha_fin).toLocaleDateString("es-AR", { timeZone: "UTC" })}`
                     : " · Indefinido"}
                 </div>
               </div>

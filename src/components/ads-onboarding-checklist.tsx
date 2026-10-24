@@ -106,7 +106,7 @@ const STEPS: {
 ];
 
 function fmtWhen(iso: string) {
-  return new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "short" });
+  return new Date(iso).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba", day: "2-digit", month: "short" });
 }
 
 // Estos dos pasos los verifica la plataforma con datos reales (19/10/2026):

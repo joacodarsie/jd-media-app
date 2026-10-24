@@ -121,12 +121,12 @@ function fmtTime(iso: string) {
     d.getMonth() === today.getMonth() &&
     d.getDate() === today.getDate();
   if (same) {
-    return d.toLocaleTimeString("es-AR", {
+    return d.toLocaleTimeString("es-AR", { timeZone: "America/Argentina/Cordoba",
       hour: "2-digit",
       minute: "2-digit",
     });
   }
-  return d.toLocaleDateString("es-AR", {
+  return d.toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
     day: "2-digit",
     month: "short",
     hour: "2-digit",

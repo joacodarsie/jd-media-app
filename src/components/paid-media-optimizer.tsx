@@ -206,7 +206,7 @@ export function PaidMediaOptimizer({
                       : `${h.tipo === "pausar" ? "Pausó" : "Activó"} ${h.nivel} ${h.target_nombre}`}
                   </span>
                   <span className="shrink-0 text-[10px] text-muted-foreground">
-                    {new Date(h.aplicado_at).toLocaleDateString("es-AR", { day: "2-digit", month: "short" })}
+                    {new Date(h.aplicado_at).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba", day: "2-digit", month: "short" })}
                   </span>
                   {revertido ? (
                     <span className="shrink-0 text-[10px] text-muted-foreground">revertido</span>

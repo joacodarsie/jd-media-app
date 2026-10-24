@@ -98,7 +98,7 @@ export async function runMonthEndCompliance(admin: SupabaseClient, now: Date) {
     59,
     59
   ).toISOString();
-  const mesLabel = now.toLocaleDateString("es-AR", {
+  const mesLabel = now.toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
     month: "long",
     year: "numeric",
   });
@@ -193,7 +193,7 @@ export async function runMonthStartReports(admin: SupabaseClient, now: Date) {
   const yearMonth = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
   const start = prev.toISOString();
   const end = new Date(prev.getFullYear(), prev.getMonth() + 1, 0, 23, 59, 59).toISOString();
-  const mesLabel = prev.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
+  const mesLabel = prev.toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba", month: "long", year: "numeric" });
 
   const { data: clientsRaw } = await admin
     .from("clients")

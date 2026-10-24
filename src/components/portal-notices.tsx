@@ -163,7 +163,7 @@ export function PortalNotices({
               </div>
               <div className="text-[11px] text-muted-foreground">
                 {n.autor} ·{" "}
-                {new Date(n.created_at).toLocaleDateString("es-AR", {
+                {new Date(n.created_at).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
                   day: "numeric",
                   month: "long",
                 })}

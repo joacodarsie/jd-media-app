@@ -37,7 +37,7 @@ const FILTERS: { value: string; label: string }[] = [
 
 function fmtFecha(iso: string | null): string {
   if (!iso) return "";
-  return new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "short" });
+  return new Date(iso).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba", day: "2-digit", month: "short" });
 }
 
 export function IgPublicationsList({ items }: { items: PubItem[] }) {

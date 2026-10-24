@@ -84,7 +84,7 @@ export function MarkPaidButton({ id, kind, paidAt }: Props) {
       >
         <Check className="h-3.5 w-3.5" />
         <span className="text-xs">
-          {new Date(paidAt).toLocaleDateString("es-AR", {
+          {new Date(paidAt).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
             day: "2-digit",
             month: "short",
           })}

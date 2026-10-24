@@ -66,7 +66,7 @@ export function FinancialAdvisorCard({
   }
 
   const generado = advice?.generado_at
-    ? new Date(advice.generado_at).toLocaleDateString("es-AR", {
+    ? new Date(advice.generado_at).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
         day: "2-digit",
         month: "short",
         hour: "2-digit",

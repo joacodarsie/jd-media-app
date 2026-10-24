@@ -293,7 +293,7 @@ function CalendarView({
     return arr;
   }, [cursor]);
 
-  const monthLabel = cursor.toLocaleDateString("es-AR", {
+  const monthLabel = cursor.toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
     month: "long",
     year: "numeric",
   });
@@ -500,7 +500,7 @@ function PubCard({
                   <span>·</span>
                   <span>
                     <Clock className="mr-1 inline h-3 w-3" />
-                    {new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", {
+                    {new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
                       weekday: "short",
                       day: "numeric",
                       month: "short",
@@ -579,7 +579,7 @@ function PubCard({
                 <li key={c.id} className="rounded bg-background p-2">
                   <p className="whitespace-pre-wrap">{c.contenido}</p>
                   <p className="mt-1 text-[10px] text-muted-foreground">
-                    {new Date(c.created_at).toLocaleString("es-AR", {
+                    {new Date(c.created_at).toLocaleString("es-AR", { timeZone: "America/Argentina/Cordoba",
                       day: "2-digit",
                       month: "short",
                       hour: "2-digit",

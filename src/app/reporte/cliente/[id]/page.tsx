@@ -241,7 +241,7 @@ export default async function ReporteClientePage({
       .select("id, periodo_label, content, applied_temas_indices, approved_at, status")
       .eq("cliente_id", params.id)
       .in("status", ["active", "archived"])
-      .or(`approved_at.gte.${start},approved_at.lt.${end},periodo_label.ilike.%${new Date(start).toLocaleDateString("es-AR", { month: "long" })}%`)
+      .or(`approved_at.gte.${start},approved_at.lt.${end},periodo_label.ilike.%${new Date(start).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba", month: "long" })}%`)
       .order("approved_at", { ascending: false, nullsFirst: false })
       .limit(1)
       .maybeSingle(),
@@ -714,7 +714,7 @@ export default async function ReporteClientePage({
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-zinc-500">
                       {m.timestamp && (
                         <span className="tabular-nums">
-                          {new Date(m.timestamp).toLocaleDateString("es-AR", {
+                          {new Date(m.timestamp).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
                             day: "2-digit",
                             month: "short",
                           })}
@@ -761,7 +761,7 @@ export default async function ReporteClientePage({
                   <div className="space-y-0.5 p-1.5 text-[10px] text-zinc-500">
                     {s.posted_at && (
                       <div className="tabular-nums">
-                        {new Date(s.posted_at).toLocaleDateString("es-AR", { day: "2-digit", month: "short" })}
+                        {new Date(s.posted_at).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba", day: "2-digit", month: "short" })}
                       </div>
                     )}
                     {s.reach != null && s.reach > 0 && <div>{s.reach.toLocaleString("es-AR")} alcance</div>}
@@ -1047,7 +1047,7 @@ export default async function ReporteClientePage({
                       Sobre: {cm.publication?.titulo ?? "—"}
                     </span>
                     <span>
-                      {new Date(cm.created_at).toLocaleDateString("es-AR", {
+                      {new Date(cm.created_at).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
                         day: "2-digit",
                         month: "short",
                       })}
@@ -1103,7 +1103,7 @@ export default async function ReporteClientePage({
         {/* Footer */}
         <footer className="mt-12 border-t border-zinc-200 pt-4 text-center text-[10px] uppercase tracking-wider text-zinc-400">
           JD Media · jdmedia.com.ar · Generado el{" "}
-          {new Date().toLocaleDateString("es-AR", {
+          {new Date().toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
             day: "2-digit",
             month: "long",
             year: "numeric",

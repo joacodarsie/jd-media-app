@@ -174,7 +174,7 @@ export function TaskTimer({
                   </span>
                   <span className="text-muted-foreground">
                     {" "}
-                    · {new Date(e.started_at).toLocaleString("es-AR", {
+                    · {new Date(e.started_at).toLocaleString("es-AR", { timeZone: "America/Argentina/Cordoba",
                       day: "2-digit",
                       month: "short",
                       hour: "2-digit",

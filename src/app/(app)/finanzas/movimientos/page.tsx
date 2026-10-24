@@ -442,7 +442,7 @@ export default async function MovimientosPage({
                 <section key={month} className="space-y-2">
                   <div className="flex flex-wrap items-end justify-between gap-2">
                     <h2 className="text-base font-semibold capitalize">
-                      {monthDate.toLocaleDateString("es-AR", {
+                      {monthDate.toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
                         month: "long",
                         year: "numeric",
                       })}
@@ -500,7 +500,7 @@ export default async function MovimientosPage({
                                 {fmtCurrency(m.monto, m.moneda)}
                               </div>
                               <div className="text-[10px] text-muted-foreground">
-                                {new Date(m.fecha).toLocaleDateString("es-AR", {
+                                {new Date(m.fecha).toLocaleDateString("es-AR", { timeZone: "UTC",
                                   day: "2-digit",
                                   month: "short",
                                 })}

@@ -178,7 +178,7 @@ export function QualityMonthTable({
                     {f.reunionFecha ? (
                       <span className="inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-400">
                         <Check className="h-3.5 w-3.5" />
-                        {new Date(f.reunionFecha + "T12:00:00").toLocaleDateString("es-AR", {
+                        {new Date(f.reunionFecha + "T12:00:00").toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
                           day: "2-digit",
                           month: "short",
                         })}

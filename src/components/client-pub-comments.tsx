@@ -91,7 +91,7 @@ export function ClientPubComments({
             <p className="whitespace-pre-wrap text-sm">{c.contenido}</p>
             <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
               <span>
-                {new Date(c.created_at).toLocaleString("es-AR", {
+                {new Date(c.created_at).toLocaleString("es-AR", { timeZone: "America/Argentina/Cordoba",
                   day: "2-digit",
                   month: "short",
                   hour: "2-digit",
@@ -112,7 +112,7 @@ export function ClientPubComments({
               ) : (
                 <span className="text-emerald-700 dark:text-emerald-300">
                   ✓ visto{" "}
-                  {new Date(c.visto_at).toLocaleDateString("es-AR", {
+                  {new Date(c.visto_at).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
                     day: "2-digit",
                     month: "short",
                   })}

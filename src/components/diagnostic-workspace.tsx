@@ -362,7 +362,7 @@ export function DiagnosticWorkspace({ clienteId, clienteNombre, active, history 
           </Badge>
           {current.generated_at && (
             <span className="text-xs text-muted-foreground">
-              Generado {new Date(current.generated_at).toLocaleDateString("es-AR")}
+              Generado {new Date(current.generated_at).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba" })}
             </span>
           )}
           {history.length > 1 && (

@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 const EMOJI: Record<Formato, string> = { reel: "🎬", carrusel: "🗂️", foto: "🖼️", video: "📹" };
 
 function Tarjeta({ p, i }: { p: PiezaInspo; i: number }) {
-  const fecha = p.publicado_at ? new Date(p.publicado_at).toLocaleDateString("es-AR", { day: "numeric", month: "short" }) : "";
+  const fecha = p.publicado_at ? new Date(p.publicado_at).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba", day: "numeric", month: "short" }) : "";
   return (
     <a
       href={p.permalink ?? "#"}

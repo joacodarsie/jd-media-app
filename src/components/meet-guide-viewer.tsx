@@ -43,7 +43,7 @@ export function MeetGuideViewer({
               {markdown
                 ? `Lo prepara Dirección · ${
                     generatedAt
-                      ? new Date(generatedAt).toLocaleString("es-AR", {
+                      ? new Date(generatedAt).toLocaleString("es-AR", { timeZone: "America/Argentina/Cordoba",
                           dateStyle: "short",
                           timeStyle: "short",
                         })

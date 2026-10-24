@@ -69,7 +69,7 @@ function fmtDate(iso?: string | null) {
   // Una fecha sola ("2026-09-24") se lee como medianoche UTC y en Argentina
   // caía el día anterior: se fija al mediodía local.
   const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T12:00:00` : iso);
-  return d.toLocaleDateString("es-AR", {
+  return d.toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
     day: "2-digit",
     month: "long",
     year: "numeric",

@@ -155,7 +155,7 @@ export function PaymentsTable({
                     <span>{p.periodo}</span>
                     <span>·</span>
                     <span className={cn(atrasado && "font-semibold text-red-700")}>
-                      {new Date(p.fecha_programada).toLocaleDateString("es-AR", {
+                      {new Date(p.fecha_programada).toLocaleDateString("es-AR", { timeZone: "UTC",
                         day: "2-digit",
                         month: "short",
                       })}
@@ -238,7 +238,7 @@ export function PaymentsTable({
                       </td>
                       <td className="px-3 py-2 text-xs">{p.periodo}</td>
                       <td className={cn("px-3 py-2 text-xs", atrasado && "font-semibold text-red-700")}>
-                        {new Date(p.fecha_programada).toLocaleDateString("es-AR", {
+                        {new Date(p.fecha_programada).toLocaleDateString("es-AR", { timeZone: "UTC",
                           day: "2-digit",
                           month: "short",
                         })}

@@ -293,7 +293,7 @@ export function InvoicesTable({
                     <span className={cn(overdue && "font-semibold text-red-700")}>
                       Vence{" "}
                       {i.fecha_vencimiento
-                        ? new Date(i.fecha_vencimiento).toLocaleDateString("es-AR", {
+                        ? new Date(i.fecha_vencimiento).toLocaleDateString("es-AR", { timeZone: "UTC",
                             day: "2-digit",
                             month: "short",
                           })
@@ -405,7 +405,7 @@ export function InvoicesTable({
                         <div className="flex flex-col items-start gap-0.5">
                           <span>
                             {i.fecha_vencimiento
-                              ? new Date(i.fecha_vencimiento).toLocaleDateString("es-AR", {
+                              ? new Date(i.fecha_vencimiento).toLocaleDateString("es-AR", { timeZone: "UTC",
                                   day: "2-digit",
                                   month: "short",
                                 })

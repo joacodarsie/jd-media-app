@@ -76,7 +76,7 @@ function minutesUntil(start: string): number {
 }
 
 function formatTime(d: Date) {
-  return d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString("es-AR", { timeZone: "America/Argentina/Cordoba", hour: "2-digit", minute: "2-digit" });
 }
 
 function relativeWhen(start: string): string {
@@ -465,7 +465,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
         kind: "publicacion",
         label: p.titulo || "Publicación sin título",
         sublabel: fp
-          ? fp.toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" })
+          ? fp.toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba", weekday: "short", day: "numeric", month: "short" })
           : "Sin fecha",
         urgency: "pronto",
         href: `/contenidos`,
@@ -475,7 +475,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
         kind: "tarea",
         label: tareaUrgente.titulo,
         sublabel: tareaUrgente.fecha_limite
-          ? `Vence ${new Date(tareaUrgente.fecha_limite).toLocaleDateString("es-AR", { day: "numeric", month: "short" })}`
+          ? `Vence ${new Date(tareaUrgente.fecha_limite).toLocaleDateString("es-AR", { timeZone: "UTC", day: "numeric", month: "short" })}`
           : "Sin fecha",
         urgency: "futuro",
         href: `/tareas/${tareaUrgente.id}`,
@@ -507,7 +507,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
     return a.client.nombre.localeCompare(b.client.nombre);
   });
 
-  const fechaHoy = now.toLocaleDateString("es-AR", {
+  const fechaHoy = now.toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -1080,7 +1080,7 @@ function EventItem({ event: e, compact = false }: { event: CalEvent; compact?: b
   const start = new Date(e.start);
   const dayLabel = isToday(start)
     ? formatTime(start)
-    : start.toLocaleDateString("es-AR", {
+    : start.toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
         weekday: "short",
         day: "numeric",
         month: "short",
@@ -1113,7 +1113,7 @@ function EventItem({ event: e, compact = false }: { event: CalEvent; compact?: b
 
 function PubItem({ pub }: { pub: PublicationWithRels }) {
   const date = pub.fecha_publicacion
-    ? new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", {
+    ? new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
         weekday: "short",
         day: "2-digit",
         month: "short",
@@ -1170,7 +1170,7 @@ function NotifItem({
     : notif.tipo === "mencion"
     ? "/chat"
     : "/notificaciones";
-  const time = new Date(notif.created_at).toLocaleString("es-AR", {
+  const time = new Date(notif.created_at).toLocaleString("es-AR", { timeZone: "America/Argentina/Cordoba",
     day: "numeric",
     month: "short",
     hour: "2-digit",

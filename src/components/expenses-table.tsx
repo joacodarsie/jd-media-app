@@ -201,7 +201,7 @@ export function ExpensesTable({
                     <span>·</span>
                     <span className={cn(atrasado && "font-semibold text-red-700")}>
                       {fechaShown
-                        ? new Date(fechaShown).toLocaleDateString("es-AR", {
+                        ? new Date(fechaShown).toLocaleDateString("es-AR", { timeZone: "UTC",
                             day: "2-digit",
                             month: "short",
                           })
@@ -300,7 +300,7 @@ export function ExpensesTable({
                       <td className="px-3 py-2 text-xs">{e.periodo}</td>
                       <td className={cn("px-3 py-2 text-xs", atrasado && "font-semibold text-red-700")}>
                         {fechaShown
-                          ? new Date(fechaShown).toLocaleDateString("es-AR", {
+                          ? new Date(fechaShown).toLocaleDateString("es-AR", { timeZone: "UTC",
                               day: "2-digit",
                               month: "short",
                             })
@@ -372,7 +372,7 @@ function MontoSubline({
         {frozen.moneda === "USD" ? "US$" : "€"}
         {frozen.montoOriginal.toLocaleString("es-AR")} @ $
         {frozen.cotizacion.toLocaleString("es-AR")} ·{" "}
-        {new Date(frozen.fecha + "T12:00:00").toLocaleDateString("es-AR", {
+        {new Date(frozen.fecha + "T12:00:00").toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
           day: "2-digit",
           month: "short",
         })}

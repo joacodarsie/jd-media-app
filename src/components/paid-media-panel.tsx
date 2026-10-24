@@ -45,7 +45,7 @@ function money(n: number, m: string) {
   return `${m} ${Math.round(n).toLocaleString("es-AR")}`;
 }
 function fmtFecha(iso: string) {
-  return new Date(iso + "T12:00:00").toLocaleDateString("es-AR", {
+  return new Date(iso + "T12:00:00").toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
     day: "2-digit",
     month: "short",
   });

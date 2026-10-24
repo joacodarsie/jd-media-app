@@ -1053,7 +1053,7 @@ function PubKanbanCard({
   recien?: boolean;
 }) {
   const fechaShort = pub.fecha_publicacion
-    ? new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", {
+    ? new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
         day: "2-digit",
         month: "short",
       })
@@ -1355,7 +1355,7 @@ function PubRow({
   onToggleSelect?: (id: string) => void;
 }) {
   const fecha = pub.fecha_publicacion
-    ? new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", {
+    ? new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
         day: "2-digit",
         month: "short",
       })
@@ -1537,7 +1537,7 @@ function PubTableRow({
   onToggleSelect?: (id: string) => void;
 }) {
   const fecha = pub.fecha_publicacion
-    ? new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", {
+    ? new Date(pub.fecha_publicacion).toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
         weekday: "short",
         day: "2-digit",
         month: "short",

@@ -68,7 +68,7 @@ export function ConversationsSidebar({
   function fmt(date: string) {
     try {
       const d = new Date(date);
-      return d.toLocaleDateString("es-AR", {
+      return d.toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba",
         day: "2-digit",
         month: "short",
       });

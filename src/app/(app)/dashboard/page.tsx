@@ -41,6 +41,7 @@ import { ReunionesDelMes } from "@/components/reuniones-del-mes";
 import { PiezasCongeladas } from "@/components/piezas-congeladas";
 import { RitmoDelMes } from "@/components/ritmo-del-mes";
 import { JornadasPendientes } from "@/components/jornadas-pendientes";
+import { SeguimientosPendientes } from "@/components/seguimientos-pendientes";
 import { TusObjetivos } from "@/components/tus-objetivos";
 import { EfemeridesProximas } from "@/components/efemerides-proximas";
 
@@ -716,6 +717,11 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
             area_secundaria: (user as { area_secundaria?: string | null }).area_secundaria ?? null,
           }}
         />
+      </Suspense>
+
+      {/* Seguimientos de prospección que tocan hoy, para quien tiene contactos asignados (24/10/2026). */}
+      <Suspense fallback={null}>
+        <SeguimientosPendientes userId={user.id} />
       </Suspense>
 
       {/* Jornadas de producción: a la PM lo que falta completar, a dirección lo que falta cobrar y pagar (23/10/2026). */}

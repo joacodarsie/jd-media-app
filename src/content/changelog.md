@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-10-24 — Seguimientos a la vista y la plataforma más rápida
+
+- 🔁 **Seguimientos en Mi día.** Si tenés contactos de prospección a los que les escribiste hace 3 días o más y no contestaron, Mi día te muestra cuántos te tocan hoy y te lleva directo a mandarlos (el texto ya viene escrito).
+- ⚡ **Mi día y Clientes cargan mucho más rápido** (Mi día de 3,2 a 0,8 segundos; Clientes de 3,4 a 0,7).
+
 ## 2026-10-23 — Área Creativa
 
 - ✨ **Área Creativa** (nuevo en el menú, para la dirección creativa): todas las cuentas activas con el estado del calendario de este mes y del que viene (aprobado o cuántas piezas faltan aprobar), el documento de campaña que vence primero y cómo va su onboarding creativo.

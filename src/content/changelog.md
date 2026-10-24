@@ -2,6 +2,13 @@
 title: Novedades
 ---
 
+## 2026-10-24 — Mi equipo
+
+- 👥 **Nueva sección «Mi equipo»** en el menú. Cada uno ve su equipo: la gente (con sus tareas vencidas) y cada cuenta con lo pendiente: piezas atrasadas, ideas sin aprobar y tareas vencidas. Si está todo bien, dice «al día ✓».
+- Dirección y coordinación ven todos los equipos, cuántas cuentas lleva cada uno sobre su tope (8) y **si alcanza para llegar a 50 cuentas**, a qué equipo va la próxima cuenta y quién se satura primero si los equipos se llenan.
+- ⚠️ Si una cuenta tiene a alguien distinto de su equipo en algún puesto, la plataforma lo marca para corregirlo.
+- ➕ **Al dar de alta (o editar) una cuenta**, elegís el equipo y se cargan solos el CM, diseño, edición y pauta. Te sugiere el que tiene más lugar.
+
 ## 2026-10-24 — Pantallas más simples
 
 - 📋 **Menos información de una, el detalle al abrir.** Jornadas, Project Manager, Mi día y Dirección ahora muestran filas cortas (el nombre, un resumen y el número que importa). Tocás una fila y se abre con todo el detalle y los botones.

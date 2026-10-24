@@ -18,6 +18,8 @@ export interface TeamRow {
   audiovisual_id: string | null;
   media_buyer_id: string | null;
   notas: string | null;
+  tope?: number | null;
+  extra_ids?: string[] | null;
 }
 
 export interface TeamClientRow {
@@ -132,8 +134,41 @@ export function EquiposManager({
                 ))}
               </div>
 
+              {/* Tope de cuentas y un segundo integrante (24/10/2026). */}
+              <div className="mb-3 grid grid-cols-2 gap-2">
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Tope de cuentas</div>
+                  <input
+                    type="number"
+                    min={1}
+                    max={30}
+                    defaultValue={t.tope ?? 8}
+                    onBlur={(e) => {
+                      const v = Number(e.target.value);
+                      if (v > 0 && v !== (t.tope ?? 8)) run(() => updateTeam({ id: t.id, tope: v }));
+                    }}
+                    className="mt-0.5 w-full rounded-md border bg-background px-2 py-1 text-xs"
+                  />
+                </div>
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">También en el equipo</div>
+                  <select
+                    value={t.extra_ids?.[0] ?? ""}
+                    onChange={(e) => run(() => updateTeam({ id: t.id, extra_ids: e.target.value ? [e.target.value] : [] }))}
+                    className="mt-0.5 w-full rounded-md border bg-background px-2 py-1 text-xs"
+                  >
+                    <option value="">— nadie más —</option>
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Clientes · {delEquipo.length}
+                Clientes · {delEquipo.length} de {t.tope ?? 8}
               </div>
               <div className="mt-1 space-y-1">
                 {delEquipo.map((c) => (

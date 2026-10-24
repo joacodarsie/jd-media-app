@@ -76,6 +76,8 @@ export interface ClientInput {
   /** De dónde vino (0191). undefined = no tocar. */
   origen?: string | null;
   origen_detalle?: string | null;
+  /** El equipo de trabajo (24/10/2026). undefined = no tocar. */
+  team_id?: string | null;
 }
 
 function clean(input: ClientInput) {
@@ -110,6 +112,7 @@ function clean(input: ClientInput) {
     cerrado_por_id: input.cerrado_por_id || null,
     ...(input.cerrado_con_id !== undefined ? { cerrado_con_id: input.cerrado_con_id || null } : {}),
     responsable_id: input.responsable_id || null,
+    ...(input.team_id !== undefined ? { team_id: input.team_id || null } : {}),
     ...(input.origen !== undefined
       ? {
           origen: esOrigen(input.origen) ? input.origen : null,

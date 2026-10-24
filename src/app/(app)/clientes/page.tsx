@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { cargarOpcionesEquipo } from "@/lib/equipos/opciones-run";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { requireUser, isStaffUser } from "@/lib/auth";
@@ -108,6 +109,7 @@ export default async function ClientesPage() {
   }
 
   const teams = (teamsRaw ?? []) as { id: string; nombre: string }[];
+  const opcionesEquipo = isAdmin ? await cargarOpcionesEquipo(createAdmin()).catch(() => []) : [];
 
   // Equipo faltante por cuenta (según servicios contratados): CM/diseño/edición
   // sin asignar inflan el margen. Solo se calcula para staff.
@@ -188,7 +190,7 @@ export default async function ClientesPage() {
               💛 Calidad del mes
             </Link>
             <Link
-              href="/coordinacion/equipos"
+              href="/mi-equipo"
               className="rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
             >
               👥 Equipos
@@ -196,6 +198,7 @@ export default async function ClientesPage() {
             <ClientFormDialog
               mode="create"
               users={users}
+              equipos={opcionesEquipo}
               trigger={
                 <Button>
                   <Plus className="mr-2 h-4 w-4" /> Nuevo cliente

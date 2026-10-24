@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cargarOpcionesEquipo } from "@/lib/equipos/opciones-run";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
@@ -410,6 +411,7 @@ export default async function ClientDetail({
                 mode="edit"
                 client={c}
                 users={users ?? []}
+                equipos={await cargarOpcionesEquipo(createAdmin()).catch(() => [])}
                 trigger={
                   <Button variant="outline" size="sm">
                     <Pencil className="mr-2 h-4 w-4" /> Editar

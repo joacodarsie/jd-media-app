@@ -45,6 +45,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import type { EquipoOpcion } from "@/lib/equipos/equipos";
+
 const NONE = "__none__";
 
 /** Lo que baja el abono de gestión de redes cuando no incluye la pauta (24/9). */
@@ -61,11 +63,14 @@ export function ClientFormDialog({
   client,
   users: usersProp,
   trigger,
+  equipos = [],
 }: {
   mode: "create" | "edit";
   client?: Client;
   users: TeamUserOpt[];
   trigger: React.ReactNode;
+  /** Los equipos de trabajo con cuántas cuentas tiene cada uno (24/10/2026). */
+  equipos?: EquipoOpcion[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -90,6 +95,19 @@ export function ClientFormDialog({
   const [audiovisualId, setAudiovisualId] = useState<string>(
     client?.audiovisual_id ?? NONE
   );
+  const [teamId, setTeamId] = useState<string>((client as { team_id?: string | null } | undefined)?.team_id ?? NONE);
+  const conLugar = equipos.filter((e) => e.cuentas < e.tope).sort((a, b) => b.tope - b.cuentas - (a.tope - a.cuentas) || a.cuentas - b.cuentas);
+  const sugerido = conLugar[0] ?? null;
+  // Elegir el equipo carga a su gente en cada puesto (se puede cambiar después).
+  const elegirEquipo = (id: string) => {
+    setTeamId(id);
+    const e = equipos.find((x) => x.id === id);
+    if (!e) return;
+    if (e.cm_id) setCmId(e.cm_id);
+    if (e.disenador_id) setDisenadorId(e.disenador_id);
+    if (e.audiovisual_id) setAudiovisualId(e.audiovisual_id);
+    if (e.media_buyer_id) setMediaBuyerId(e.media_buyer_id);
+  };
   const [mediaBuyerId, setMediaBuyerId] = useState<string>(
     client?.media_buyer_id ?? NONE
   );
@@ -235,6 +253,7 @@ export function ClientFormDialog({
       responsable_id: responsableId === NONE ? null : responsableId,
       origen,
       origen_detalle: origenDetalle,
+      ...(equipos.length ? { team_id: teamId === NONE ? null : teamId } : {}),
     };
     const servicesPayload: NewClientServiceInput[] = draftServices
       .filter((s) => s.tipo)
@@ -415,6 +434,29 @@ export function ClientFormDialog({
             <div className="mb-2 flex items-center justify-between gap-2">
               <h4 className="text-sm font-semibold">Equipo asignado a esta cuenta</h4>
             </div>
+            {equipos.length > 0 && (
+              <div className="mb-3 space-y-1.5">
+                <Label>Equipo</Label>
+                <Select value={teamId} onValueChange={(v) => (v === NONE ? setTeamId(NONE) : elegirEquipo(v))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sin equipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Sin equipo</SelectItem>
+                    {equipos.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.nombre} · {e.cuentas}/{e.tope} cuentas{e.cuentas >= e.tope ? " (lleno)" : e.id === sugerido?.id ? " · sugerido" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {teamId === NONE && sugerido && (
+                  <button type="button" onClick={() => elegirEquipo(sugerido.id)} className="text-xs text-primary hover:underline">
+                    Usar el {sugerido.nombre}: tiene {sugerido.tope - sugerido.cuentas} lugares libres y carga a su gente en cada puesto
+                  </button>
+                )}
+              </div>
+            )}
             <p className="mb-3 text-xs text-muted-foreground">
               Quién lleva cada parte de la cuenta. El Community Manager, diseñador/a
               y editor/a se sugieren automáticamente al crear publicaciones según el

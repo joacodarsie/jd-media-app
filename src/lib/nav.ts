@@ -40,6 +40,9 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/direccion", label: "Dirección", icon: "Compass", roles: ["admin"] },
       { href: "/tareas", label: "Tareas", icon: "ListChecks" },
       { href: "/contenidos", label: "Contenidos", icon: "Calendar" },
+      // Mi equipo: la gente y las cuentas de cada equipo de trabajo; dirección y
+      // coordinación ven todos y la capacidad contra la meta (24/10/2026).
+      { href: "/mi-equipo", label: "Mi equipo", icon: "UsersRound", nuevoHasta: "2026-11-15" },
       // Área Creativa: las cuentas de la dirección creativa, el calendario de cada
       // mes y los documentos de campaña (pedido de Santi, 23/10/2026).
       {

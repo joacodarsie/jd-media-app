@@ -46,6 +46,10 @@ export async function updateTeam(input: {
   audiovisual_id?: string | null;
   media_buyer_id?: string | null;
   notas?: string | null;
+  /** Cuántas cuentas puede llevar (0221). */
+  tope?: number;
+  /** Integrantes además de los 4 roles, p. ej. un segundo diseñador (0221). */
+  extra_ids?: string[];
 }): Promise<Result> {
   await requireRole(["admin", "coordinador"]);
   const admin = createAdmin();

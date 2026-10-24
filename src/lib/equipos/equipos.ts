@@ -138,7 +138,8 @@ export function diferencias(c: CuentaDeEquipo, e: EquipoBase, nombre: (id: strin
     const quien = c[r.campo];
     const delEquipo = e[r.campo];
     if (quien && !miembros.has(quien)) out.push(`${r.label}: ${nombre(quien)} no es del equipo${delEquipo ? ` (el equipo tiene a ${nombre(delEquipo)})` : ""}`);
-    else if (!quien && delEquipo) out.push(`${r.label}: sin asignar (el equipo tiene a ${nombre(delEquipo)})`);
+    // Sin pauta no es un error: hay cuentas que no la contratan (Wowitos, Dalhan).
+    else if (!quien && delEquipo && r.campo !== "media_buyer_id") out.push(`${r.label}: sin asignar (el equipo tiene a ${nombre(delEquipo)})`);
   }
   return out;
 }

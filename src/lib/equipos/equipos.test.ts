@@ -58,6 +58,8 @@ describe("equipos", () => {
     expect(diferencias(cuentas[1], equipos[0], n)).toEqual([]); // Darío es del Equipo 1
     expect(diferencias(cta("X", "4", "belen", "ana", "carlos"), equipos[1], n)).toEqual(["CM: belen no es del equipo (el equipo tiene a sofia)"]);
     expect(diferencias({ ...cta("Y", "4", "sofia", "ana", "carlos"), audiovisual_id: null }, equipos[1], n)).toEqual(["Edición: sin asignar (el equipo tiene a carlos)"]);
+    // Una cuenta sin pauta contratada no es una diferencia.
+    expect(diferencias({ ...cta("Z", "4", "sofia", "ana", "carlos"), media_buyer_id: null }, equipos[1], n)).toEqual([]);
   });
 
   it("los equipos de una persona", () => {

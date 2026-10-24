@@ -26,7 +26,8 @@ export function LimpiezaVencidas({ tareas, opciones }: { tareas: TareaALimpiar[]
   const router = useRouter();
   const [hechas, setHechas] = useState<Set<string>>(new Set());
   const quedan = tareas.filter((t) => !hechas.has(t.id));
-  const total = tareas.length;
+  // El total es el del principio: al refrescar, las resueltas ya no vienen.
+  const [total] = useState(tareas.length);
 
   if (!total)
     return (

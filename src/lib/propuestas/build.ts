@@ -61,6 +61,7 @@ export const SECCIONES_OCULTABLES = [
   { key: "incluye", label: "Todo lo que incluye el abono" },
   { key: "ideas", label: "Con qué arrancamos" },
   { key: "mes1", label: "Qué se entrega el primer mes" },
+  { key: "casos", label: "Resultados reales (casos de éxito)" },
 ] as const;
 
 export interface PropuestaVista {

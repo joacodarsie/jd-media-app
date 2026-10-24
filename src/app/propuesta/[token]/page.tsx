@@ -1,4 +1,7 @@
 import { cache } from "react";
+import { cargarCasos } from "@/lib/web/casos-run";
+import { casosParaPropuesta } from "@/lib/propuestas/casos";
+import { imagenChica } from "@/lib/web/imagenes";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createAdmin } from "@/lib/supabase/admin";
@@ -208,7 +211,11 @@ export default async function PropuestaPage({
     </>
   );
 
-  const hojas = 5;
+  // Resultados reales (24/10/2026): las cuentas que más crecieron, primero la del rubro.
+  const casos = p.ocultas.includes("casos") ? [] : casosParaPropuesta(await cargarCasos().catch(() => []), row.rubro_slug);
+  const hojas = casos.length ? 6 : 5;
+  let nHoja = 0;
+  const pieSig = () => pie(++nHoja, hojas);
 
   // Qué secciones van: las vacías no se muestran (la de puntos salía con el
   // título solo) y las que se sacaron desde "Editar" tampoco.
@@ -339,7 +346,7 @@ export default async function PropuestaPage({
           </section>
           )}
 
-          {pie(1, hojas)}
+          {pieSig()}
         </div>
 
         {/* ══════════ 2 · el equipo y el ecosistema ══════════ */}
@@ -359,8 +366,75 @@ export default async function PropuestaPage({
             <PropuestaEcosistema empresa={p.empresa} zona={row.ciudad} />
           </section>
 
-          {pie(2, hojas)}
+          {pieSig()}
         </div>
+
+        {/* ══════════ resultados reales: los casos que más crecieron ══════════ */}
+        {casos.length > 0 && (
+          <div className="hoja">
+            {cabecera}
+            <section>
+              <div className="cab">
+                <span className="n">{num()}</span>
+                <h2>Resultados reales</h2>
+                <span className="aside">Cuentas que manejamos hoy</span>
+              </div>
+              <p className="lead" style={{ marginTop: 0, marginBottom: 16 }}>
+                No te mostramos promesas: estas son marcas que trabajan con nosotros, medidas por la plataforma desde el primer día.
+              </p>
+              <div className="casos">
+                {casos.map((c) => (
+                  <div className="caso" key={c.nombre}>
+                    <div className="caso-cab">
+                      <div>
+                        <h4>{c.nombre}</h4>
+                        <span>
+                          {c.rubro ? `${c.rubro} · ` : ""}
+                          {c.meses} {c.meses === 1 ? "mes" : "meses"} con nosotros
+                          {c.usuario ? ` · @${c.usuario}` : ""}
+                        </span>
+                      </div>
+                      {c.mismoRubro && <span className="caso-tag">Tu rubro</span>}
+                    </div>
+                    <div className="caso-logros">
+                      {c.logros.map((l) => (
+                        <div key={l.titulo}>
+                          <b>{l.cambio}</b>
+                          <span>{l.titulo}</span>
+                          <small>
+                            {l.antes.toLocaleString("es-AR")} → {l.hoy.toLocaleString("es-AR")}
+                          </small>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="caso-grillas">
+                      {(
+                        [
+                          ["Antes", c.antes.grilla],
+                          ["Hoy", c.hoy.grilla],
+                        ] as const
+                      ).map(([lbl, g]) => (
+                        <div key={lbl}>
+                          <span className="caso-lbl">{lbl}</span>
+                          <div className="caso-fotos">
+                            {g.slice(0, 3).map((x, i) => (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img key={i} src={imagenChica(x.img, 240)} alt="" referrerPolicy="no-referrer" />
+                            ))}
+                            {Array.from({ length: Math.max(0, 3 - g.length) }).map((_, i) => (
+                              <span key={`v${i}`} className="caso-vacio" />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+            {pieSig()}
+          </div>
+        )}
 
         {/* ══════════ 3 · qué incluye e ideas ══════════ */}
         <div className="hoja">
@@ -427,7 +501,7 @@ export default async function PropuestaPage({
             </section>
           )}
 
-          {pie(3, hojas)}
+          {pieSig()}
         </div>
 
         {/* ══════════ 4 · las cuentas y el primer mes ══════════ */}
@@ -510,7 +584,7 @@ export default async function PropuestaPage({
             </section>
           )}
 
-          {pie(4, hojas)}
+          {pieSig()}
         </div>
 
         {/* ══════════ 5 · la inversión ══════════ */}
@@ -653,7 +727,7 @@ export default async function PropuestaPage({
             </div>
           </div>
 
-          {pie(5, hojas)}
+          {pieSig()}
         </div>
 
         <div className="no-print flex justify-end px-6 pb-8">

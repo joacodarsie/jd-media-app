@@ -240,6 +240,23 @@ export const CSS_PROPUESTA = `
 .leyenda .base{ background:#fff; }
 
 /* ── En el celular, las rejillas de dos y tres se apilan ───── */
+/* ── Resultados reales (24/10/2026) ───────────────────────── */
+.casos{ display:grid; gap:14px; }
+.caso{ border:1px solid var(--borde); border-radius:14px; padding:14px 16px; background:rgba(255,255,255,.02); }
+.caso-cab{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+.caso-cab h4{ font-size:var(--t-dest); font-weight:800; }
+.caso-cab span{ font-size:var(--t-min); color:var(--b55); }
+.caso-tag{ flex:none; font-size:var(--t-eti) !important; font-weight:800; color:#000 !important; background:var(--amarillo); border-radius:999px; padding:3px 9px; text-transform:uppercase; letter-spacing:.08em; }
+.caso-logros{ margin-top:10px; display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.caso-logros div{ display:flex; flex-direction:column; gap:2px; }
+.caso-logros b{ font-size:19pt; font-weight:900; letter-spacing:-.03em; line-height:1; color:var(--amarillo); }
+.caso-logros span{ font-size:var(--t-apo); font-weight:600; }
+.caso-logros small{ font-size:var(--t-min); color:var(--b55); }
+.caso-grillas{ margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.caso-lbl{ display:block; font-size:var(--t-eti); text-transform:uppercase; letter-spacing:.13em; color:var(--b55); margin-bottom:5px; }
+.caso-fotos{ display:grid; grid-template-columns:repeat(3,1fr); gap:4px; }
+.caso-fotos img, .caso-vacio{ width:100%; aspect-ratio:1; object-fit:cover; border-radius:6px; background:rgba(255,255,255,.06); display:block; }
+
 @media (max-width: 640px){
   :root{ --t-tit:34pt; --t-sec:15pt; }
   .pasos, .grupos, .etapas, .claras, .cuentas.de2, .cuentas.de3{ grid-template-columns:1fr; }

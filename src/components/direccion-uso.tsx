@@ -1,4 +1,5 @@
 import { createAdmin } from "@/lib/supabase/admin";
+import { BloquePlegable } from "@/components/bloque-plegable";
 import { NAV_GROUPS } from "@/lib/nav";
 import { resumirUso, type FilaUso } from "@/lib/uso/resumen";
 
@@ -24,13 +25,12 @@ export async function DireccionUso() {
   const max = Math.max(1, ...secciones.map((s) => s.vistas));
 
   return (
-    <section className="rounded-xl border bg-card">
-      <div className="flex items-baseline gap-2 border-b px-4 py-2.5">
-        <h2 className="text-sm font-semibold">📊 Qué usa el equipo de la plataforma</h2>
-        <span className="text-xs text-muted-foreground">
-          {dias === 0 ? "se empezó a medir hoy" : `últimos ${Math.min(dias, 30)} día${dias === 1 ? "" : "s"}, sin contarte a vos`}
-        </span>
-      </div>
+    <BloquePlegable
+      pegado
+      emoji="📊"
+      titulo="Qué usa el equipo de la plataforma"
+      resumen={dias === 0 ? "Se empezó a medir hoy" : `Últimos ${Math.min(dias, 30)} día${dias === 1 ? "" : "s"}, sin contarte a vos`}
+    >
       <div className="space-y-4 p-4">
         {secciones.length === 0 ? (
           <p className="text-sm text-muted-foreground">
@@ -58,6 +58,6 @@ export async function DireccionUso() {
           </div>
         )}
       </div>
-    </section>
+    </BloquePlegable>
   );
 }

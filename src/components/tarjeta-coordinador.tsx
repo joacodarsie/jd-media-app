@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BloquePlegable } from "@/components/bloque-plegable";
 import { cn } from "@/lib/utils";
 import { formatTicket } from "@/lib/tareas/tickets";
 import { PUESTO_LABEL, type Semaforo, type Tarjeta } from "@/lib/direccion/coordinadores";
@@ -31,13 +32,13 @@ export function TarjetaCoordinador({
 }) {
   const nombreCorto = t.nombre.split(" ")[0];
   return (
-    <section className="overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50 animate-in fade-in duration-300">
-      <div className="flex items-center gap-2 border-b border-border/60 px-4 py-2.5">
-        <span className={cn("h-2.5 w-2.5 rounded-full", PUNTO[t.estado])} />
-        <h2 className="text-sm font-semibold">{t.nombre}</h2>
-        <span className="text-xs text-muted-foreground">· {PUESTO_LABEL[t.puesto]}</span>
-        <span className="ml-auto text-xs font-medium text-muted-foreground">{FRASE[t.estado]}</span>
-      </div>
+    <BloquePlegable
+      pegado
+      emoji={<span className={cn("block h-3 w-3 rounded-full", PUNTO[t.estado])} />}
+      titulo={t.nombre}
+      resumen={PUESTO_LABEL[t.puesto]}
+      derecha={<span className="text-xs font-medium text-muted-foreground">{FRASE[t.estado]}</span>}
+    >
       <ul className="divide-y divide-border/60">
         {t.indicadores.map((i) => {
           const fila = (
@@ -101,6 +102,6 @@ export function TarjetaCoordinador({
           {puedePedir && <PedirACoordinador personaId={t.personaId} nombre={nombreCorto} />}
         </div>
       )}
-    </section>
+    </BloquePlegable>
   );
 }

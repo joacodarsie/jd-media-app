@@ -18,6 +18,7 @@ export function BloquePlegable({
   resumen,
   derecha,
   abierto = false,
+  pegado = false,
   className,
   children,
 }: {
@@ -27,6 +28,8 @@ export function BloquePlegable({
   resumen?: ReactNode;
   derecha?: ReactNode;
   abierto?: boolean;
+  /** El contenido trae sus propios márgenes (listas de filas, grillas con p-4). */
+  pegado?: boolean;
   className?: string;
   children: ReactNode;
 }) {
@@ -52,7 +55,7 @@ export function BloquePlegable({
         {derecha && <div className="shrink-0">{derecha}</div>}
         <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition group-open:rotate-180" />
       </summary>
-      <div className="border-t px-4 pb-4 pt-3 md:px-5">{children}</div>
+      <div className={cn("border-t", !pegado && "px-4 pb-4 pt-3 md:px-5")}>{children}</div>
     </details>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BloquePlegable } from "@/components/bloque-plegable";
 import { Target } from "lucide-react";
 import { createAdmin } from "@/lib/supabase/admin";
 import { hoyYmd } from "@/lib/dates";
@@ -34,15 +35,14 @@ export async function ObjetivosTablero() {
   if (!filas.length) return null;
 
   return (
-    <section className="rounded-2xl border bg-card p-4 md:p-5">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-sm font-semibold">
-          <Target className="h-4 w-4 text-primary" /> Objetivos del equipo · este mes
-        </h2>
-        <Link href="/objetivos/equipo" className="text-xs font-medium text-muted-foreground hover:text-foreground">
-          Ver el detalle →
-        </Link>
-      </div>
+    <BloquePlegable
+      emoji={<Target className="h-5 w-5 text-primary" />}
+      titulo="Objetivos del equipo · este mes"
+      resumen={`${filas.length} personas · tocá una para ver su detalle`}
+    >
+      <Link href="/objetivos/equipo" className="mb-1 inline-block text-xs font-medium text-muted-foreground hover:text-foreground">
+        Ver el detalle →
+      </Link>
       <ul className="divide-y">
         {filas.map(({ p, objetivos }) => (
           <li key={p.id} className="py-2.5">
@@ -89,6 +89,6 @@ export async function ObjetivosTablero() {
           </li>
         ))}
       </ul>
-    </section>
+    </BloquePlegable>
   );
 }

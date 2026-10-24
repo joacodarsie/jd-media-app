@@ -1,4 +1,5 @@
 import { Globe } from "lucide-react";
+import { BloquePlegable } from "@/components/bloque-plegable";
 import { createAdmin } from "@/lib/supabase/admin";
 import { resumirWeb, variacion, type EventoWeb } from "@/lib/web/embudo";
 import { cn } from "@/lib/utils";
@@ -46,12 +47,13 @@ export async function DireccionWeb() {
   };
 
   return (
-    <section id="web" className="scroll-mt-20 rounded-xl border bg-card">
-      <div className="flex items-center gap-2 border-b px-4 py-2.5">
-        <Globe className="h-4 w-4 text-primary" />
-        <h2 className="text-sm font-semibold">La web esta semana</h2>
-        <span className="text-xs text-muted-foreground">· últimos 7 días, comparado con los 7 anteriores</span>
-      </div>
+    <BloquePlegable
+      id="web"
+      pegado
+      emoji={<Globe className="h-5 w-5 text-primary" />}
+      titulo="La web esta semana"
+      resumen={`${esta.visitas} visitas · ${esta.whatsapp} escribieron por WhatsApp · ${esta.diagnosticos} diagnósticos`}
+    >
       {esta.visitas === 0 && antes.visitas === 0 ? (
         <p className="px-4 py-4 text-sm text-muted-foreground">
           Todavía no hay datos: la web empezó a contar el 13/10/2026. En unos días se llena.
@@ -94,6 +96,6 @@ export async function DireccionWeb() {
           )}
         </div>
       )}
-    </section>
+    </BloquePlegable>
   );
 }

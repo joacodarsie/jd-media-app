@@ -1,4 +1,5 @@
 import { Gift } from "lucide-react";
+import { BloquePlegable } from "@/components/bloque-plegable";
 import { createAdmin } from "@/lib/supabase/admin";
 import { PCT_RECOMENDADO, PCT_REFERIDO } from "@/lib/referidos/referidos";
 import { fmtCurrency } from "@/lib/finanzas";
@@ -38,14 +39,12 @@ export async function DireccionReferidos() {
   const descontado = filas.reduce((a, r) => a + Number(r.monto_descuento ?? 0), 0);
 
   return (
-    <section className="rounded-xl border bg-card">
-      <div className="flex items-center gap-2 border-b px-4 py-2.5">
-        <Gift className="h-4 w-4 text-primary" />
-        <h2 className="text-sm font-semibold">Referidos</h2>
-        <span className="text-xs text-muted-foreground">
-          · {PCT_RECOMENDADO}% al que llega y {PCT_REFERIDO}% al cliente que lo recomendó
-        </span>
-      </div>
+    <BloquePlegable
+      pegado
+      emoji={<Gift className="h-5 w-5 text-primary" />}
+      titulo={`Referidos · ${PCT_RECOMENDADO}% al que llega, ${PCT_REFERIDO}% al que recomendó`}
+      resumen={`${entraron ?? 0} entraron con un link en 30 días · ${filas.length} cuenta${filas.length === 1 ? "" : "s"} recomendada${filas.length === 1 ? "" : "s"}`}
+    >
       <div className="space-y-3 p-4">
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-lg border bg-background p-3">
@@ -87,6 +86,6 @@ export async function DireccionReferidos() {
           </ul>
         )}
       </div>
-    </section>
+    </BloquePlegable>
   );
 }

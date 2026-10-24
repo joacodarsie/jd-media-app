@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BloquePlegable } from "@/components/bloque-plegable";
 import { redirect } from "next/navigation";
 import { CheckCircle2, Circle } from "lucide-react";
 import { requireUser } from "@/lib/auth";
@@ -81,6 +82,8 @@ export default async function DireccionPage() {
       return c === "trimestre";
     });
   const otras = todas.filter((t) => !t.rutina_key?.startsWith("dir:") && t.estado !== "completada");
+  const rutina = GRUPOS.flatMap((g) => deRutina(g.cadencia)).filter((t) => t.estado !== "completada");
+  const rutinaVencidas = rutina.filter((t) => !!t.fecha_limite && t.fecha_limite < hoy).length;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -101,14 +104,15 @@ export default async function DireccionPage() {
       )}
 
       {esDireccion && (
-        <section className="rounded-xl border bg-card">
-          <div className="border-b px-4 py-2.5">
-            <h2 className="text-sm font-semibold">Tu proceso</h2>
-            <p className="text-xs text-muted-foreground">
-              <b>Todos los días (5 minutos):</b> mirá las tarjetas de los coordinadores. Lo que está en
-              rojo se destraba con un pedido concreto y con fecha.
-            </p>
-          </div>
+        <BloquePlegable
+          pegado
+          emoji="🧭"
+          titulo="Tu proceso"
+          resumen={rutina.length ? `${rutina.length} pendiente${rutina.length === 1 ? "" : "s"}${rutinaVencidas ? ` · ${rutinaVencidas} vencida${rutinaVencidas === 1 ? "" : "s"}` : ""}` : "Todo al día"}
+        >
+          <p className="border-b px-4 py-2 text-xs text-muted-foreground">
+            <b>Todos los días (5 minutos):</b> mirá las tarjetas de los coordinadores. Lo que está en rojo se destraba con un pedido concreto y con fecha.
+          </p>
           <div className="grid divide-y md:grid-cols-2 md:divide-x md:divide-y-0">
             {GRUPOS.map((g) => {
               const filas = deRutina(g.cadencia);
@@ -151,10 +155,10 @@ export default async function DireccionPage() {
               );
             })}
           </div>
-        </section>
+        </BloquePlegable>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid items-start gap-3 md:grid-cols-2">
         {tarjetas.map((t) => (
           <TarjetaCoordinador
             key={t.personaId}
@@ -199,14 +203,7 @@ export default async function DireccionPage() {
       )}
 
       {esDireccion && (
-        <section className="rounded-xl border bg-card">
-          <div className="flex items-center border-b px-4 py-2.5">
-            <h2 className="text-sm font-semibold">Otras tareas tuyas</h2>
-            <span className="ml-2 text-xs text-muted-foreground">({otras.length})</span>
-            <Link href="/tareas" className="ml-auto text-xs text-primary hover:underline">
-              Ver en Tareas
-            </Link>
-          </div>
+        <BloquePlegable pegado emoji="📋" titulo="Otras tareas tuyas" resumen={`${otras.length} pendiente${otras.length === 1 ? "" : "s"}`} derecha={<Link href="/tareas" className="text-xs text-primary hover:underline">Ver en Tareas</Link>}>
           {otras.length === 0 ? (
             <p className="px-4 py-3 text-sm text-muted-foreground">Nada pendiente 🎉</p>
           ) : (
@@ -239,7 +236,7 @@ export default async function DireccionPage() {
               })}
             </ul>
           )}
-        </section>
+        </BloquePlegable>
       )}
     </div>
   );

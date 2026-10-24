@@ -1,4 +1,5 @@
 import { createAdmin } from "@/lib/supabase/admin";
+import { BloquePlegable } from "@/components/bloque-plegable";
 import { cargaDe, type Carga, type NivelCarga } from "@/lib/equipo/carga";
 import { cn } from "@/lib/utils";
 
@@ -55,13 +56,12 @@ export async function CargaEquipo() {
   const desbordados = filas.filter((f) => f.carga.nivel === "desbordado").length;
 
   return (
-    <section className="rounded-xl border bg-card">
-      <div className="flex flex-wrap items-baseline gap-2 border-b px-4 py-2.5">
-        <h2 className="text-sm font-semibold">⚖️ Carga del equipo, próximos 7 días</h2>
-        <span className="text-xs text-muted-foreground">
-          {desbordados ? `${desbordados} desbordado${desbordados === 1 ? "" : "s"}: hay que repartir` : "nadie desbordado"}
-        </span>
-      </div>
+    <BloquePlegable
+      pegado
+      emoji="⚖️"
+      titulo="Carga del equipo, próximos 7 días"
+      resumen={desbordados ? `${desbordados} desbordado${desbordados === 1 ? "" : "s"}: hay que repartir` : "Nadie desbordado"}
+    >
       <ul className="jd-cascada divide-y">
         {filas.map((f) => {
           const n = NIVEL[f.carga.nivel];
@@ -88,6 +88,6 @@ export async function CargaEquipo() {
       <p className="border-t px-4 py-2 text-xs text-muted-foreground">
         Tiene / cierra por semana (promedio del último mes). La rayita del medio es su ritmo normal: si la barra la pasa, se le juntó trabajo.
       </p>
-    </section>
+    </BloquePlegable>
   );
 }

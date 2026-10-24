@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-10-24 — Pantallas más simples
+
+- 📋 **Menos información de una, el detalle al abrir.** Jornadas, Project Manager, Mi día y Dirección ahora muestran filas cortas (el nombre, un resumen y el número que importa). Tocás una fila y se abre con todo el detalle y los botones.
+- En Mi día: tus tareas de hoy muestran las primeras 6 (el resto con «Ver las restantes»), y el ritmo del mes, las piezas congeladas, las reuniones de cierre, los objetivos y las fechas que se vienen quedan cerrados con su resumen.
+- En Clientes, cada fila muestra lo mínimo; la próxima pieza y el equipo aparecen al abrirla.
+
 ## 2026-10-24 — Tu onboarding, como tarea
 
 - ✅ **Cada uno tiene su onboarding en Tareas.** Cuando entra una cuenta, a quien tiene cada pestaña del onboarding (Inicial, Gestión de redes, Creativa, Community, Diseño y Publicidad) le aparece la tarea «Completar el onboarding de … — cliente», con la fecha del arranque en que esa parte tiene que estar y la lista de lo que falta.

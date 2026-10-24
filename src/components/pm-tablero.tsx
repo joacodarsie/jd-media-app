@@ -5,7 +5,7 @@
  * con lo que hay que hacer hoy arriba (preguntas Sí/No y pasos atrasados) y,
  * más abajo, lo pausado y lo que viene. Ver lib/pm/tablero.ts.
  */
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -29,7 +29,8 @@ export function PmTablero({ cuentas }: { cuentas: CuentaPm[] }) {
   if (!cuentas.length)
     return <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">No hay cuentas nuevas con gestión de redes.</div>;
   return (
-    <div className="jd-cascada grid gap-4 lg:grid-cols-2">
+    // Una fila por cuenta que se abre (24/10/2026, pedido del dueño: menos de una).
+    <div className="jd-cascada divide-y overflow-hidden rounded-2xl border bg-card">
       {cuentas.map((c) => (
         <Tarjeta key={c.id} c={c} />
       ))}
@@ -39,19 +40,37 @@ export function PmTablero({ cuentas }: { cuentas: CuentaPm[] }) {
 
 function Tarjeta({ c }: { c: CuentaPm }) {
   const pct = c.arranque && c.arranque.total ? Math.round((c.arranque.hechos / c.arranque.total) * 100) : null;
+  const ref = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (ref.current && window.location.hash.endsWith(c.id)) ref.current.open = true;
+  }, [c.id]);
   return (
-    <section id={`cuenta-${c.id}`} className="scroll-mt-24 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border/60 animate-in fade-in duration-300">
-      <header className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <Link href={`/clientes/${c.id}`} className="text-base font-semibold hover:underline">
-            {c.nombre}
-          </Link>
-          <p className="text-xs text-muted-foreground">
+    <details ref={ref} id={`cuenta-${c.id}`} className="group scroll-mt-24">
+      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 transition hover:bg-muted/40 [&::-webkit-details-marker]:hidden">
+        <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", PUNTO[c.estado])} aria-label={PILL[c.estado].txt} />
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-semibold">{c.nombre}</div>
+          <div className="text-xs text-muted-foreground">
             Día {c.dia} · {c.mes === 1 ? "primer mes" : `mes ${c.mes}`}
-          </p>
+            {c.arranque && !c.arranque.terminado ? ` · arranque ${c.arranque.hechos}/${c.arranque.total}` : ""}
+          </div>
         </div>
-        <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold", PILL[c.estado].cls)}>{PILL[c.estado].txt}</span>
-      </header>
+        {c.preguntas.length > 0 && (
+          <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-300">
+            {c.preguntas.length} para responder
+          </span>
+        )}
+        {c.atrasados.length > 0 && (
+          <span className="shrink-0 rounded-full bg-rose-500/10 px-2 py-0.5 text-[11px] font-medium text-rose-700 dark:text-rose-300">
+            {c.atrasados.length} atrasado{c.atrasados.length === 1 ? "" : "s"}
+          </span>
+        )}
+        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition group-open:rotate-180" />
+      </summary>
+      <div className="border-t bg-muted/10 px-4 pb-4 pt-1">
+      <Link href={`/clientes/${c.id}`} className="mt-2 inline-block text-xs text-primary hover:underline">
+        Ver la ficha de {c.nombre} →
+      </Link>
 
       {c.arranque && (
         <div className="mt-3">
@@ -133,7 +152,8 @@ function Tarjeta({ c }: { c: CuentaPm }) {
           </div>
         </details>
       )}
-    </section>
+      </div>
+    </details>
   );
 }
 

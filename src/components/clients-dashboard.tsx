@@ -437,7 +437,7 @@ function ClientCard({
         falta.length > 0 && "border-l-4 border-l-amber-400 dark:border-l-amber-500"
       )}
     >
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <Link
@@ -469,43 +469,6 @@ function ClientCard({
             {client.pack} · {client.cm?.nombre ?? "Sin CM"}
             {fecha && <> · {fecha}</>}
           </div>
-          {(nextPub || equipo.length > 0) && (
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
-              {nextPub && (
-                <span
-                  className="inline-flex items-center gap-1 text-muted-foreground"
-                  title={nextPub.titulo}
-                >
-                  <CalendarClock className="h-3 w-3 text-primary" />
-                  <span className="font-medium text-foreground">
-                    {new Date(nextPub.fecha_publicacion).toLocaleDateString(
-                      "es-AR",
-                      { day: "2-digit", month: "short" }
-                    )}
-                  </span>
-                  <span className="max-w-[180px] truncate">· {nextPub.titulo}</span>
-                  {pubsTotal && pubsTotal > 1 ? (
-                    <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px]">
-                      +{pubsTotal - 1}
-                    </span>
-                  ) : null}
-                </span>
-              )}
-              {equipo.length > 0 && (
-                <span className="flex flex-wrap items-center gap-1">
-                  {equipo.map((m) => (
-                    <span
-                      key={m.rol}
-                      className="rounded-full bg-muted px-1.5 py-0.5 text-[10px]"
-                      title={`${m.rol}: ${m.nombre}`}
-                    >
-                      {m.rol}: {m.nombre.split(" ")[0]}
-                    </span>
-                  ))}
-                </span>
-              )}
-            </div>
-          )}
         </div>
         <div className="flex items-center gap-3 text-sm">
           {client.calendario_url && (
@@ -552,6 +515,44 @@ function ClientCard({
       {/* Las tareas se arman recién al abrir: cerradas sumaban ~10.000 elementos a la página (22/10/2026). */}
       {abierta && (
         <div className="border-t p-4">
+          {/* La próxima pieza y el equipo, al abrir (24/10/2026: la fila, con lo mínimo). */}
+          {(nextPub || equipo.length > 0) && (
+            <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+              {nextPub && (
+                <span
+                  className="inline-flex items-center gap-1 text-muted-foreground"
+                  title={nextPub.titulo}
+                >
+                  <CalendarClock className="h-3 w-3 text-primary" />
+                  <span className="font-medium text-foreground">
+                    {new Date(nextPub.fecha_publicacion).toLocaleDateString(
+                      "es-AR",
+                      { day: "2-digit", month: "short" }
+                    )}
+                  </span>
+                  <span className="max-w-[180px] truncate">· {nextPub.titulo}</span>
+                  {pubsTotal && pubsTotal > 1 ? (
+                    <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px]">
+                      +{pubsTotal - 1}
+                    </span>
+                  ) : null}
+                </span>
+              )}
+              {equipo.length > 0 && (
+                <span className="flex flex-wrap items-center gap-1">
+                  {equipo.map((m) => (
+                    <span
+                      key={m.rol}
+                      className="rounded-full bg-muted px-1.5 py-0.5 text-[10px]"
+                      title={`${m.rol}: ${m.nombre}`}
+                    >
+                      {m.rol}: {m.nombre.split(" ")[0]}
+                    </span>
+                  ))}
+                </span>
+              )}
+            </div>
+          )}
           {tasks.length === 0 ? (
             <p className="text-sm text-muted-foreground">Todo al día con esta cuenta ✓</p>
           ) : (

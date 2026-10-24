@@ -1,5 +1,6 @@
 /** El ejecutor de «Tu lunes en 1 minuto» (ver tu-lunes.ts). Va en el cron diario; solo actúa los lunes. */
 import { createAdmin } from "@/lib/supabase/admin";
+import { todasLasFilas } from "@/lib/supabase/todas-las-filas";
 import { computeAccountHealth } from "@/lib/director/health";
 import { rachaDias, type TareaRacha } from "@/lib/racha";
 import { sendPushToUsers } from "@/lib/push";
@@ -27,7 +28,10 @@ export async function runTuLunes(admin: Admin, hoy: string, opts: { forzar?: boo
       admin.from("client_satisfaction").select("puntaje, cliente:clients(nombre)").gte("created_at", hace7),
       admin.from("web_eventos").select("tipo").gte("created_at", hace7).limit(20000),
       admin.from("tasks").select("id", { count: "exact", head: true }).not("bloqueo", "is", null).not("estado", "in", "(completada,archivada)"),
-      admin.from("tasks").select("asignado_a_id, fecha_limite, estado, fecha_completada, bloqueo").gte("fecha_limite", sumarDias(hoy, -90)).not("asignado_a_id", "is", null),
+      // De a 1.000: al 24/10/2026 eran 1.114 y se perdían 114.
+      todasLasFilas((desde, hasta) =>
+        admin.from("tasks").select("asignado_a_id, fecha_limite, estado, fecha_completada, bloqueo").gte("fecha_limite", sumarDias(hoy, -90)).not("asignado_a_id", "is", null).order("id").range(desde, hasta)
+      ),
     ]);
 
   const sat = (satRaw ?? []) as unknown as { puntaje: number; cliente: { nombre: string } | null }[];

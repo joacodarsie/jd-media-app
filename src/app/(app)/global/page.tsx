@@ -1,4 +1,5 @@
 import { requireFeature } from "@/lib/auth";
+import { todasLasFilas } from "@/lib/supabase/todas-las-filas";
 import { createClient } from "@/lib/supabase/server";
 import { TIMEZONE } from "@/lib/constants";
 import { dueState } from "@/lib/dates";
@@ -13,7 +14,8 @@ export default async function GlobalPage() {
   const supabase = createClient();
 
   const [{ data: tasksRaw }, { data: usersRaw }] = await Promise.all([
-    supabase.from("tasks").select("*"),
+    // De a 1.000: eran 1.443 y se perdían 443 (24/10/2026).
+    todasLasFilas((desde, hasta) => supabase.from("tasks").select("*").order("id").range(desde, hasta)),
     supabase
       .from("users")
       .select("*")

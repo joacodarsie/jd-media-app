@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { todasLasFilas } from "@/lib/supabase/todas-las-filas";
 import { cargarOpcionesEquipo } from "@/lib/equipos/opciones-run";
 import Link from "next/link";
 import { Plus } from "lucide-react";
@@ -50,15 +51,20 @@ export default async function ClientesPage() {
           "id, nombre, pack, estado, es_interno, para_recuperar, calendario_url, drive_url, team_id, ig_user_id, created_at, fecha_inicio, fecha_activado, fecha_inactivado, cm_id, disenador_id, audiovisual_id, media_buyer_id, cm:users!clients_cm_id_fkey(id,nombre), disenador:users!clients_disenador_id_fkey(id,nombre), audiovisual:users!clients_audiovisual_id_fkey(id,nombre)"
         )
         .order("nombre"),
-      supabase
-        .from("tasks")
-        // Solo lo que muestra la lista (24/10/2026): con «*» y el asignado, la
-        // página pesaba 193 KB y es la más visitada de la plataforma.
-        .select("id, numero, titulo, estado, prioridad, fecha_limite, bloqueo, bloqueo_quien, area, cliente_id, cliente:clients(id,nombre)")
-        // Excluimos las archivadas (completadas hace +30 días): no son trabajo
-        // activo y, si entraban, inflaban el contador de "vencidas" por cuenta.
-        .neq("estado", "archivada")
-        .order("fecha_limite", { ascending: true, nullsFirst: false }),
+      // De a 1.000: la base corta en 1.000 filas sin avisar.
+      todasLasFilas((desde, hasta) =>
+        supabase
+          .from("tasks")
+          // Solo lo que muestra la lista (24/10/2026): con «*» y el asignado, la
+          // página pesaba 193 KB y es la más visitada de la plataforma.
+          .select("id, numero, titulo, estado, prioridad, fecha_limite, bloqueo, bloqueo_quien, area, cliente_id, cliente:clients(id,nombre)")
+          // Excluimos las archivadas (completadas hace +30 días): no son trabajo
+          // activo y, si entraban, inflaban el contador de "vencidas" por cuenta.
+          .neq("estado", "archivada")
+          .order("fecha_limite", { ascending: true, nullsFirst: false })
+          .order("id")
+          .range(desde, hasta)
+      ),
       getActiveUsers(),
       supabase
         .from("publications")

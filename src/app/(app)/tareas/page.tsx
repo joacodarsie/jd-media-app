@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { todasLasFilas } from "@/lib/supabase/todas-las-filas";
 import { requireUser, getAccessibleClientIds, isStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveUsers, getActiveClients } from "@/lib/cache";
@@ -66,11 +67,18 @@ export default async function TareasPage({
   // Activas/recientes (todo lo no-archivado) en una query, y las archivadas
   // recientes acotadas en otra; se mergean. El working set no se recorta:
   // nada activo puede quedar afuera.
-  let activeQuery = supabase
-    .from("tasks")
-    .select(TASK_SELECT)
-    .neq("estado", "archivada")
-    .order("created_at", { ascending: false });
+  // De a 1.000: la base corta en 1.000 filas sin avisar (24/10/2026: 838 activas).
+  const activeQuery = todasLasFilas((desde, hasta) => {
+    let q = supabase
+      .from("tasks")
+      .select(TASK_SELECT)
+      .neq("estado", "archivada")
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(desde, hasta);
+    if (visibilityOr) q = q.or(visibilityOr);
+    return q;
+  });
   let archivedQuery = supabase
     .from("tasks")
     .select(TASK_SELECT)
@@ -78,7 +86,6 @@ export default async function TareasPage({
     .order("fecha_completada", { ascending: false, nullsFirst: false })
     .limit(ARCHIVED_LIMIT);
   if (visibilityOr) {
-    activeQuery = activeQuery.or(visibilityOr);
     archivedQuery = archivedQuery.or(visibilityOr);
   }
 

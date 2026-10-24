@@ -1,4 +1,5 @@
 import { hoyYmd } from "@/lib/dates";
+import { todasLasFilas } from "@/lib/supabase/todas-las-filas";
 
 import Link from "next/link";
 import { ArrowLeft, AlertTriangle, CheckCircle2 } from "lucide-react";
@@ -67,10 +68,15 @@ export default async function CapacityPage() {
         .select("id, nombre, avatar_url, area, position:positions(nombre)")
         .eq("activo", true)
         .order("nombre"),
-      supabase
-        .from("tasks")
-        .select("id, asignado_a_id, estado, fecha_limite")
-        .neq("estado", "completada"),
+      // Las abiertas (sin las archivadas, que no son trabajo), de a 1.000.
+      todasLasFilas((desde, hasta) =>
+        supabase
+          .from("tasks")
+          .select("id, asignado_a_id, estado, fecha_limite")
+          .not("estado", "in", "(completada,archivada)")
+          .order("id")
+          .range(desde, hasta)
+      ),
       supabase
         .from("publications")
         .select("id, audiovisual_id, creado_por_id, estado, fecha_publicacion")

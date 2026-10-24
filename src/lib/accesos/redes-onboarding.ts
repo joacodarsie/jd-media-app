@@ -49,7 +49,9 @@ export type EstadoAcceso = "listo" | "no_tiene" | "a_medias" | "falta";
 export function estadoAcceso(c: CredencialRed | null): EstadoAcceso {
   if (!c) return "falta";
   if (c.notas?.includes(NOTA_NO_TIENE)) return "no_tiene";
-  if (c.url?.trim() && c.usuario?.trim()) return "listo";
+  // Con usuario y (link o contraseña) ya se puede entrar: lo que carga el
+  // cliente desde el portal trae usuario y contraseña, sin link (24/10/2026).
+  if (c.usuario?.trim() && (c.url?.trim() || c.password)) return "listo";
   return c.url?.trim() || c.usuario?.trim() || c.password ? "a_medias" : "falta";
 }
 
@@ -59,7 +61,7 @@ export const accesoHecho = (e: EstadoAcceso) => e === "listo" || e === "no_tiene
 export function queFalta(c: CredencialRed | null): string | null {
   const e = estadoAcceso(c);
   if (accesoHecho(e)) return null;
-  const falta = [!c?.url?.trim() && "el link", !c?.usuario?.trim() && "el usuario"].filter(Boolean);
+  const falta = [!c?.usuario?.trim() && "el usuario", !c?.url?.trim() && !c?.password && "el link o la contraseña"].filter(Boolean);
   return `Falta ${falta.join(" y ")}.`;
 }
 

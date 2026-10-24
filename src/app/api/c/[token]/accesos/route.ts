@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createAdmin } from "@/lib/supabase/admin";
 import { AREA_PM } from "@/lib/tareas/puerta";
 import { REDES, unirCredenciales, type CargaDelCliente, type Credencial } from "@/lib/accesos/portal";
@@ -49,6 +50,21 @@ export async function POST(req: Request, { params }: { params: { token: string }
   const credenciales = cifrarCredenciales(unirCredenciales(descifrarCredenciales(cliente.credenciales ?? []), items, hoy));
   const { error } = await admin.from("clients").update({ credenciales }).eq("id", cliente.id);
   if (error) return NextResponse.json({ error: "No se pudo guardar. Probá de nuevo." }, { status: 500 });
+  revalidatePath(`/clientes/${cliente.id}/onboarding/cm`);
+  revalidatePath(`/clientes/${cliente.id}/onboarding`);
+
+  // Lo que cargó: aviso a la community, que tiene el paso en su onboarding (24/10/2026).
+  const cargadas = items.filter((i) => i.tiene && (i.usuario?.trim() || i.password));
+  if (cargadas.length && cliente.cm_id) {
+    const nombres = cargadas.map((i) => REDES.find((r) => r.clave === i.red)!.nombre).join(", ");
+    await admin.from("notifications").insert({
+      user_id: cliente.cm_id,
+      tipo: "asignacion",
+      mensaje: `🔑 ${cliente.nombre} cargó desde su portal el acceso a ${nombres}. Revisá que entre.`,
+      link: `/clientes/${cliente.id}/onboarding/cm`,
+      task_id: null,
+    });
+  }
 
   // Las cuentas que no tiene: una tarea a quien la crea (una sola vez por red).
   const faltan = items.filter((i) => !i.tiene);

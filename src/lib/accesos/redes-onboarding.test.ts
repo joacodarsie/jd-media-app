@@ -17,10 +17,11 @@ describe("accesos por red del arranque", () => {
   it("listo con link y usuario; a medias o falta si no; «no tiene» cuenta como hecho", () => {
     expect(estadoAcceso(null)).toBe("falta");
     expect(estadoAcceso({ url: "https://instagram.com/x", usuario: "@x" })).toBe("listo");
-    expect(estadoAcceso({ usuario: "@x", password: "p" })).toBe("a_medias");
+    expect(estadoAcceso({ usuario: "@x", password: "p" })).toBe("listo");
+    expect(estadoAcceso({ usuario: "@x" })).toBe("a_medias");
     expect(estadoAcceso({ notas: NOTA_NO_TIENE })).toBe("no_tiene");
-    expect(queFalta({ usuario: "@x" })).toBe("Falta el link.");
-    expect(queFalta(null)).toBe("Falta el link y el usuario.");
+    expect(queFalta({ usuario: "@x" })).toBe("Falta el link o la contraseña.");
+    expect(queFalta(null)).toBe("Falta el usuario y el link o la contraseña.");
     expect(queFalta({ url: "u", usuario: "x" })).toBeNull();
   });
 

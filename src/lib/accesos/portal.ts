@@ -8,7 +8,12 @@
  * Facebook a paid media, Instagram y TikTok a la community.
  *
  * Módulo PURO.
+ *
+ * Está atado al onboarding de la community (24/10/2026): las dos puntas leen
+ * y escriben la misma fila por red (`esDeLaRed`), así lo que carga el cliente
+ * marca solo el paso de la CM y lo que carga la CM ya no se le pide al cliente.
  */
+import { esDeLaRed, NOTA_NO_TIENE } from "./redes-onboarding";
 
 export type Red = "instagram" | "facebook" | "tiktok" | "meta_business";
 
@@ -34,7 +39,15 @@ export interface CargaDelCliente {
   password?: string;
 }
 
-const NOTA_SIN_CUENTA = "No tiene cuenta todavía: la crea JD Media.";
+export const NOTA_SIN_CUENTA = "No tiene cuenta todavía: la crea JD Media.";
+
+/** La fila de esa red, la haya escrito el cliente o el equipo a mano («IG», el link…). */
+function indiceDeRed(lista: Credencial[], red: Red): number {
+  if (red === "meta_business") return lista.findIndex((x) => /business|bm/i.test(x.servicio ?? "") || (x.url ?? "").includes("business.facebook"));
+  return lista.findIndex((x) => esDeLaRed(x, red));
+}
+
+export const CARGADO_POR_CLIENTE = "Cargado por el cliente desde su plataforma";
 
 /** Une lo que cargó el cliente con lo que ya había (pisa la misma red, deja el resto). */
 export function unirCredenciales(actuales: Credencial[], cargas: CargaDelCliente[], hoy: string): Credencial[] {
@@ -50,13 +63,14 @@ export function unirCredenciales(actuales: Credencial[], cargas: CargaDelCliente
       usuario: c.tiene ? usuario : "",
       password: c.tiene ? password : "",
       url: "",
-      notas: c.tiene ? `Cargado por el cliente desde su plataforma (${hoy}).` : NOTA_SIN_CUENTA,
+      notas: c.tiene ? `${CARGADO_POR_CLIENTE} (${hoy}).` : NOTA_SIN_CUENTA,
     };
-    const i = out.findIndex((x) => (x.servicio ?? "").trim().toLowerCase() === def.nombre.toLowerCase());
+    const i = indiceDeRed(out, c.red);
     if (i >= 0) {
       // Si el cliente deja la contraseña vacía, se conserva la que había.
       if (c.tiene && !password) nueva.password = out[i].password ?? "";
-      out[i] = { ...out[i], ...nueva };
+      // El link que ya había cargado la CM no se pierde.
+      out[i] = { ...out[i], ...nueva, servicio: out[i].servicio || nueva.servicio, url: out[i].url ?? "" };
     } else out.push(nueva);
   }
   return out;
@@ -66,8 +80,14 @@ export function unirCredenciales(actuales: Credencial[], cargas: CargaDelCliente
 export function estadoDeRedes(actuales: Credencial[]): Record<Red, "cargada" | "sin_cuenta" | "falta"> {
   const out = {} as Record<Red, "cargada" | "sin_cuenta" | "falta">;
   for (const r of REDES) {
-    const c = actuales.find((x) => (x.servicio ?? "").trim().toLowerCase() === r.nombre.toLowerCase());
-    out[r.clave] = !c ? "falta" : c.notas === NOTA_SIN_CUENTA ? "sin_cuenta" : c.usuario || c.password ? "cargada" : "falta";
+    const c = actuales[indiceDeRed(actuales, r.clave)];
+    out[r.clave] = !c
+      ? "falta"
+      : c.usuario || c.password
+        ? "cargada"
+        : c.notas?.includes(NOTA_SIN_CUENTA) || c.notas?.includes(NOTA_NO_TIENE)
+          ? "sin_cuenta"
+          : "falta";
   }
   return out;
 }

@@ -30,3 +30,29 @@ describe("unirCredenciales", () => {
     expect(unirCredenciales([], [{ red: "tiktok", tiene: true }], "17/10/2026")).toEqual([]);
   });
 });
+
+describe("portal ↔ onboarding de la community", () => {
+  it("lo que carga el cliente marca solo el paso de la CM", async () => {
+    const { credencialDeRed, estadoAcceso } = await import("./redes-onboarding");
+    const r = unirCredenciales([], [{ red: "instagram", tiene: true, usuario: "marca", password: "x" }], "24/10/2026");
+    expect(estadoAcceso(credencialDeRed(r, "instagram"))).toBe("listo");
+  });
+
+  it("lo que carga la CM (aunque lo escriba «IG») no se le vuelve a pedir al cliente y no se duplica", () => {
+    const cm: Credencial = { servicio: "IG", usuario: "marca", password: "p", url: "https://instagram.com/marca", notas: "" };
+    expect(estadoDeRedes([cm]).instagram).toBe("cargada");
+    const r = unirCredenciales([cm], [{ red: "instagram", tiene: true, usuario: "marca2", password: "" }], "24/10/2026");
+    expect(r).toHaveLength(1);
+    expect(r[0]).toMatchObject({ servicio: "IG", usuario: "marca2", password: "p", url: "https://instagram.com/marca" });
+  });
+
+  it("si la CM marcó que no tiene la red, el portal no la pide", () => {
+    const r: Credencial[] = [{ servicio: "TikTok", usuario: "", password: "", url: "", notas: "El cliente no tiene esta red." }];
+    expect(estadoDeRedes(r).tiktok).toBe("sin_cuenta");
+  });
+
+  it("cuando se crea la cuenta que no tenía, pasa a cargada", () => {
+    const r: Credencial[] = [{ servicio: "TikTok", usuario: "marca", password: "p", url: "", notas: "No tiene cuenta todavía: la crea JD Media." }];
+    expect(estadoDeRedes(r).tiktok).toBe("cargada");
+  });
+});

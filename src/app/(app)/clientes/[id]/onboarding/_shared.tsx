@@ -33,6 +33,7 @@ import { PagoRecibidoControl } from "@/components/pago-recibido-control";
 import { GenerateInitialTasksButton } from "@/components/generate-initial-tasks-button";
 import { MeetGuideViewer } from "@/components/meet-guide-viewer";
 import { descifrarCredenciales } from "@/lib/accesos/cifrado";
+import { CARGADO_POR_CLIENTE, NOTA_SIN_CUENTA } from "@/lib/accesos/portal";
 import { accesoHecho, credencialDeRed, estadoAcceso, NOTA_NO_TIENE, queFalta, REDES_ONBOARDING, type CredencialRed, type RedOnboarding } from "@/lib/accesos/redes-onboarding";
 import { AccesoRedForm } from "@/components/acceso-red-form";
 
@@ -389,8 +390,12 @@ export async function loadOnboarding(clientId: string): Promise<OnboardingData |
           estado === "no_tiene"
             ? "Resuelto: el cliente no tiene esta red."
             : estado === "listo"
-              ? "Cargado: link y usuario en la ficha. Podés corregirlo acá."
-              : `${queFalta(cred)} Cargá el link de la cuenta, el usuario, la contraseña y las notas: se marca solo.`,
+              ? cred?.notas?.includes(CARGADO_POR_CLIENTE)
+                ? "Lo cargó el cliente desde su portal. Revisá que entre y completá el link si falta."
+                : "Cargado en la ficha. Podés corregirlo acá."
+              : cred?.notas === NOTA_SIN_CUENTA
+                ? "El cliente avisó desde su portal que no tiene esta red: hay que crearla (ya tiene su tarea). Cuando esté, cargá acá el usuario y la contraseña."
+                : `${queFalta(cred)} El cliente también puede cargarlo desde su portal (pestaña «Tu cuenta»). Cargá el link de la cuenta, el usuario, la contraseña y las notas: se marca solo.`,
         acceso: {
           red: r.clave,
           ejemploUrl: r.ejemploUrl,
@@ -398,7 +403,7 @@ export async function loadOnboarding(clientId: string): Promise<OnboardingData |
             url: cred?.url ?? "",
             usuario: cred?.usuario ?? "",
             tienePassword: !!cred?.password,
-            notas: (cred?.notas ?? "").replace(NOTA_NO_TIENE, "").trim(),
+            notas: (cred?.notas ?? "").replace(NOTA_NO_TIENE, "").replace(NOTA_SIN_CUENTA, "").trim(),
             noTiene: estado === "no_tiene",
           },
         },

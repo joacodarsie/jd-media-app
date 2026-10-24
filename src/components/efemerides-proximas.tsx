@@ -38,7 +38,10 @@ export async function EfemeridesProximas({
   let q = admin.from("clients").select("id, nombre, rubro").eq("estado", "activo").eq("es_interno", false);
   if (!esStaff) q = q.eq("cm_id", user.id);
   const { data } = await q;
-  const cuentas = (data ?? []) as { id: string; nombre: string; rubro: string | null }[];
+  // Solo las que tienen calendario: las de gestión de redes (24/10/2026).
+  const { data: sRaw } = await admin.from("client_services").select("cliente_id").eq("tipo", "gestion_redes").eq("activo", true);
+  const conRedes = new Set(((sRaw ?? []) as { cliente_id: string }[]).map((x) => x.cliente_id));
+  const cuentas = ((data ?? []) as { id: string; nombre: string; rubro: string | null }[]).filter((c) => conRedes.has(c.id));
   // Sin cuentas propias y sin ser coordinación: no arma calendarios.
   if (!esStaff && !userInRoles(user, ["community_manager"]) && cuentas.length === 0) return null;
 

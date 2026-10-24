@@ -168,7 +168,10 @@ export async function cargarCuentasNuevas(
     alertasSalud: extra.salud?.get(c.id)?.alertas ?? [],
   }));
   const equipo = new Map(clientes.map((c) => [c.id, { cm: c.cm_id, responsable: c.responsable_id }]));
-  return { cuentas, equipo };
+  // Solo cuentas con gestión de redes (24/10/2026, pedido del dueño): un
+  // proyecto de marca (Simple Snack) o una cuenta de solo pauta (Origen) no
+  // son de la PM ni de la dirección creativa; los ve quien los lleva.
+  return { cuentas: cuentas.filter((c) => c.conRedes !== false), equipo };
 }
 
 /**

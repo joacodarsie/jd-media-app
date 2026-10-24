@@ -120,7 +120,11 @@ export async function cargarCuentasCreativas(admin: SupabaseClient, hoy: string,
     docsPor.set(k, [...(docsPor.get(k) ?? []), aDoc(d, nombres, hoy)]);
   }
   const onbPor = new Map(((oRaw ?? []) as Record<string, unknown>[]).map((o) => [String(o.cliente_id), o]));
-  return ((cRaw ?? []) as { id: string; nombre: string; rubro: string | null; logo_url: string | null }[]).map((c) => {
+  // Solo cuentas con gestión de redes: es lo que dirige la dirección creativa
+  // (24/10/2026: Simple Snack es un proyecto de marca de Bri; Origen, pauta de Guille).
+  const { data: sRaw } = await admin.from("client_services").select("cliente_id").eq("tipo", "gestion_redes").eq("activo", true);
+  const conRedes = new Set(((sRaw ?? []) as { cliente_id: string }[]).map((s) => s.cliente_id));
+  return ((cRaw ?? []) as { id: string; nombre: string; rubro: string | null; logo_url: string | null }[]).filter((c) => !!soloId || conRedes.has(c.id)).map((c) => {
     const docs = docsPor.get(c.id) ?? [];
     const o = onbPor.get(c.id);
     const definicion: DefinicionCreativa | null = o

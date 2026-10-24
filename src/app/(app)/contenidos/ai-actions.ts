@@ -4,6 +4,8 @@ import { trackAiUsage } from "@/lib/ai/usage";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
+import { vigencia } from "@/lib/creativa/creativa";
+import { hoyYmd } from "@/lib/dates";
 import { AI_MODEL_SMART } from "@/lib/ai/models";
 
 /**
@@ -123,7 +125,7 @@ export async function suggestPublicationContent(args: {
     sb
       .from("documents")
       .select(
-        "id, titulo, categoria, descripcion, storage_path, file_size, mime_type, texto_extraido"
+        "id, titulo, categoria, descripcion, storage_path, file_size, mime_type, texto_extraido, campana_inicio, campana_dias"
       )
       .eq("cliente_id", args.cliente_id)
       .eq("usar_en_ia", true)
@@ -232,7 +234,12 @@ export async function suggestPublicationContent(args: {
   };
 
   // Bajar documentos del storage y armar blocks
-  const docRows = (docs ?? []) as DocRow[];
+  // Los documentos de campaña del Área Creativa van primero, y los vencidos no
+  // se usan: la estrategia ya no corre (23/10/2026).
+  const hoy = hoyYmd();
+  const docRows = ((docs ?? []) as (DocRow & { campana_inicio?: string | null; campana_dias?: number | null })[])
+    .filter((d) => vigencia(d.campana_inicio ?? null, d.campana_dias ?? null, hoy).estado !== "vencido")
+    .sort((a, b) => Number(b.categoria === "campana") - Number(a.categoria === "campana"));
   const docBlocks: Anthropic.ContentBlockParam[] = [];
   const docsUsed: string[] = [];
   const docsSkipped: { titulo: string; reason: string }[] = [];

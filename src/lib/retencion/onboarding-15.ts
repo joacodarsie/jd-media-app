@@ -29,6 +29,8 @@ export interface EquipoDelCliente {
   disenador_id: string | null;
   audiovisual_id: string | null;
   media_buyer_id: string | null;
+  /** El director creativo de la cuenta (clients.responsable_id). Sin él, no hay pasos creativos. */
+  director_creativo_id?: string | null;
   /** A quién cae lo que no tiene dueño claro: la project manager. */
   fallback: string;
 }
@@ -80,6 +82,8 @@ const HECHO: Record<string, { quien: string; hecho: string }> = {
   "Reunión de diagnóstico": { quien: "La CM, con la project manager.", hecho: "la reunión está registrada en la ficha con lo que contó el cliente y ya mandó el material que tenía." },
   "Subir el logo de la cuenta a su ficha": { quien: "La project manager.", hecho: "el logo se ve en la ficha. Se marca sola al subirlo." },
   "Mandarle al cliente el link de su plataforma": { quien: "La project manager.", hecho: "en la ficha figura que el cliente abrió su link al menos una vez." },
+  "Definición creativa de la cuenta": { quien: "El director creativo.", hecho: "la identidad, el tono, la importancia de cada medio y la urgencia están cargados en el onboarding creativo de la cuenta." },
+  "Plataforma de campaña, estrategia de redes y documento técnico": { quien: "El director creativo.", hecho: "los tres documentos están cargados en el Área Creativa de la cuenta, con su inicio y su duración." },
   "Kit de marca": { quien: "Diseño. Lo revisa el director creativo el día 4.", hecho: "los 6 elementos están en el Drive de la cuenta y el cliente los aprobó por escrito." },
   "Lista del contenido crudo que necesitamos": { quien: "La CM.", hecho: "la lista se le mandó al cliente y está pegada en esta tarea." },
   "Calendario de contenidos para aprobar": { quien: "La CM. Lo revisa el director creativo.", hecho: "el calendario está cargado en Contenidos, pieza por pieza, aprobado por el director creativo y por el cliente." },
@@ -220,6 +224,39 @@ Sin esto no se puede compartir con JD Media y la plataforma no mide nada.`,
 **Cómo saber que está hecho:** en Resultados del cliente aparecen los seguidores. Este paso se controla con datos reales: hasta que lleguen, la plataforma se lo recuerda todos los días a paid media, a la PM y a dirección.`,
       "Paid Media",
       mb
+    );
+  }
+
+  if (svc.has("gestion_redes") && equipo.director_creativo_id) {
+    // El onboarding creativo (pedido del dueño y de Santi, 23/10/2026): antes de
+    // que la community arme el primer calendario (día 3), el director creativo
+    // define la marca; los documentos de campaña van el día 4, con el kit.
+    add(
+      2,
+      "Definición creativa de la cuenta",
+      `Con lo que contó ${nombreCliente} en la reunión de diagnóstico, definí en su onboarding creativo (pestaña «Creativa»):
+
+1. **Identidad de marca**: quiénes son, qué los hace distintos y a quién le hablan.
+2. **Tono de marca**: cómo hablan, palabras que sí y que no.
+3. **Importancia de cada medio**: Instagram, TikTok, Facebook, WhatsApp, publicidad y web, de alta a «no usa».
+4. **Prioridad y urgencia**: si necesita vender ya, crecer de a poco o construir marca, y su objetivo principal.
+
+Con esto arranca la community el calendario del día 3.`,
+      "Coordinación de Diseño",
+      equipo.director_creativo_id
+    );
+    add(
+      4,
+      "Plataforma de campaña, estrategia de redes y documento técnico",
+      `Los tres entregables creativos de ${nombreCliente}, cargados en su ficha del Área Creativa con inicio y duración (la plataforma avisa 7 días antes de que venzan):
+
+1. **Plataforma de campaña**: el documento donde se escribe todo (concepto, mensajes, públicos y objetivos).
+2. **Estrategia de redes**: qué rol cumple cada red, formatos, frecuencia y líneas de contenido.
+3. **Documento técnico**: lo operativo (specs, tiempos, herramientas y responsables).
+
+JDmedIA los usa como referencia para armar los calendarios.`,
+      "Coordinación de Diseño",
+      equipo.director_creativo_id
     );
   }
 

@@ -7,6 +7,7 @@ import { requireUser, isStaffUser } from "@/lib/auth";
 export type DocumentCategory =
   | "onboarding"
   | "manual_marca"
+  | "campana"
   | "procesos"
   | "contratos"
   | "plantillas"

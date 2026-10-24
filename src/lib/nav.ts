@@ -10,6 +10,8 @@ export interface NavItem {
   roles?: UserRole[];
   /** Además de los roles, estas áreas (principal o secundaria) también lo ven. */
   areas?: string[];
+  /** Muestra la etiqueta «Nuevo» hasta esta fecha (YYYY-MM-DD). */
+  nuevoHasta?: string;
   /** Si se define, además requiere esta feature (admin la tiene siempre). */
   feature?: Feature;
   /** Si es true, sólo lo ve la cuenta dueña de JDmedIA en vivo (gate por env). */
@@ -38,6 +40,16 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/direccion", label: "Dirección", icon: "Compass", roles: ["admin"] },
       { href: "/tareas", label: "Tareas", icon: "ListChecks" },
       { href: "/contenidos", label: "Contenidos", icon: "Calendar" },
+      // Área Creativa: las cuentas de la dirección creativa, el calendario de cada
+      // mes y los documentos de campaña (pedido de Santi, 23/10/2026).
+      {
+        href: "/creativa",
+        label: "Área Creativa",
+        icon: "Sparkles",
+        roles: ["admin", "coordinador_diseno"],
+        areas: ["Coordinación de Diseño"],
+        nuevoHasta: "2026-11-15",
+      },
       {
         href: "/paid-media",
         label: "Paid Media",

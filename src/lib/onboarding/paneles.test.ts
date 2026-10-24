@@ -28,11 +28,11 @@ const keys = (roles: (string | null)[], svc: ServiciosDeLaCuenta) =>
 
 describe("panelesVisibles", () => {
   it("la dirección ve todas las de una cuenta de redes", () => {
-    expect(keys(["admin"], REDES)).toEqual(["inicial", "redes", "cm", "diseno", "pauta"]);
+    expect(keys(["admin"], REDES)).toEqual(["inicial", "redes", "creativa", "cm", "diseno", "pauta"]);
   });
 
   it("la coordinación no entra a la inicial: ahí está la carta acuerdo", () => {
-    expect(keys(["coordinador"], REDES)).toEqual(["redes", "cm", "diseno", "pauta"]);
+    expect(keys(["coordinador"], REDES)).toEqual(["redes", "creativa", "cm", "diseno", "pauta"]);
   });
 
   it("la CM solo ve la suya", () => {
@@ -41,7 +41,8 @@ describe("panelesVisibles", () => {
 
   it("diseño solo ve la suya", () => {
     expect(keys(["diseno"], REDES)).toEqual(["diseno"]);
-    expect(keys(["coordinador_diseno"], REDES)).toEqual(["diseno"]);
+    // La coordinación de diseño es la dirección creativa: también ve la creativa (23/10/2026).
+    expect(keys(["coordinador_diseno"], REDES)).toEqual(["creativa", "diseno"]);
   });
 
   it("el media buyer solo ve publicidad", () => {

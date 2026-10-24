@@ -18,7 +18,7 @@
  * Módulo PURO: entran los roles y los servicios, salen las pestañas.
  */
 
-export type PanelOnboarding = "inicial" | "redes" | "cm" | "diseno" | "pauta";
+export type PanelOnboarding = "inicial" | "redes" | "creativa" | "cm" | "diseno" | "pauta";
 
 export interface PanelDef {
   key: PanelOnboarding;
@@ -31,6 +31,9 @@ export interface PanelDef {
 export const PANELES: PanelDef[] = [
   { key: "inicial", label: "Inicial", roles: ["admin"] },
   { key: "redes", label: "Gestión de redes", roles: ["admin", "coordinador"] },
+  // La dirección creativa define identidad, tono, medios y urgencia, y entrega
+  // la plataforma de campaña, la estrategia de redes y el documento técnico (23/10/2026).
+  { key: "creativa", label: "Creativa", roles: ["admin", "coordinador", "coordinador_diseno"] },
   { key: "cm", label: "Community", roles: ["admin", "coordinador", "community_manager"] },
   {
     key: "diseno",
@@ -52,6 +55,7 @@ function aplicaPorServicio(key: PanelOnboarding, svc: ServiciosDeLaCuenta): bool
     case "inicial":
       return true;
     case "redes":
+    case "creativa":
     case "cm":
       return svc.gestionRedes;
     case "diseno":

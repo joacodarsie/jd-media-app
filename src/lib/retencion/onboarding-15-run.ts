@@ -34,7 +34,7 @@ export async function runOnboarding15(
   const { data: cRaw } = await admin
     .from("clients")
     .select(
-      "id, nombre, fecha_inicio, cm_id, disenador_id, audiovisual_id, media_buyer_id, es_interno"
+      "id, nombre, fecha_inicio, cm_id, disenador_id, audiovisual_id, media_buyer_id, responsable_id, es_interno"
     )
     .eq("id", clienteId)
     .maybeSingle();
@@ -99,6 +99,7 @@ export async function runOnboarding15(
       disenador_id: c.disenador_id,
       audiovisual_id: c.audiovisual_id,
       media_buyer_id: c.media_buyer_id,
+      director_creativo_id: (c as { responsable_id?: string | null }).responsable_id ?? null,
       fallback,
     },
   });

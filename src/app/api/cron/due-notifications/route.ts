@@ -29,6 +29,7 @@ import { runIdeasViejasAlBanco } from "@/lib/contenidos/ideas-viejas";
 import { runHitoTresMeses } from "@/lib/retencion/hito-tres-meses-run";
 import { runAvisoCongeladas } from "@/lib/contenidos/congeladas-run";
 import { runAvisoJornadas } from "@/lib/jornadas/aviso-run";
+import { runAvisoVencimientos } from "@/lib/creativa/aviso-run";
 import { runPerfilesIncompletos } from "@/lib/equipo/perfil-completo-run";
 import { runConciliacionDiaria } from "@/lib/social/conciliar-run";
 import { runAccountAlerts } from "@/lib/social/alerts";
@@ -555,6 +556,14 @@ export async function GET(req: NextRequest) {
     hito3m = { error: e instanceof Error ? e.message : String(e) };
   }
 
+  // Documentos de campaña por vencer: a la dirección creativa, 7 días antes y el día (23/10/2026).
+  let campana: unknown = null;
+  try {
+    campana = await runAvisoVencimientos(admin, hoyYmd());
+  } catch (e) {
+    campana = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   // Jornadas ya hechas sin los datos reales: un aviso por día a la PM (23/10/2026).
   let jornadas: unknown = null;
   try {
@@ -681,6 +690,7 @@ export async function GET(req: NextRequest) {
     hito_3_meses: hito3m,
     congeladas,
     jornadas,
+    campana,
     perfiles,
     rutinas,
     revision_creativa: revisionCreativa,

@@ -216,3 +216,19 @@ describe("cada paso dice quién lo hace y cuándo está hecho (19/10/2026)", () 
     }
   });
 });
+
+describe("onboarding creativo en el arranque (23/10/2026)", () => {
+  it("con director creativo: la definición el día 2 y los entregables el día 4, a su nombre", () => {
+    const pasos = plan(["gestion_redes"], { director_creativo_id: "santi" }).pasos.filter((p) => p.asignado_a_id === "santi");
+    expect(pasos.map((p) => [p.dia, p.titulo])).toEqual([
+      [2, "Definición creativa de la cuenta"],
+      [4, "Plataforma de campaña, estrategia de redes y documento técnico"],
+    ]);
+    expect(pasos.every((p) => p.area === "Coordinación de Diseño")).toBe(true);
+  });
+
+  it("sin director creativo o sin gestión de redes, no se agregan", () => {
+    expect(plan(["gestion_redes"]).pasos.some((p) => p.titulo === "Definición creativa de la cuenta")).toBe(false);
+    expect(plan(["paid_media"], { director_creativo_id: "santi" }).pasos.some((p) => p.asignado_a_id === "santi")).toBe(false);
+  });
+});

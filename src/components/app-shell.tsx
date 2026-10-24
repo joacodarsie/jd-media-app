@@ -1,5 +1,7 @@
 "use client";
 
+import { hoyYmd } from "@/lib/dates";
+
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -277,6 +279,16 @@ function SidebarContent({
                       aria-label={`${badge} ${badge === 1 ? "novedad" : "novedades"}`}
                     >
                       {badge > 99 ? "99+" : badge}
+                    </span>
+                  )}
+                  {badge === 0 && item.nuevoHasta && hoyYmd() <= item.nuevoHasta && (
+                    <span
+                      className={cn(
+                        "rounded-full px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider",
+                        active ? "bg-black text-[#FFD400]" : "bg-[#FFD400] text-black"
+                      )}
+                    >
+                      Nuevo
                     </span>
                   )}
                 </Link>

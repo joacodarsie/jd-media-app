@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-10-23 — Área Creativa
+
+- ✨ **Área Creativa** (nuevo en el menú, para la dirección creativa): todas las cuentas activas con el estado del calendario de este mes y del que viene (aprobado o cuántas piezas faltan aprobar), el documento de campaña que vence primero y cómo va su onboarding creativo.
+- 📄 **Documentos de campaña por cuenta**: plataforma de campaña, estrategia de redes y documento técnico, cada uno con su inicio y su duración. La plataforma calcula el vencimiento y **7 días antes lo marca en rojo** y le avisa a Santi para replantear la estrategia. JDmedIA los usa como referencia al armar los calendarios (y deja de usar los vencidos).
+- 🧭 **Onboarding creativo**: una pestaña nueva, «Creativa», en el onboarding de cada cuenta. Ahí se definen la identidad, el tono, la importancia de cada medio y la urgencia de la marca, y se cargan los tres entregables. En las cuentas nuevas, el director creativo recibe esas dos tareas en el arranque (días 2 y 4).
+
 ## 2026-10-23 — Jornadas de producción
 
 - 🎬 **Jornadas, con todo el registro.** Nueva sección **Jornadas** (en el menú, para dirección y la project manager). Cada jornada tiene fecha, hora, quiénes fueron, cuánto duró, lo que vale (1ª hora + horas extra), los **viáticos de cada uno** y lo que hay que cobrarle al cliente.

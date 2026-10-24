@@ -47,6 +47,7 @@ import {
 export const DOC_CATEGORIES: { value: DocumentCategory; label: string }[] = [
   { value: "onboarding", label: "Onboarding" },
   { value: "manual_marca", label: "Manual de marca" },
+  { value: "campana", label: "Campaña (Área Creativa)" },
   { value: "procesos", label: "Procesos / SOPs" },
   { value: "contratos", label: "Contratos" },
   { value: "plantillas", label: "Plantillas" },

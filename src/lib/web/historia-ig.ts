@@ -74,7 +74,9 @@ export function armarHistoria(
   perfil: { usuario: string; seguidores: number; publicaciones: number },
   media: IgMedia[],
   fotos: { fecha: string; seguidores: number }[],
-  cuantas = 4
+  cuantas = 4,
+  /** El carrusel de «Nosotros» muestra más de lo mejor (23/10/2026). */
+  cuantosDestacados = cuantas
 ): HistoriaIg {
   // Por hora exacta: el primer día salieron dos y la bienvenida fue la primera.
   const piezas = [...media]
@@ -88,7 +90,7 @@ export function armarHistoria(
   const destacados = piezas
     .filter((p) => !usados.has(p.id))
     .sort((a, b) => (b.alcance ?? 0) - (a.alcance ?? 0) || b.likes - a.likes)
-    .slice(0, cuantas);
+    .slice(0, cuantosDestacados);
   return {
     ...perfil,
     desde: piezas[0]?.fecha ?? null,

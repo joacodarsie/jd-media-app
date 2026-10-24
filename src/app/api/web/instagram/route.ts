@@ -28,10 +28,12 @@ const cargar = unstable_cache(
     return armarHistoria(
       { usuario: perfil.username ?? "jdmedia.digital", seguidores: perfil.followers, publicaciones: perfil.media_count },
       media,
-      ((fotos ?? []) as { fecha: string; followers: number | null }[]).map((f) => ({ fecha: f.fecha, seguidores: f.followers ?? 0 }))
+      ((fotos ?? []) as { fecha: string; followers: number | null }[]).map((f) => ({ fecha: f.fecha, seguidores: f.followers ?? 0 })),
+      3,
+      10
     );
   },
-  ["web-instagram-v2"],
+  ["web-instagram-v3"],
   { revalidate: 21_600, tags: ["web-instagram"] }
 );
 

@@ -35,14 +35,31 @@ export default async function ContenidosPage({
     .toISOString()
     .slice(0, 10);
 
-  let pubQuery = supabase
-    .from("publications")
-    .select(
-      "*, cliente:clients(id,nombre,ig_user_id), creador:users!publications_creado_por_id_fkey(id,nombre,avatar_url), audiovisual:users!publications_audiovisual_id_fkey(id,nombre,avatar_url)"
-    )
-    .or(`estado.neq.publicado,fecha_publicacion.gte.${publishedSince}`)
-    .order("fecha_publicacion", { ascending: true, nullsFirst: false });
-  if (myClientIds) pubQuery = pubQuery.in("cliente_id", myClientIds);
+  // De a 1.000: la base no devuelve más por consulta y al 24/10/2026 eran
+  // 1.050 piezas, así que las últimas quedaban afuera sin avisar.
+  const traerPagina = (desde: number) => {
+    let q = supabase
+      .from("publications")
+      .select(
+        "*, cliente:clients(id,nombre,ig_user_id), creador:users!publications_creado_por_id_fkey(id,nombre,avatar_url), audiovisual:users!publications_audiovisual_id_fkey(id,nombre,avatar_url)"
+      )
+      .or(`estado.neq.publicado,fecha_publicacion.gte.${publishedSince}`)
+      .order("fecha_publicacion", { ascending: true, nullsFirst: false })
+      .order("id", { ascending: true })
+      .range(desde, desde + 999);
+    if (myClientIds) q = q.in("cliente_id", myClientIds);
+    return q;
+  };
+  const pubQuery = (async () => {
+    const todas: NonNullable<Awaited<ReturnType<typeof traerPagina>>["data"]> = [];
+    for (let desde = 0; desde < 5000; desde += 1000) {
+      const { data, error } = await traerPagina(desde);
+      if (error) return { data: todas.length ? todas : null, error };
+      todas.push(...(data ?? []));
+      if (!data || data.length < 1000) break;
+    }
+    return { data: todas, error: null };
+  })();
 
   const [
     { data: pubs },

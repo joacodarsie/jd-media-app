@@ -561,13 +561,29 @@ export function TaskViews({
           {filtered.length === 0 ? (
             <EmptyState filter={quick} />
           ) : (
-            gruposPorFecha(agrupadas).map((g) => (
-              <section key={g.clave} className="animate-in fade-in slide-in-from-bottom-1 duration-300">
-                <h3 className="mb-1.5 flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            gruposPorFecha(agrupadas).map((g, _i, todos) => (
+              // Lo de más adelante y lo sin fecha arranca cerrado: primero lo
+              // urgente (24/10/2026, pedido del dueño: menos de una).
+              <details
+                key={g.clave}
+                open={todos.length === 1 || (g.clave !== "ok" && g.clave !== "none")}
+                className="group/grupo animate-in fade-in slide-in-from-bottom-1 duration-300"
+              >
+                <summary className="mb-1.5 flex cursor-pointer list-none items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
                   <span className={cn("h-1.5 w-1.5 rounded-full", g.punto)} />
                   {g.titulo}
                   <span className="font-normal normal-case tracking-normal">· {g.items.length}</span>
-                </h3>
+                  <ChevronDown className="h-3 w-3 transition group-open/grupo:rotate-180" />
+                  {g.clave === "vencida" && (
+                    <Link
+                      href="/tareas/limpieza"
+                      onClick={(e) => e.stopPropagation()}
+                      className="ml-auto font-medium normal-case tracking-normal text-primary hover:underline"
+                    >
+                      🧹 Limpiar las mías →
+                    </Link>
+                  )}
+                </summary>
                 <div className="jd-cascada divide-y divide-border/60 overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50">
             {g.items.map((f) =>
               f.tipo === "ticket" ? (
@@ -593,7 +609,7 @@ export function TaskViews({
               )
             )}
                 </div>
-              </section>
+              </details>
             ))
           )}
         </div>

@@ -4,10 +4,10 @@
  * El registro de jornadas de producción (23/10/2026). Luz carga y confirma;
  * el dueño marca lo cobrado y lo pagado. Ver lib/jornadas/registro.ts.
  */
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, Clock, History, Loader2, MapPin, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
+import { Check, ChevronDown, Clock, History, Loader2, MapPin, Pencil, Plus, Trash2, Undo2 } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,6 +49,9 @@ const primerNombre = (n: string) => n.split(" ")[0];
 function fechaLarga(ymd: string) {
   return new Date(`${ymd}T12:00:00`).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 }
+function fechaCorta(ymd: string) {
+  return new Date(`${ymd}T12:00:00`).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" });
+}
 function duracion(h: number) {
   const extra = Math.max(0, h - 1);
   return extra ? `${h} h (1 + ${extra} extra)` : `${h} h`;
@@ -78,20 +81,6 @@ export function JornadasRegistro({
 
   return (
     <div className="space-y-5 pb-12">
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        <Tarjeta emoji="✍️" titulo="Falta completar" valor={String(res.completar)} detalle="Ya se hicieron: confirmar duración y viáticos." onClick={() => setFiltro("completar")} />
-        <Tarjeta emoji="💰" titulo="Falta cobrar" valor={fmtARS(res.faltaCobrar)} detalle={`${cuenta("cobrar")} jornada${cuenta("cobrar") === 1 ? "" : "s"}`} onClick={() => setFiltro("cobrar")} />
-        <Tarjeta
-          emoji="🤝"
-          titulo="Falta pagar"
-          valor={fmtARS(res.faltaPagar)}
-          detalle={
-            [...res.debePorPersona.entries()].map(([id, m]) => `${primerNombre(nombre.get(id) ?? "—")} ${fmtARS(m)}`).join(" · ") || "Nadie espera un pago"
-          }
-          onClick={() => setFiltro("pagar")}
-        />
-      </div>
-
       <div className="flex flex-wrap items-center gap-2">
         {(["todas", "completar", "cobrar", "pagar", "agendada", "cerrada"] as const).map((f) => (
           <button
@@ -100,7 +89,9 @@ export function JornadasRegistro({
             onClick={() => setFiltro(f)}
             className={cn("rounded-full border px-3 py-1 text-xs font-medium transition", filtro === f ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted")}
           >
-            {f === "todas" ? `Todas · ${jornadas.length}` : `${ESTADO_JORNADA[f].emoji} ${ESTADO_JORNADA[f].label} · ${cuenta(f)}`}
+            {f === "todas"
+              ? `Todas · ${jornadas.length}`
+              : `${ESTADO_JORNADA[f].emoji} ${ESTADO_JORNADA[f].label} · ${f === "cobrar" && res.faltaCobrar > 0 ? fmtARS(res.faltaCobrar) : f === "pagar" && res.faltaPagar > 0 ? fmtARS(res.faltaPagar) : cuenta(f)}`}
           </button>
         ))}
         <Button size="sm" className="ml-auto gap-1.5" onClick={() => setEditando("nueva")}>
@@ -111,7 +102,7 @@ export function JornadasRegistro({
       {visibles.length === 0 ? (
         <p className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">No hay jornadas acá.</p>
       ) : (
-        <div className="grid items-start gap-4 lg:grid-cols-2">
+        <div className="divide-y overflow-hidden rounded-2xl border bg-card">
           {visibles.map(({ j, e }) => (
             <JornadaCard key={j.id} j={j} estado={e} nombre={nombre} esDueno={esDueno} onEditar={() => setEditando(j)} />
           ))}
@@ -127,19 +118,6 @@ export function JornadasRegistro({
         />
       )}
     </div>
-  );
-}
-
-function Tarjeta({ emoji, titulo, valor, detalle, onClick }: { emoji: string; titulo: string; valor: string; detalle: string; onClick: () => void }) {
-  return (
-    <button type="button" onClick={onClick} className="min-w-0 rounded-2xl border bg-card p-3 text-left transition hover:border-primary sm:p-4">
-      <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground sm:gap-2 sm:text-xs">
-        <span className="text-base sm:text-lg" aria-hidden="true">{emoji}</span>
-        <span className="truncate">{titulo}</span>
-      </div>
-      <div className="mt-1 truncate text-base font-bold tabular-nums sm:text-2xl">{valor}</div>
-      <div className="mt-0.5 hidden line-clamp-2 text-xs text-muted-foreground sm:block">{detalle}</div>
-    </button>
   );
 }
 
@@ -161,6 +139,11 @@ function JornadaCard({
   const r = repartoJornada(j);
   const [cobro, setCobro] = useState(String(r.faltaCobrar || r.aCobrar));
   const [verHistorial, setVerHistorial] = useState(false);
+  const [abierta, setAbierta] = useState(false);
+  // Los avisos llevan a /jornadas#j-<id>: esa llega abierta.
+  useEffect(() => {
+    if (window.location.hash === `#j-${j.id}`) setAbierta(true);
+  }, [j.id]);
   const correr = (fn: () => Promise<{ ok?: true; error?: string } | undefined>, ok: string) =>
     start(async () => {
       const res = await fn();
@@ -170,28 +153,39 @@ function JornadaCard({
     });
 
   return (
-    <div id={`j-${j.id}`} className="scroll-mt-24 flex flex-col rounded-2xl border bg-card">
-      <div className="flex items-start justify-between gap-3 border-b px-4 py-3">
-        <div className="min-w-0">
-          <div className="font-semibold">{j.cliente ?? "Sin cliente"}</div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-            <span>
-              {fechaLarga(j.fecha)}
-              {j.horaInicio ? ` · ${j.horaInicio} h` : ""}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Clock className="h-3 w-3" /> {duracion(j.horas)}
-            </span>
-            {j.lugar && (
-              <span className="inline-flex items-center gap-1">
-                <MapPin className="h-3 w-3" /> {j.lugar}
-              </span>
-            )}
+    <div id={`j-${j.id}`} className={cn("scroll-mt-24", abierta && "bg-muted/20")}>
+      <button
+        type="button"
+        onClick={() => setAbierta((v) => !v)}
+        aria-expanded={abierta}
+        className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-muted/40"
+      >
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-semibold">{j.cliente ?? "Sin cliente"}</div>
+          <div className="text-xs text-muted-foreground">
+            {fechaCorta(j.fecha)}
+            {j.horaInicio ? ` · ${j.horaInicio} h` : ""}
           </div>
         </div>
+        <span className="hidden text-sm font-semibold tabular-nums sm:block">{fmtARS(r.aCobrar)}</span>
         <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium", TONO[estado])}>
           {ESTADO_JORNADA[estado].emoji} {ESTADO_JORNADA[estado].label}
         </span>
+        <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition", abierta && "rotate-180")} />
+      </button>
+
+      {abierta && (
+      <div className="border-t">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 px-4 pt-3 text-xs text-muted-foreground">
+        <span>{fechaLarga(j.fecha)}</span>
+        <span className="inline-flex items-center gap-1">
+          <Clock className="h-3 w-3" /> {duracion(j.horas)}
+        </span>
+        {j.lugar && (
+          <span className="inline-flex items-center gap-1">
+            <MapPin className="h-3 w-3" /> {j.lugar}
+          </span>
+        )}
       </div>
 
       <div className="grid grid-cols-3 gap-2 border-b px-4 py-3 text-center">
@@ -322,6 +316,8 @@ function JornadaCard({
           </Button>
         )}
       </div>
+      </div>
+      )}
     </div>
   );
 }

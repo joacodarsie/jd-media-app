@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-10-24 — El portal del cliente, por pestañas
+
+- 🗂️ **El portal del cliente ya no es una sola página larga.** Tiene cinco pestañas: **📅 Calendario** (la primera: lo pendiente, las piezas para aprobar y el calendario), **🤝 Reunión** (elegir día y hora, la encuesta), **📈 Resultados**, **🧭 Estrategia** (el plan del mes) y **⚙️ Tu cuenta** (abono, material, accesos, plantillas). Cada pestaña muestra un número si tiene algo pendiente.
+- Los links que mandamos por WhatsApp (invitación a la reunión, reportes, los 3 meses) abren directo la pestaña que corresponde.
+
 ## 2026-10-24 — Seguimientos a la vista y la plataforma más rápida
 
 - 🔁 **Seguimientos en Mi día.** Si tenés contactos de prospección a los que les escribiste hace 3 días o más y no contestaron, Mi día te muestra cuántos te tocan hoy y te lleva directo a mandarlos (el texto ya viene escrito).

@@ -70,8 +70,11 @@ import { periodoCartaEnPortal } from "@/lib/contratos/carta-mensual";
 import { PortalRecomendar } from "@/components/portal-recomendar";
 import { labelEstado, puedeRecomendar, type EstadoReferido } from "@/lib/referidos/referidos";
 import { hoyYmd } from "@/lib/dates";
+import { PESTANAS, hrefDeAviso, pestanaValida } from "@/lib/portal/pestanas";
 
-export default async function PortalPage({ params }: { params: { token: string } }) {
+export default async function PortalPage({ params, searchParams }: { params: { token: string }; searchParams?: { ver?: string } }) {
+  // Las pestañas del portal (24/10/2026): el calendario primero.
+  const ver = pestanaValida(searchParams?.ver);
   const admin = createAdmin();
 
   const { data: tokenRow } = await admin
@@ -679,6 +682,12 @@ export default async function PortalPage({ params }: { params: { token: string }
           .portal-backdrop { align-items: center !important; }
           .portal-sheet { border-radius: 18px !important; animation: portalFade .2s ease; }
         }
+        .pestanas { position: sticky; top: 0; z-index: 30; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 10px 2px; margin: -4px 0 14px; background: rgba(250,250,248,.94); backdrop-filter: blur(8px); }
+        .pestanas::-webkit-scrollbar { display: none; }
+        .pestana { flex: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; padding: 9px 14px; border-radius: 999px; border: 1px solid #e5e5e5; background: #fff; font-size: 13px; font-weight: 700; color: #1a1a1a; text-decoration: none; transition: background .2s, color .2s, border-color .2s; }
+        .pestana:hover { border-color: #1a1a1a; }
+        .pestana.activa { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+        .pestana-aviso { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #FFD400; color: #000; font-size: 11px; font-weight: 800; display: inline-grid; place-items: center; }
         .footer { margin-top: 40px; text-align: center; padding: 24px 0; color: #888; font-size: 12px; border-top: 1px solid #ececec; }
       ` }} />
 
@@ -709,8 +718,31 @@ export default async function PortalPage({ params }: { params: { token: string }
           );
         })()}
 
-        {/* Lo que te toca a vos (20/10/2026): todo lo que el equipo espera de él, arriba de todo. */}
+        {/* Las pestañas: cada una con un aviso si hay algo pendiente ahí. */}
         {(() => {
+          const avisos: Record<string, number> = {
+            calendario: toReview.length,
+            reunion: (reunion?.estado === "elegir" ? 1 : 0) + (pedirEncuesta ? 1 : 0),
+            cuenta:
+              (material && !material.avisado ? 1 : 0) +
+              (Object.values(estadoCuentas).some((e) => e === "falta") ? 1 : 0) +
+              (abono && !abono.avisado ? 1 : 0),
+          };
+          return (
+            <nav className="pestanas" aria-label="Secciones de tu portal">
+              {PESTANAS.map((p) => (
+                <a key={p.clave} href={`?ver=${p.clave}`} className={`pestana${ver === p.clave ? " activa" : ""}`} aria-current={ver === p.clave ? "page" : undefined}>
+                  <span aria-hidden="true">{p.emoji}</span>
+                  {p.label}
+                  {(avisos[p.clave] ?? 0) > 0 && <span className="pestana-aviso">{avisos[p.clave]}</span>}
+                </a>
+              ))}
+            </nav>
+          );
+        })()}
+
+        {/* Lo que te toca a vos (20/10/2026): todo lo que el equipo espera de él, arriba de todo. */}
+        {ver === "calendario" && (() => {
           const items = itemsTeToca({
             piezasParaRevisar: toReview.length,
             pausadas,
@@ -748,7 +780,7 @@ export default async function PortalPage({ params }: { params: { token: string }
                   );
                   const estilo = { display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", border: "1px solid #ececec", borderRadius: 12, color: "inherit", textDecoration: "none", background: "#fff" } as const;
                   return i.href ? (
-                    <a key={i.clave} href={i.href} style={estilo}>{fila}</a>
+                    <a key={i.clave} href={hrefDeAviso(i.href)!} style={estilo}>{fila}</a>
                   ) : (
                     <div key={i.clave} style={{ ...estilo, background: "#fffbeb", borderColor: "#fde68a" }}>{fila}</div>
                   );
@@ -763,7 +795,7 @@ export default async function PortalPage({ params }: { params: { token: string }
           );
         })()}
 
-        {abono && (
+        {ver === "cuenta" && abono && (
           <div id="abono">
           <PortalAbono
             token={params.token}
@@ -778,7 +810,7 @@ export default async function PortalPage({ params }: { params: { token: string }
         )}
 
         {/* Pendientes de revisión — se muestra primero porque es lo urgente */}
-        {toReview.length > 0 && (
+        {ver === "calendario" && toReview.length > 0 && (
           <div id="revisar" className="card" style={{ borderColor: "#fde68a", background: "linear-gradient(180deg, #fffbeb 0%, #fff 100%)" }}>
             <div className="card-label" style={{ color: "#92400e" }}>
               Necesitamos tu mirada
@@ -810,8 +842,34 @@ export default async function PortalPage({ params }: { params: { token: string }
           </div>
         )}
 
+        {/* El calendario, lo primero después de lo que hay que aprobar (24/10/2026). */}
+        {ver === "calendario" && upcoming.length > 0 && (
+          <div id="calendario" className="card">
+            <div className="card-label">Calendario de contenidos</div>
+            <h2 className="card-title">Tu calendario</h2>
+            <p style={{ fontSize: 13, color: "#555", margin: "0 0 16px", lineHeight: 1.5 }}>
+              Lo que viene y lo que ya publicamos. Tocá una pieza para verla en
+              detalle (texto, imagen y más) y dejar tu comentario — le llega al
+              equipo al instante. Usá las flechas para ver otros meses.
+            </p>
+            <PortalContent pubs={upcoming} token={params.token} />
+          </div>
+        )}
+
+        {ver === "calendario" && (() => {
+          const linea = lineaDeProduccion(upcoming, hoyYmd());
+          if (!linea.piezas.length) return null;
+          return (
+            <div className="card">
+              <div className="card-label">Tu contenido, en vivo</div>
+              <h2 className="card-title">Lo que estamos preparando</h2>
+              <PortalProduccion {...linea} />
+            </div>
+          );
+        })()}
+
         {/* Tu material: lo que el arranque necesita de su lado (18/10/2026). */}
-        {material && (
+        {ver === "cuenta" && material && (
           <div id="material" className="card">
             <div className="card-label">Para arrancar</div>
             <h2 className="card-title">Necesitamos tus fotos y videos</h2>
@@ -828,19 +886,19 @@ export default async function PortalPage({ params }: { params: { token: string }
 
         {/* Tus cuentas: el cliente carga sus accesos (pedido de Luz, 17/10/2026).
             Solo aparece mientras falte alguna red: cuando está todo, no ocupa lugar. */}
-        {Object.values(estadoCuentas).some((e) => e === "falta") && (
+        {ver === "cuenta" && Object.values(estadoCuentas).some((e) => e === "falta") && (
         <div id="accesos" className="card">
           <div className="card-label">Tus cuentas</div>
           <h2 className="card-title">Tus redes y accesos</h2>
           <p style={{ fontSize: 13, color: "#666", margin: "0 0 12px", lineHeight: 1.5 }}>
-            Para manejar tus redes, tu equipo necesita poder entrar. Marcá cuáles tenés y dejanos el usuario y la contraseña; las que no tengas, las creamos nosotros.
+            Para manejar tus redes, tu equipo necesita poder entrar a tus cuentas de Instagram, Facebook y TikTok. Marcá cuáles tenés y dejanos el usuario y la contraseña de cada red; las que no tengas, las creamos nosotros. (Tu portal no tiene usuario ni contraseña: se entra siempre con este link.)
           </p>
           <PortalAccesos token={params.token} estado={estadoCuentas} />
         </div>
         )}
 
         {/* Tu reunión del mes: el cliente elige el día y la hora. */}
-        {reunion && (
+        {ver === "reunion" && reunion && (
           <div id="reunion" className="card pr-card" style={{ position: "relative" }}>
             <Ilustracion escena="calendario" className="absolute right-3 top-3 h-14 w-16 text-neutral-800" />
             <div className="card-label">Tu reunión del mes</div>
@@ -860,7 +918,7 @@ export default async function PortalPage({ params }: { params: { token: string }
         )}
 
         {/* La encuesta del mes: un toque en la carita y abre la encuesta con esa nota. */}
-        {pedirEncuesta && (
+        {ver === "reunion" && pedirEncuesta && (
           <div id="encuesta" className="card" style={{ textAlign: "center" }}>
             <Ilustracion escena="charla" className="mx-auto mb-1 h-16 w-20 text-neutral-800" />
             <div className="card-label">30 segundos</div>
@@ -882,12 +940,24 @@ export default async function PortalPage({ params }: { params: { token: string }
           </div>
         )}
 
-        {arranque && <PortalArranque pasos={arranque} cartaHref={`/contrato/cliente/${cliente_id}?token=${params.token}`} />}
+        {ver === "reunion" && !reunion && !pedirEncuesta && (
+          <div className="card" style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <Ilustracion escena="calendario" className="h-14 w-16 shrink-0 text-neutral-800" />
+            <div>
+              <div className="card-label">Tu reunión del mes</div>
+              <p style={{ fontSize: 14, margin: 0, lineHeight: 1.5 }}>
+                Todavía no está para agendar. Cuando se acerque el cierre del mes, acá vas a poder elegir el día y la hora.
+              </p>
+            </div>
+          </div>
+        )}
 
-        {tuMes && <PortalTuMes placas={tuMes.placas} mesLabel={tuMes.mesLabel} refCode={mostrarRecomendar ? ref?.ref_code ?? null : null} />}
+        {ver === "cuenta" && arranque && <PortalArranque pasos={arranque} cartaHref={`/contrato/cliente/${cliente_id}?token=${params.token}`} />}
+
+        {ver === "resultados" && tuMes && <PortalTuMes placas={tuMes.placas} mesLabel={tuMes.mesLabel} refCode={mostrarRecomendar ? ref?.ref_code ?? null : null} />}
 
         {/* Informe del último mes cerrado — el documento que sale de la reunión */}
-        {ultimoInforme && (
+        {ver === "resultados" && ultimoInforme && (
           <a
             href={`/c/${params.token}/mes/${ultimoInforme.periodo}`}
             className="card"
@@ -912,14 +982,14 @@ export default async function PortalPage({ params }: { params: { token: string }
         )}
 
         {/* Dónde estamos con su cuenta y qué le toca a él (17/10/2026). */}
-        {ref?.fecha_inicio && (conRedes ?? 0) > 0 && (
+        {ver === "cuenta" && ref?.fecha_inicio && (conRedes ?? 0) > 0 && (
           <div style={{ marginBottom: 16 }}>
             <CicloNave inicio={(ref.onboarding_reunion ?? ref.fecha_inicio).slice(0, 10)} hoy={hoyYmd()} portal />
           </div>
         )}
 
         {/* Tus reportes: todo en este mismo link, mes por mes (17/10/2026). */}
-        {(() => {
+        {ver === "resultados" && (() => {
           const inicio = (ref?.fecha_inicio ?? mesActual).slice(0, 7);
           const meses: string[] = [];
           for (let i = 0; i < 6; i++) {
@@ -961,7 +1031,7 @@ export default async function PortalPage({ params }: { params: { token: string }
         })()}
 
         {/* Resultados del mes — Instagram + pauta, en vivo */}
-        {hayResultados && (
+        {ver === "resultados" && hayResultados && (
           <div className="card">
             <div className="card-label">Resultados de este mes</div>
             <h2 className="card-title">Cómo venís</h2>
@@ -1038,7 +1108,7 @@ export default async function PortalPage({ params }: { params: { token: string }
 
         {/* Tu crecimiento: el antes y el después con las fotos automáticas del Instagram. */}
         {/* 3 meses juntos (22/10/2026): el festejo, del día 75 al 100. */}
-        {hito3m && (
+        {ver === "resultados" && hito3m && (
           <div className="card" style={{ display: "flex", alignItems: "center", gap: 14, background: "linear-gradient(120deg,#fff8d6,#fff)", borderColor: "#fde68a" }}>
             <Ilustracion escena="cohete" className="h-20 w-24 shrink-0 text-neutral-800" />
             <div>
@@ -1051,14 +1121,14 @@ export default async function PortalPage({ params }: { params: { token: string }
           </div>
         )}
 
-        {crecimiento && (crecimiento.inicio || crecimiento.hoy) && (
+        {ver === "resultados" && crecimiento && (crecimiento.inicio || crecimiento.hoy) && (
           <div id="crecimiento" className="card">
             <div className="card-label">Tu crecimiento</div>
             <CrecimientoVista datos={crecimiento} nombre={client.nombre} portal />
           </div>
         )}
 
-        {planContent ? (
+        {ver === "estrategia" && (planContent ? (
           <>
             {/* Resumen del mes */}
             {planContent.resumen_mes && planContent.resumen_mes.length > 0 && (
@@ -1215,36 +1285,9 @@ export default async function PortalPage({ params }: { params: { token: string }
               Todavía no hay un plan de contenido activo para este período. En cuanto lo aprobemos, va a aparecer acá.
             </div>
           </div>
-        )}
+        ))}
 
-        {/* Calendario de contenidos — todo lo planificado, en vivo */}
-        {/* Tu contenido, en vivo: la línea de producción de lo que viene (19/10/2026). */}
-        {(() => {
-          const linea = lineaDeProduccion(upcoming, hoyYmd());
-          if (!linea.piezas.length) return null;
-          return (
-            <div className="card">
-              <div className="card-label">Tu contenido, en vivo</div>
-              <h2 className="card-title">Lo que estamos preparando</h2>
-              <PortalProduccion {...linea} />
-            </div>
-          );
-        })()}
-
-        {upcoming.length > 0 && (
-          <div className="card">
-            <div className="card-label">Calendario de contenidos</div>
-            <h2 className="card-title">Tu calendario</h2>
-            <p style={{ fontSize: 13, color: "#555", margin: "0 0 16px", lineHeight: 1.5 }}>
-              Lo que viene y lo que ya publicamos. Tocá una pieza para verla en
-              detalle (texto, imagen y más) y dejar tu comentario — le llega al
-              equipo al instante. Usá las flechas para ver otros meses.
-            </p>
-            <PortalContent pubs={upcoming} token={params.token} />
-          </div>
-        )}
-
-        {plantillasCanva && (
+        {ver === "cuenta" && plantillasCanva && (
           <a
             href={plantillasCanva}
             target="_blank"
@@ -1261,7 +1304,7 @@ export default async function PortalPage({ params }: { params: { token: string }
           </a>
         )}
 
-        {mostrarRecomendar && ref?.ref_code && <PortalRecomendar code={ref.ref_code} recomendados={recomendados} />}
+        {ver === "cuenta" && mostrarRecomendar && ref?.ref_code && <PortalRecomendar code={ref.ref_code} recomendados={recomendados} />}
 
         <div className="footer">
           {AGENCY.brand} · {AGENCY.legal_name}

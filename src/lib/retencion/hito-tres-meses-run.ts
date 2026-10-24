@@ -54,7 +54,7 @@ export async function runHitoTresMeses(admin: SupabaseClient, hoy: string): Prom
       contacto: c.contacto_nombre,
       cuenta: c.nombre,
       crecimiento: frase(antes, ahora),
-      link: token ? `${SITIO}/c/${token}#crecimiento` : null,
+      link: token ? `${SITIO}/c/${token}?ver=resultados#crecimiento` : null,
     });
     const t = tareaHito({ cuenta: c.nombre, clienteId: c.id, mensaje });
     const { error } = await admin.from("tasks").insert({

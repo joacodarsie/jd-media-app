@@ -25,7 +25,7 @@ describe("invitar a la reunión mensual", () => {
 
   it("el mensaje lleva el mes, la cuenta, los días y el link que abre en la reunión", () => {
     const link = linkReunion("https://jd-media-app.vercel.app/", "abc");
-    expect(link).toBe("https://jd-media-app.vercel.app/c/abc#reunion");
+    expect(link).toBe("https://jd-media-app.vercel.app/c/abc?ver=reunion#reunion");
     const m = mensajeInvitacion({ contacto: "Alonso Cuevas", cuenta: "Impertek", periodo: "2026-10", link, dias: "del 2 al 7 de noviembre", deParte: "Santiago Reinaldi" });
     expect(m).toContain("¡Hola Alonso!");
     expect(m).toContain("repasar octubre de Impertek");

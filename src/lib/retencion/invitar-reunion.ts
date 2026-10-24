@@ -46,7 +46,7 @@ export function saludo(contacto: string | null | undefined, cuenta: string): str
 
 /** El link del portal que abre directo en «Elegí cuándo nos juntamos». */
 export function linkReunion(origin: string, token: string): string {
-  return `${origin.replace(/\/$/, "")}/c/${token}#reunion`;
+  return `${origin.replace(/\/$/, "")}/c/${token}?ver=reunion#reunion`;
 }
 
 export function mensajeInvitacion(input: {

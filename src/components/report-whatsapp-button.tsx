@@ -60,7 +60,7 @@ export function ReportWhatsappButton({
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   // Un solo link (17/10/2026): su plataforma, donde está el reporte de cada mes
   // junto con el calendario, el crecimiento y todo lo demás.
-  const url = `${origin}/c/${token}#reportes`;
+  const url = `${origin}/c/${token}?ver=resultados#reportes`;
   void mes;
   const mensaje = `Hola! 👋 Ya está el reporte de ${mesLabel} en tu plataforma de JD Media: ${url}\n\nAhí tenés los resultados de cada mes, tu calendario y cómo viene creciendo la cuenta. Cualquier consulta, quedamos a disposición. ¡Gracias por la confianza! — JD Media`;
 

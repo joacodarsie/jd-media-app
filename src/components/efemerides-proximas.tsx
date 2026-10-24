@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BloquePlegable } from "@/components/bloque-plegable";
 import { CalendarHeart } from "lucide-react";
 import { createAdmin } from "@/lib/supabase/admin";
 import { userInRoles } from "@/lib/auth";
@@ -52,25 +53,24 @@ export async function EfemeridesProximas({
   if (lista.length === 0) return null;
 
   return (
-    <section className="overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/50 animate-in fade-in duration-300">
-      <div className="flex items-center gap-2 border-b border-border/60 px-4 py-2.5">
-        <CalendarHeart className="h-4 w-4 text-pink-600" />
-        <h2 className="text-sm font-semibold">Fechas que se vienen</h2>
-        <span className="text-xs text-muted-foreground">· próximos 30 días</span>
-        <Link href="/contenidos/efemerides" className="ml-auto text-xs text-primary hover:underline">
-          Ver el año
-        </Link>
-      </div>
-      <ul className="divide-y">
+    <BloquePlegable
+      id="fechas"
+      emoji={<CalendarHeart className="h-5 w-5 text-pink-600" />}
+      titulo="Fechas que se vienen"
+      resumen={`${lista.length} en los próximos 30 días · la primera: ${lista[0].e.nombre}`}
+    >
+      <ul className="-mx-4 -mt-3 divide-y md:-mx-5">
         {lista.map(({ e, aplican }) => (
           <FilaEfemeride key={e.fecha + e.nombre} e={e} aplican={aplican} hoy={hoy} />
         ))}
       </ul>
-      <p className="border-t px-4 py-2 text-[11px] text-muted-foreground">
-        Mirá en cada cuenta si amerita: un saludo, una promo o nada. Lo que se use, cargalo en el
-        calendario con tiempo.
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        Mirá en cada cuenta si amerita: un saludo, una promo o nada. Lo que se use, cargalo en el calendario con tiempo.{" "}
+        <Link href="/contenidos/efemerides" className="text-primary hover:underline">
+          Ver el año
+        </Link>
       </p>
-    </section>
+    </BloquePlegable>
   );
 }
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BloquePlegable } from "@/components/bloque-plegable";
 import { createAdmin } from "@/lib/supabase/admin";
 import { hoyYmd } from "@/lib/dates";
 import { periodLabel } from "@/lib/finanzas";
@@ -34,33 +35,22 @@ export async function ReunionesDelMes({ userId, todas }: { userId: string; todas
   const mes = periodLabel(hoy.slice(0, 7)).toLowerCase().replace(/\s*(de\s+)?\d{4}$/, "");
 
   return (
-    <section className="rounded-2xl border bg-card p-4 md:p-5 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="text-3xl" aria-hidden="true">🤝</span>
-          <div>
-            <h2 className="font-semibold">Reuniones de cierre de {mes}</h2>
-            <p className="text-xs text-muted-foreground">
-              {sinInvitar > 0 ? (
-                <>
-                  <b className="text-foreground">{sinInvitar} sin invitar.</b> Mandales el link: cada cliente elige su día y hora en el portal.
-                </>
-              ) : (
-                "Todas invitadas. Si alguna no elige en 2 días, reenviá."
-              )}
-            </p>
-          </div>
-        </div>
-        <div className="text-right">
-          <p className="text-2xl font-bold tabular-nums leading-none">
-            {hechas}
-            <span className="text-sm font-normal text-muted-foreground"> / {filas.length}</span>
-          </p>
-          <p className="text-[11px] text-muted-foreground">hechas</p>
-        </div>
-      </div>
-
-      <div className="mt-3 flex h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+    <BloquePlegable
+      id="reuniones"
+      emoji="🤝"
+      titulo={`Reuniones de cierre de ${mes}`}
+      resumen={sinInvitar > 0 ? `${sinInvitar} sin invitar${sinEncuesta.length ? ` · ${sinEncuesta.length} sin encuesta` : ""}` : sinEncuesta.length ? `Todas invitadas · ${sinEncuesta.length} sin encuesta` : "Todas invitadas"}
+      derecha={
+        <span className="text-right">
+          <span className="text-lg font-bold tabular-nums">{hechas}</span>
+          <span className="text-xs text-muted-foreground"> / {filas.length} hechas</span>
+        </span>
+      }
+    >
+      {sinInvitar > 0 && (
+        <p className="mb-2 text-xs text-muted-foreground">Mandales el link: cada cliente elige su día y hora en el portal.</p>
+      )}
+      <div className="flex h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
         {(["hecha", "agendada", "invitada"] as EstadoReunion[]).map((e) => {
           const n = filas.filter((f) => f.estado === e).length;
           return n ? (
@@ -103,6 +93,6 @@ export async function ReunionesDelMes({ userId, todas }: { userId: string; todas
             </li>
           ))}
       </ul>
-    </section>
+    </BloquePlegable>
   );
 }

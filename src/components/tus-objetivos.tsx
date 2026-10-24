@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BloquePlegable } from "@/components/bloque-plegable";
 import { Target } from "lucide-react";
 import { createAdmin } from "@/lib/supabase/admin";
 import { hoyYmd } from "@/lib/dates";
@@ -22,7 +23,7 @@ import { cn } from "@/lib/utils";
  * su objetivo del mes bajado a la semana y al día, para ir viendo cómo lo
  * cumple. Todo se mide solo con lo que pasa en la plataforma.
  */
-export async function TusObjetivos({ persona, titulo = "Tus objetivos" }: { persona: PersonaObj; titulo?: string }) {
+export async function TusObjetivos({ persona, titulo = "Tus objetivos", plegable = false }: { persona: PersonaObj; titulo?: string; plegable?: boolean }) {
   if (metricasDe(persona).length === 0) return null;
   const admin = createAdmin();
   const hoy = hoyYmd();
@@ -44,6 +45,21 @@ export async function TusObjetivos({ persona, titulo = "Tus objetivos" }: { pers
   const filas = objetivosDePersona(persona, datos, metas, hoy);
   if (!filas.length) return null;
   const periodos = { hoy: diaDe(hoy), semana, mes };
+
+  // En Mi día va cerrado: una fila que se abre (24/10/2026).
+  if (plegable)
+    return (
+      <BloquePlegable emoji="🎯" titulo={titulo} resumen={filas.map((f) => f.label).join(" · ")}>
+        <ul className="-mt-1 divide-y">
+          {filas.map((f) => (
+            <Fila key={f.id} f={f} periodos={periodos} />
+          ))}
+        </ul>
+        <Link href="/objetivos/equipo" className="mt-2 inline-block text-xs font-medium text-muted-foreground hover:text-foreground">
+          Ver los de todos →
+        </Link>
+      </BloquePlegable>
+    );
 
   return (
     <section className="rounded-2xl border bg-card p-4 md:p-5">

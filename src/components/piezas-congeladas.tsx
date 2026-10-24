@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BloquePlegable } from "@/components/bloque-plegable";
 import { createAdmin } from "@/lib/supabase/admin";
 import { hoyYmd } from "@/lib/dates";
 import { cargarCongeladas } from "@/lib/contenidos/congeladas-run";
@@ -16,19 +17,14 @@ export async function PiezasCongeladas({ meId }: { meId: string }) {
   const total = grupos.reduce((n, g) => n + g.piezas.length, 0);
 
   return (
-    <section id="congeladas" className="scroll-mt-24 rounded-2xl border border-sky-500/30 bg-card p-4 md:p-5 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <div className="flex items-start gap-3">
-        <span className="text-3xl" aria-hidden="true">🧊</span>
-        <div>
-          <h2 className="font-semibold">
-            {total} pieza{total === 1 ? "" : "s"} congelada{total === 1 ? "" : "s"}
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Sin ningún movimiento hace {DIAS_QUIETA} días o más, y tienen que salir esta semana o ya se pasaron.
-          </p>
-        </div>
-      </div>
-      <ul className="mt-3 divide-y">
+    <BloquePlegable
+      id="congeladas"
+      emoji="🧊"
+      className="border-sky-500/30"
+      titulo={`${total} pieza${total === 1 ? "" : "s"} congelada${total === 1 ? "" : "s"}`}
+      resumen={`Sin moverse hace ${DIAS_QUIETA} días o más · ${grupos.length} persona${grupos.length === 1 ? "" : "s"}`}
+    >
+      <ul className="-mt-1 divide-y">
         {grupos.map((g) => (
           <li key={g.responsableId ?? "sin"} className="py-2.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -59,6 +55,6 @@ export async function PiezasCongeladas({ meId }: { meId: string }) {
           </li>
         ))}
       </ul>
-    </section>
+    </BloquePlegable>
   );
 }

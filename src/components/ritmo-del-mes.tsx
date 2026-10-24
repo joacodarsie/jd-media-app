@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BloquePlegable } from "@/components/bloque-plegable";
 import { createAdmin } from "@/lib/supabase/admin";
 import { hoyYmd } from "@/lib/dates";
 import { periodLabel } from "@/lib/finanzas";
@@ -39,18 +40,13 @@ export async function RitmoDelMes() {
   const mesAnt = periodLabel(new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 7)).toLowerCase().slice(0, 3);
 
   return (
-    <section id="ritmo" className="scroll-mt-24 rounded-2xl border bg-card p-4 md:p-5 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <div className="flex items-start gap-3">
-        <span className="text-3xl" aria-hidden="true">🥁</span>
-        <div>
-          <h2 className="font-semibold">Ritmo de {mes}</h2>
-          <p className="text-xs text-muted-foreground">
-            {problemas.length ? `${problemas.length} de ${cuentas.length} cuentas van atrás o se les viene la semana encima.` : "Todas las cuentas van al día."}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+    <BloquePlegable
+      id="ritmo"
+      emoji="🥁"
+      titulo={`Ritmo de ${mes}`}
+      resumen={problemas.length ? `${problemas.length} de ${cuentas.length} cuentas van atrás o se les viene la semana encima.` : "Todas las cuentas van al día."}
+    >
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
         <span className="inline-flex items-center gap-1.5"><i className="h-2 w-3 rounded-sm bg-emerald-500" /> salió</span>
         <span className="inline-flex items-center gap-1.5"><i className="h-2 w-3 rounded-sm bg-red-500" /> atrasada</span>
         <span className="inline-flex items-center gap-1.5"><i className="h-3 w-0.5 bg-foreground" /> dónde tendría que ir hoy</span>
@@ -107,6 +103,6 @@ export async function RitmoDelMes() {
           ))}
         </p>
       )}
-    </section>
+    </BloquePlegable>
   );
 }

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { BloquePlegable } from "@/components/bloque-plegable";
 import { unstable_cache } from "next/cache";
 import { filtroDePersona } from "@/lib/tareas/colaboradores";
 import Link from "next/link";
@@ -652,7 +653,19 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                   text={hechasHoy > 0 ? "Cerraste todo lo de hoy. ¡Bien ahí!" : "Nada urgente para hoy: buen momento para adelantar la semana."}
                 />
               ) : (
-                <TaskList tasks={[...vencidas, ...venceHoy]} currentUserId={user.id} />
+                <>
+                  {/* Las primeras 6; el resto se abre (24/10/2026: menos de una). */}
+                  <TaskList tasks={[...vencidas, ...venceHoy].slice(0, 6)} currentUserId={user.id} />
+                  {vencidas.length + venceHoy.length > 6 && (
+                    <details className="group">
+                      <summary className="cursor-pointer list-none py-2 text-center text-xs font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+                        <span className="group-open:hidden">Ver las {vencidas.length + venceHoy.length - 6} restantes ↓</span>
+                        <span className="hidden group-open:inline">Ver menos ↑</span>
+                      </summary>
+                      <TaskList tasks={[...vencidas, ...venceHoy].slice(6)} currentUserId={user.id} />
+                    </details>
+                  )}
+                </>
               )}
             </SubBlock>
           </div>
@@ -708,6 +721,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
       {/* Tus objetivos: el del mes bajado a la semana y al día, medido solo (21/10/2026). */}
       <Suspense fallback={null}>
         <TusObjetivos
+          plegable
           persona={{
             id: user.id,
             nombre: user.nombre,
@@ -757,7 +771,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
 
       {/* Por cliente — vista agrupada con próxima acción urgente */}
       {perClient.length > 0 && (
-        <Section title="Por cliente" emoji="👥">
+        <BloquePlegable emoji="👥" titulo="Por cliente" resumen={`${perClient.length} cuenta${perClient.length === 1 ? "" : "s"} con tareas tuyas · lo próximo de cada una`}>
           <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {perClient.slice(0, 9).map((row) => (
               <ClientRowCard key={row.client.id} row={row} />
@@ -771,7 +785,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
               Ver los {perClient.length - 9} restantes →
             </Link>
           )}
-        </Section>
+        </BloquePlegable>
       )}
 
       {/* Esta semana */}

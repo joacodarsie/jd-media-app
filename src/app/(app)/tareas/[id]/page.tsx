@@ -49,6 +49,16 @@ export default async function TaskDetail({
   const me = await requireUser();
   const supabase = createClient();
 
+  // Abrir la tarea cuenta como leer sus avisos: la campanita no se llena de
+  // cosas que ya viste (24/10/2026). Se espera: en Vercel lo que queda colgado después de responder se corta.
+  await createAdmin()
+    .from("notifications")
+    .update({ leida: true })
+    .eq("user_id", me.id)
+    .eq("task_id", params.id)
+    .eq("leida", false)
+    .then(() => null);
+
   const [
     { data: task },
     { data: comments },

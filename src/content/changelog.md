@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-10-24 — Vence pronto y trabadas
+
+- ⏰ **Vence pronto** (arriba de Tareas): lo que vence hoy, mañana, pasado mañana o en 3 días, de lo más urgente a lo menos.
+- 🧱 **Trabadas**: lo que está frenado esperando la aprobación de alguien, a otra persona o al cliente, con quién lo tiene.
+- Coordinación lo ve de todo el equipo; cada uno, lo suyo. Pedido de Luz.
+
 ## 2026-10-24 — Limpieza de vencidas y qué funciona en cada cuenta
 
 - 🧹 **Limpieza de vencidas** (Tareas → /tareas/limpieza, o el aviso de Mi día): tus tareas con la fecha pasada, de la más vieja a la más nueva, con tres botones: **Ya está**, **Pasala** (mañana, el lunes, en una semana u otra fecha) o **Ya no va**. Los lunes te llega un recordatorio si tenés vencidas.

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TareasProntoTrabadas } from "@/components/tareas-pronto-trabadas";
 import { todasLasFilas } from "@/lib/supabase/todas-las-filas";
 import { requireUser, getAccessibleClientIds, isStaffUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -15,7 +16,7 @@ import { filtroDePersona } from "@/lib/tareas/colaboradores";
 export const dynamic = "force-dynamic";
 
 const TASK_SELECT =
-  "id,titulo,numero,parent_id,estado,prioridad,area,fecha_limite,asignado_a_id,colaboradores,cliente_id,created_at,descripcion,creado_por_id,fecha_completada,links,updated_at,cliente:clients(id,nombre),asignado:users!tasks_asignado_a_id_fkey(id,nombre,avatar_url)";
+  "id,titulo,numero,parent_id,estado,prioridad,area,fecha_limite,asignado_a_id,colaboradores,cliente_id,created_at,descripcion,aprobador_id,bloqueo,bloqueo_quien,bloqueo_esperando_id,creado_por_id,fecha_completada,links,updated_at,cliente:clients(id,nombre),asignado:users!tasks_asignado_a_id_fkey(id,nombre,avatar_url)";
 
 // Cuántas tareas archivadas (completadas hace +30 días) traer. Crecen sin
 // techo con el tiempo y están ocultas por defecto, así que sólo cargamos las
@@ -184,6 +185,14 @@ export default async function TareasPage({
           </Link>
         </div>
       )}
+      {/* Vence pronto y trabadas, arriba de todo (24/10/2026, pedido de Luz). */}
+      <TareasProntoTrabadas
+        tareas={tasks}
+        hoy={hoy}
+        nombres={Object.fromEntries((users ?? []).map((u) => [u.id, u.nombre]))}
+        delEquipo={isStaffUser(me)}
+      />
+
       <TaskViews
         tasks={tasks}
         users={users ?? []}

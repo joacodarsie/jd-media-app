@@ -2,6 +2,13 @@
 title: Novedades
 ---
 
+## 2026-10-25 — El cliente aprueba las piezas en su portal
+
+- ✅ **Cuando la dirección creativa aprueba una pieza terminada, pasa a «Revisión del cliente»**: el cliente la ve en su portal (pestaña Calendario) y la aprueba o pide cambios. Es lo que dice la carta acuerdo: si no responde en el plazo, se aprueba sola y sale en su fecha.
+- Si se aprueba tan sobre la hora que el cliente no llegaría a verla, va directo a programada para no frenar la publicación.
+- La tarea de quien la produjo se cierra al aprobarla; si el cliente pide cambios, vuelve a abrirse.
+- 🔕 **Menos avisos**: las tareas que crea el sistema solo ya no mandan «Te asignaron» (igual están en Mi día y en Tareas), y al abrir una tarea sus avisos quedan leídos.
+
 ## 2026-10-24 — Vence pronto y trabadas
 
 - ⏰ **Vence pronto** (arriba de Tareas): lo que vence hoy, mañana, pasado mañana o en 3 días, de lo más urgente a lo menos.

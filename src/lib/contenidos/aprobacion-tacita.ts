@@ -54,3 +54,17 @@ export function etiquetaPlazo(d: Date): string {
 }
 
 export const NOTA_TACITA = "Aprobada por plazo vencido, como dice la carta acuerdo (el cliente no respondió a tiempo).";
+
+/**
+ * A dónde va una pieza cuando la aprueba la dirección creativa (24/10/2026,
+ * decisión del dueño): a la revisión del cliente, como dice la carta acuerdo.
+ * Si se aprueba tan sobre la hora que el plazo del cliente vencería después de
+ * que sale, o no tiene fecha, va directo a programada para no frenarla.
+ */
+export function destinoConCliente(fechaPublicacion: string | null, ahora: number): "revision_cliente" | "aprobado" {
+  if (!fechaPublicacion) return "aprobado";
+  const sale = Date.parse(fechaPublicacion.length > 10 ? fechaPublicacion : `${fechaPublicacion}T12:00:00-03:00`);
+  if (Number.isNaN(sale)) return "aprobado";
+  const plazo = plazoAprobacion(fechaPublicacion, new Date(ahora).toISOString()).getTime();
+  return plazo < sale ? "revision_cliente" : "aprobado";
+}

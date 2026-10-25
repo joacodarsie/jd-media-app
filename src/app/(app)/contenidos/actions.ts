@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { destinoConCliente } from "@/lib/contenidos/aprobacion-tacita";
 import {
   chequearLinkParaPublicar,
   type LinksDePieza,
@@ -734,7 +735,7 @@ async function piezaParaDecidir(id: string) {
   const { data } = await writeDb()
     .from("publications")
     .select(
-      "id, estado, tipo, titulo, cliente_id, asset_url, link_instagram, publish_media, creado_por_id, audiovisual_id, task_id"
+      "id, estado, tipo, titulo, cliente_id, asset_url, link_instagram, publish_media, creado_por_id, audiovisual_id, task_id, fecha_publicacion"
     )
     .eq("id", id)
     .maybeSingle();
@@ -798,12 +799,22 @@ export async function aprobarPieza(id: string, assetUrl?: string | null) {
 
   const motivo = motivoParaNoAprobar(pieza);
   if (motivo) return { error: motivo, faltaArchivo: !motivo.startsWith("Esta pieza") };
-  const destino = destinoAlAprobar(pieza);
-  if (!destino) return { error: "Esta pieza no está esperando una aprobación." };
+  const base = destinoAlAprobar(pieza);
+  if (!base) return { error: "Esta pieza no está esperando una aprobación." };
+  // La pieza terminada va a la revisión del cliente, como dice la carta acuerdo
+  // (24/10/2026, decisión del dueño); si no llega a verla antes de que salga,
+  // directo a programada. Si no responde en el plazo, se aprueba sola (cron).
+  const fecha = (pieza as { fecha_publicacion?: string | null }).fecha_publicacion ?? null;
+  const destino = base === "aprobado" ? destinoConCliente(fecha, Date.now()) : base;
 
   // La nota de revisión se limpia: si quedó escrita la corrección anterior, en
   // la próxima vuelta parece que todavía hay algo pendiente.
-  return changePublicationStatus(id, destino, "");
+  const r = await changePublicationStatus(id, destino, "");
+  if (destino === "revision_cliente" && !(r && "error" in r && r.error)) {
+    // El plazo del cliente corre desde ahora, aunque la pieza ya haya ido antes.
+    await writeDb().from("publications").update({ cliente_revision_iniciada_at: new Date().toISOString() }).eq("id", id);
+  }
+  return r;
 }
 
 /**

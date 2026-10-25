@@ -20,3 +20,14 @@ describe("aprobación tácita", () => {
     expect(new Date(mas24Habiles(sab)).toISOString()).toBe("2026-10-20T03:00:00.000Z"); // martes 00 h
   });
 });
+
+describe("a dónde va la pieza cuando la aprueba Santi", () => {
+  it("con tiempo, al cliente; sobre la hora o sin fecha, directo a programada", async () => {
+    const { destinoConCliente } = await import("./aprobacion-tacita");
+    // Sale el lunes 2/11 a la tarde; se aprueba el martes 27/10: el cliente tiene hasta el 30/10.
+    expect(destinoConCliente("2026-11-02T18:00:00+00:00", Date.parse("2026-10-27T15:00:00Z"))).toBe("revision_cliente");
+    // Se aprueba el martes a las 22 h y sale el miércoles a las 15 h: no llega a verla.
+    expect(destinoConCliente("2026-10-28T18:00:00+00:00", Date.parse("2026-10-28T01:00:00Z"))).toBe("aprobado");
+    expect(destinoConCliente(null, Date.parse("2026-10-27T15:00:00Z"))).toBe("aprobado");
+  });
+});

@@ -50,9 +50,9 @@ describe("vence pronto y trabadas", () => {
       (id) => nombres[id] ?? null
     );
     expect(r.map((x) => [x.id, x.espera])).toEqual([
-      ["aprobar", "Esperando la aprobación de Santiago"],
-      ["persona", "Esperando a Brisa"],
-      ["cliente", "Esperando al cliente"],
+      ["aprobar", "Lo aprueba Santiago"],
+      ["persona", "Espera a Brisa"],
+      ["cliente", "Espera al cliente"],
     ]);
   });
 });

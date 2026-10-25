@@ -49,12 +49,12 @@ export function trabadas<T extends TareaParaMirar>(tareas: T[], nombre: (id: str
   const out: (T & { traba: Traba; espera: string })[] = [];
   for (const x of tareas) {
     if (!ABIERTAS.has(x.estado)) continue;
-    if (x.bloqueo === "cliente") out.push({ ...x, traba: "cliente", espera: "Esperando al cliente" });
+    if (x.bloqueo === "cliente") out.push({ ...x, traba: "cliente", espera: "Espera al cliente" });
     else if (x.bloqueo === "persona") {
       const quien = (x.bloqueo_esperando_id && nombre(x.bloqueo_esperando_id)) || x.bloqueo_quien || "otra persona";
-      out.push({ ...x, traba: "persona", espera: `Esperando a ${quien}` });
+      out.push({ ...x, traba: "persona", espera: `Espera a ${quien}` });
     } else if (x.estado === "en_revision" && x.aprobador_id) {
-      out.push({ ...x, traba: "aprobacion", espera: `Esperando la aprobación de ${nombre(x.aprobador_id) ?? "quien aprueba"}` });
+      out.push({ ...x, traba: "aprobacion", espera: `Lo aprueba ${nombre(x.aprobador_id) ?? "quien aprueba"}` });
     }
   }
   const orden: Record<Traba, number> = { aprobacion: 0, persona: 1, cliente: 2 };

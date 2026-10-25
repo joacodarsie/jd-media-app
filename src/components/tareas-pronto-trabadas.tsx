@@ -75,7 +75,7 @@ export function TareasProntoTrabadas({
           {frenadas.map((x) => (
             <li key={x.id}>
               <Link href={`/tareas/${x.id}`} className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-muted/40">
-                <span className="w-44 shrink-0 truncate text-xs font-medium text-orange-700 dark:text-orange-300">{x.espera}</span>
+                <span className="w-36 shrink-0 truncate text-xs font-medium text-orange-700 dark:text-orange-300">{x.espera}</span>
                 <span className="min-w-0 flex-1 truncate">{x.titulo}</span>
                 <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">
                   {[x.cliente?.nombre, quien(x)].filter(Boolean).join(" · ")}

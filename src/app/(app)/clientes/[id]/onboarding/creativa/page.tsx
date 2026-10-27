@@ -8,7 +8,7 @@ import { hoyYmd } from "@/lib/dates";
 import { loadOnboarding } from "../_shared";
 import { OnboardingTabs } from "@/components/onboarding-tabs";
 import { OnboardingCamino } from "@/components/onboarding-camino";
-import { panelesVisibles } from "@/lib/onboarding/paneles";
+import { panelesVisibles, rolesDeOnboarding } from "@/lib/onboarding/paneles";
 import { cargarCuentasCreativas } from "@/lib/creativa/cargar";
 import { ENTREGABLES_ONBOARDING } from "@/lib/creativa/creativa";
 import { CreativaDefinicion } from "@/components/creativa-definicion";
@@ -27,7 +27,7 @@ export default async function OnboardingCreativaPage({ params }: { params: { id:
   const data = await loadOnboarding(params.id);
   if (!data) notFound();
   const { client, services } = data;
-  const paneles = panelesVisibles([me.rol, me.rol_secundario], {
+  const paneles = panelesVisibles(rolesDeOnboarding(me), {
     gestionRedes: services.some((s) => s.tipo === "gestion_redes"),
     disenoGrafico: services.some((s) => s.tipo === "diseno_grafico"),
     paidMedia: services.some((s) => s.tipo === "paid_media"),

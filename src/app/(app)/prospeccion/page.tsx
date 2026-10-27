@@ -30,7 +30,7 @@ export default async function ProspeccionPage() {
 
   const { data: campaigns, error } = await admin
     .from("prospecting_campaigns")
-    .select("id, nombre, rubro, ubicacion, canal, estado, created_at, ultima_apertura_at")
+    .select("id, nombre, rubro, ubicacion, canal, estado, created_at, ultima_apertura_at, created_by")
     .order("created_at", { ascending: false });
 
   if (error && (error as { code?: string }).code === "42P01") {
@@ -46,7 +46,15 @@ export default async function ProspeccionPage() {
     estado: string;
     created_at: string;
     ultima_apertura_at?: string | null;
+    created_by: string | null;
   }[];
+
+  // Quién creó cada campaña, para que cada uno siga la suya (pedido de Mati, 27/10/2026).
+  const creadores = [...new Set(rows.map((c) => c.created_by).filter((x): x is string => !!x))];
+  const { data: usersCreadores } = creadores.length
+    ? await admin.from("users").select("id, nombre").in("id", creadores)
+    : { data: [] };
+  const nombreCreador = new Map(((usersCreadores ?? []) as { id: string; nombre: string }[]).map((u) => [u.id, u.nombre]));
 
   // Leads para conteos, métricas por campaña y "para seguir".
   const { data: leads } = await admin
@@ -105,6 +113,8 @@ export default async function ProspeccionPage() {
     rubro: c.rubro,
     ubicacion: c.ubicacion,
     created_at: c.created_at,
+    creadorId: c.created_by,
+    creador: c.created_by ? nombreCreador.get(c.created_by) ?? null : null,
     ultimoUso: ultimoUso(c.created_at, [c.ultima_apertura_at, ...(actividadBy.get(c.id) ?? [])]),
     canalLabel: channelLabel(c.canal),
     estado: c.estado,
@@ -243,7 +253,7 @@ export default async function ProspeccionPage() {
           </CardContent>
         </Card>
       ) : (
-        <ProspectingCampaignsBrowser campanias={tarjetas} />
+        <ProspectingCampaignsBrowser campanias={tarjetas} yoId={me.id} />
       )}
     </div>
   );

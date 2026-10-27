@@ -10,7 +10,7 @@ import { loadOnboarding, OnboardingStepRow } from "../_shared";
 import { OnboardingTabs } from "@/components/onboarding-tabs";
 import { OnboardingCamino } from "@/components/onboarding-camino";
 import { fmtDate } from "@/lib/dates";
-import { panelesVisibles } from "@/lib/onboarding/paneles";
+import { panelesVisibles, rolesDeOnboarding } from "@/lib/onboarding/paneles";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +26,7 @@ export default async function OnboardingDisenoPage({
   const data = await loadOnboarding(params.id);
   if (!data) notFound();
   const { client, services, onb, pagoEsperado, credenciales, steps } = data;
-  const paneles = panelesVisibles([me.rol, me.rol_secundario], {
+  const paneles = panelesVisibles(rolesDeOnboarding(me), {
     gestionRedes: services.some((s) => s.tipo === "gestion_redes"),
     disenoGrafico: services.some((s) => s.tipo === "diseno_grafico"),
     paidMedia: services.some((s) => s.tipo === "paid_media"),

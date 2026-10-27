@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-10-27 — Quién creó cada campaña y onboarding inicial para Santi
+
+- 👤 **En Prospección cada campaña muestra quién la creó**, y arriba hay un filtro «De:» para ver solo las tuyas o las de otra persona. Pedido de Mati.
+- 📝 **Santi ya puede entrar a la pestaña Inicial del onboarding** de cada cuenta: cargar los datos del titular y armar la carta acuerdo. Es un permiso que la dirección otorga en Accesos.
+
 ## 2026-10-25 — El cliente aprueba las piezas en su portal
 
 - ✅ **Cuando la dirección creativa aprueba una pieza terminada, pasa a «Revisión del cliente»**: el cliente la ve en su portal (pestaña Calendario) y la aprueba o pide cambios. Es lo que dice la carta acuerdo: si no responde en el plazo, se aprueba sola y sale en su fecha.

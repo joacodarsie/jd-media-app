@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Megaphone, TrendingUp, BarChart3 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { OnboardingTabs } from "@/components/onboarding-tabs";
-import { panelesVisibles } from "@/lib/onboarding/paneles";
+import { panelesVisibles, rolesDeOnboarding } from "@/lib/onboarding/paneles";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { cerrarTareaDePanel, faltantesDePauta } from "@/lib/onboarding/tareas-paneles-run";
@@ -63,7 +63,7 @@ export default async function PublicidadOnboardingPage({
   // Las pestañas del onboarding: esta pantalla es una de ellas desde el
   // 21/9/2026, en vez de un botón aparte en la ficha del cliente.
   const tiposSvc = ((paidSvc ?? []) as { tipo: string }[]).map((s) => s.tipo);
-  const paneles = panelesVisibles([me.rol, me.rol_secundario], {
+  const paneles = panelesVisibles(rolesDeOnboarding(me), {
     gestionRedes: tiposSvc.includes("gestion_redes"),
     disenoGrafico: false,
     paidMedia: tiposSvc.includes("paid_media"),

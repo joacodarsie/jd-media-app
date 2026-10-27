@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, ChevronDown, Clock, FolderOpen, MapPin, Search, Send } from "lucide-react";
+import { ArrowRight, ChevronDown, Clock, FolderOpen, MapPin, Search, Send, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,31 +20,58 @@ export interface CampaniaCard extends CampaniaLista {
   total: number;
   ganados: number;
   tasaRespuesta: number | null;
+  creadorId: string | null;
+  creador: string | null;
 }
 
 const LS_ORDEN = "jd:prospeccion:orden";
+const LS_DE = "jd:prospeccion:de";
 
 /**
  * Las campañas con buscador y "Ordenar por". Por defecto, las usadas
  * recientemente primero: es la que el dueño quiere encontrar al entrar.
  */
-export function ProspectingCampaignsBrowser({ campanias }: { campanias: CampaniaCard[] }) {
+export function ProspectingCampaignsBrowser({ campanias, yoId }: { campanias: CampaniaCard[]; yoId: string }) {
   const [q, setQ] = useState("");
   const [orden, setOrden] = useState<OrdenCampanias>("uso");
+  // "todas" o el id de quien la creó: cada uno sigue sus campañas.
+  const [de, setDe] = useState("todas");
+
+  const creadores = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of campanias) if (c.creadorId && c.creador) m.set(c.creadorId, c.creador);
+    return [...m.entries()].sort((a, b) => (a[0] === yoId ? -1 : b[0] === yoId ? 1 : a[1].localeCompare(b[1])));
+  }, [campanias, yoId]);
+  // Si la persona guardada ya no tiene campañas, se ven todas.
+  const deOk = creadores.some(([id]) => id === de) ? de : "todas";
 
   useEffect(() => {
     try {
       const o = localStorage.getItem(LS_ORDEN) as OrdenCampanias | null;
       if (o && ORDENES_CAMPANIAS.some((x) => x.value === o)) setOrden(o);
+      const d = localStorage.getItem(LS_DE);
+      if (d) setDe(d);
     } catch {}
   }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_DE, de);
+    } catch {}
+  }, [de]);
   useEffect(() => {
     try {
       localStorage.setItem(LS_ORDEN, orden);
     } catch {}
   }, [orden]);
 
-  const visibles = useMemo(() => ordenarCampanias(filtrarCampanias(campanias, q), orden), [campanias, q, orden]);
+  const visibles = useMemo(
+    () =>
+      ordenarCampanias(
+        filtrarCampanias(campanias, q).filter((c) => deOk === "todas" || c.creadorId === deOk),
+        orden
+      ),
+    [campanias, q, orden, deOk]
+  );
 
   const carpetas = useMemo(() => {
     if (orden !== "rubro") return null;
@@ -81,6 +108,21 @@ export function ProspectingCampaignsBrowser({ campanias }: { campanias: Campania
             </option>
           ))}
         </select>
+        {creadores.length > 1 && (
+          <select
+            value={deOk}
+            onChange={(e) => setDe(e.target.value)}
+            className="h-9 rounded-md border bg-background px-2 text-sm"
+            aria-label="Campañas de"
+          >
+            <option value="todas">De: todos</option>
+            {creadores.map(([id, nombre]) => (
+              <option key={id} value={id}>
+                De: {id === yoId ? "mías" : nombre}
+              </option>
+            ))}
+          </select>
+        )}
         <span className="text-xs text-muted-foreground">
           {visibles.length} campaña{visibles.length === 1 ? "" : "s"}
         </span>
@@ -146,6 +188,11 @@ function Tarjeta({ c }: { c: CampaniaCard }) {
         <span className="inline-flex items-center gap-1" title="Última vez que se abrió o se trabajó">
           <Clock className="h-3 w-3" /> {haceCuanto(c.ultimoUso)}
         </span>
+        {c.creador && (
+          <span className="inline-flex items-center gap-1" title="Quién creó la campaña">
+            <User className="h-3 w-3" /> {c.creador}
+          </span>
+        )}
         {c.estado === "pausada" && <Badge className="bg-muted text-muted-foreground">pausada</Badge>}
       </div>
       <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm">

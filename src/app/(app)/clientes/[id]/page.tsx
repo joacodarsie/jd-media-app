@@ -23,7 +23,7 @@ import {
 import { requireUser, isStaffUser, userInRoles, canSeeAllClients } from "@/lib/auth";
 import { ClienteLogo } from "@/components/cliente-logo";
 import { ClientePlantillasCanva } from "@/components/cliente-plantillas-canva";
-import { hrefDePanel, panelDeEntrada } from "@/lib/onboarding/paneles";
+import { hrefDePanel, panelDeEntrada, rolesDeOnboarding } from "@/lib/onboarding/paneles";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
 import { listEventsForUser } from "@/lib/google-calendar";
@@ -289,7 +289,7 @@ export default async function ClientDetail({
   // tienen dueños distintos (la inicial es de dirección, publicidad del media
   // buyer) y un botón que rebota es peor que no tener botón.
   const entradaOnboarding = panelDeEntrada(
-    [me.rol, (me as { rol_secundario?: string | null }).rol_secundario],
+    rolesDeOnboarding(me as Parameters<typeof rolesDeOnboarding>[0]),
     {
       gestionRedes: svcList.some((s) => s.tipo === "gestion_redes"),
       disenoGrafico: svcList.some((s) => s.tipo === "diseno_grafico"),

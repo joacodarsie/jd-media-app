@@ -18,6 +18,23 @@
  * Módulo PURO: entran los roles y los servicios, salen las pestañas.
  */
 
+/** Seudo-rol que suma quien tiene el permiso de la pantalla inicial. */
+export const PERMISO_INICIAL = "onboarding_inicial";
+
+/**
+ * Los "roles" con los que se decide qué pestañas ve una persona: el rol, el
+ * secundario y, si se le otorgó, el permiso de la pantalla inicial.
+ */
+export function rolesDeOnboarding(u: {
+  rol: string;
+  rol_secundario?: string | null;
+  permisos?: Record<string, boolean> | null;
+}): string[] {
+  const r = [u.rol, u.rol_secundario].filter((x): x is string => !!x);
+  if (u.permisos?.[PERMISO_INICIAL] === true) r.push(PERMISO_INICIAL);
+  return r;
+}
+
 export type PanelOnboarding = "inicial" | "redes" | "creativa" | "cm" | "diseno" | "pauta";
 
 export interface PanelDef {
@@ -29,7 +46,9 @@ export interface PanelDef {
 
 /** El orden es el del circuito: primero la dirección, después cada área. */
 export const PANELES: PanelDef[] = [
-  { key: "inicial", label: "Inicial", roles: ["admin"] },
+  // La inicial (datos y carta acuerdo) es de dirección, y de quien tenga el
+  // permiso "onboarding_inicial" otorgado en /accesos (Santi, 27/10/2026).
+  { key: "inicial", label: "Inicial", roles: ["admin", PERMISO_INICIAL] },
   { key: "redes", label: "Gestión de redes", roles: ["admin", "coordinador"] },
   // La dirección creativa define identidad, tono, medios y urgencia, y entrega
   // la plataforma de campaña, la estrategia de redes y el documento técnico (23/10/2026).

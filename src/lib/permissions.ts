@@ -9,6 +9,7 @@ export const FEATURES = [
   "equipo_compensacion", // ver compensaciones del equipo en /equipo
   "clientes_credenciales", // ver credenciales del cliente en su detalle
   "documentos_globales", // crear/editar documentos generales en /documentos
+  "onboarding_inicial",  // onboarding inicial de cada cuenta: datos y carta acuerdo
   "comercial",           // acceso al pipeline comercial (vender) sin ser del rol comercial
   "leads_ia",            // usar el buscador de leads con IA (Prospección/Reclutamiento) — consume tokens
   "contactos_ia",        // usar "Sacar contactos" con IA en Contactos (rápido) — consume tokens
@@ -37,6 +38,7 @@ export const FEATURE_LABEL: Record<Feature, string> = {
   equipo_compensacion: "Ver compensaciones del equipo",
   clientes_credenciales: "Ver credenciales de los clientes",
   documentos_globales: "Editar documentos generales de la agencia",
+  onboarding_inicial: "Onboarding inicial y carta acuerdo de cada cuenta",
   comercial: "Vender (pipeline comercial)",
   leads_ia: "Buscador de leads con IA (caro en tokens)",
   contactos_ia: "IA de prospección (contactos, mensajes de campaña, sectores)",
@@ -53,6 +55,8 @@ export const FEATURE_DESCRIPTION: Record<Feature, string> = {
     "Ver las contraseñas y accesos guardados en cada ficha de cliente.",
   documentos_globales:
     "Subir/eliminar los documentos generales de la agencia (manuales, plantillas).",
+  onboarding_inicial:
+    "Entrar a la pestaña Inicial del onboarding de cada cuenta: cargar los datos del titular y armar la carta acuerdo, igual que la dirección.",
   comercial:
     "Permite usar el pipeline comercial y cerrar ventas, aunque su rol principal sea otro.",
   leads_ia:

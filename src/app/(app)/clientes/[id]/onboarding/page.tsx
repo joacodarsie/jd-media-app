@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { cerrarTareaDePanel } from "@/lib/onboarding/tareas-paneles-run";
 import { createAdmin } from "@/lib/supabase/admin";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import {
   ArrowLeft,
   FileText,
   CheckCircle2,
   AlertTriangle,
 } from "lucide-react";
-import { requireRole } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { normalizePhone } from "@/lib/payment-reminder";
 import { SERVICE_TYPE_LABEL } from "@/lib/constants";
@@ -22,7 +22,7 @@ import { loadOnboarding, OnboardingStepRow } from "./_shared";
 import { OnboardingTabs } from "@/components/onboarding-tabs";
 import { OnboardingCamino } from "@/components/onboarding-camino";
 import { fmtDate } from "@/lib/dates";
-import { panelesVisibles } from "@/lib/onboarding/paneles";
+import { panelesVisibles, rolesDeOnboarding, PERMISO_INICIAL } from "@/lib/onboarding/paneles";
 
 export const dynamic = "force-dynamic";
 
@@ -31,14 +31,16 @@ export default async function OnboardingPage({
 }: {
   params: { id: string };
 }) {
-  // Onboarding INICIAL: solo Dirección (admin).
-  const me = await requireRole(["admin"]);
+  // Onboarding INICIAL: Dirección (admin) y quien tenga el permiso otorgado en
+  // /accesos, para que Santi arme la carta acuerdo él mismo (27/10/2026).
+  const me = await requireUser();
+  if (!rolesDeOnboarding(me).some((r) => r === "admin" || r === PERMISO_INICIAL)) redirect("/dashboard");
 
   const data = await loadOnboarding(params.id);
   if (!data) notFound();
   const { client, services, onb, total, pagoEsperado, credenciales, steps, hasContractData } = data;
 
-  const paneles = panelesVisibles([me.rol, me.rol_secundario], {
+  const paneles = panelesVisibles(rolesDeOnboarding(me), {
     gestionRedes: services.some((s) => s.tipo === "gestion_redes"),
     disenoGrafico: services.some((s) => s.tipo === "diseno_grafico"),
     paidMedia: services.some((s) => s.tipo === "paid_media"),

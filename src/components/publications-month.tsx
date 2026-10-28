@@ -41,6 +41,7 @@ import {
   type ClientForPub,
 } from "@/components/publication-form-dialog";
 import { PublicationDetailDialog } from "@/components/publication-detail-dialog";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { AprobacionMes } from "@/components/aprobacion-mes";
 import { bandejaDeAprobacion } from "@/lib/contenidos/aprobacion";
 import {
@@ -120,6 +121,8 @@ export function PublicationsMonth({
   const [, startMove] = useTransition();
   const [bulkPending, startBulk] = useTransition();
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  // Día abierto en el panel lateral: todos los posteos de ese día (28/10/2026).
+  const [diaAbierto, setDiaAbierto] = useState<string | null>(null);
   const [hoverKey, setHoverKey] = useState<string | null>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -455,6 +458,13 @@ export function PublicationsMonth({
 
   return (
     <div className="space-y-4">
+      <DiaDetalle
+        dia={diaAbierto}
+        items={diaAbierto ? byDay.get(diaAbierto) ?? [] : []}
+        clients={clients}
+        users={users}
+        onClose={() => setDiaAbierto(null)}
+      />
       {deepPub && (
         <PublicationDetailDialog
           key={deepPub.id}
@@ -778,14 +788,17 @@ export function PublicationsMonth({
                     )}
                   >
                     <div className="mb-1 flex items-center justify-between">
-                      <span
+                      <button
+                        type="button"
+                        onClick={() => setDiaAbierto(key)}
+                        title={items.length ? `Ver los ${items.length} posteos de este día` : "Ver el día"}
                         className={cn(
-                          "font-medium",
-                          isToday && "rounded-full bg-primary px-1.5 text-primary-foreground"
+                          "rounded-full px-1.5 font-medium hover:bg-muted hover:text-foreground",
+                          isToday && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
                         )}
                       >
                         {d.getDate()}
-                      </span>
+                      </button>
                       {inMonth && (
                         <PublicationFormDialog
                           mode="create"
@@ -828,9 +841,13 @@ export function PublicationsMonth({
                         />
                       ))}
                       {items.length > 3 && (
-                        <div className="text-[10px] text-muted-foreground">
+                        <button
+                          type="button"
+                          onClick={() => setDiaAbierto(key)}
+                          className="text-[10px] font-medium text-muted-foreground hover:text-foreground hover:underline"
+                        >
                           +{items.length - 3} más
-                        </div>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -1257,6 +1274,80 @@ function AgendaCelular({
         );
       })}
     </div>
+  );
+}
+
+/**
+ * Todos los posteos de un día, con el detalle a la vista (28/10/2026): en la
+ * grilla del mes entran 3 por día y el resto queda en «+N más». Se abre tocando
+ * el número del día. Cada tarjeta abre la ficha completa de la pieza.
+ */
+function DiaDetalle({
+  dia,
+  items,
+  clients,
+  users,
+  onClose,
+}: {
+  dia: string | null;
+  items: PublicationWithRels[];
+  clients: ClientForPub[];
+  users: Pick<AppUser, "id" | "nombre">[];
+  onClose: () => void;
+}) {
+  const ordenados = [...items].sort((a, b) =>
+    (a.cliente?.nombre ?? "").localeCompare(b.cliente?.nombre ?? "", "es")
+  );
+  const titulo = dia
+    ? new Date(dia + "T12:00:00").toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })
+    : "";
+  return (
+    <Sheet open={!!dia} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
+        <SheetHeader>
+          <SheetTitle>{titulo.charAt(0).toUpperCase() + titulo.slice(1)}</SheetTitle>
+          <SheetDescription>
+            {items.length === 0
+              ? "No hay posteos para este día."
+              : `${items.length} ${items.length === 1 ? "posteo" : "posteos"} · ${new Set(items.map((p) => p.cliente_id)).size} ${new Set(items.map((p) => p.cliente_id)).size === 1 ? "cuenta" : "cuentas"}`}
+          </SheetDescription>
+        </SheetHeader>
+        <div className="mt-4 space-y-2">
+          {ordenados.map((p) => (
+            <PublicationDetailDialog
+              key={p.id}
+              publication={p}
+              clients={clients}
+              users={users}
+              trigger={
+                <button
+                  type="button"
+                  className="block w-full rounded-lg border bg-card p-3 text-left transition-colors hover:border-primary/60 hover:bg-muted/40"
+                >
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: PUBLICATION_TYPE_HEX[p.tipo] }} />
+                    <span className="font-semibold text-foreground">{p.cliente?.nombre ?? "Sin cuenta"}</span>
+                    <span>· {PUBLICATION_TYPE_LABEL[p.tipo]} · {PUBLICATION_NETWORK_LABEL[p.red]}</span>
+                    <span
+                      className="ml-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold text-foreground"
+                      style={{ backgroundColor: PUBLICATION_STATUS_HEX[p.estado] + "40" }}
+                    >
+                      {PUBLICATION_STATUS_LABEL[p.estado]}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 text-sm font-semibold leading-snug">{p.titulo}</div>
+                  {(p.copy || p.descripcion) && (
+                    <p className="mt-1 line-clamp-3 whitespace-pre-line text-xs text-muted-foreground">
+                      {p.copy || p.descripcion}
+                    </p>
+                  )}
+                </button>
+              }
+            />
+          ))}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

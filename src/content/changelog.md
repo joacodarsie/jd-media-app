@@ -2,6 +2,13 @@
 title: Novedades
 ---
 
+## 2026-10-28 — El link del archivo manda la pieza a revisión, y el detalle del día
+
+- 🔗 **Pegar el link del archivo final (Drive / Canva) pasa la pieza sola a «Revisión creativa».** Ya no hace falta cambiar la etapa a mano: terminaste, pegás el link y le llega a quien revisa. Tu tarea queda «En revisión» y se cierra cuando aprueban la pieza.
+- ¿Por qué? Muchas piezas quedaban en «En diseño» hasta que se publicaban, y las tareas figuraban vencidas aunque el trabajo había salido a tiempo.
+- Si te piden cambios, pegás el link nuevo con la corrección y vuelve sola a revisión.
+- 📅 **En el calendario de Contenidos, tocá el número de un día** (o el «+N más») y se abre al costado el detalle de todos los posteos de ese día: cuenta, formato, etapa y texto. Tocás cualquiera y se abre la ficha completa.
+
 ## 2026-10-27 — Quién creó cada campaña y onboarding inicial para Santi
 
 - 👤 **En Prospección cada campaña muestra quién la creó**, y arriba hay un filtro «De:» para ver solo las tuyas o las de otra persona. Pedido de Mati.

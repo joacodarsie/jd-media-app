@@ -7,10 +7,14 @@
 // - En el mes de la baja ya no se pagan los fijos (CM, media buyer,
 //   coordinación), pero el contenido que se terminó de publicar ese mes sí se
 //   le paga a quien lo hizo (diseño, edición).
+//
+// Una cuenta EN PAUSA se trata igual, con su fecha de pausa (migración 0223).
+// Sin esa fecha queda afuera de todos los meses, como antes.
 
 export interface CuentaConEstado {
   estado?: string | null;
   fecha_inactivado?: string | null;
+  fecha_pausa?: string | null;
 }
 
 export function separarCuentasDelMes<T extends CuentaConEstado>(
@@ -24,7 +28,8 @@ export function separarCuentasDelMes<T extends CuentaConEstado>(
       activas.push(c);
       continue;
     }
-    const mesBaja = (c.fecha_inactivado ?? "").slice(0, 7);
+    const fechaBaja = c.estado === "en_pausa" ? c.fecha_pausa : c.fecha_inactivado;
+    const mesBaja = (fechaBaja ?? "").slice(0, 7);
     if (!mesBaja) continue; // sin fecha de baja (propuesta, en pausa…): afuera
     if (mesBaja > periodo) activas.push(c);
     else if (mesBaja === periodo) bajas.push(c);

@@ -13,6 +13,7 @@ import { repartoJornada } from "./jornadas/registro";
 import { isClientPausedFor } from "./client-pause";
 import { cargarAsignaciones } from "./payroll/asignaciones-run";
 import { quienLlevaba } from "./payroll/asignaciones";
+import { arranqueEnPeriodo, prorratearPorArranque } from "./payroll/primer-mes";
 import {
   computeAutoPayroll,
   computeContentPayroll,
@@ -166,9 +167,12 @@ export async function buildPeriodPayroll(
 
   const settings: AgencySettings = mergeSettings(settingsRow);
   // Una cuenta pausada este mes no genera nómina de equipo (CM, contenido,
-  // coordinación ni Leo): se saca del listado y todo lo demás la ignora.
+  // coordinación ni Leo): se saca del listado y todo lo demás la ignora. Lo
+  // mismo una cuenta que arrancó después del período (al mirar un mes viejo).
   const clients = ((clientsRaw ?? []) as PayrollClient[]).filter(
-    (c) => !isClientPausedFor(c.pausas, periodo)
+    (c) =>
+      !isClientPausedFor(c.pausas, periodo) &&
+      arranqueEnPeriodo(c.fecha_inicio, periodo).fraccion > 0
   );
   const services = (servicesRaw ?? []) as ServiceRow[];
   const users = (usersRaw ?? []) as {
@@ -552,19 +556,34 @@ export async function buildPeriodPayroll(
   // botly, diseño suelto…): % del monto o fijo, pagado a quien lo entrega. Los
   // recurrentes se pagan cada mes; los de cobro único, solo en el mes en que se
   // cargaron (created_at). Las cuentas internas (JD MEDIA) no se incluyen.
+  // Los recurrentes de una cuenta que no está en el mes (todavía no arrancó,
+  // pausada o perdida) no se pagan, y el mes de arranque van proporcionales.
+  const clientInicio = new Map(clients.map((c) => [c.id, c.fecha_inicio ?? null]));
   for (const s of services) {
     const esUnico = (s.facturacion ?? "mensual") === "unico";
     if (esUnico && (s.created_at ?? "").slice(0, 7) !== periodo) continue;
+    if (!esUnico && !clientInicio.has(s.cliente_id)) continue;
     const dc = serviceDeliveryCost(s);
     if (!dc || !dc.userId || dc.monto <= 0) continue;
+    const arranque = esUnico
+      ? null
+      : arranqueEnPeriodo(clientInicio.get(s.cliente_id), periodo);
+    const proporcional = !!arranque && arranque.fraccion < 1;
     if (!autoByUser.has(dc.userId)) autoByUser.set(dc.userId, []);
     autoByUser.get(dc.userId)!.push({
       clienteId: s.cliente_id,
       cliente: clientById.get(s.cliente_id) ?? "—",
-      concepto: `${SERVICE_TYPE_LABEL[s.tipo] ?? s.tipo}${esUnico ? " (proyecto)" : ""}`,
-      monto: dc.monto,
+      concepto: `${SERVICE_TYPE_LABEL[s.tipo] ?? s.tipo}${esUnico ? " (proyecto)" : ""}${
+        proporcional ? ` · proporcional desde el ${arranque!.dia}/${Number(periodo.slice(5, 7))} (${arranque!.dias} de ${arranque!.diasMes} días)` : ""
+      }`,
+      monto: proporcional ? Math.round(dc.monto * arranque!.fraccion) : dc.monto,
       kind: "servicio",
     });
+  }
+
+  // Primer mes de cada cuenta: proporcional a los días desde el arranque.
+  for (const [uid, lines] of autoByUser) {
+    autoByUser.set(uid, prorratearPorArranque(lines, clientInicio, periodo));
   }
 
   // Combinar auto + ítems manuales en una nómina por persona.

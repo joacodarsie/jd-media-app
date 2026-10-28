@@ -34,4 +34,10 @@ describe("separarCuentasDelMes", () => {
     expect(r.activas).toEqual([]);
     expect(r.bajas).toEqual([]);
   });
+
+  it("una cuenta en pausa usa su fecha de pausa", () => {
+    const blasco = { id: "bla", estado: "en_pausa", fecha_inactivado: null, fecha_pausa: "2026-10-20T22:37:45+00:00" };
+    expect(ids(separarCuentasDelMes([blasco], "2026-09").activas)).toEqual(["bla"]);
+    expect(ids(separarCuentasDelMes([blasco], "2026-10").bajas)).toEqual(["bla"]);
+  });
 });

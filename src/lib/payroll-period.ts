@@ -15,6 +15,7 @@ import { cargarAsignaciones } from "./payroll/asignaciones-run";
 import { quienLlevaba } from "./payroll/asignaciones";
 import { arranqueEnPeriodo, prorratearPorArranque } from "./payroll/primer-mes";
 import { separarCuentasDelMes, type CuentaConEstado } from "./payroll/cuentas-del-mes";
+import { computeManualMarcaLines, type ManualHecho } from "./payroll/manual-marca";
 import {
   computeAutoPayroll,
   computeContentPayroll,
@@ -113,6 +114,7 @@ export async function buildPeriodPayroll(
     { data: splitRaw },
     { data: dgApprovalsRaw },
     { data: invoicesRaw },
+    { data: manualesRaw },
   ] = await Promise.all([
     admin.from("agency_settings").select("packs, rates").eq("id", 1).maybeSingle(),
     admin
@@ -163,6 +165,12 @@ export async function buildPeriodPayroll(
       .lt("dg_aprobado_at", `${nextPeriod(periodo)}-01`),
     // Facturas del período: la cartera se paga solo si el cliente pagó.
     admin.from("client_invoices").select("cliente_id, fecha_cobro").eq("periodo", periodo),
+    // Manuales de marca terminados ESTE mes (onboarding de diseño).
+    admin
+      .from("client_onboarding")
+      .select("cliente_id, dg_manual_marca_at")
+      .gte("dg_manual_marca_at", `${periodo}-01`)
+      .lt("dg_manual_marca_at", `${nextPeriod(periodo)}-01`),
   ]);
 
   const settings: AgencySettings = mergeSettings(settingsRow);
@@ -172,7 +180,22 @@ export async function buildPeriodPayroll(
   // Las que se dieron de baja ESTE mes solo cobran el contenido publicado.
   const enElMes = (c: PayrollClient) =>
     !isClientPausedFor(c.pausas, periodo) && arranqueEnPeriodo(c.fecha_inicio, periodo).fraccion > 0;
-  const cuentasDelMes = separarCuentasDelMes((clientsRaw ?? []) as (PayrollClient & CuentaConEstado)[], periodo);
+  // Fecha de pausa aparte: si la migración 0223 no está aplicada, la consulta
+  // falla y las pausadas quedan afuera como antes, sin romper la nómina.
+  const { data: pausasRaw } = await admin
+    .from("clients")
+    .select("id, fecha_pausa")
+    .eq("estado", "en_pausa");
+  const fechaPausa = new Map(
+    ((pausasRaw ?? []) as { id: string; fecha_pausa: string | null }[]).map((p) => [p.id, p.fecha_pausa])
+  );
+  const cuentasDelMes = separarCuentasDelMes(
+    ((clientsRaw ?? []) as (PayrollClient & CuentaConEstado & { id: string })[]).map((c) => ({
+      ...c,
+      fecha_pausa: fechaPausa.get(c.id) ?? null,
+    })),
+    periodo
+  );
   const clients: PayrollClient[] = cuentasDelMes.activas.filter(enElMes);
   const bajasDelMes: PayrollClient[] = cuentasDelMes.bajas.filter(enElMes);
   const services = (servicesRaw ?? []) as ServiceRow[];
@@ -240,6 +263,19 @@ export async function buildPeriodPayroll(
       ? computeContentPayroll([...clients, ...bajasDelMes], publications, overrideClientIds, settings.rates, periodo)
       : computePackContentPayroll(clients, services, settings.rates);
   for (const [uid, lines] of contentByUser) {
+    if (!autoByUser.has(uid)) autoByUser.set(uid, []);
+    autoByUser.get(uid)!.push(...lines);
+  }
+
+  // Manual de marca de las cuentas nuevas → a quien diseña la cuenta.
+  const manualByUser = computeManualMarcaLines(
+    [...clients, ...bajasDelMes],
+    (manualesRaw ?? []) as ManualHecho[],
+    overrideClientIds,
+    settings.rates.manual_marca ?? 0,
+    periodo
+  );
+  for (const [uid, lines] of manualByUser) {
     if (!autoByUser.has(uid)) autoByUser.set(uid, []);
     autoByUser.get(uid)!.push(...lines);
   }

@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { PwaRegister } from "@/components/pwa-register";
+import { VersionNueva } from "@/components/version-nueva";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -38,6 +39,7 @@ export default function RootLayout({
         >
           {children}
           <PwaRegister />
+          <VersionNueva actual={process.env.VERCEL_DEPLOYMENT_ID ?? null} />
           <Toaster richColors position="top-right" />
         </ThemeProvider>
       </body>

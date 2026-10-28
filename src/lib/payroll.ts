@@ -224,6 +224,19 @@ export function computeAutoPayroll(
         kind: "media_buyer",
       });
     }
+
+    // Pauta SOLA, sin gestión de redes (Origen Studio): el media buyer cobra
+    // la tarifa base igual. Antes no la cobraba nadie y se agregaba a mano.
+    const pauta = svcs.find((s) => s.tipo === "paid_media");
+    if (!gestion && pauta && pauta.media_buyer_aplica !== false) {
+      addRol("media_buyer", pauta.media_buyer_user_id ?? c.media_buyer_id ?? fallbackMediaBuyerId, {
+        clienteId: c.id,
+        cliente: c.nombre,
+        concepto: "Media buyer (solo pauta)",
+        monto: pauta.costo_override != null ? Number(pauta.costo_override) : mbCost("Personalizado", rates),
+        kind: "media_buyer",
+      });
+    }
   }
 
   return out;

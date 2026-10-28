@@ -14,6 +14,7 @@ import { isClientPausedFor } from "./client-pause";
 import { cargarAsignaciones } from "./payroll/asignaciones-run";
 import { quienLlevaba } from "./payroll/asignaciones";
 import { arranqueEnPeriodo, prorratearPorArranque } from "./payroll/primer-mes";
+import { separarCuentasDelMes, type CuentaConEstado } from "./payroll/cuentas-del-mes";
 import {
   computeAutoPayroll,
   computeContentPayroll,
@@ -117,9 +118,8 @@ export async function buildPeriodPayroll(
     admin
       .from("clients")
       .select(
-        "id, nombre, cm_id, disenador_id, audiovisual_id, media_buyer_id, coordinador_id, cerrado_por_id, cerrado_con_id, responsable_id, fecha_inicio, pausas"
+        "id, nombre, cm_id, disenador_id, audiovisual_id, media_buyer_id, coordinador_id, cerrado_por_id, cerrado_con_id, responsable_id, fecha_inicio, pausas, estado, fecha_inactivado"
       )
-      .eq("estado", "activo")
       .eq("es_interno", false),
     admin
       .from("client_services")
@@ -169,11 +169,12 @@ export async function buildPeriodPayroll(
   // Una cuenta pausada este mes no genera nómina de equipo (CM, contenido,
   // coordinación ni Leo): se saca del listado y todo lo demás la ignora. Lo
   // mismo una cuenta que arrancó después del período (al mirar un mes viejo).
-  const clients = ((clientsRaw ?? []) as PayrollClient[]).filter(
-    (c) =>
-      !isClientPausedFor(c.pausas, periodo) &&
-      arranqueEnPeriodo(c.fecha_inicio, periodo).fraccion > 0
-  );
+  // Las que se dieron de baja ESTE mes solo cobran el contenido publicado.
+  const enElMes = (c: PayrollClient) =>
+    !isClientPausedFor(c.pausas, periodo) && arranqueEnPeriodo(c.fecha_inicio, periodo).fraccion > 0;
+  const cuentasDelMes = separarCuentasDelMes((clientsRaw ?? []) as (PayrollClient & CuentaConEstado)[], periodo);
+  const clients: PayrollClient[] = cuentasDelMes.activas.filter(enElMes);
+  const bajasDelMes: PayrollClient[] = cuentasDelMes.bajas.filter(enElMes);
   const services = (servicesRaw ?? []) as ServiceRow[];
   const users = (usersRaw ?? []) as {
     id: string;
@@ -236,7 +237,7 @@ export async function buildPeriodPayroll(
   // Desde julio 2026: por contenido real. Antes: por el pack contratado.
   const contentByUser =
     periodo >= CONTENT_PAYROLL_FROM
-      ? computeContentPayroll(clients, publications, overrideClientIds, settings.rates, periodo)
+      ? computeContentPayroll([...clients, ...bajasDelMes], publications, overrideClientIds, settings.rates, periodo)
       : computePackContentPayroll(clients, services, settings.rates);
   for (const [uid, lines] of contentByUser) {
     if (!autoByUser.has(uid)) autoByUser.set(uid, []);

@@ -1,0 +1,37 @@
+import { describe, expect, it } from "vitest";
+import { separarCuentasDelMes } from "./cuentas-del-mes";
+
+const lubricentro = { id: "lub", estado: "perdido", fecha_inactivado: "2026-10-13T15:00:00+00:00" };
+const resonar = { id: "res", estado: "activo", fecha_inactivado: null };
+const powerViejo = { id: "pow", estado: "perdido", fecha_inactivado: "2026-08-08T10:00:00+00:00" };
+const propuesta = { id: "pro", estado: "propuesta", fecha_inactivado: null };
+
+const ids = (xs: { id: string }[]) => xs.map((x) => x.id);
+
+describe("separarCuentasDelMes", () => {
+  const todas = [lubricentro, resonar, powerViejo, propuesta];
+
+  it("un mes antes de la baja la cuenta se liquida entera", () => {
+    const r = separarCuentasDelMes(todas, "2026-09");
+    expect(ids(r.activas)).toEqual(["lub", "res"]);
+    expect(r.bajas).toEqual([]);
+  });
+
+  it("el mes de la baja queda aparte (solo contenido publicado)", () => {
+    const r = separarCuentasDelMes(todas, "2026-10");
+    expect(ids(r.activas)).toEqual(["res"]);
+    expect(ids(r.bajas)).toEqual(["lub"]);
+  });
+
+  it("después de la baja no aparece", () => {
+    const r = separarCuentasDelMes(todas, "2026-11");
+    expect(ids(r.activas)).toEqual(["res"]);
+    expect(r.bajas).toEqual([]);
+  });
+
+  it("sin fecha de baja y sin estar activa, nunca entra", () => {
+    const r = separarCuentasDelMes([propuesta, { id: "pau", estado: "en_pausa", fecha_inactivado: null }], "2026-10");
+    expect(r.activas).toEqual([]);
+    expect(r.bajas).toEqual([]);
+  });
+});

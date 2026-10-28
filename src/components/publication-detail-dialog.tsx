@@ -292,7 +292,11 @@ function DriveLinkEditor({ id, initialUrl }: { id: string; initialUrl: string | 
     start(async () => {
       const res = await setPublicationAsset(id, url);
       if (res?.error) return void toast.error("No se pudo guardar: " + res.error);
-      toast.success("Link del contenido guardado.");
+      toast.success(
+        res && "pasoARevision" in res && res.pasoARevision
+          ? "Link guardado. La pieza pasó a revisión creativa."
+          : "Link del contenido guardado."
+      );
       router.refresh();
     });
   }

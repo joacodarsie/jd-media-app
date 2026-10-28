@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { destinoConCliente } from "@/lib/contenidos/aprobacion-tacita";
+import { estadoAlPegarArchivo } from "@/lib/contenidos/archivo-a-revision";
 import {
   chequearLinkParaPublicar,
   type LinksDePieza,
@@ -429,6 +430,11 @@ export async function setPublicationTiktokSubido(
 export async function setPublicationAsset(id: string, url: string) {
   const { supabase } = await ctx();
   const value = url.trim() || null;
+  const { data: antes } = await supabase
+    .from("publications")
+    .select("estado, asset_url")
+    .eq("id", id)
+    .maybeSingle();
   const { data, error } = await supabase
     .from("publications")
     .update({ asset_url: value })
@@ -436,8 +442,21 @@ export async function setPublicationAsset(id: string, url: string) {
     .select("cliente_id")
     .single();
   if (error) return { error: error.message };
+
+  // Con el archivo listo, la pieza pasa sola a revisión creativa (ver
+  // archivo-a-revision.ts). Va por changePublicationStatus para que quede el
+  // sello de revisión y le llegue el aviso a quien revisa. Si falla, el link ya
+  // quedó guardado: no se corta.
+  let pasoARevision = false;
+  const siguiente = antes
+    ? estadoAlPegarArchivo(antes.estado as string, antes.asset_url as string | null, value)
+    : null;
+  if (siguiente) {
+    const r = await changePublicationStatus(id, siguiente);
+    pasoARevision = !!r && "ok" in r && !!r.ok;
+  }
   invalidate(data?.cliente_id);
-  return { ok: true };
+  return { ok: true, pasoARevision };
 }
 
 /**

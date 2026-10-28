@@ -40,4 +40,24 @@ describe("separarCuentasDelMes", () => {
     expect(ids(separarCuentasDelMes([blasco], "2026-09").activas)).toEqual(["bla"]);
     expect(ids(separarCuentasDelMes([blasco], "2026-10").bajas)).toEqual(["bla"]);
   });
+
+  it("reactivada: el mes de la pausa solo contenido, el del medio nada, la vuelta entera", () => {
+    const vuelta = {
+      id: "vue",
+      estado: "activo",
+      fecha_inactivado: null,
+      fecha_pausa: "2026-10-20T10:00:00+00:00",
+      fecha_reactivacion: "2026-12-03T10:00:00+00:00",
+    };
+    expect(ids(separarCuentasDelMes([vuelta], "2026-09").activas)).toEqual(["vue"]);
+    expect(ids(separarCuentasDelMes([vuelta], "2026-10").bajas)).toEqual(["vue"]);
+    const nov = separarCuentasDelMes([vuelta], "2026-11");
+    expect([...nov.activas, ...nov.bajas]).toEqual([]);
+    expect(ids(separarCuentasDelMes([vuelta], "2026-12").activas)).toEqual(["vue"]);
+  });
+
+  it("pausada y reactivada en el mismo mes: se liquida normal", () => {
+    const corta = { id: "cor", estado: "activo", fecha_pausa: "2026-10-05", fecha_reactivacion: "2026-10-20" };
+    expect(ids(separarCuentasDelMes([corta], "2026-10").activas)).toEqual(["cor"]);
+  });
 });

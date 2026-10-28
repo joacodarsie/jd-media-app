@@ -60,6 +60,28 @@ describe("computeAutoPayroll", () => {
     expect(out.has("av1")).toBe(false);
   });
 
+  it("pauta sola (sin gestión de redes): cobra el media buyer", () => {
+    const out = computeAutoPayroll(
+      [cliente({ media_buyer_id: "guille" })],
+      [servicio({ tipo: "paid_media", pack: null })],
+      r,
+      null
+    );
+    expect(out.get("guille")).toEqual([
+      expect.objectContaining({ concepto: "Media buyer (solo pauta)", monto: r.media_buyer.Personalizado, kind: "media_buyer" }),
+    ]);
+  });
+
+  it("con gestión de redes y pauta, el media buyer cobra una sola vez", () => {
+    const out = computeAutoPayroll(
+      [cliente({ media_buyer_id: "guille" })],
+      [servicio(), servicio({ tipo: "paid_media", pack: null })],
+      r,
+      null
+    );
+    expect(out.get("guille")?.length).toBe(1);
+  });
+
   it("el acuerdo fijo (override) reemplaza el CM", () => {
     const out = computeAutoPayroll(
       [cliente({ cm_id: "cm1", disenador_id: "dis1", audiovisual_id: "av1" })],

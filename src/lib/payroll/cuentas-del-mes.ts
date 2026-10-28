@@ -9,12 +9,15 @@
 //   le paga a quien lo hizo (diseño, edición).
 //
 // Una cuenta EN PAUSA se trata igual, con su fecha de pausa (migración 0223).
-// Sin esa fecha queda afuera de todos los meses, como antes.
+// Sin esa fecha queda afuera de todos los meses, como antes. Si después se
+// reactivó (fecha_reactivacion, 0224), los meses entre la pausa y la vuelta
+// no generan nómina; el de la vuelta se paga entero.
 
 export interface CuentaConEstado {
   estado?: string | null;
   fecha_inactivado?: string | null;
   fecha_pausa?: string | null;
+  fecha_reactivacion?: string | null;
 }
 
 export function separarCuentasDelMes<T extends CuentaConEstado>(
@@ -25,7 +28,11 @@ export function separarCuentasDelMes<T extends CuentaConEstado>(
   const bajas: T[] = [];
   for (const c of clients) {
     if (c.estado === "activo") {
-      activas.push(c);
+      const mesPausa = (c.fecha_pausa ?? "").slice(0, 7);
+      const mesVuelta = (c.fecha_reactivacion ?? "").slice(0, 7);
+      const huboPausa = !!mesPausa && !!mesVuelta && mesVuelta > mesPausa;
+      if (huboPausa && periodo === mesPausa) bajas.push(c);
+      else if (!huboPausa || periodo < mesPausa || periodo >= mesVuelta) activas.push(c);
       continue;
     }
     const fechaBaja = c.estado === "en_pausa" ? c.fecha_pausa : c.fecha_inactivado;

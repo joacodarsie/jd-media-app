@@ -180,19 +180,22 @@ export async function buildPeriodPayroll(
   // Las que se dieron de baja ESTE mes solo cobran el contenido publicado.
   const enElMes = (c: PayrollClient) =>
     !isClientPausedFor(c.pausas, periodo) && arranqueEnPeriodo(c.fecha_inicio, periodo).fraccion > 0;
-  // Fecha de pausa aparte: si la migración 0223 no está aplicada, la consulta
-  // falla y las pausadas quedan afuera como antes, sin romper la nómina.
-  const { data: pausasRaw } = await admin
+  // Fechas de pausa aparte: si las migraciones 0223/0224 no están aplicadas la
+  // consulta falla y las pausadas quedan afuera como antes, sin romper la nómina.
+  type PausaRow = { id: string; fecha_pausa: string | null; fecha_reactivacion?: string | null };
+  const conVuelta = await admin
     .from("clients")
-    .select("id, fecha_pausa")
-    .eq("estado", "en_pausa");
-  const fechaPausa = new Map(
-    ((pausasRaw ?? []) as { id: string; fecha_pausa: string | null }[]).map((p) => [p.id, p.fecha_pausa])
-  );
+    .select("id, fecha_pausa, fecha_reactivacion")
+    .not("fecha_pausa", "is", null);
+  const pausasRaw = conVuelta.error
+    ? (await admin.from("clients").select("id, fecha_pausa").eq("estado", "en_pausa")).data
+    : conVuelta.data;
+  const pausaPorCliente = new Map(((pausasRaw ?? []) as PausaRow[]).map((p) => [p.id, p]));
   const cuentasDelMes = separarCuentasDelMes(
     ((clientsRaw ?? []) as (PayrollClient & CuentaConEstado & { id: string })[]).map((c) => ({
       ...c,
-      fecha_pausa: fechaPausa.get(c.id) ?? null,
+      fecha_pausa: pausaPorCliente.get(c.id)?.fecha_pausa ?? null,
+      fecha_reactivacion: pausaPorCliente.get(c.id)?.fecha_reactivacion ?? null,
     })),
     periodo
   );

@@ -279,7 +279,9 @@ export default async function ContenidosPage({
           </p>
         </details>
       )}
-      {teams.length > 0 && (
+      {/* Los equipos solo sirven a quien ve todas las cuentas: a una CM con sus 5
+          le ocupaban media pantalla del celular sin filtrar nada (29/10/2026). */}
+      {teams.length > 0 && myClientIds === null && (
         <div className="flex flex-wrap gap-1.5">
           <Link
             href="/contenidos"

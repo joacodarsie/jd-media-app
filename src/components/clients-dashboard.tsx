@@ -203,7 +203,9 @@ export function ClientsDashboard({
     <div className="space-y-3">
       {/* Quick chips por estado */}
       <div className="flex flex-wrap gap-1.5">
-        {(Object.keys(QUICK_LABEL) as Quick[]).map((k) => (
+        {/* Los estados vacíos no se muestran (salvo el elegido): a una CM le
+            aparecían cuatro botones en 0. */}
+        {(Object.keys(QUICK_LABEL) as Quick[]).filter((k) => counts[k] > 0 || quick === k).map((k) => (
           <button
             key={k}
             onClick={() => setQuick(k)}
@@ -220,7 +222,9 @@ export function ClientsDashboard({
         ))}
       </div>
 
-      {/* Filtros */}
+      {/* Filtros. Con pocas cuentas (una CM lleva 5) sobran: buscar, pack,
+          responsable, orden y equipo ocupaban más que la lista (29/10/2026). */}
+      {clients.length > 8 && (
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-44 flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -290,6 +294,7 @@ export function ClientsDashboard({
           {filtered.length} cliente{filtered.length === 1 ? "" : "s"}
         </span>
       </div>
+      )}
 
       <div className="space-y-2">
         {filtered.length === 0 ? (

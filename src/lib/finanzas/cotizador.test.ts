@@ -33,30 +33,22 @@ describe("costoDeItems", () => {
 
   it("reproduce el Pack Presencia de lista", () => {
     const c = costoDeItems(PRESENCIA, rates);
-    // CM 50.000 + edición 60.000 + portadas 8.000 + diseño 32.000 +
-    // media buyer 50.000 + coordinación de diseño 2.000
-    expect(c.recurrenteSinCoord).toBe(202_000);
+    // CM 50.000 + edición 60.000 + portadas 8.000 + diseño 32.000 + media buyer 50.000
+    expect(c.recurrenteSinCoord).toBe(200_000);
   });
 
-  it("la coordinación de diseño cobra sobre el diseño del mes, no sobre el precio", () => {
-    const c = costoDeItems(PRESENCIA, rates);
-    expect(c.baseDiseno).toBe(40_000); // 4 piezas + 4 portadas
-    const linea = c.lineas.find((l) => l.concepto === "Coordinación de diseño");
-    expect(linea?.monto).toBe(2_000); // 5% de 40.000
-  });
-
-  it("una cuenta sin diseño no paga coordinación de diseño", () => {
-    const c = costoDeItems({ ...ITEMS_VACIOS, mediaBuyer: "Presencia" }, rates);
+  it("ya no cobra coordinación de diseño (se dejó de pagar en septiembre de 2026)", () => {
+    const c = costoDeItems({ ...PRESENCIA, manualMarca: true }, rates);
+    expect(c.baseDiseno).toBe(40_000); // queda como dato: 4 piezas + 4 portadas
     expect(c.lineas.some((l) => l.concepto === "Coordinación de diseño")).toBe(false);
+    const r = resultadoDePrecio(400_000, c, rates);
+    expect(r.arranqueLineas.some((l) => l.concepto === "Coordinación de diseño")).toBe(false);
   });
 
   it("el manual de marca no ensucia el costo mensual", () => {
     const c = costoDeItems({ ...ITEMS_VACIOS, reels: 1, manualMarca: true }, rates);
     expect(c.unaVez).toBe(rates.manual_marca);
-    // Edición + portada + el 5% de coordinación sobre esa portada.
-    expect(c.recurrenteSinCoord).toBe(
-      rates.edicion_reel + (rates.portada_reel ?? 0) + Math.round((rates.portada_reel ?? 0) * 0.05)
-    );
+    expect(c.recurrenteSinCoord).toBe(rates.edicion_reel + (rates.portada_reel ?? 0));
   });
 
   it("las portadas se pueden desacoplar de los reels", () => {
@@ -75,17 +67,25 @@ describe("costoDeItems", () => {
 describe("resultadoDePrecio", () => {
   const costo = costoDeItems(PRESENCIA, rates);
 
-  it("cobra las dos coordinaciones, que salen del precio", () => {
+  it("cobra coordinación, dirección creativa y la cartera del closer, todo sobre el precio", () => {
     const r = resultadoDePrecio(400_000, costo, rates);
     expect(r.coordinacion).toBe(40_000); // 10%
     expect(r.coordGeneral).toBe(0); // Leo no cobra por ahora (24/9/2026)
-    expect(r.costoMensual).toBe(242_000);
-    expect(r.margen).toBe(158_000);
+    expect(r.direccionCreativa).toBe(20_000); // 5%
+    expect(r.cartera).toBe(20_000); // 5% del closer, desde el mes 2
+    expect(r.costoMensual).toBe(280_000);
+    expect(r.margen).toBe(120_000); // 30% en un mes normal
+  });
+
+  it("si la cerró el dueño no hay cartera del closer", () => {
+    const r = resultadoDePrecio(400_000, costo, rates, { conComisionCierre: false });
+    expect(r.cartera).toBe(0);
+    expect(r.margen).toBe(140_000);
   });
 
   it("descuenta los fijos para mostrar lo que queda de verdad", () => {
     const r = resultadoDePrecio(400_000, costo, rates, { fijosProrrateados: 54_000 });
-    expect(r.margenNeto).toBe(104_000);
+    expect(r.margenNeto).toBe(66_000);
   });
 
   it("un precio por debajo del costo da margen negativo, no cero", () => {
@@ -100,7 +100,8 @@ describe("resultadoDePrecio", () => {
     });
     expect(r.coordinacion).toBe(0);
     expect(r.coordGeneral).toBe(0);
-    expect(r.costoMensual).toBe(202_000);
+    // La dirección creativa y el closer se pagan igual.
+    expect(r.costoMensual).toBe(240_000);
   });
 });
 
@@ -122,10 +123,17 @@ describe("el arranque: lo que solo se paga el primer mes", () => {
 
   it("desglosa el arranque completo de una cuenta Presencia", () => {
     const r = resultadoDePrecio(400_000, conManual, rates);
-    // manual 50.000 + 5% del manual para coordinación de diseño 2.500 +
-    // comisión del comercial 40.000 (10% desde octubre de 2026) + plus 20.000
-    expect(r.arranque).toBe(112_500);
-    expect(r.margenPrimerMes).toBe(45_500);
+    // manual 50.000 + comisión del comercial 40.000 (10% desde octubre de 2026) + plus 20.000
+    expect(r.arranque).toBe(110_000);
+    // El mes 1 no paga la cartera del closer (cobra el cierre): 120.000 + 20.000 − 110.000.
+    expect(r.margenPrimerMes).toBe(30_000);
+  });
+
+  it("la dirección creativa se paga desde el mes 1; la cartera del closer, recién desde el 2", () => {
+    const r = resultadoDePrecio(400_000, conManual, rates);
+    const costoMes1 = r.costoMensual - r.cartera;
+    expect(costoMes1).toBe(260_000); // incluye los 20.000 de dirección creativa
+    expect(400_000 - costoMes1 - r.arranque).toBe(r.margenPrimerMes);
   });
 
   it("si la venta la cerró el dueño, no hay comisión que pagar", () => {
@@ -186,14 +194,17 @@ describe("precioSinPerdidaPrimerMes", () => {
     expect(r.margenPrimerMes).toBeLessThan(10_000);
   });
 
-  it("🔴 con la comisión real del 15%, un margen del 30% arranca en pérdida", () => {
-    // Es la razón por la que el piso se muestra aparte del margen objetivo: el
-    // margen recurrente puede ser razonable y el mes 1 quedar igual en rojo.
-    const reales = { ...rates, comision_cierre: 0.15, comision_coord_general: 0 };
-    const precio30 = precioParaMargen(conManual.recurrenteSinCoord, 30, reales)!;
-    const piso = precioSinPerdidaPrimerMes(conManual, reales)!;
-    expect(precio30).toBeLessThan(piso);
-    expect(resultadoDePrecio(precio30, conManual, reales).margenPrimerMes).toBeLessThan(0);
+  it("🔴 la cartera del closer se lleva 5 puntos de margen todos los meses", () => {
+    // Por eso el precio para un mismo margen sube cuando la cerró un comercial.
+    const conComercial = precioParaMargen(conManual.recurrenteSinCoord, 40, rates)!;
+    const sinComercial = precioParaMargen(conManual.recurrenteSinCoord, 40, rates, 0, {
+      conComisionCierre: false,
+    })!;
+    expect(conComercial).toBeGreaterThan(sinComercial);
+    expect(resultadoDePrecio(conComercial, conManual, rates).margenPct).toBeGreaterThanOrEqual(40);
+    expect(
+      resultadoDePrecio(sinComercial, conManual, rates, { conComisionCierre: false }).margenPct
+    ).toBeGreaterThanOrEqual(40);
   });
 
   it("si las comisiones se comen el precio entero, no hay piso posible", () => {

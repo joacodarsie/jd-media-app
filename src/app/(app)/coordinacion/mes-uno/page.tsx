@@ -36,12 +36,9 @@ export default async function MesUnoPage() {
     const leo = Math.round(p.precio * (r.comision_coord_general ?? 0));
     const cdv = Math.round(p.precio * (r.comision_cierre ?? 0));
     const cartera = Math.round(p.precio * (r.comision_cartera ?? 0));
-    const brisaM1 = Math.round(
-      (diseno + portadasCosto + (r.manual_marca ?? 0)) * (r.comision_coord_diseno ?? 0)
-    );
-    const brisaM2 = Math.round(
-      (diseno + portadasCosto) * (r.comision_coord_diseno ?? 0)
-    );
+    // Desde septiembre de 2026 no se paga coordinación de diseño: la reemplazó
+    // la dirección creativa, un % del precio todos los meses desde el mes 1.
+    const direccion = Math.round(p.precio * (r.comision_direccion_creativa ?? 0));
 
     const items1: [string, number][] = [
       [`Diseño (${p.posts} carruseles/posteos × ${ars(r.diseno_pieza)})`, diseno],
@@ -52,7 +49,7 @@ export default async function MesUnoPage() {
       [`Comisión Luz (${pctTxt(r.comision_coordinacion ?? 0)})`, luz],
       [`Sueldo CM`, cm],
       [`Sueldo Paid Media`, paid],
-      [`Comisión Brisa (${pctTxt(r.comision_coord_diseno ?? 0)} del diseño)`, brisaM1],
+      [`Dirección creativa (${pctTxt(r.comision_direccion_creativa ?? 0)})`, direccion],
       ...(plus > 0
         ? ([[`Plus 1er mes (CM ${ars(plus)} + Paid ${ars(plus)})`, plus * 2]] as [string, number][])
         : []),
@@ -62,11 +59,11 @@ export default async function MesUnoPage() {
       [`Diseño (${p.posts} × ${ars(r.diseno_pieza)})`, diseno],
       [`Portadas (${portadas} × ${ars(r.portada_reel)})`, portadasCosto],
       [`Edición (${p.reels} × ${ars(r.edicion_reel)})`, edicion],
-      [`Cartera del responsable (${pctTxt(r.comision_cartera ?? 0)})`, cartera],
+      [`Comisión del closer (${pctTxt(r.comision_cartera ?? 0)} · desde el mes 2)`, cartera],
       [`Comisión Luz (${pctTxt(r.comision_coordinacion ?? 0)})`, luz],
       [`Sueldo CM`, cm],
       [`Sueldo Paid Media`, paid],
-      [`Comisión Brisa (${pctTxt(r.comision_coord_diseno ?? 0)} del diseño)`, brisaM2],
+      [`Dirección creativa (${pctTxt(r.comision_direccion_creativa ?? 0)})`, direccion],
       [`Comisión Leo (${pctTxt(r.comision_coord_general ?? 0)})`, leo],
     ];
     const total1 = items1.reduce((a, [, v]) => a + v, 0);

@@ -87,16 +87,18 @@ describe("filasClientes", () => {
   it("usa el mismo modelo que el cotizador", () => {
     const [f] = filasClientes([svc({ monto_mensual: 400_000 })], settings, "2026-09");
     // CM 50.000 + diseño 32.000 + edición 60.000 + portadas 8.000 +
-    // media buyer 50.000 + coordinación de diseño 2.000 = 202.000
-    expect(f.costoEntrega).toBe(202_000);
+    // media buyer 50.000 + dirección creativa 20.000 (5% del abono) = 220.000.
+    // Ya no hay coordinación de diseño: se dejó de pagar en septiembre de 2026.
+    expect(f.costoEntrega).toBe(220_000);
     expect(f.coordinacion).toBe(40_000); // 10% del abono
-    expect(f.margen).toBe(158_000);
-    expect(Math.round(f.margenPct)).toBe(40);
+    expect(f.margen).toBe(140_000);
+    expect(Math.round(f.margenPct)).toBe(35);
   });
 
   it("una cuenta sin pauta no paga media buyer", () => {
     const [f] = filasClientes([svc({ media_buyer_aplica: false })], settings, "2026-09");
-    expect(f.costoEntrega).toBe(152_000);
+    // Producción 150.000 (sin media buyer) + dirección creativa 17.500 (5% del abono de 350.000)
+    expect(f.costoEntrega).toBe(167_500);
   });
 
   it("la pauta sola solo cuesta el media buyer", () => {
@@ -267,10 +269,10 @@ describe("los acuerdos fijos y la coordinación", () => {
       settings,
       "2026-09"
     );
-    // acuerdo 200.000 + media buyer 50.000
-    expect(f.costoEntrega).toBe(250_000);
+    // acuerdo 200.000 + media buyer 50.000 + dirección creativa 15.000 (5% del abono)
+    expect(f.costoEntrega).toBe(265_000);
     expect(f.coordinacion).toBe(30_000); // 10% del abono
-    expect(f.margen).toBe(20_000);
+    expect(f.margen).toBe(5_000);
   });
 
   it("el acuerdo fijo cubre la producción, pero la pauta se paga igual", () => {
@@ -310,6 +312,6 @@ describe("los acuerdos fijos y la coordinación", () => {
 
   it("sin acuerdo cargado sigue valiendo el modelo de tarifas", () => {
     const [f] = filasClientes([svc({ monto_mensual: 400_000 })], settings, "2026-09");
-    expect(f.costoEntrega).toBe(202_000);
+    expect(f.costoEntrega).toBe(220_000);
   });
 });

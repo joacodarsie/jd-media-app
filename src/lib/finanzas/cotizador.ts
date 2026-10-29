@@ -56,7 +56,7 @@ export interface CostoCotizacion {
   conCM: boolean;
   /** Hay media buyer: cobra su propio plus del primer mes. */
   conMediaBuyer: boolean;
-  /** Diseño del mes (piezas + portadas): base de la comisión de coordinación de diseño. */
+  /** Diseño del mes (piezas + portadas). Ya no paga comisión: queda como dato. */
   baseDiseno: number;
 }
 
@@ -129,19 +129,10 @@ export function costoDeItems(items: ItemsCotizacion, rates: AgencyRates): CostoC
     });
   }
 
-  // Coordinación de diseño: un % del diseño entregado en el mes, no del precio.
-  // Faltaba en el cotizador, y es plata que se paga todos los meses.
+  // La coordinación de diseño (5% del diseño del mes) se dejó de pagar en
+  // septiembre de 2026: la reemplazó la dirección creativa, que es un % del
+  // PRECIO y por eso se calcula en `resultadoDePrecio`, no acá.
   const baseDiseno = costoPiezas + costoPortadas;
-  const pctDiseno = rates.comision_coord_diseno ?? 0;
-  const coordDiseno = Math.round(baseDiseno * pctDiseno);
-  if (coordDiseno > 0) {
-    lineas.push({
-      concepto: "Coordinación de diseño",
-      detalle: `${Math.round(pctDiseno * 100)}% del diseño del mes`,
-      monto: coordDiseno,
-      unaVez: false,
-    });
-  }
 
   if (items.manualMarca && rates.manual_marca > 0) {
     lineas.push({
@@ -178,9 +169,13 @@ export interface ResultadoPrecio {
   coordinacion: number;
   /** La comisión de coordinación general, también sobre el precio. */
   coordGeneral: number;
+  /** Dirección creativa: % del precio todos los meses, desde el mes 1. */
+  direccionCreativa: number;
+  /** Lo que cobra el closer desde el mes 2 (cartera), mientras el cliente siga. 0 si la cerró el dueño. */
+  cartera: number;
   /** Parte de los gastos fijos de la agencia que le toca a esta cuenta. */
   fijosProrrateados: number;
-  /** Precio − costo mensual. Todavía no descuenta los fijos. */
+  /** Precio − costo mensual (el de un mes normal, del 2 en adelante). Todavía no descuenta los fijos. */
   margen: number;
   margenPct: number;
   /** Lo que queda de verdad, después de que la cuenta pague su parte de los fijos. */
@@ -190,7 +185,10 @@ export interface ResultadoPrecio {
   arranqueLineas: LineaArranque[];
   /** Total de los costos de arranque. */
   arranque: number;
-  /** Lo que deja el primer mes, con el arranque descontado (sin los fijos). */
+  /**
+   * Lo que deja el primer mes, con el arranque descontado (sin los fijos). Ese
+   * mes el closer cobra su comisión de cierre (en el arranque) y no la cartera.
+   */
   margenPrimerMes: number;
   /** Lo que deja el primer mes descontando también su parte de los fijos. */
   margenPrimerMesNeto: number;
@@ -199,9 +197,14 @@ export interface ResultadoPrecio {
 /**
  * Qué deja un precio dado.
  *
- * Las comisiones de coordinación son un % del PRECIO, no del costo: por eso
- * subir el precio no sube el margen en la misma proporción, y por eso el
- * cálculo no se puede hacer sumando costos a secas.
+ * Las comisiones son un % del PRECIO, no del costo: por eso subir el precio no
+ * sube el margen en la misma proporción, y por eso el cálculo no se puede
+ * hacer sumando costos a secas. Todos los meses salen del precio:
+ *  - coordinación (Luz) y coordinación general;
+ *  - dirección creativa, desde el mes 1;
+ *  - la cartera del closer, desde el mes 2 (el mes 1 cobra el cierre, que va
+ *    en el arranque). Es el acuerdo comercial de octubre de 2026, el mismo que
+ *    liquida la nómina en `payroll/comision-comercial.ts`.
  */
 export function resultadoDePrecio(
   precio: number,
@@ -220,18 +223,23 @@ export function resultadoDePrecio(
     opts.conCoordinacion === false ? 0 : Math.round(p * (rates.comision_coordinacion ?? 0));
   const coordGeneral =
     opts.conCoordGeneral === false ? 0 : Math.round(p * (rates.comision_coord_general ?? 0));
-  const costoMensual = costo.recurrenteSinCoord + coordinacion + coordGeneral;
+  const direccionCreativa = Math.round(p * (rates.comision_direccion_creativa ?? 0));
+  const conCierre = opts.conComisionCierre !== false;
+  const cartera = conCierre ? Math.round(p * (rates.comision_cartera ?? 0)) : 0;
+  const costoMensual = costo.recurrenteSinCoord + coordinacion + coordGeneral + direccionCreativa + cartera;
   const margen = p - costoMensual;
   const fijosProrrateados = Math.max(opts.fijosProrrateados ?? 0, 0);
   const margenNeto = margen - fijosProrrateados;
 
-  const arranqueLineas = lineasDeArranque(p, costo, rates, opts.conComisionCierre !== false);
+  const arranqueLineas = lineasDeArranque(p, costo, rates, conCierre);
   const arranque = arranqueLineas.reduce((a, l) => a + l.monto, 0);
 
   return {
     costoMensual,
     coordinacion,
     coordGeneral,
+    direccionCreativa,
+    cartera,
     fijosProrrateados,
     margen,
     margenPct: p > 0 ? (margen / p) * 100 : 0,
@@ -239,8 +247,9 @@ export function resultadoDePrecio(
     margenNetoPct: p > 0 ? (margenNeto / p) * 100 : 0,
     arranqueLineas,
     arranque,
-    margenPrimerMes: margen - arranque,
-    margenPrimerMesNeto: margenNeto - arranque,
+    // El mes 1 no paga la cartera: ese mes el closer cobra el cierre.
+    margenPrimerMes: margen + cartera - arranque,
+    margenPrimerMesNeto: margenNeto + cartera - arranque,
   };
 }
 
@@ -259,23 +268,12 @@ function lineasDeArranque(
   conComisionCierre: boolean
 ): LineaArranque[] {
   const lineas: LineaArranque[] = [];
-  const pctDiseno = rates.comision_coord_diseno ?? 0;
 
   if (costo.unaVez > 0) {
     lineas.push({
       concepto: "Manual de marca",
       detalle: "Documento de inicio, pago único",
       monto: costo.unaVez,
-    });
-  }
-
-  // La coordinación de diseño también cobra su % sobre el manual de marca.
-  const coordManual = Math.round(costo.unaVez * pctDiseno);
-  if (coordManual > 0) {
-    lineas.push({
-      concepto: "Coordinación de diseño",
-      detalle: `${Math.round(pctDiseno * 100)}% del manual de marca`,
-      monto: coordManual,
     });
   }
 
@@ -310,15 +308,26 @@ function lineasDeArranque(
 }
 
 /**
- * La parte del arranque que NO depende del precio: manual de marca, el % de la
- * coordinación de diseño sobre ese manual, y el plus de la CM y del media buyer.
- * La comisión del comercial queda afuera porque sale del precio.
+ * La parte del arranque que NO depende del precio: manual de marca y el plus
+ * de la CM y del media buyer. La comisión del comercial queda afuera porque
+ * sale del precio.
  */
 function arranqueFijo(costo: CostoCotizacion, rates: AgencyRates): number {
-  const pctDiseno = rates.comision_coord_diseno ?? 0;
   const plus = rates.plus_primer_mes ?? 0;
   const personas = (costo.conCM ? 1 : 0) + (costo.conMediaBuyer ? 1 : 0);
-  return costo.unaVez + Math.round(costo.unaVez * pctDiseno) + plus * personas;
+  return costo.unaVez + plus * personas;
+}
+
+/** Lo que se llevan todos los meses las comisiones sobre el precio (sin la del closer). */
+function pctMensualSobrePrecio(
+  rates: AgencyRates,
+  opts: { conCoordinacion?: boolean; conCoordGeneral?: boolean } = {}
+): number {
+  return (
+    (opts.conCoordinacion === false ? 0 : (rates.comision_coordinacion ?? 0)) +
+    (opts.conCoordGeneral === false ? 0 : (rates.comision_coord_general ?? 0)) +
+    (rates.comision_direccion_creativa ?? 0)
+  );
 }
 
 /**
@@ -331,8 +340,10 @@ function arranqueFijo(costo: CostoCotizacion, rates: AgencyRates): number {
  *
  * Se despeja igual que `precioParaMargen`, pero pidiendo que el primer mes dé
  * cero en vez de un margen:
- *   precio − (costo + precio·coord) − (arranqueFijo + precio·cierre) = 0
- *   precio = (costo + arranqueFijo) / (1 − coord − cierre)
+ *   precio − (costo + precio·coms) − (arranqueFijo + precio·cierre) = 0
+ *   precio = (costo + arranqueFijo) / (1 − coms − cierre)
+ * donde `coms` son las comisiones mensuales sobre el precio (coordinaciones y
+ * dirección creativa). La cartera del closer no entra: el mes 1 cobra el cierre.
  */
 export function precioSinPerdidaPrimerMes(
   costo: CostoCotizacion,
@@ -343,9 +354,7 @@ export function precioSinPerdidaPrimerMes(
     conCoordGeneral?: boolean;
   } = {}
 ): number | null {
-  const coord =
-    (opts.conCoordinacion === false ? 0 : (rates.comision_coordinacion ?? 0)) +
-    (opts.conCoordGeneral === false ? 0 : (rates.comision_coord_general ?? 0));
+  const coord = pctMensualSobrePrecio(rates, opts);
   const cierre = opts.conComisionCierre === false ? 0 : (rates.comision_cierre ?? 0);
   const divisor = 1 - coord - cierre;
   if (divisor <= 0.0001) return null;
@@ -356,9 +365,12 @@ export function precioSinPerdidaPrimerMes(
 /**
  * El precio que hay que cobrar para llegar a un margen objetivo.
  *
- * Se despeja teniendo en cuenta que las coordinaciones se llevan un % del precio:
- *   precio − (costo + precio·coord) − fijos = precio·objetivo
- *   precio = (costo + fijos) / (1 − coord − objetivo)
+ * Es el margen de un mes normal (del 2 en adelante). Se despeja teniendo en
+ * cuenta que las comisiones se llevan un % del precio:
+ *   precio − (costo + precio·coms) − fijos = precio·objetivo
+ *   precio = (costo + fijos) / (1 − coms − objetivo)
+ * con `coms` = coordinaciones + dirección creativa + cartera del closer (si la
+ * cerró un comercial).
  *
  * Devuelve null si el objetivo es inalcanzable (coord + objetivo ≥ 1): no hay
  * precio que lo cumpla, y devolver un número enorme sería mentirle al que cotiza.
@@ -367,9 +379,11 @@ export function precioParaMargen(
   costoRecurrente: number,
   objetivoPct: number,
   rates: AgencyRates,
-  fijosProrrateados = 0
+  fijosProrrateados = 0,
+  opts: { conComisionCierre?: boolean } = {}
 ): number | null {
-  const coord = (rates.comision_coordinacion ?? 0) + (rates.comision_coord_general ?? 0);
+  const cartera = opts.conComisionCierre === false ? 0 : (rates.comision_cartera ?? 0);
+  const coord = pctMensualSobrePrecio(rates) + cartera;
   const objetivo = objetivoPct / 100;
   const divisor = 1 - coord - objetivo;
   if (divisor <= 0.0001) return null;

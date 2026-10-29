@@ -39,7 +39,26 @@ export const NAV_GROUPS: NavGroup[] = [
       // tarjeta en Mi día; la página entera es de la dirección.
       { href: "/direccion", label: "Dirección", icon: "Compass", roles: ["admin"] },
       { href: "/tareas", label: "Tareas", icon: "ListChecks" },
+      // Orden por uso real (uso_secciones, 14 días al 29/10/2026): Clientes es
+      // lo más abierto (597 visitas, 13 personas) y vivía dentro de un grupo
+      // plegable; Comercial lo usan todos los días Santi, Mati y Luz.
+      {
+        href: "/clientes",
+        label: "Clientes",
+        icon: "Briefcase",
+        // Visible para todo el equipo. La pagina internamente oculta datos
+        // sensibles (monto, pagos, contacto privado) a no-admin/coord.
+      },
       { href: "/contenidos", label: "Contenidos", icon: "Calendar" },
+      // Comercial agrupa: Comercial, Prospección y Post-meet (pestañas).
+      {
+        href: "/comercial",
+        label: "Comercial",
+        icon: "Target",
+        roles: ["admin", "coordinador", "comercial", "prospecting"],
+        feature: "comercial",
+        match: ["/prospeccion", "/captacion"],
+      },
       // Mi equipo: la gente y las cuentas de cada equipo de trabajo; dirección y
       // coordinación ven todos y la capacidad contra la meta (24/10/2026).
       { href: "/mi-equipo", label: "Mi equipo", icon: "UsersRound", nuevoHasta: "2026-11-15" },
@@ -64,8 +83,7 @@ export const NAV_GROUPS: NavGroup[] = [
       // carga la project manager; dirección cobra y paga.
       { href: "/jornadas", label: "Jornadas", icon: "Clapperboard", roles: ["admin"], areas: ["Coordinación"] },
       // JDmedIA en vivo ya no es ítem: se entra con el botón "Sesión en vivo"
-      // dentro de /jdmedia (misma feature jdmedia_live).
-      { href: "/jdmedia", label: "JDmedIA", icon: "MessageCircle" },
+      // dentro de /jdmedia (misma feature jdmedia_live). JDmedIA está en Conocimiento.
       // Director IA salió del menú el 20/9/2026: el último informe que generó
       // es del 3 de julio. La sección sigue viva en /director y en la pestaña
       // "Director IA" de Coordinación — lo que se saca es el lugar que ocupaba
@@ -75,13 +93,6 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Equipo & clientes",
     items: [
-      {
-        href: "/clientes",
-        label: "Clientes",
-        icon: "Briefcase",
-        // Visible para todo el equipo. La pagina internamente oculta datos
-        // sensibles (monto, pagos, contacto privado) a no-admin/coord.
-      },
       // Los 15 días de arranque de todas las cuentas nuevas, juntos. Antes
       // vivían en cuatro botones adentro de la ficha de cada cliente y no
       // había dónde verlos de conjunto, así que no los miraba nadie.
@@ -90,15 +101,6 @@ export const NAV_GROUPS: NavGroup[] = [
         label: "Project Manager",
         icon: "Rocket",
         roles: ["admin", "coordinador"],
-      },
-      // Comercial agrupa: Comercial, Prospección y Post-meet (pestañas).
-      {
-        href: "/comercial",
-        label: "Comercial",
-        icon: "Target",
-        roles: ["admin", "coordinador", "comercial", "prospecting"],
-        feature: "comercial",
-        match: ["/prospeccion", "/captacion"],
       },
       // Equipo agrupa: Directorio, Organigrama, Personas, Capacidad y
       // Reclutamiento (pestañas).
@@ -138,6 +140,8 @@ export const NAV_GROUPS: NavGroup[] = [
         match: ["/procesos", "/templates", "/agencia"],
       },
       { href: "/ayuda", label: "Ayuda", icon: "BookOpen" },
+      // JDmedIA bajó de la lista de arriba el 29/10/2026: 5 visitas en 14 días.
+      { href: "/jdmedia", label: "JDmedIA", icon: "MessageCircle" },
       { href: "/portal", label: "Portal", icon: "Megaphone" },
     ],
   },

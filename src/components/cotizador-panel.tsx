@@ -93,7 +93,7 @@ export function CotizadorPanel({ rates }: { rates: AgencyRates }) {
     return [
       armar("Piso", "no perdés plata ni el primer mes", piso),
       ...OBJETIVOS.map((obj) =>
-        armar(`${obj}%`, obj === 30 ? "el mínimo real" : obj === 40 ? "lo sano" : "lo bueno", precioParaMargen(costo.recurrenteSinCoord, obj, rates))
+        armar(`${obj}%`, obj === 30 ? "el mínimo real" : obj === 40 ? "lo sano" : "lo bueno", precioParaMargen(costo.recurrenteSinCoord, obj, rates, 0, { conComisionCierre: conCierre }))
       ),
     ].filter((o): o is NonNullable<typeof o> => o != null);
   }, [costo, rates, conCierre, piso]);
@@ -173,6 +173,20 @@ export function CotizadorPanel({ rates }: { rates: AgencyRates }) {
               monto={res.coordGeneral}
             />
           )}
+          {res.direccionCreativa > 0 && (
+            <Linea
+              concepto="Dirección creativa"
+              detalle={`${Math.round((rates.comision_direccion_creativa ?? 0) * 100)}% del precio, desde el mes 1`}
+              monto={res.direccionCreativa}
+            />
+          )}
+          {res.cartera > 0 && (
+            <Linea
+              concepto="Comisión del closer"
+              detalle={`${Math.round((rates.comision_cartera ?? 0) * 100)}% del precio, desde el mes 2`}
+              monto={res.cartera}
+            />
+          )}
         </Bloque>
 
         {/* ── Solo el primer mes ── */}
@@ -185,8 +199,8 @@ export function CotizadorPanel({ rates }: { rates: AgencyRates }) {
                 onChange={(e) => setConCierre(e.target.checked)}
                 className="h-4 w-4 accent-primary"
               />
-              La cerró un comercial (comisión{" "}
-              {Math.round((rates.comision_cierre ?? 0) * 100)}% del primer abono)
+              La cerró un comercial ({Math.round((rates.comision_cierre ?? 0) * 100)}% el primer mes y{" "}
+              {Math.round((rates.comision_cartera ?? 0) * 100)}% desde el segundo)
             </label>
           </li>
           {res.arranqueLineas.length === 0 && (
@@ -221,7 +235,7 @@ export function CotizadorPanel({ rates }: { rates: AgencyRates }) {
               etiqueta="Mes 1"
               sub="el del arranque"
               precio={precio}
-              entrega={res.costoMensual}
+              entrega={res.costoMensual - res.cartera}
               arranque={res.arranque}
               queda={mes1}
               pct={pctMes1}

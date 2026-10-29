@@ -116,9 +116,12 @@ export function CoordinacionPanel({
     () =>
       packs.map((p) => {
         const equipo = packCost(p, rates);
-        // La coordinación es un % del precio y los fijos existen igual: si no se
-        // cuentan, el margen del pack sale muy por encima de lo que queda.
-        const coord = Math.round(p.precio * (rates.comision_coordinacion ?? 0));
+        // La coordinación y la dirección creativa son un % del precio, y los fijos
+        // existen igual: si no se cuentan, el margen del pack sale muy por encima
+        // de lo que queda.
+        const coord = Math.round(
+          p.precio * ((rates.comision_coordinacion ?? 0) + (rates.comision_direccion_creativa ?? 0))
+        );
         const costo = equipo + coord + fijosPorCuenta;
         const margen = p.precio - costo;
         return { p, equipo, coord, costo, margen, pct: pctOf(margen, p.precio) };
@@ -128,10 +131,14 @@ export function CoordinacionPanel({
 
   // Simulador: primer mes vs. meses siguientes vs. año 1
   // La comisión del comercial es % del precio del pack el mes 1; desde el mes 2
-  // se paga la cartera a quien atiende la cuenta (acuerdo del 16/9/2026).
+  // se paga la cartera al closer que la cerró (acuerdo de octubre de 2026).
   const sim = useMemo(() => {
     const p = packs.find((x) => x.id === simPack) ?? packs[0];
-    const costoRec = packCost(p, rates);
+    // Igual que la tabla: el costo de un mes incluye la coordinación y la
+    // dirección creativa, que salen del precio todos los meses.
+    const costoRec =
+      packCost(p, rates) +
+      Math.round(p.precio * ((rates.comision_coordinacion ?? 0) + (rates.comision_direccion_creativa ?? 0)));
     const margenRec = p.precio - costoRec;
     const closerFull = Math.round(p.precio * (rates.comision_cierre ?? 0.1));
     const carteraMes = Math.round(p.precio * (rates.comision_cartera ?? 0));

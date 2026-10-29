@@ -143,10 +143,11 @@ export function filasClientes(
       } else {
         const { posts, reels, portadas } = piezasDelServicio(svc, settings.packs);
         costoEntrega = productionBase(pack, posts, reels, r, portadas);
-        // La coordinación de diseño cobra sobre el diseño del mes.
-        const diseno = posts * r.diseno_pieza + portadas * (r.portada_reel ?? 0);
-        costoEntrega += Math.round(diseno * (r.comision_coord_diseno ?? 0));
       }
+      // Dirección creativa: % del abono de gestión de redes, todos los meses
+      // (reemplazó a la coordinación de diseño en septiembre de 2026). Se paga
+      // aunque la producción tenga un acuerdo fijo, igual que en la nómina.
+      costoEntrega += Math.round(abono * (r.comision_direccion_creativa ?? 0));
       if (svc.media_buyer_aplica !== false) costoEntrega += mbCost(pack, r);
     } else if (svc.tipo === "paid_media") {
       costoEntrega = acuerdoFijo != null ? acuerdoFijo : mbCost(pack, r);

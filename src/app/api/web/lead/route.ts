@@ -36,7 +36,10 @@ export async function POST(req: Request) {
 
   const admin = createAdmin();
   const hoy = new Date().toLocaleDateString("es-AR", { timeZone: "America/Argentina/Cordoba" });
-  const linea = `${hoy}: descargó «${recurso}» desde la web.`;
+  // La lista de espera de la tienda (29/10/2026) usa este mismo camino.
+  const linea = recurso.startsWith("Tienda")
+    ? `${hoy}: se anotó en la web — ${recurso}.`
+    : `${hoy}: descargó «${recurso}» desde la web.`;
   const { data: existe } = await admin.from("leads").select("id, notas").eq("email", email).limit(1).maybeSingle();
   if (existe) {
     const notas = [(existe as { notas: string | null }).notas, linea].filter(Boolean).join("\n");

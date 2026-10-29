@@ -9,6 +9,8 @@ import { getActiveClients, getActiveUsers } from "@/lib/cache";
 import { currentPeriod } from "@/lib/finanzas";
 import { cargarCobrosDelMes, cuantasFaltanCobrar } from "@/lib/finanzas/cobros-mes";
 import { RealtimeBadgesSync } from "@/components/realtime-badges-sync";
+import { filtroDePersona } from "@/lib/tareas/colaboradores";
+import { hoyYmd, inicioVentanaVencidas } from "@/lib/dates";
 import { WelcomeTour } from "@/components/welcome-tour";
 import type { QuickLinkRow } from "@/components/quick-links-manager";
 import {
@@ -64,13 +66,17 @@ export default async function AppLayout({
       .select("id, label, url, icon, orden")
       .order("orden"),
     supabase.rpc("team_chat_unread_count", { p_user_id: user.id }),
-    // Notificaciones sin leer asociadas a tareas (asignación, comentario, vencidas)
+    // El número de Tareas en el menú (29/10/2026): lo que tenés que resolver,
+    // vencidas recientes + las de hoy, contado igual que Mi día. Antes eran los
+    // avisos sin leer de tareas: casi nadie los lee, así que el número solo
+    // crecía (Sofía veía 31 con 13 tareas) y no coincidía con nada.
     supabase
-      .from("notifications")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .eq("leida", false)
-      .not("task_id", "is", null),
+      .from("tasks")
+      .select("id", { count: "exact", head: true })
+      .or(filtroDePersona(user.id))
+      .not("estado", "in", "(completada,archivada)")
+      .lte("fecha_limite", hoyYmd())
+      .gte("fecha_limite", inicioVentanaVencidas(hoyYmd())),
     // Avisos del Portal sin leer (si la migración 0126 no está, queda 0).
     supabase.from("portal_notices").select("id"),
     supabase.from("portal_notice_reads").select("notice_id").eq("user_id", user.id),

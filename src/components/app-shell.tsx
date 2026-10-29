@@ -318,7 +318,9 @@ function SidebarContent({
  * que más se usan (según lo que cada uno puede ver) y «Más», que abre el menú.
  * El ícono activo salta y se marca en amarillo.
  */
-const PREFERIDAS = ["/dashboard", "/tareas", "/contenidos", "/chat", "/clientes", "/agenda"];
+// Orden por uso real (29/10/2026): Clientes es lo más abierto; el chat tuvo 6
+// visitas en 14 días y queda en «Más».
+const PREFERIDAS = ["/dashboard", "/tareas", "/clientes", "/contenidos", "/agenda", "/chat"];
 function BarraCelular({
   user,
   isLiveOwner,

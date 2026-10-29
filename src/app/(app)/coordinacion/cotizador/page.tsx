@@ -44,7 +44,7 @@ export default async function CotizadorPage() {
 
       <PreciosReferencia initial={settings.preciosReferencia} />
 
-      <CotizadorPanel rates={settings.rates} />
+      <CotizadorPanel rates={settings.rates} packs={settings.packs} />
     </div>
   );
 }

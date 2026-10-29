@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Calculator, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import type { AgencyRates, RatePack } from "@/lib/coordinacion";
+import type { AgencyRates, PackParam, RatePack } from "@/lib/coordinacion";
 import {
   costoDeItems,
   resultadoDePrecio,
@@ -47,7 +47,22 @@ function ars(n: number) {
  * estructura queda cubierta o no es una pregunta de la cartera entera, y se
  * responde en Finanzas.
  */
-export function CotizadorPanel({ rates }: { rates: AgencyRates }) {
+export function CotizadorPanel({ rates: ratesGuardadas, packs }: { rates: AgencyRates; packs: PackParam[] }) {
+  // Para probar "¿y si la dirección creativa pasa al 10%?" sin tocar las tarifas
+  // de verdad: todo el cotizador calcula con estos % y no se guarda nada.
+  const [pctDireccion, setPctDireccion] = useState(ratesGuardadas.comision_direccion_creativa ?? 0);
+  const [pctCartera, setPctCartera] = useState(ratesGuardadas.comision_cartera ?? 0);
+  const rates = useMemo(
+    () => ({ ...ratesGuardadas, comision_direccion_creativa: pctDireccion, comision_cartera: pctCartera }),
+    [ratesGuardadas, pctDireccion, pctCartera]
+  );
+  const probando =
+    pctDireccion !== (ratesGuardadas.comision_direccion_creativa ?? 0) ||
+    pctCartera !== (ratesGuardadas.comision_cartera ?? 0);
+
+  // El pack de lista del que se parte. Al tocar cualquier componente a mano la
+  // propuesta pasa a ser "a medida".
+  const [pack, setPack] = useState<string>("Presencia");
   const [items, setItems] = useState<ItemsCotizacion>({
     reels: 4,
     piezas: 4,
@@ -66,8 +81,26 @@ export function CotizadorPanel({ rates }: { rates: AgencyRates }) {
     [precio, costo, rates, conCierre]
   );
 
-  const set = <K extends keyof ItemsCotizacion>(k: K, v: ItemsCotizacion[K]) =>
+  const set = <K extends keyof ItemsCotizacion>(k: K, v: ItemsCotizacion[K]) => {
     setItems((p) => ({ ...p, [k]: v }));
+    if (k !== "manualMarca" && k !== "otros") setPack("");
+  };
+
+  /** Carga el desglose real de un pack de lista y su precio. */
+  function elegirPack(id: string) {
+    setPack(id);
+    const p = packs.find((x) => x.id === id);
+    if (!p) return;
+    setItems((prev) => ({
+      ...prev,
+      reels: p.reels,
+      piezas: p.posts,
+      portadas: p.portadas,
+      cm: p.id,
+      mediaBuyer: p.id,
+    }));
+    setPrecio(p.precio);
+  }
 
   // Lo que la cuenta APORTA, sin restarle los fijos (ver el comentario de arriba).
   const mes1 = res.margenPrimerMes;
@@ -106,7 +139,24 @@ export function CotizadorPanel({ rates }: { rates: AgencyRates }) {
           <Calculator className="h-4 w-4 text-muted-foreground" /> Qué incluye la propuesta
         </h2>
 
-        <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="mt-4">
+          <Campo label="Partir de un pack">
+            <select
+              value={pack}
+              onChange={(e) => (e.target.value ? elegirPack(e.target.value) : setPack(""))}
+              className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+            >
+              <option value="">A medida</option>
+              {packs.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.id} · {p.reels} reels · {p.posts} piezas · {ars(p.precio)}
+                </option>
+              ))}
+            </select>
+          </Campo>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-3">
           <Campo label="Reels por mes">
             <Num value={items.reels} onChange={(n) => set("reels", n)} />
           </Campo>
@@ -228,6 +278,38 @@ export function CotizadorPanel({ rates }: { rates: AgencyRates }) {
               className="h-12 w-48 text-2xl font-bold tabular-nums"
               inputMode="numeric"
             />
+          </div>
+
+          <div className={cn("mt-4 rounded-lg border p-3", probando && "border-amber-300 bg-amber-50/60 dark:border-amber-500/30 dark:bg-amber-500/10")}>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Probar otros porcentajes {probando && <span className="text-amber-600 dark:text-amber-400">· simulando</span>}
+            </p>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              <Campo label="Dirección creativa">
+                <Num value={Math.round(pctDireccion * 1000) / 10} onChange={(n) => setPctDireccion(n / 100)} prefijo="%" />
+              </Campo>
+              <Campo label="Closer desde el mes 2">
+                <Num value={Math.round(pctCartera * 1000) / 10} onChange={(n) => setPctCartera(n / 100)} prefijo="%" />
+              </Campo>
+            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              No se guarda: es para ver qué pasaría. Los de verdad se cambian en Coordinación → Tarifas.
+              {probando && (
+                <>
+                  {" "}
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => {
+                      setPctDireccion(ratesGuardadas.comision_direccion_creativa ?? 0);
+                      setPctCartera(ratesGuardadas.comision_cartera ?? 0);
+                    }}
+                  >
+                    Volver a los actuales
+                  </button>
+                </>
+              )}
+            </p>
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">

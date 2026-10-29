@@ -258,3 +258,54 @@ describe("prorrateoFijos", () => {
     expect(prorrateoFijos(650_000, 0)).toBe(0);
   });
 });
+
+describe("los packs de lista con las comisiones de octubre de 2026", () => {
+  // Tarifas reales cargadas en Coordinación al 29/10/2026.
+  const reales = {
+    ...DEFAULT_AGENCY_SETTINGS.rates,
+    plus_primer_mes: 0,
+    cm: { Presencia: 50_000, Crecimiento: 70_000, Escala: 90_000, Personalizado: 50_000 },
+    media_buyer: { Presencia: 50_000, Crecimiento: 70_000, Escala: 90_000, Personalizado: 50_000 },
+    edicion_reel: 15_000,
+    portada_reel: 2_000,
+    diseno_pieza: 8_000,
+    comision_coordinacion: 0.1,
+    comision_coord_general: 0,
+    comision_direccion_creativa: 0.05,
+    comision_cartera: 0.05,
+  };
+  const pack = (id: "Presencia" | "Crecimiento" | "Escala", n: number) =>
+    costoDeItems({ ...ITEMS_VACIOS, reels: n, piezas: n, cm: id, mediaBuyer: id }, reales);
+
+  it("cuánto deja cada pack a su precio de lista, en un mes normal", () => {
+    expect(pack("Presencia", 4).recurrenteSinCoord).toBe(200_000);
+    expect(pack("Crecimiento", 8).recurrenteSinCoord).toBe(340_000);
+    expect(pack("Escala", 12).recurrenteSinCoord).toBe(480_000);
+    expect(resultadoDePrecio(400_000, pack("Presencia", 4), reales).margen).toBe(120_000); // 30%
+    expect(resultadoDePrecio(600_000, pack("Crecimiento", 8), reales).margen).toBe(140_000); // 23%
+    expect(resultadoDePrecio(800_000, pack("Escala", 12), reales).margen).toBe(160_000); // 20%
+  });
+
+  it("con dirección creativa al 10%, cada pack deja 5 puntos menos", () => {
+    const dc10 = { ...reales, comision_direccion_creativa: 0.1 };
+    expect(resultadoDePrecio(400_000, pack("Presencia", 4), dc10).margen).toBe(100_000); // 25%
+    expect(resultadoDePrecio(600_000, pack("Crecimiento", 8), dc10).margen).toBe(110_000); // 18%
+    expect(resultadoDePrecio(800_000, pack("Escala", 12), dc10).margen).toBe(120_000); // 15%
+  });
+
+  it("subir la dirección creativa al 10% y sacar el 5% del closer deja el mismo margen", () => {
+    const hoy = resultadoDePrecio(500_000, pack("Presencia", 4), reales);
+    const cambio = resultadoDePrecio(500_000, pack("Presencia", 4), {
+      ...reales,
+      comision_direccion_creativa: 0.1,
+      comision_cartera: 0,
+    });
+    expect(cambio.margen).toBe(hoy.margen);
+  });
+
+  it("el precio de cada pack para dejar 40% en un mes normal", () => {
+    expect(precioParaMargen(200_000, 40, reales)).toBe(500_000);
+    expect(precioParaMargen(340_000, 40, reales)).toBe(850_000);
+    expect(precioParaMargen(480_000, 40, reales)).toBe(1_200_000);
+  });
+});

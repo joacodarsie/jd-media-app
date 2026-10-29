@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, Copy, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,10 @@ export function ReportWhatsappButton({
   token: string | null;
 }) {
   const [copied, setCopied] = useState(false);
+  // El dominio, recién en el navegador: así el servidor y el navegador dibujan
+  // lo mismo (si no, React redibuja todo; 29/10/2026).
+  const [origin, setOrigin] = useState("");
+  useEffect(() => setOrigin(window.location.origin), []);
 
   // Sin token de portal no se puede armar el link público.
   if (!token) {
@@ -57,7 +61,6 @@ export function ReportWhatsappButton({
     );
   }
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
   // Un solo link (17/10/2026): su plataforma, donde está el reporte de cada mes
   // junto con el calendario, el crecimiento y todo lo demás.
   const url = `${origin}/c/${token}?ver=resultados#reportes`;

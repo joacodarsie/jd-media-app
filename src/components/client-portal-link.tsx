@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Globe, Copy as CopyIcon, Check, RotateCw, XCircle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -21,9 +21,12 @@ export function ClientPortalLink({ clienteId, initialToken, initialLastSeen }: P
   const [pending, setPending] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const url = token
-    ? `${typeof window !== "undefined" ? window.location.origin : ""}/c/${token}`
-    : null;
+  // El dominio se pone recién en el navegador: si se calcula al dibujar, el
+  // servidor (sin window) y el navegador arman textos distintos y React tira
+  // toda la ficha y la vuelve a dibujar (29/10/2026).
+  const [origen, setOrigen] = useState("");
+  useEffect(() => setOrigen(window.location.origin), []);
+  const url = token ? `${origen}/c/${token}` : null;
 
   async function handleGenerate() {
     setPending(true);

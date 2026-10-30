@@ -62,6 +62,8 @@ interface ProposalRow {
   ciudad: string | null;
   // ── 0185 ──
   extras?: unknown;
+  // ── 0226 ── los packs con los precios del día en que se armó
+  packs_snapshot?: PackCatalogo[] | null;
 }
 
 const cargar = cache(async (token: string) => {
@@ -73,9 +75,16 @@ const cargar = cache(async (token: string) => {
   let data: ProposalRow | null = null;
   let conNuevas = await admin
     .from("proposals")
-    .select(`${campos}, cuentas, descuento_monto, fecha_inicio, ciudad, extras`)
+    .select(`${campos}, cuentas, descuento_monto, fecha_inicio, ciudad, extras, packs_snapshot`)
     .eq("token", token)
     .maybeSingle();
+  // Sin la 0226 (precios congelados), se reintenta sin esa columna.
+  if (conNuevas.error)
+    conNuevas = await admin
+      .from("proposals")
+      .select(`${campos}, cuentas, descuento_monto, fecha_inicio, ciudad, extras`)
+      .eq("token", token)
+      .maybeSingle();
   // Sin la 0185 (extras), se reintenta sin esa columna.
   if (conNuevas.error)
     conNuevas = await admin
@@ -101,7 +110,9 @@ const cargar = cache(async (token: string) => {
   return {
     row: data,
     servicios: (serviciosRaw ?? []) as ServicioCatalogo[],
-    packs: (packsRaw ?? []) as PackCatalogo[],
+    // Lo que se le mandó al cliente no cambia aunque después suba la lista:
+    // si la propuesta guardó sus precios, se usan esos.
+    packs: data.packs_snapshot?.length ? data.packs_snapshot : ((packsRaw ?? []) as PackCatalogo[]),
   };
 });
 

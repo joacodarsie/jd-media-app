@@ -96,11 +96,29 @@ export async function crearPropuesta(input: CrearPropuestaInput) {
 
   const extras = normalizarExtras(input.extras);
   const admin = createAdmin();
+
+  // Los packs con los precios de HOY: lo que se le manda al cliente no cambia
+  // aunque después se actualice la lista de precios (0226).
+  const { data: packsHoy } = await admin
+    .from("agency_packs")
+    .select("slug, nombre, precio_mensual, descripcion, reels, posts, dias_historias, orden")
+    .order("orden");
+  const congelados = packsHoy?.length ? { packs_snapshot: packsHoy } : {};
+
   let { data, error } = await admin
     .from("proposals")
-    .insert({ ...base, ...nuevas, ...(extras.length ? { extras } : {}) })
+    .insert({ ...base, ...nuevas, ...congelados, ...(extras.length ? { extras } : {}) })
     .select("id, token")
     .single();
+
+  // Sin la 0226 todavía: se crea igual, con los precios en vivo como antes.
+  if (error?.code === "42703" && Object.keys(congelados).length) {
+    ({ data, error } = await admin
+      .from("proposals")
+      .insert({ ...base, ...nuevas, ...(extras.length ? { extras } : {}) })
+      .select("id, token")
+      .single());
+  }
 
   // 42703 = columna inexistente: la 0159 todavía no se aplicó. La propuesta se
   // crea igual con los campos de siempre.

@@ -105,6 +105,8 @@ export const comercialTabs: SectionTab[] = [
   { href: "/prospeccion", label: "Prospección" },
   // Todas las reuniones con prospectos, de todas las campañas (pedido de Santi).
   { href: "/comercial/reuniones", label: "Reuniones" },
+  // Versión simple del de Coordinación: precios y comisión, sin costos del equipo.
+  { href: "/comercial/cotizador", label: "Cotizador" },
   { href: "/comercial/post-meet", label: "Post-meet" },
 ];
 

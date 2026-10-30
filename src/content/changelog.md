@@ -2,6 +2,12 @@
 title: Novedades
 ---
 
+## 2026-10-30 — Jornadas con precio especial y el historial del calendario
+
+- 🎬 **Jornadas: coordinación ya puede editarlas.** Luz y Santi cambian fecha, duración, quiénes van, viáticos y **el precio** (si se cobra la hora más barata). Cada cambio queda en el historial de la jornada.
+- 🙋 **Si alguien va sola/o**, se puede marcar «Fue sola/o: cobra la parte de los dos»: se lleva el 80% del trabajo y la agencia el 20%.
+- 🗓️ **Historial de cambios en cada pieza del calendario**: abrí la pieza → «Historial de cambios». Se ve quién movió la fecha o la etapa, cuándo y cuántos días se corrió. Los cambios a menos de 48 h de la fecha quedan marcados como «último momento».
+
 ## 2026-10-28 — El link del archivo manda la pieza a revisión, y el detalle del día
 
 - 🔗 **Pegar el link del archivo final (Drive / Canva) pasa la pieza sola a «Revisión creativa».** Ya no hace falta cambiar la etapa a mano: terminaste, pegás el link y le llega a quien revisa. Tu tarea queda «En revisión» y se cierra cuando aprueban la pieza.

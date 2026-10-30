@@ -78,6 +78,8 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "TrendingUp",
         roles: ["admin", "coordinador", "paid_media"],
       },
+      // Administración y Personas: plata, legal y equipo en un lugar (nov. 2026).
+      { href: "/administracion", label: "Administración", icon: "Briefcase", roles: ["admin"] },
       { href: "/agenda", label: "Agenda", icon: "CalendarClock" },
       // Jornadas de producción: el registro de cobros y pagos (23/10/2026). Lo
       // carga la project manager; dirección cobra y paga.

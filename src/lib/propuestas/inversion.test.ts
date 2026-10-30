@@ -111,7 +111,7 @@ describe("volumenPrimerMes", () => {
   it("nunca promete cero de un formato que el pack sí tiene", () => {
     const chico = pack({ slug: "chico", reels: 1, posts: 1, dias_historias: 1 });
     const inv = armarInversion([{ handle: "@x", packSlug: "chico" }], [chico], 0);
-    expect(volumenPrimerMes(inv.lineas)[0].texto).toBe("1 reels, 1 carruseles, 1 días de historias");
+    expect(volumenPrimerMes(inv.lineas)[0].texto).toBe("1 reel, 1 carrusel, 1 día de historias");
   });
 });
 
@@ -208,5 +208,47 @@ describe("handleBonito", () => {
 
   it("tolera vacío", () => {
     expect(handleBonito("")).toBe("");
+  });
+});
+
+describe("pack a medida", () => {
+  // Fragancias (30/10/2026): poco presupuesto, volumen chico con precio propio.
+  const fragancias = [
+    {
+      handle: "@fragancias",
+      packSlug: "personalizado",
+      nombre: "A medida",
+      precio: 300000,
+      reels: 2,
+      posts: 2,
+      dias_historias: 8,
+    },
+  ];
+
+  it("usa el precio y el volumen cargados, no los del catálogo", () => {
+    const inv = armarInversion(fragancias, PACKS, 0);
+    expect(inv.lineas[0].packNombre).toBe("A medida");
+    expect(inv.lineas[0].precio).toBe(300000);
+    expect(inv.lineas[0].volumen).toBe("2 reels · 2 carruseles · 8 días de historias");
+    expect(inv.total).toBe(300000);
+    expect(inv.aMedida).toBe(false);
+  });
+
+  it("el primer mes publica la mitad del volumen a medida", () => {
+    const inv = armarInversion(fragancias, PACKS, 0);
+    expect(volumenPrimerMes(inv.lineas)[0].texto).toBe("1 reel, 1 carrusel, 4 días de historias");
+  });
+
+  it("lo que no se cargó sale del pack de base", () => {
+    const inv = armarInversion([{ handle: "@x", packSlug: "presencia", reels: 6 }], PACKS, 0);
+    expect(inv.lineas[0].packNombre).toBe("Presencia");
+    expect(inv.lineas[0].precio).toBe(400000);
+    expect(inv.lineas[0].volumen).toBe("6 reels · 4 carruseles · 8 días de historias");
+  });
+
+  it("ignora números inválidos", () => {
+    const inv = armarInversion([{ handle: "@x", packSlug: "presencia", precio: -5, reels: NaN }], PACKS, 0);
+    expect(inv.lineas[0].precio).toBe(400000);
+    expect(inv.lineas[0].pack.reels).toBe(4);
   });
 });

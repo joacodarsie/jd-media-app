@@ -107,6 +107,8 @@ export const comercialTabs: SectionTab[] = [
   { href: "/comercial/reuniones", label: "Reuniones" },
   // Versión simple del de Coordinación: precios y comisión, sin costos del equipo.
   { href: "/comercial/cotizador", label: "Cotizador" },
+  // La propuesta entera desde la reunión: pack o a medida, con el margen mínimo.
+  { href: "/comercial/presupuesto", label: "✨ Presupuesto con IA" },
   { href: "/comercial/post-meet", label: "Post-meet" },
 ];
 

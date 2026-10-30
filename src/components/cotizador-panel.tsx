@@ -155,6 +155,9 @@ export function CotizadorPanel({
 
   // Las referencias de precio, cada una con lo que deja el mes 1 y el mes 2.
   // Se calculan con el mismo motor que el resto para que no puedan discrepar.
+  // El margen que el dueño quiere probar, además de los de referencia.
+  const [objetivo, setObjetivo] = useState(35);
+
   const opciones = useMemo(() => {
     const armar = (etiqueta: string, nota: string, p: number | null) => {
       if (p == null) return null;
@@ -163,11 +166,26 @@ export function CotizadorPanel({
     };
     return [
       armar("Piso", "no perdés plata ni el primer mes", piso),
-      ...OBJETIVOS.map((obj) =>
-        armar(`${obj}%`, obj === 30 ? "el mínimo real" : obj === 40 ? "lo sano" : "lo bueno", precioParaMargen(costo.recurrenteSinCoord, obj, rates, 0, { conComisionCierre: conCierre, extrasMensual: costo.ingresoMensualExtras }))
-      ),
+      ...[...OBJETIVOS, ...(OBJETIVOS.includes(objetivo) || objetivo <= 0 ? [] : [objetivo])]
+        .sort((a, b) => a - b)
+        .map((obj) =>
+          armar(
+            `${obj}%`,
+            obj === objetivo && !OBJETIVOS.includes(obj)
+              ? "tu objetivo"
+              : obj === 30
+                ? "el mínimo real"
+                : obj === 40
+                  ? "lo sano"
+                  : "lo bueno",
+            precioParaMargen(costo.recurrenteSinCoord, obj, rates, 0, {
+              conComisionCierre: conCierre,
+              extrasMensual: costo.ingresoMensualExtras,
+            })
+          )
+        ),
     ].filter((o): o is NonNullable<typeof o> => o != null);
-  }, [costo, rates, conCierre, piso]);
+  }, [costo, rates, conCierre, piso, objetivo]);
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_1.05fr]">
@@ -468,6 +486,8 @@ export function CotizadorPanel({
           opciones={opciones}
           precioActual={precio}
           onElegir={setPrecio}
+          objetivo={objetivo}
+          onObjetivo={setObjetivo}
           piso={piso}
         />
       </div>
@@ -559,15 +579,31 @@ function QuePrecioPoner({
   precioActual,
   onElegir,
   piso,
+  objetivo,
+  onObjetivo,
 }: {
   opciones: OpcionPrecio[];
   precioActual: number;
   onElegir: (p: number) => void;
   piso: number | null;
+  objetivo: number;
+  onObjetivo: (n: number) => void;
 }) {
   return (
     <div className="rounded-xl border bg-card p-5">
-      <h3 className="text-sm font-semibold">Qué precio poner</h3>
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold">Qué precio poner</h3>
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          Tu margen objetivo
+          <Input
+            value={String(objetivo)}
+            onChange={(e) => onObjetivo(Math.min(Number(e.target.value.replace(/[^\d]/g, "")) || 0, 90))}
+            className="h-7 w-14 text-right tabular-nums"
+            inputMode="numeric"
+          />
+          %
+        </label>
+      </div>
       <p className="mt-0.5 text-xs text-muted-foreground">
         Tocá una fila para probarla arriba. El <b>%</b> es lo que te queda del mes 2 en adelante.
       </p>

@@ -27,6 +27,30 @@ export interface CuentaPropuesta {
   packSlug: string;
   /** Para qué es esa cuenta. Una línea, opcional. */
   nota?: string | null;
+  /**
+   * Pack a medida (30/10/2026): lo que se cargue acá pisa al pack del catálogo.
+   * Sale del armador con IA, que arma volúmenes chicos para clientes con poco
+   * presupuesto (Fragancias: 2 reels + 2 carruseles + 8 días de historias).
+   */
+  nombre?: string | null;
+  precio?: number | null;
+  reels?: number | null;
+  posts?: number | null;
+  dias_historias?: number | null;
+}
+
+/** El pack de la cuenta con lo que se cargó a medida encima del del catálogo. */
+export function packDeCuenta(c: CuentaPropuesta, base: PackCatalogo): PackCatalogo {
+  const num = (v: unknown, def: number | null) =>
+    typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.round(v) : def;
+  return {
+    ...base,
+    nombre: c.nombre?.trim() || base.nombre,
+    precio_mensual: num(c.precio, base.precio_mensual),
+    reels: num(c.reels, base.reels),
+    posts: num(c.posts, base.posts),
+    dias_historias: num(c.dias_historias, base.dias_historias),
+  };
 }
 
 export interface LineaInversion {
@@ -50,12 +74,17 @@ export interface Inversion {
   aMedida: boolean;
 }
 
+/** "1 reel" / "2 reels": los packs a medida bajan a uno. */
+const reels = (n: number) => `${n} ${n === 1 ? "reel" : "reels"}`;
+const carruseles = (n: number) => `${n} ${n === 1 ? "carrusel" : "carruseles"}`;
+const historias = (n: number) => `${n} ${n === 1 ? "día" : "días"} de historias`;
+
 /** El volumen de un pack en una línea. Null para "Personalizado". */
 export function volumenDePack(p: PackCatalogo): string | null {
   const partes: string[] = [];
-  if (p.reels) partes.push(`${p.reels} reels`);
-  if (p.posts) partes.push(`${p.posts} carruseles`);
-  if (p.dias_historias) partes.push(`${p.dias_historias} días de historias`);
+  if (p.reels) partes.push(reels(p.reels));
+  if (p.posts) partes.push(carruseles(p.posts));
+  if (p.dias_historias) partes.push(historias(p.dias_historias));
   return partes.length ? partes.join(" · ") : null;
 }
 
@@ -72,8 +101,9 @@ export function armarInversion(
 
   const lineas: LineaInversion[] = [];
   for (const c of cuentas) {
-    const pack = porSlug.get(c.packSlug);
-    if (!pack) continue;
+    const delCatalogo = porSlug.get(c.packSlug);
+    if (!delCatalogo) continue;
+    const pack = packDeCuenta(c, delCatalogo);
     lineas.push({
       handle: handleBonito(c.handle),
       packNombre: pack.nombre,
@@ -165,9 +195,9 @@ export function volumenPrimerMes(lineas: LineaInversion[]): VolumenMes1[] {
       const r = mitad(l.pack.reels);
       const c = mitad(l.pack.posts);
       const h = mitad(l.pack.dias_historias);
-      if (r) partes.push(`${r} reels`);
-      if (c) partes.push(`${c} carruseles`);
-      if (h) partes.push(`${h} días de historias`);
+      if (r) partes.push(reels(r));
+      if (c) partes.push(carruseles(c));
+      if (h) partes.push(historias(h));
       return { handle: l.handle, texto: partes.join(", ") };
     })
     .filter((x) => x.texto);

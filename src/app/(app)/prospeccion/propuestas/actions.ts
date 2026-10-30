@@ -5,8 +5,10 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { createAdmin } from "@/lib/supabase/admin";
 import { requireUser, userInRoles } from "@/lib/auth";
-import { detectarRubro, rubroPorSlug } from "@/lib/propuestas/rubros";
-import { nuevoToken, urlPropuesta } from "@/lib/propuestas/build";
+import { rubroPorSlug } from "@/lib/propuestas/rubros";
+import { urlPropuesta } from "@/lib/propuestas/build";
+import type { CuentaPropuesta } from "@/lib/propuestas/inversion";
+import { insertarPropuesta, type CrearPropuestaInput } from "@/lib/propuestas/crear";
 
 const PUEDEN = ["admin", "coordinador", "comercial", "prospecting"];
 
@@ -25,118 +27,13 @@ function origen(): string {
   return `${proto}://${host}`;
 }
 
-export interface CrearPropuestaInput {
-  empresa: string;
-  contactoNombre?: string | null;
-  /** Texto libre del rubro (el de la campaña). Se usa para elegir la ficha. */
-  rubroTexto?: string | null;
-  /** Ficha elegida a mano; si viene, gana sobre la detección. */
-  rubroSlug?: string | null;
-  packSugerido?: string | null;
-  contactoId?: string | null;
-  campaignId?: string | null;
-  /** Sitio del prospecto: le da contexto real a la IA. */
-  sitioWeb?: string | null;
-  /** Su Instagram, que para estos rubros dice más que la web. */
-  instagram?: string | null;
-  /** Ciudad: define si las jornadas de producción llevan traslado. */
-  ciudad?: string | null;
-  /** Una entrada por cuenta a llevar: {handle, packSlug, nota}. */
-  cuentas?: { handle: string; packSlug: string; nota?: string | null }[] | null;
-  /** Descuento mensual por llevar varias cuentas. Se ignora si hay una sola. */
-  descuentoMonto?: number | null;
-  /** Desde cuándo arranca, para el proporcional del primer mes. */
-  fechaInicio?: string | null;
-  /** Descripción del negocio y transcripción: lo que la IA usa para escribir. */
-  contexto?: string | null;
-  /** Extras que se suman al pack, con su precio (0185). */
-  extras?: { slug: string; precio: number }[] | null;
-}
-
 export async function crearPropuesta(input: CrearPropuestaInput) {
   const g = await gate();
   if ("error" in g) return g;
-
-  const empresa = input.empresa?.trim();
-  if (!empresa) return { error: "Falta el nombre de la empresa." };
-
-  const ficha = input.rubroSlug ? rubroPorSlug(input.rubroSlug) : detectarRubro(input.rubroTexto);
-  const token = nuevoToken();
-
-  const cuentas = (input.cuentas ?? [])
-    .map((c) => ({
-      handle: (c.handle ?? "").trim().slice(0, 80),
-      packSlug: (c.packSlug ?? "").trim(),
-      nota: c.nota?.trim()?.slice(0, 240) || null,
-    }))
-    .filter((c) => c.handle && c.packSlug);
-
-  const nuevas = {
-    ciudad: input.ciudad?.trim()?.slice(0, 120) || null,
-    cuentas: cuentas.length ? cuentas : null,
-    descuento_monto: Math.max(0, Math.round(input.descuentoMonto ?? 0)),
-    fecha_inicio: /^\d{4}-\d{2}-\d{2}$/.test(input.fechaInicio ?? "") ? input.fechaInicio : null,
-    contexto: input.contexto?.trim()?.slice(0, 60000) || null,
-  };
-
-  const base = {
-      token,
-      empresa: empresa.slice(0, 160),
-      contacto_nombre: input.contactoNombre?.trim()?.slice(0, 120) || null,
-      rubro_slug: ficha.slug,
-      rubro_texto: input.rubroTexto?.trim()?.slice(0, 300) || null,
-      sitio_web: input.sitioWeb?.trim()?.slice(0, 300) || null,
-      instagram: input.instagram?.trim()?.slice(0, 120) || null,
-      pack_sugerido: input.packSugerido || ficha.pack,
-      servicios: ficha.servicios,
-      contacto_id: input.contactoId || null,
-      campaign_id: input.campaignId || null,
-      creada_por_id: g.me.id,
-  };
-
-  const extras = normalizarExtras(input.extras);
-  const admin = createAdmin();
-
-  // Los packs con los precios de HOY: lo que se le manda al cliente no cambia
-  // aunque después se actualice la lista de precios (0226).
-  const { data: packsHoy } = await admin
-    .from("agency_packs")
-    .select("slug, nombre, precio_mensual, descripcion, reels, posts, dias_historias, orden")
-    .order("orden");
-  const congelados = packsHoy?.length ? { packs_snapshot: packsHoy } : {};
-
-  let { data, error } = await admin
-    .from("proposals")
-    .insert({ ...base, ...nuevas, ...congelados, ...(extras.length ? { extras } : {}) })
-    .select("id, token")
-    .single();
-
-  // Sin la 0226 todavía: se crea igual, con los precios en vivo como antes.
-  if (error?.code === "42703" && Object.keys(congelados).length) {
-    ({ data, error } = await admin
-      .from("proposals")
-      .insert({ ...base, ...nuevas, ...(extras.length ? { extras } : {}) })
-      .select("id, token")
-      .single());
-  }
-
-  // 42703 = columna inexistente: la 0159 todavía no se aplicó. La propuesta se
-  // crea igual con los campos de siempre.
-  if (error?.code === "42703") {
-    ({ data, error } = await admin.from("proposals").insert(base).select("id, token").single());
-  }
-
-  if (error || !data) {
-    return {
-      error:
-        error?.code === "42P01"
-          ? "Falta aplicar la migración 0153 en Supabase."
-          : error?.message ?? "No se pudo crear la propuesta.",
-    };
-  }
-
+  const r = await insertarPropuesta(input, g.me.id);
+  if ("error" in r) return r;
   revalidatePath("/prospeccion/propuestas");
-  return { ok: true as const, id: data.id, url: urlPropuesta(origen(), data.token) };
+  return { ok: true as const, id: r.id, url: urlPropuesta(origen(), r.token) };
 }
 
 /**
@@ -304,7 +201,7 @@ export async function ajustarPropuesta(
   const row = data as {
     empresa: string;
     instagram: string | null;
-    cuentas: { handle: string; packSlug: string; nota?: string | null }[] | null;
+    cuentas: CuentaPropuesta[] | null;
   };
 
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -313,7 +210,10 @@ export async function ajustarPropuesta(
       ? row.cuentas
       : [{ handle: row.instagram?.trim() || row.empresa, packSlug: patch.packSlug, nota: null }];
     // Con una sola cuenta el pack se cambia acá; con varias, desde el formulario.
-    if (cuentas.length === 1) cuentas[0] = { ...cuentas[0], packSlug: patch.packSlug };
+    // Elegir un pack de lista saca lo que estaba a medida (volumen y precio).
+    // El editor manda el pack en cada guardado: si es el mismo, queda como está.
+    if (cuentas.length === 1 && cuentas[0].packSlug !== patch.packSlug)
+      cuentas[0] = { handle: cuentas[0].handle, packSlug: patch.packSlug, nota: cuentas[0].nota ?? null };
     update.cuentas = cuentas;
     update.pack_sugerido = patch.packSlug;
   }

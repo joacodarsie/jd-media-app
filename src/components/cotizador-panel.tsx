@@ -1,14 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Calculator, Info } from "lucide-react";
+import { Calculator, Info, Plus, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import type { AgencyRates, PackParam, RatePack } from "@/lib/coordinacion";
+import type { AgencyRates, PackParam, PrecioReferencia, RatePack } from "@/lib/coordinacion";
 import {
   costoDeItems,
   resultadoDePrecio,
   precioParaMargen,
   precioSinPerdidaPrimerMes,
+  type ExtraCotizacion,
   type ItemsCotizacion,
 } from "@/lib/finanzas/cotizador";
 import { cn } from "@/lib/utils";
@@ -47,7 +48,18 @@ function ars(n: number) {
  * estructura queda cubierta o no es una pregunta de la cartera entera, y se
  * responde en Finanzas.
  */
-export function CotizadorPanel({ rates: ratesGuardadas, packs }: { rates: AgencyRates; packs: PackParam[] }) {
+/** Lo que se cobra una sola vez: lo dice la nota del precio de referencia, o es de estos. */
+const PAGO_UNICO = new Set(["branding", "desarrollo_web", "jornada"]);
+
+export function CotizadorPanel({
+  rates: ratesGuardadas,
+  packs,
+  referencias = [],
+}: {
+  rates: AgencyRates;
+  packs: PackParam[];
+  referencias?: PrecioReferencia[];
+}) {
   // Para probar "¿y si la dirección creativa pasa al 10%?" sin tocar las tarifas
   // de verdad: todo el cotizador calcula con estos % y no se guarda nada.
   const [pctDireccion, setPctDireccion] = useState(ratesGuardadas.comision_direccion_creativa ?? 0);
@@ -86,6 +98,30 @@ export function CotizadorPanel({ rates: ratesGuardadas, packs }: { rates: Agency
     if (k !== "manualMarca" && k !== "otros") setPack("");
   };
 
+  // Lo que se puede sumar a la propuesta: los precios de referencia que no son
+  // la gestión de redes (esa se arma arriba).
+  const agregables = referencias.filter((r) => !r.id.startsWith("redes_"));
+  const extras = items.extras ?? [];
+  const setExtras = (xs: ExtraCotizacion[]) => setItems((p) => ({ ...p, extras: xs }));
+
+  function agregarExtra(refId: string) {
+    const r = agregables.find((x) => x.id === refId);
+    const nuevo: ExtraCotizacion = {
+      id: `${refId || "otro"}_${Date.now()}`,
+      nombre: r?.nombre ?? "",
+      precio: r?.precio ?? 0,
+      // Lo único que se sabe qué cuesta es la pauta (el media buyer). El resto
+      // lo carga quien cotiza.
+      costo: refId === "paid_media" ? (rates.media_buyer.Personalizado ?? 0) : 0,
+      unaVez: r ? PAGO_UNICO.has(r.id) || /pago único/i.test(r.nota) : false,
+    };
+    setExtras([...extras, nuevo]);
+  }
+
+  function editarExtra(id: string, cambio: Partial<ExtraCotizacion>) {
+    setExtras(extras.map((x) => (x.id === id ? { ...x, ...cambio } : x)));
+  }
+
   /** Carga el desglose real de un pack de lista y su precio. */
   function elegirPack(id: string) {
     setPack(id);
@@ -106,7 +142,9 @@ export function CotizadorPanel({ rates: ratesGuardadas, packs }: { rates: Agency
   const mes1 = res.margenPrimerMes;
   const recurrente = res.margen;
   const pct = res.margenPct;
-  const pctMes1 = precio > 0 ? (mes1 / precio) * 100 : 0;
+  // El mes 1 el cliente paga también lo que es de una sola vez.
+  const precioMes1 = res.precioMensual + costo.ingresoUnaVezExtras;
+  const pctMes1 = precioMes1 > 0 ? (mes1 / precioMes1) * 100 : 0;
 
   // El piso de la cotización: el precio más bajo con el que el primer mes no da
   // pérdida. Todo lo que esté debajo de esto arranca en rojo.
@@ -126,7 +164,7 @@ export function CotizadorPanel({ rates: ratesGuardadas, packs }: { rates: Agency
     return [
       armar("Piso", "no perdés plata ni el primer mes", piso),
       ...OBJETIVOS.map((obj) =>
-        armar(`${obj}%`, obj === 30 ? "el mínimo real" : obj === 40 ? "lo sano" : "lo bueno", precioParaMargen(costo.recurrenteSinCoord, obj, rates, 0, { conComisionCierre: conCierre }))
+        armar(`${obj}%`, obj === 30 ? "el mínimo real" : obj === 40 ? "lo sano" : "lo bueno", precioParaMargen(costo.recurrenteSinCoord, obj, rates, 0, { conComisionCierre: conCierre, extrasMensual: costo.ingresoMensualExtras }))
       ),
     ].filter((o): o is NonNullable<typeof o> => o != null);
   }, [costo, rates, conCierre, piso]);
@@ -195,6 +233,69 @@ export function CotizadorPanel({ rates: ratesGuardadas, packs }: { rates: Agency
             />
             Manual de marca ({ars(rates.manual_marca)}, una vez)
           </label>
+        </div>
+
+        {/* ── Otros servicios de la propuesta ── */}
+        <div className="mt-5 border-t pt-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Sumar a la propuesta
+          </p>
+          {extras.length > 0 && (
+            <div className="mt-2 space-y-2">
+              <div className="grid grid-cols-[1fr_6.5rem_6.5rem_auto_auto] gap-2 text-[11px] text-muted-foreground">
+                <span>Servicio</span>
+                <span>Le cobrás</span>
+                <span>Te cuesta</span>
+                <span>Una vez</span>
+                <span />
+              </div>
+              {extras.map((x) => (
+                <div key={x.id} className="grid grid-cols-[1fr_6.5rem_6.5rem_auto_auto] items-center gap-2">
+                  <Input value={x.nombre} onChange={(e) => editarExtra(x.id, { nombre: e.target.value })} className="h-9" placeholder="Qué es" />
+                  <Num value={x.precio} onChange={(n) => editarExtra(x.id, { precio: n })} />
+                  <Num value={x.costo} onChange={(n) => editarExtra(x.id, { costo: n })} />
+                  <input
+                    type="checkbox"
+                    checked={x.unaVez}
+                    onChange={(e) => editarExtra(x.id, { unaVez: e.target.checked })}
+                    className="mx-auto h-4 w-4 accent-primary"
+                    aria-label="Se cobra una sola vez"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setExtras(extras.filter((y) => y.id !== x.id))}
+                    className="text-muted-foreground hover:text-rose-600"
+                    aria-label="Sacar"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+              {extras.some((x) => x.costo === 0) && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                  Cargá cuánto te cuesta cada servicio (lo que le pagás a quien lo hace): si queda en $0 el margen sale inflado.
+                </p>
+              )}
+            </div>
+          )}
+          <div className="mt-2 flex items-center gap-2">
+            <Plus className="h-4 w-4 text-muted-foreground" />
+            <select
+              value=""
+              onChange={(e) => {
+                if (e.target.value) agregarExtra(e.target.value === "__otro" ? "" : e.target.value);
+              }}
+              className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+            >
+              <option value="">Agregar un servicio…</option>
+              {agregables.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.nombre} · {ars(r.precio)}
+                </option>
+              ))}
+              <option value="__otro">Otro (a mano)</option>
+            </select>
+          </div>
         </div>
 
         {/* ── Todos los meses ── */}
@@ -268,7 +369,7 @@ export function CotizadorPanel({ rates: ratesGuardadas, packs }: { rates: Agency
       <div className="space-y-4">
         <div className="rounded-xl border bg-card p-5">
           <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Precio al cliente
+            {extras.length > 0 ? "Precio de la gestión de redes (por mes)" : "Precio al cliente"}
           </label>
           <div className="mt-1 flex items-center gap-2">
             <span className="text-2xl font-bold text-muted-foreground">$</span>
@@ -279,6 +380,16 @@ export function CotizadorPanel({ rates: ratesGuardadas, packs }: { rates: Agency
               inputMode="numeric"
             />
           </div>
+          {extras.length > 0 && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Total por mes: <b className="text-foreground">{ars(res.precioMensual)}</b>
+              {costo.ingresoUnaVezExtras > 0 && (
+                <>
+                  {" "}· pago único: <b className="text-foreground">{ars(costo.ingresoUnaVezExtras)}</b>
+                </>
+              )}
+            </p>
+          )}
 
           <div className={cn("mt-4 rounded-lg border p-3", probando && "border-amber-300 bg-amber-50/60 dark:border-amber-500/30 dark:bg-amber-500/10")}>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -316,7 +427,7 @@ export function CotizadorPanel({ rates: ratesGuardadas, packs }: { rates: Agency
             <Periodo
               etiqueta="Mes 1"
               sub="el del arranque"
-              precio={precio}
+              precio={precioMes1}
               entrega={res.costoMensual - res.cartera}
               arranque={res.arranque}
               queda={mes1}
@@ -326,7 +437,7 @@ export function CotizadorPanel({ rates: ratesGuardadas, packs }: { rates: Agency
             <Periodo
               etiqueta="Mes 2 en adelante"
               sub="el mes normal"
-              precio={precio}
+              precio={res.precioMensual}
               entrega={res.costoMensual}
               arranque={null}
               queda={recurrente}

@@ -218,6 +218,9 @@ describe("precioParaMargen", () => {
     lineas: [],
     recurrenteSinCoord: recurrente,
     unaVez: 0,
+    manual: 0,
+    ingresoMensualExtras: 0,
+    ingresoUnaVezExtras: 0,
     conCM: false,
     conMediaBuyer: false,
     baseDiseno: 0,
@@ -307,5 +310,47 @@ describe("los packs de lista con las comisiones de octubre de 2026", () => {
     expect(precioParaMargen(200_000, 40, reales)).toBe(500_000);
     expect(precioParaMargen(340_000, 40, reales)).toBe(850_000);
     expect(precioParaMargen(480_000, 40, reales)).toBe(1_200_000);
+  });
+});
+
+describe("extras de la propuesta (WhatsApp, web, una jornada…)", () => {
+  const base = { ...ITEMS_VACIOS, reels: 4, piezas: 4, cm: "Presencia" as const, mediaBuyer: "Presencia" as const };
+  const whatsapp = { id: "w", nombre: "Gestión de WhatsApp", precio: 50_000, costo: 20_000, unaVez: false };
+  const web = { id: "x", nombre: "Sitio web", precio: 300_000, costo: 150_000, unaVez: true };
+
+  it("un extra mensual suma al abono y a su costo; paga closer pero no coordinación ni dirección creativa", () => {
+    const sin = resultadoDePrecio(500_000, costoDeItems(base, rates), rates);
+    const con = resultadoDePrecio(500_000, costoDeItems({ ...base, extras: [whatsapp] }, rates), rates);
+    expect(con.precioMensual).toBe(550_000);
+    expect(con.coordinacion).toBe(sin.coordinacion);
+    expect(con.direccionCreativa).toBe(sin.direccionCreativa);
+    expect(con.cartera).toBe(27_500); // 5% de 550.000
+    // +50.000 de precio − 20.000 de costo − 2.500 de closer
+    expect(con.margen - sin.margen).toBe(27_500);
+  });
+
+  it("un extra de pago único entra entero el mes 1 y no toca los meses siguientes", () => {
+    const sin = resultadoDePrecio(500_000, costoDeItems(base, rates), rates);
+    const con = resultadoDePrecio(500_000, costoDeItems({ ...base, extras: [web] }, rates), rates);
+    expect(con.margen).toBe(sin.margen);
+    expect(con.margenPrimerMes - sin.margenPrimerMes).toBe(150_000); // 300.000 − 150.000
+    expect(con.arranqueLineas.find((l) => l.concepto === "Sitio web")?.monto).toBe(150_000);
+  });
+
+  it("el precio para un margen tiene en cuenta lo que ya paga el extra", () => {
+    const costo = costoDeItems({ ...base, extras: [whatsapp] }, rates);
+    const gestion = precioParaMargen(costo.recurrenteSinCoord, 40, rates, 0, {
+      extrasMensual: costo.ingresoMensualExtras,
+    })!;
+    const r = resultadoDePrecio(gestion, costo, rates);
+    expect(r.margenPct).toBeGreaterThanOrEqual(40);
+    expect(r.margenPct).toBeLessThan(41);
+  });
+
+  it("al piso, el mes 1 no da pérdida aunque haya extras", () => {
+    const costo = costoDeItems({ ...base, manualMarca: true, extras: [whatsapp, web] }, rates);
+    const piso = precioSinPerdidaPrimerMes(costo, rates)!;
+    expect(resultadoDePrecio(piso, costo, rates).margenPrimerMes).toBeGreaterThanOrEqual(0);
+    expect(resultadoDePrecio(piso - 5000, costo, rates).margenPrimerMes).toBeLessThan(0);
   });
 });

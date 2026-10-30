@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import { savePreciosReferencia } from "@/app/(app)/coordinacion/actions";
 import type { PrecioReferencia } from "@/lib/coordinacion";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,8 @@ export function PreciosReferencia({ initial }: { initial: PrecioReferencia[] }) 
   const [filas, setFilas] = useState<PrecioReferencia[]>(initial);
   const [sucio, setSucio] = useState(false);
   const [pending, start] = useTransition();
+  // Cerrado por defecto: es para consultar de vez en cuando, no para cotizar.
+  const [abierto, setAbierto] = useState(false);
 
   const fmt = (n: number) => "$" + new Intl.NumberFormat("es-AR").format(n);
 
@@ -57,13 +59,24 @@ export function PreciosReferencia({ initial }: { initial: PrecioReferencia[] }) 
   return (
     <div className="rounded-xl border bg-card p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div>
+        <button
+          type="button"
+          onClick={() => setAbierto((v) => !v)}
+          className="flex items-center gap-2 text-left"
+          aria-expanded={abierto}
+        >
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${abierto ? "" : "-rotate-90"}`}
+          />
+          <span>
           <h2 className="text-base font-semibold">Precios de referencia</h2>
           <p className="text-xs text-muted-foreground">
             De cuánto partimos para cotizar. No se publican en la web: sirven para comparar
             rápido y armar una propuesta.
           </p>
-        </div>
+          </span>
+        </button>
+        {abierto && (
         <div className="ml-auto flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={agregar} disabled={pending}>
             <Plus className="mr-1.5 h-4 w-4" /> Agregar
@@ -72,8 +85,10 @@ export function PreciosReferencia({ initial }: { initial: PrecioReferencia[] }) 
             {pending ? "Guardando…" : "Guardar"}
           </Button>
         </div>
+        )}
       </div>
 
+      {abierto && (
       <div className="mt-3 space-y-1.5">
         {filas.map((f, i) => (
           <div key={f.id} className="flex flex-wrap items-center gap-2">
@@ -115,6 +130,7 @@ export function PreciosReferencia({ initial }: { initial: PrecioReferencia[] }) 
           </p>
         )}
       </div>
+      )}
     </div>
   );
 }

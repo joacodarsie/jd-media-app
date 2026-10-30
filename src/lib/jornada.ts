@@ -69,6 +69,11 @@ export interface JornadaInputSplit {
    * vienen, el total se reparte en partes iguales, como antes.
    */
   viaticosPersona?: [number, number | null];
+  /**
+   * Si fue sola/o, cobra también la parte del acompañante (30/10/2026, Luz):
+   * 80% para la persona, 20% para la agencia. Solo cuenta sin acompañante.
+   */
+  soloCobraTodo?: boolean;
 }
 
 /**
@@ -85,7 +90,8 @@ export function splitJornada(input: JornadaInputSplit): JornadaSplit {
   const viaticosPorPersona = Math.round(viaticos / numPersonas);
   const [vDir, vAco] = input.viaticosPersona ?? [viaticosPorPersona, input.hasAcompanante ? viaticosPorPersona : null];
 
-  const director = Math.max(0, vDir) + Math.round(precio * JORNADA_PCT_DIRECTOR);
+  const pctDirector = !input.hasAcompanante && input.soloCobraTodo ? JORNADA_PCT_DIRECTOR + JORNADA_PCT_ACOMPANANTE : JORNADA_PCT_DIRECTOR;
+  const director = Math.max(0, vDir) + Math.round(precio * pctDirector);
   const acompanante = input.hasAcompanante
     ? Math.max(0, vAco ?? 0) + Math.round(precio * JORNADA_PCT_ACOMPANANTE)
     : null;

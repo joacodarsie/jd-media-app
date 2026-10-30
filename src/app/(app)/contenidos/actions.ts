@@ -16,7 +16,8 @@ import {
 import { publicarPiezaEnDrive } from "@/lib/google-drive";
 import { createClient } from "@/lib/supabase/server";
 import { createAdmin } from "@/lib/supabase/admin";
-import { requireUser, isStaffUser, userInRoles } from "@/lib/auth";
+import { requireUser, isStaffUser, userInRoles, getAccessibleClientIds } from "@/lib/auth";
+import { textoCambio, type CambioPieza } from "@/lib/contenidos/cambios-calendario";
 
 async function ctx() {
   const supabase = createClient();
@@ -35,6 +36,20 @@ async function ctx() {
 // (Existe la migración 0107 que arregla la RLS; esto no depende de aplicarla.)
 function writeDb() {
   return createAdmin();
+}
+
+/**
+ * Quién hizo el cambio, para el registro del calendario (0224): las escrituras
+ * van con la clave de servicio, así que la base no sabe quién es. Se suma al
+ * patch y el trigger lo anota (y lo vacía).
+ */
+async function firma(): Promise<{ editado_por_id?: string }> {
+  try {
+    const { userId } = await ctx();
+    return { editado_por_id: userId };
+  } catch {
+    return {};
+  }
 }
 
 /**
@@ -209,6 +224,7 @@ export async function updatePublication(id: string, input: PublicationInput) {
   if (gate) return { error: gate };
   const payload: Record<string, unknown> = clean(input);
   if (input.estado) Object.assign(payload, { estado: input.estado }, selloDeRevision(input.estado));
+  Object.assign(payload, await firma());
   const { data, error } = await updateTolerandoSello(
     (p) => writeDb().from("publications").update(p).eq("id", id).select("cliente_id").single(),
     payload
@@ -271,7 +287,7 @@ export async function changePublicationStatus(
   });
   if (motivoArchivo) return { error: motivoArchivo, faltaArchivo: true };
 
-  const patch: Record<string, unknown> = { estado, ...selloDeRevision(estado, pub.estado) };
+  const patch: Record<string, unknown> = { estado, ...selloDeRevision(estado, pub.estado), ...(await firma()) };
   if (linkPosteo && linkPosteo.trim()) {
     patch.link_instagram = linkPosteo.trim();
   }
@@ -381,7 +397,7 @@ export async function updatePublicationDate(id: string, date: string | null) {
   }
   const { data, error } = await writeDb()
     .from("publications")
-    .update({ fecha_publicacion: fechaIso })
+    .update({ fecha_publicacion: fechaIso, ...(await firma()) })
     .eq("id", id)
     .select("cliente_id")
     .single();
@@ -635,7 +651,7 @@ export async function bulkChangePublicationStatus(ids: string[], estado: string)
 
   const { error } = await updateTolerandoSello(
     (p) => writeDb().from("publications").update(p).in("id", ids),
-    { estado, ...selloDeRevision(estado) }
+    { estado, ...selloDeRevision(estado), ...(await firma()) }
   );
   if (error) return { error: error.message };
   revalidatePath("/contenidos");
@@ -860,7 +876,7 @@ export async function corregirPieza(id: string, nota: string) {
   const nuevoEstado = pieza.estado === "idea" ? "idea" : "rechazado";
   const { error } = await writeDb()
     .from("publications")
-    .update({ estado: nuevoEstado, notas_revision: texto })
+    .update({ estado: nuevoEstado, notas_revision: texto, ...(await firma()) })
     .eq("id", id);
   if (error) return { error: error.message };
 
@@ -904,10 +920,41 @@ export async function aprobarIdeasEnBloque(ids: string[]) {
   for (const [destino, lista] of porDestino) {
     const { error } = await writeDb()
       .from("publications")
-      .update({ estado: destino, notas_revision: null })
+      .update({ estado: destino, notas_revision: null, ...(await firma()) })
       .in("id", lista);
     if (error) return { error: error.message };
   }
   invalidate(piezas[0]?.cliente_id);
   return { ok: true, aprobadas: ideas.length };
+}
+
+/**
+ * El historial de una pieza (0224): cada cambio de fecha y de etapa, con quién
+ * y cuándo. Lo ve quien puede ver la cuenta.
+ */
+export async function historialDePieza(id: string) {
+  const me = await requireUser();
+  const ids = await cuentasDe([id]);
+  const permitidas = await getAccessibleClientIds(me);
+  if (permitidas && !ids.every((c) => permitidas.includes(c))) return { error: "No tenés acceso a esta cuenta." };
+  const admin = createAdmin();
+  const { data, error } = await admin
+    .from("publicacion_cambios")
+    .select("campo, antes, despues, dias, tarde, created_at, user_id")
+    .eq("publication_id", id)
+    .order("created_at", { ascending: false })
+    .limit(40);
+  if (error) return { cambios: [] }; // sin la 0224
+  const userIds = [...new Set((data ?? []).map((c) => c.user_id).filter(Boolean))] as string[];
+  const { data: users } = userIds.length ? await admin.from("users").select("id, nombre").in("id", userIds) : { data: [] };
+  const nombre = new Map(((users ?? []) as { id: string; nombre: string }[]).map((u) => [u.id, u.nombre.split(" ")[0]]));
+  return {
+    cambios: ((data ?? []) as CambioPieza[]).map((c) => ({
+      texto: textoCambio(c),
+      quien: c.user_id ? nombre.get(c.user_id) ?? "Alguien" : "La plataforma",
+      cuando: c.created_at,
+      tarde: c.tarde,
+      dias: c.dias,
+    })),
+  };
 }

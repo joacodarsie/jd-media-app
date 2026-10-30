@@ -62,8 +62,12 @@ async function guardarJornada(
   };
   if (sesionId) {
     const { data: antes } = await admin.from("production_sessions").select("*").eq("id", sesionId).maybeSingle();
-    const { error } = await admin.from("production_sessions").update(base).eq("id", sesionId);
-    if (!error && antes) await anotarCambios(admin, sesionId, actorId, "Cambió la jornada desde la Agenda", antes, base);
+    // Si tenía un precio especial cargado en /jornadas, moverla en la Agenda no
+    // lo pisa con el de lista (30/10/2026).
+    const especial = antes && Number(antes.monto) !== precioJornada(Number(antes.horas));
+    const cambios = especial ? { ...base, monto: Number(antes.monto) } : base;
+    const { error } = await admin.from("production_sessions").update(cambios).eq("id", sesionId);
+    if (!error && antes) await anotarCambios(admin, sesionId, actorId, "Cambió la jornada desde la Agenda", antes, cambios);
     return error ? error.message : null;
   }
   const { data, error } = await admin

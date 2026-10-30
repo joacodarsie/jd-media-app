@@ -15,7 +15,8 @@ export const dynamic = "force-dynamic";
 export default async function JornadasPage({ searchParams }: { searchParams?: { ver?: string } }) {
   const me = await requireUser();
   const esDueno = me.rol === "admin";
-  if (!esDueno && me.area !== AREA_PM && me.area_secundaria !== AREA_PM) redirect("/dashboard");
+  const coordina = me.rol === "coordinador" || me.rol_secundario === "coordinador";
+  if (!esDueno && !coordina && me.area !== AREA_PM && me.area_secundaria !== AREA_PM) redirect("/dashboard");
   const admin = createAdmin();
   const [jornadas, { data: equipo }, { data: clientes }] = await Promise.all([
     cargarJornadas(admin),

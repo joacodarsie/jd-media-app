@@ -81,7 +81,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/agenda", label: "Agenda", icon: "CalendarClock" },
       // Jornadas de producción: el registro de cobros y pagos (23/10/2026). Lo
       // carga la project manager; dirección cobra y paga.
-      { href: "/jornadas", label: "Jornadas", icon: "Clapperboard", roles: ["admin"], areas: ["Coordinación"] },
+      { href: "/jornadas", label: "Jornadas", icon: "Clapperboard", roles: ["admin", "coordinador"], areas: ["Coordinación"] },
       // JDmedIA en vivo ya no es ítem: se entra con el botón "Sesión en vivo"
       // dentro de /jdmedia (misma feature jdmedia_live). JDmedIA está en Conocimiento.
       // Director IA salió del menú el 20/9/2026: el último informe que generó

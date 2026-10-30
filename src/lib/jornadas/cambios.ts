@@ -15,6 +15,7 @@ export interface FilaJornada {
   asistentes?: string[] | null;
   viaticos_detalle?: Record<string, number> | null;
   viaticos_los_paga?: string | null;
+  cobra_todo?: boolean | null;
 }
 
 export interface Nombres {
@@ -42,6 +43,8 @@ export function cambiosJornada(antes: FilaJornada, despues: FilaJornada, n: Nomb
   const [d1, a1] = despues.asistentes ?? [];
   dif("Dirige", d0, d1, n.persona);
   dif("Acompaña", a0, a1, n.persona);
+  const reparto = (v: unknown) => (v ? "cobra todo (80%)" : "el de siempre");
+  if (!!antes.cobra_todo !== !!despues.cobra_todo) out.push("Reparto: " + reparto(antes.cobra_todo) + " → " + reparto(despues.cobra_todo));
   const va = antes.viaticos_detalle ?? {};
   const vd = despues.viaticos_detalle ?? {};
   for (const id of new Set([...Object.keys(va), ...Object.keys(vd)])) {

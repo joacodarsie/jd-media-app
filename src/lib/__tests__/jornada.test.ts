@@ -113,3 +113,21 @@ describe("computeJornadaSplit (jornadas viejas, viáticos adentro del monto)", (
     expect(JORNADA_MONTO_DEFAULT).toBe(70000);
   });
 });
+
+describe("splitJornada · fue sola/o (30/10/2026)", () => {
+  it("con «cobra todo» se lleva el 80% y la agencia el 20%", () => {
+    const s = splitJornada({ precio: 100000, viaticos: 0, hasAcompanante: false, soloCobraTodo: true });
+    expect(s.director).toBe(80000);
+    expect(s.agencia).toBe(20000);
+  });
+  it("sin la opción sigue el 50% de siempre", () => {
+    const s = splitJornada({ precio: 100000, viaticos: 0, hasAcompanante: false });
+    expect(s.director).toBe(50000);
+    expect(s.agencia).toBe(50000);
+  });
+  it("con acompañante la opción no cuenta", () => {
+    const s = splitJornada({ precio: 100000, viaticos: 0, hasAcompanante: true, soloCobraTodo: true });
+    expect(s.director).toBe(50000);
+    expect(s.acompanante).toBe(30000);
+  });
+});

@@ -345,6 +345,7 @@ function JornadaDialog({ jornada, equipo, clientes, onClose }: { jornada: Jornad
   const [notas, setNotas] = useState(jornada?.notas && jornada.notas !== "Agendada en la Agenda" ? jornada.notas : "");
   const [dirige, setDirige] = useState(jornada?.asistentes[0] ?? "");
   const [acompana, setAcompana] = useState(jornada?.asistentes[1] ?? "");
+  const [cobraTodo, setCobraTodo] = useState(!!jornada?.cobraTodo);
   const [losPaga, setLosPaga] = useState<"cliente" | "agencia">(jornada?.viaticosLosPaga ?? "cliente");
   const inicialViaticos = () => {
     if (!jornada) return {};
@@ -354,7 +355,14 @@ function JornadaDialog({ jornada, equipo, clientes, onClose }: { jornada: Jornad
   };
   const [viaticos, setViaticos] = useState<Record<string, number>>(inicialViaticos);
   const asistentes = [dirige, acompana].filter(Boolean);
-  const precio = precioJornada(horas);
+  // El precio se puede cambiar a mano (30/10/2026): a veces se cobra la hora
+  // más barata. Mientras nadie lo toque, sigue al precio de lista según las
+  // horas; si ya tenía un precio especial, se respeta al editar.
+  const lista = precioJornada(horas);
+  const [precioEspecial, setPrecioEspecial] = useState<number | null>(
+    jornada && jornada.monto !== precioJornada(jornada.horas) ? jornada.monto : null
+  );
+  const precio = precioEspecial ?? lista;
   const totalViaticos = asistentes.reduce((n, id) => n + (viaticos[id] ?? 0), 0);
   const extras = Math.max(0, horas - 1);
 
@@ -364,12 +372,14 @@ function JornadaDialog({ jornada, equipo, clientes, onClose }: { jornada: Jornad
       fecha,
       horaInicio: hora || null,
       horas,
+      monto: precio,
       clienteId: clienteId || null,
       lugar: lugar || null,
       notas: notas || null,
       asistentes,
       viaticosDetalle: viaticos,
       viaticosLosPaga: losPaga,
+      cobraTodo: !acompana && cobraTodo,
     };
     start(async () => {
       const r = await guardarJornada(jornada?.id ?? null, form);
@@ -458,6 +468,22 @@ function JornadaDialog({ jornada, equipo, clientes, onClose }: { jornada: Jornad
             </div>
           </div>
 
+          {/* Fue sola/o (30/10/2026, pedido de Luz): puede cobrar también la
+              parte del acompañante. */}
+          {dirige && !acompana && (
+            <label className="flex items-start gap-2 rounded-xl border p-3 text-sm">
+              <input type="checkbox" className="mt-0.5" checked={cobraTodo} onChange={(e) => setCobraTodo(e.target.checked)} />
+              <span>
+                <b>Fue sola/o: cobra la parte de los dos</b>
+                <span className="block text-xs text-muted-foreground">
+                  {cobraTodo
+                    ? `Cobra el 80% del trabajo (${fmtARS(Math.round(precio * 0.8))}) y la agencia el 20%.`
+                    : `Si no, cobra el 50% (${fmtARS(Math.round(precio * 0.5))}) como quien dirige y la agencia se queda con el resto.`}
+                </span>
+              </span>
+            </label>
+          )}
+
           {asistentes.length > 0 && (
             <div className="rounded-xl border p-3">
               <div className="mb-2 flex items-center justify-between gap-2">
@@ -489,16 +515,33 @@ function JornadaDialog({ jornada, equipo, clientes, onClose }: { jornada: Jornad
           )}
 
           <div className="rounded-xl bg-muted/40 p-3 text-sm">
-            <div className="flex justify-between">
-              <span>1ª hora</span>
-              <span className="tabular-nums">{fmtARS(JORNADA_PRECIO_HORA)}</span>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <span className="font-medium">Precio del trabajo</span>
+                <p className="text-xs text-muted-foreground">
+                  De lista: {fmtARS(lista)} (1ª hora {fmtARS(JORNADA_PRECIO_HORA)}
+                  {extras > 0 ? ` + ${extras} extra × ${fmtARS(JORNADA_PRECIO_HORA_EXTRA)}` : ""})
+                </p>
+              </div>
+              <Input
+                className="h-8 w-32 text-right tabular-nums"
+                inputMode="numeric"
+                aria-label="Precio del trabajo"
+                value={String(precio)}
+                onChange={(e) => {
+                  const n = Number(e.target.value.replace(/\D/g, ""));
+                  setPrecioEspecial(n > 0 && n !== lista ? n : null);
+                }}
+              />
             </div>
-            {extras > 0 && (
-              <div className="flex justify-between">
-                <span>
-                  {extras} hora{extras === 1 ? "" : "s"} extra × {fmtARS(JORNADA_PRECIO_HORA_EXTRA)}
+            {precioEspecial !== null && (
+              <div className="mt-1 flex items-center justify-between text-xs">
+                <span className="font-medium text-amber-700 dark:text-amber-300">
+                  Precio especial: {precio < lista ? `${fmtARS(lista - precio)} menos` : `${fmtARS(precio - lista)} más`} que el de lista
                 </span>
-                <span className="tabular-nums">{fmtARS(extras * JORNADA_PRECIO_HORA_EXTRA)}</span>
+                <button type="button" className="underline underline-offset-2 hover:text-foreground" onClick={() => setPrecioEspecial(null)}>
+                  Volver al de lista
+                </button>
               </div>
             )}
             <div className="flex justify-between text-muted-foreground">

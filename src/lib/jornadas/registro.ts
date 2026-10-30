@@ -28,6 +28,8 @@ export interface JornadaRegistro {
   /** Viáticos de cada persona. Vacío en las jornadas viejas: se reparte en partes iguales. */
   viaticosDetalle: Record<string, number>;
   viaticosLosPaga: "cliente" | "agencia";
+  /** Fue sola/o y cobra también la parte del acompañante (0225). */
+  cobraTodo?: boolean;
   /** [0] dirige, [1] acompaña. */
   asistentes: string[];
   cobrado: number | null;
@@ -73,6 +75,7 @@ export function repartoJornada(j: JornadaRegistro) {
     hasAcompanante: !!aco,
     viaticosLosPaga: j.viaticosLosPaga,
     viaticosPersona: [vDir, vAco],
+    soloCobraTodo: !!j.cobraTodo,
   });
   const parte = (userId: string, rol: Parte["rol"], total: number, viaticos: number): Parte => {
     const pagado = Number(j.pagos[userId]?.monto ?? 0);

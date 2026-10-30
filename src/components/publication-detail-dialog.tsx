@@ -36,6 +36,7 @@ import { PublicationTiktokToggle } from "@/components/publication-tiktok-toggle"
 import { ClientPubComments } from "@/components/client-pub-comments";
 import { DescripcionPieza } from "@/components/descripcion-pieza";
 import { PiezaObjetivo } from "@/components/pieza-objetivo";
+import { PiezaHistorial } from "@/components/pieza-historial";
 import {
   PublicationFormDialog,
   type ClientForPub,
@@ -250,6 +251,8 @@ export function PublicationDetailDialog({
               />
             </div>
           )}
+
+          <PiezaHistorial publicationId={p.id} />
 
           <div className="flex items-center gap-2 border-t pt-3">
             <PublicationFormDialog

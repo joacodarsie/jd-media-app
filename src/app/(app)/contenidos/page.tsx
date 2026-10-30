@@ -4,6 +4,8 @@ import Link from "next/link";
 import { requireUser, getAccessibleClientIds, userInRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getActiveUsers, getActiveClients } from "@/lib/cache";
+import { createAdmin } from "@/lib/supabase/admin";
+import { resumirCambios, type CambioPieza } from "@/lib/contenidos/cambios-calendario";
 import type { PublicationWithRels } from "@/lib/types";
 import { PublicationsMonth } from "@/components/publications-month";
 import { HelpTrigger } from "@/components/help-trigger";
@@ -89,6 +91,20 @@ export default async function ContenidosPage({
     supabase.from("clients").select("id, team_id").not("team_id", "is", null),
   ]);
   const teams = (teamsRaw ?? []) as { id: string; nombre: string }[];
+
+  // Cambios de fecha del mes (0224), para quien ve todas las cuentas: cuántas
+  // piezas se corrieron, cuántos días y quién y dónde (30/10/2026).
+  let cambiosMes: ReturnType<typeof resumirCambios> | null = null;
+  if (myClientIds === null) {
+    const desde = hoyYmd().slice(0, 8) + "01";
+    const { data: cm, error: ecm } = await createAdmin()
+      .from("publicacion_cambios")
+      .select("publication_id, campo, antes, despues, dias, tarde, created_at, user_id, cliente_id")
+      .eq("campo", "fecha")
+      .gte("created_at", desde + "T03:00:00Z")
+      .limit(5000);
+    if (!ecm) cambiosMes = resumirCambios((cm ?? []) as (CambioPieza & { publication_id: string })[]);
+  }
   const teamByClient = new Map(
     ((teamClientsRaw ?? []) as { id: string; team_id: string }[]).map((c) => [c.id, c.team_id])
   );
@@ -238,6 +254,41 @@ export default async function ContenidosPage({
           esa persona.
         </DismissibleHint>
       </div>
+      {cambiosMes && cambiosMes.totalCambiosFecha > 0 && (
+        <details className="group rounded-2xl bg-card text-sm shadow-sm ring-1 ring-border/50">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 [&::-webkit-details-marker]:hidden">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" aria-hidden="true" />
+            <span className="font-semibold">
+              {cambiosMes.corridas} {cambiosMes.corridas === 1 ? "pieza corrida" : "piezas corridas"} este mes
+            </span>
+            <span className="text-xs text-muted-foreground">
+              · {cambiosMes.diasCorridos} días en total · {cambiosMes.ultimoMomento} de último momento
+            </span>
+            <span className="ml-auto text-xs font-medium text-primary">Ver detalle ▾</span>
+          </summary>
+          <div className="grid gap-3 px-4 pb-3 sm:grid-cols-2">
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cuentas que más se corren</p>
+              <ul className="space-y-0.5">
+                {cambiosMes.porCuenta.slice(0, 5).map((c) => (
+                  <li key={c.id} className="flex justify-between"><span>{clients.find((x) => x.id === c.id)?.nombre ?? "Otra cuenta"}</span><span className="tabular-nums text-muted-foreground">{c.veces}</span></li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quién las corre</p>
+              <ul className="space-y-0.5">
+                {cambiosMes.porPersona.slice(0, 5).map((c) => (
+                  <li key={c.id} className="flex justify-between"><span>{users.find((x) => x.id === c.id)?.nombre ?? "Alguien"}</span><span className="tabular-nums text-muted-foreground">{c.veces}</span></li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <p className="px-4 pb-3 text-xs text-muted-foreground">
+            Se cuenta desde el 30/10/2026. «Último momento» es mover una pieza a menos de 48 h de su fecha o con la fecha ya pasada. El detalle de cada pieza está en su ficha, en «Historial de cambios».
+          </p>
+        </details>
+      )}
       {atrasadas.nuncaArrancaron + atrasadas.trabadas + atrasadas.esperandoCliente > 0 && (
         <details className="group rounded-2xl bg-card text-sm shadow-sm ring-1 ring-border/50">
           <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 [&::-webkit-details-marker]:hidden">

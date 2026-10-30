@@ -18,11 +18,13 @@ import { anotar, anotarCambios, nombresParaHistorial } from "@/lib/jornadas/hist
  * reales; el dueño cobra, paga y lo marca. Ver lib/jornadas/registro.ts.
  */
 
-const esPM = (u: AppUser) => u.area === AREA_PM || u.area_secundaria === AREA_PM;
+// Coordinación también edita (30/10/2026, pedido del dueño): sobre todo Luz,
+// y Santi. Cobrar y pagar sigue siendo de dirección.
+const esPM = (u: AppUser) => u.area === AREA_PM || u.area_secundaria === AREA_PM || u.rol === "coordinador" || u.rol_secundario === "coordinador";
 
 async function quienCarga() {
   const me = await requireUser();
-  if (me.rol !== "admin" && !esPM(me)) throw new Error("Solo dirección y la project manager.");
+  if (me.rol !== "admin" && !esPM(me)) throw new Error("Solo dirección y coordinación.");
   return me;
 }
 
@@ -60,6 +62,8 @@ export interface JornadaForm {
   asistentes: string[];
   viaticosDetalle: Record<string, number>;
   viaticosLosPaga: "cliente" | "agencia";
+  /** Fue sola/o: cobra también la parte del acompañante. */
+  cobraTodo?: boolean;
 }
 
 function validar(f: JornadaForm): string | null {
@@ -87,6 +91,7 @@ function fila(f: JornadaForm) {
     viaticos_detalle: detalle,
     viaticos: Object.values(detalle).reduce((a, b) => a + b, 0),
     viaticos_los_paga: f.viaticosLosPaga === "cliente" ? "cliente" : "agencia",
+    cobra_todo: f.asistentes.length === 1 && !!f.cobraTodo,
   };
 }
 

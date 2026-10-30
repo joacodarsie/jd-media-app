@@ -31,6 +31,7 @@ export function aRegistro(s: Record<string, unknown>, clientes: Map<string, stri
     viaticos: num(s.viaticos),
     viaticosDetalle: (s.viaticos_detalle as Record<string, number> | null) ?? {},
     viaticosLosPaga: s.viaticos_los_paga === "cliente" ? "cliente" : "agencia",
+    cobraTodo: s.cobra_todo === true,
     asistentes: (s.asistentes as string[] | null) ?? [],
     cobrado: s.cobrado == null ? null : num(s.cobrado),
     cobradoAt: (s.cobrado_at as string | null) ?? null,

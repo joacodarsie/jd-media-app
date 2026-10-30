@@ -95,8 +95,8 @@ describe("la estructura en sí", () => {
     // Eran once tareas `[Función]` sin fecha límite en `tasks`, donde no las
     // veía nadie y ensuciaban la cola de pendientes.
     const cg = nodos.find((n) => n.id === "coordinacion-general")!;
-    expect(cg.responsabilidades).toHaveLength(11);
-    expect(cg.responsabilidades).toContain("Llevar las finanzas de la agencia");
+    expect(cg.responsabilidades).toHaveLength(14);
+    expect(cg.responsabilidades).toContain("Llevar las finanzas y la contaduría de la agencia");
     expect(cg.responsabilidades).toContain("Cobrar a clientes en tiempo y forma");
     // Ninguna se coló como si fuera una tarea con pantalla propia.
     for (const r of cg.responsabilidades!) {

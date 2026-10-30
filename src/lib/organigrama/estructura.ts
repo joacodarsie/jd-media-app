@@ -87,13 +87,16 @@ export const ORGANIGRAMA: NodoOrg = {
   hijos: [
     {
       id: "coordinacion-general",
-      titulo: "Coordinación General",
+      titulo: "Administración y Personas",
       area: "Coordinación General",
-      respondePor: "Que el plan de crecimiento avance, no solo el día a día.",
+      respondePor: "Que la plata, lo legal y el equipo estén en orden.",
       resumen:
-        "Mano derecha de la dirección. Mira el mediano plazo: los procesos, la máquina de clientes y que las coordinaciones no se pisen entre sí.",
+        "Mano derecha de la dirección. Lleva finanzas, contaduría, contratos, ARCA, selección e ingreso de personas, cobros a clientes y pagos al equipo.",
       responsabilidades: [
-        "Llevar las finanzas de la agencia",
+        "Llevar las finanzas y la contaduría de la agencia",
+        "Contratos con clientes y con el equipo, ARCA y paso a SAS",
+        "Selección e ingreso de personas nuevas",
+        "Análisis de métricas del mes",
         "Cobrar a clientes en tiempo y forma",
         "Abonar sueldos en tiempo y forma",
         "Controlar que los colaboradores cumplan sus tareas en tiempo y forma",

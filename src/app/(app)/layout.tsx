@@ -140,7 +140,7 @@ export default async function AppLayout({
     "/tareas": taskUnreadCount ?? 0,
     // Portal: priorizan los avisos sin leer; si no hay, el puntito de novedades.
     "/portal": unreadAvisos > 0 ? unreadAvisos : showNovedadesBadge ? 1 : 0,
-    "/cobros": cuantasFaltanCobrar(cobrosMes.filas),
+    "/administracion": cuantasFaltanCobrar(cobrosMes.filas),
   };
 
   const isLiveOwner =

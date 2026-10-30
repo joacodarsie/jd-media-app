@@ -9,8 +9,20 @@ import { cargarJornadas } from "@/lib/jornadas/cargar";
 import { estadoJornada, repartoJornada } from "@/lib/jornadas/registro";
 import { hoyYmd } from "@/lib/dates";
 import { AREAS_PLAN, PLAN_ADMINISTRACION } from "@/lib/administracion/plan";
+import { accedeAdministracion } from "@/lib/administracion/acceso";
 
 export const dynamic = "force-dynamic";
+
+// Todo lo que salió de la barra del menú (30/10/2026) se entra desde acá.
+const ACCESOS = [
+  { label: "Métricas", href: "/objetivos", emoji: "🎯" },
+  { label: "El resumen", href: "/finanzas/resumen", emoji: "📊" },
+  { label: "Cobros y pagos", href: "/cobros", emoji: "💳" },
+  { label: "Análisis", href: "/finanzas/rentabilidad", emoji: "📈" },
+  { label: "Coordinación", href: "/coordinacion", emoji: "🎛️" },
+  { label: "Contratos", href: "/contratos", emoji: "📄" },
+  { label: "Accesos", href: "/accesos", emoji: "🔑" },
+];
 
 /**
  * Administración y Personas: el lugar de trabajo de quien se hace cargo de la
@@ -19,7 +31,7 @@ export const dynamic = "force-dynamic";
  */
 export default async function AdministracionPage() {
   const me = await requireUser();
-  if (me.rol !== "admin") redirect("/dashboard");
+  if (!accedeAdministracion(me)) redirect("/dashboard");
 
   const admin = createAdmin();
   const hoy = hoyYmd();
@@ -63,6 +75,14 @@ export default async function AdministracionPage() {
         <h1 className="text-2xl font-bold">Administración y Personas</h1>
         <p className="text-sm text-muted-foreground">La plata, lo legal y el equipo, en un solo lugar.</p>
       </div>
+
+      <nav className="flex flex-wrap gap-2" aria-label="Secciones de Administración">
+        {ACCESOS.map((a) => (
+          <Link key={a.href} href={a.href} className="rounded-full border bg-card px-3 py-1.5 text-sm font-medium transition-colors hover:border-primary/60">
+            <span aria-hidden="true">{a.emoji}</span> {a.label}
+          </Link>
+        ))}
+      </nav>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {tarjetas.map((t) => (

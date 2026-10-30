@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, KeyRound, Plus, ShieldAlert } from "lucide-react";
+import { redirect } from "next/navigation";
 import { requireRole, isOwner } from "@/lib/auth";
+import { accedeAdministracion } from "@/lib/administracion/acceso";
 import { createClient } from "@/lib/supabase/server";
 import { getNotificationQueueStats } from "@/lib/cache";
 import { Button } from "@/components/ui/button";
@@ -17,6 +19,8 @@ export const dynamic = "force-dynamic";
 export default async function AccesosPage() {
   // Restringido a admin SOLAMENTE (no coordinación)
   const me = await requireRole(["admin"]);
+  // Acá se ven las contraseñas: solo el dueño y Jadur (30/10/2026).
+  if (!accedeAdministracion(me)) redirect("/dashboard");
   const supabase = createClient();
 
   // Tolerar que la migration 0050 (password_visible) aun no este aplicada.

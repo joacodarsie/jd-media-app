@@ -2,6 +2,13 @@
 title: Novedades
 ---
 
+## 2026-10-30 — Menú más simple y Administración
+
+- 🧹 **El menú tiene menos secciones.** Sacamos las que casi no se usaban para que encuentres más rápido lo tuyo.
+- 🎬 **Jornadas** ahora está dentro de «Equipo & clientes».
+- 🤝 **Se suma Muhamad Jadur** a cargo de Administración y Personas: cobros, pagos, contratos y selección.
+- 🔎 Si no encontrás algo, usá el buscador de arriba (Ctrl K).
+
 ## 2026-10-30 — Jornadas con precio especial y el historial del calendario
 
 - 🎬 **Jornadas: coordinación ya puede editarlas.** Luz y Santi cambian fecha, duración, quiénes van, viáticos y **el precio** (si se cobra la hora más barata). Cada cambio queda en el historial de la jornada.

@@ -1,5 +1,6 @@
 import type { AppUser, UserRole } from "./types";
 import type { Feature } from "./permissions";
+import { accedeAdministracion } from "./administracion/acceso";
 
 export interface NavItem {
   href: string;
@@ -14,6 +15,8 @@ export interface NavItem {
   nuevoHasta?: string;
   /** Si se define, además requiere esta feature (admin la tiene siempre). */
   feature?: Feature;
+  /** Solo para quien entra a Administración (ver administracion/acceso.ts). */
+  soloAdministracion?: boolean;
   /** Si es true, sólo lo ve la cuenta dueña de JDmedIA en vivo (gate por env). */
   liveOwnerOnly?: boolean;
   /**
@@ -78,12 +81,16 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "TrendingUp",
         roles: ["admin", "coordinador", "paid_media"],
       },
-      // Administración y Personas: plata, legal y equipo en un lugar (nov. 2026).
-      { href: "/administracion", label: "Administración", icon: "Briefcase", roles: ["admin"] },
       { href: "/agenda", label: "Agenda", icon: "CalendarClock" },
-      // Jornadas de producción: el registro de cobros y pagos (23/10/2026). Lo
-      // carga la project manager; dirección cobra y paga.
-      { href: "/jornadas", label: "Jornadas", icon: "Clapperboard", roles: ["admin", "coordinador"], areas: ["Coordinación"] },
+      // Administración (30/10/2026): métricas, finanzas, coordinación y accesos
+      // viven adentro, para limpiar la barra. Solo el dueño y Jadur.
+      {
+        href: "/administracion",
+        label: "Administración",
+        icon: "Landmark",
+        soloAdministracion: true,
+        match: ["/objetivos", "/global", "/finanzas", "/cobros", "/coordinacion", "/director", "/accesos"],
+      },
       // JDmedIA en vivo ya no es ítem: se entra con el botón "Sesión en vivo"
       // dentro de /jdmedia (misma feature jdmedia_live). JDmedIA está en Conocimiento.
       // Director IA salió del menú el 20/9/2026: el último informe que generó
@@ -112,6 +119,9 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "Users2",
         match: ["/organigrama", "/reclutamiento"],
       },
+      // Jornadas de producción: el registro de cobros y pagos (23/10/2026). Lo
+      // carga la project manager; dirección cobra y paga.
+      { href: "/jornadas", label: "Jornadas", icon: "Clapperboard", roles: ["admin", "coordinador"], areas: ["Coordinación"] },
       // Las quejas de los clientes: solo Dirección y Comercial (el responsable de
       // cuentas). Es información sensible sobre el trabajo del equipo.
       {
@@ -148,69 +158,9 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Métricas",
-    items: [
-      // Métricas agrupa: Objetivos y Productividad (pestañas).
-      { href: "/objetivos", label: "Métricas", icon: "Goal", match: ["/global"] },
-      // ── Finanzas, en tres destinos ──
-      //
-      // Eran trece pantallas colgando de un hub, y el dueño dijo tres veces que
-      // se mareaba y no sabía a cuál entrar. Cada uno de estos tres contesta UNA
-      // pregunta y lleva adentro sus pestañas (ver `finanzasGrupos`). El orden
-      // es el de la pregunta que se hace más seguido.
-      {
-        href: "/finanzas/resumen",
-        label: "El resumen",
-        icon: "FileText",
-        feature: "finanzas",
-        match: ["/finanzas/panorama", "/finanzas/mes", "/finanzas/proyeccion"],
-      },
-      {
-        href: "/cobros",
-        label: "Cobros y pagos",
-        icon: "HandCoins",
-        feature: "finanzas",
-        match: [
-          "/finanzas/cobros",
-          "/finanzas/pagos",
-          "/finanzas/gastos",
-          "/finanzas/vencimientos",
-          "/finanzas/cierre",
-          "/finanzas/suscripciones",
-          "/finanzas/recordatorios",
-        ],
-      },
-      {
-        href: "/finanzas/rentabilidad",
-        label: "Análisis",
-        icon: "Wallet",
-        feature: "finanzas",
-        // `/finanzas` queda como comodín: cualquier ruta vieja de finanzas que
-        // no esté en los otros dos marca esta. Gana el prefijo más largo, así
-        // que no le roba el activo a `/finanzas/cobros` ni a `/finanzas/resumen`.
-        match: [
-          "/finanzas",
-          "/finanzas/movimientos",
-          "/finanzas/deudas",
-          "/finanzas/ia",
-        ],
-      },
-      // Coordinación agrupa: Panel, Equipos, Riesgo, Comercial, Sueldos,
-      // Jornadas, Mes 1 y Director IA (pestañas).
-      {
-        href: "/coordinacion",
-        label: "Coordinación",
-        icon: "SlidersHorizontal",
-        roles: ["admin"],
-        match: ["/director"],
-      },
-    ],
-  },
-  {
     label: "Cuenta",
     items: [
       { href: "/mi-perfil", label: "Mi perfil", icon: "UserCircle" },
-      { href: "/accesos", label: "Accesos", icon: "KeyRound", roles: ["admin"] },
     ],
   },
 ];
@@ -226,6 +176,7 @@ function userHasFeature(user: AppUser, feature: Feature): boolean {
 
 function itemVisible(user: AppUser, i: NavItem, isLiveOwner = false) {
   if (i.liveOwnerOnly && !isLiveOwner) return false;
+  if (i.soloAdministracion) return accedeAdministracion(user);
   // Visible si el ROL (primario o secundario) está en la lista, O si tiene la
   // feature. Antes exigía la feature aunque el rol estuviera en la lista, lo que
   // ocultaba Comercial/Prospección a quien tiene rol "comercial" pero no el

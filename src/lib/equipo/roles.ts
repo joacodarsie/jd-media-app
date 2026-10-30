@@ -108,7 +108,7 @@ export const ROLES: Rol[] = [
     emoji: "🗂️",
     tono: "slate",
     grupo: "Coordinación",
-    mision: "Que los clientes paguen en fecha, que el equipo cobre el 7 y que cada puesto tenga su acuerdo claro.",
+    mision: "Que los clientes paguen en fecha, que el equipo cobre el 7 y que lo legal y cada puesto estén en orden.",
     respondePor: [
       { titulo: "Cobranza", detalle: "Todos los clientes pagan del 1 al 5 y queda marcado." },
       { titulo: "Sueldos", detalle: "La nómina lista para pagar el 7." },

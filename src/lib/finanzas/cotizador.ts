@@ -36,6 +36,22 @@ export interface ItemsCotizacion {
   manualMarca: boolean;
   /** Costo extra que se carga a mano (un freelance puntual, una licencia). */
   otros: number;
+  /**
+   * Servicios que se suman a la propuesta (WhatsApp, chatter, web, una jornada…),
+   * cada uno con lo que se le cobra al cliente y lo que cuesta hacerlo.
+   */
+  extras?: ExtraCotizacion[];
+}
+
+export interface ExtraCotizacion {
+  id: string;
+  nombre: string;
+  /** Lo que paga el cliente. */
+  precio: number;
+  /** Lo que le cuesta a la agencia (a quién se le paga). */
+  costo: number;
+  /** true = se cobra y se paga una sola vez (web, branding, una jornada). */
+  unaVez: boolean;
 }
 
 export interface LineaCosto {
@@ -50,8 +66,14 @@ export interface CostoCotizacion {
   lineas: LineaCosto[];
   /** Lo que cuesta todos los meses, sin contar las comisiones que salen del precio. */
   recurrenteSinCoord: number;
-  /** Lo que se paga una sola vez al arrancar (manual de marca, etc.). */
+  /** Lo que se paga una sola vez al arrancar (manual de marca y los extras de pago único). */
   unaVez: number;
+  /** De eso, lo que es el manual de marca. */
+  manual: number;
+  /** Lo que el cliente paga por mes por los extras (aparte de la gestión). */
+  ingresoMensualExtras: number;
+  /** Lo que el cliente paga una sola vez por los extras. */
+  ingresoUnaVezExtras: number;
   /** Hay CM asignada: cobra el plus del primer mes. */
   conCM: boolean;
   /** Hay media buyer: cobra su propio plus del primer mes. */
@@ -134,13 +156,28 @@ export function costoDeItems(items: ItemsCotizacion, rates: AgencyRates): CostoC
   // PRECIO y por eso se calcula en `resultadoDePrecio`, no acá.
   const baseDiseno = costoPiezas + costoPortadas;
 
-  if (items.manualMarca && rates.manual_marca > 0) {
+  const manual = items.manualMarca && rates.manual_marca > 0 ? rates.manual_marca : 0;
+  if (manual > 0) {
     lineas.push({
       concepto: "Manual de marca",
       detalle: "Solo el primer mes",
-      monto: rates.manual_marca,
+      monto: manual,
       unaVez: true,
     });
+  }
+
+  let ingresoMensualExtras = 0;
+  let ingresoUnaVezExtras = 0;
+  for (const x of items.extras ?? []) {
+    if (x.unaVez) ingresoUnaVezExtras += Math.max(x.precio, 0);
+    else ingresoMensualExtras += Math.max(x.precio, 0);
+    if (x.costo > 0)
+      lineas.push({
+        concepto: x.nombre || "Extra",
+        detalle: x.unaVez ? "Pago único" : "Por mes",
+        monto: x.costo,
+        unaVez: x.unaVez,
+      });
   }
 
   const recurrenteSinCoord = lineas.filter((l) => !l.unaVez).reduce((a, l) => a + l.monto, 0);
@@ -149,6 +186,9 @@ export function costoDeItems(items: ItemsCotizacion, rates: AgencyRates): CostoC
     lineas,
     recurrenteSinCoord,
     unaVez,
+    manual,
+    ingresoMensualExtras,
+    ingresoUnaVezExtras,
     conCM: items.cm != null && (rates.cm[items.cm] ?? 0) > 0,
     conMediaBuyer: items.mediaBuyer != null && (rates.media_buyer[items.mediaBuyer] ?? 0) > 0,
     baseDiseno,
@@ -163,6 +203,8 @@ export interface LineaArranque {
 }
 
 export interface ResultadoPrecio {
+  /** Lo que paga el cliente por mes: la gestión más los extras mensuales. */
+  precioMensual: number;
   /** Costo del equipo más las comisiones que dependen del precio. */
   costoMensual: number;
   /** La comisión de coordinación, que se calcula sobre el precio y no sobre el costo. */
@@ -175,7 +217,7 @@ export interface ResultadoPrecio {
   cartera: number;
   /** Parte de los gastos fijos de la agencia que le toca a esta cuenta. */
   fijosProrrateados: number;
-  /** Precio − costo mensual (el de un mes normal, del 2 en adelante). Todavía no descuenta los fijos. */
+  /** Precio mensual − costo mensual (un mes normal, del 2 en adelante). Todavía no descuenta los fijos. */
   margen: number;
   margenPct: number;
   /** Lo que queda de verdad, después de que la cuenta pague su parte de los fijos. */
@@ -205,6 +247,11 @@ export interface ResultadoPrecio {
  *  - la cartera del closer, desde el mes 2 (el mes 1 cobra el cierre, que va
  *    en el arranque). Es el acuerdo comercial de octubre de 2026, el mismo que
  *    liquida la nómina en `payroll/comision-comercial.ts`.
+ *
+ * `precio` es el de la GESTIÓN DE REDES. La coordinación y la dirección
+ * creativa se calculan solo sobre eso (como en la nómina); el closer, sobre
+ * todo lo que el cliente paga por mes, extras incluidos. Los extras de pago
+ * único entran como ingreso del mes 1.
  */
 export function resultadoDePrecio(
   precio: number,
@@ -219,22 +266,24 @@ export function resultadoDePrecio(
   } = {}
 ): ResultadoPrecio {
   const p = Math.max(precio, 0);
+  const total = p + costo.ingresoMensualExtras;
   const coordinacion =
     opts.conCoordinacion === false ? 0 : Math.round(p * (rates.comision_coordinacion ?? 0));
   const coordGeneral =
     opts.conCoordGeneral === false ? 0 : Math.round(p * (rates.comision_coord_general ?? 0));
   const direccionCreativa = Math.round(p * (rates.comision_direccion_creativa ?? 0));
   const conCierre = opts.conComisionCierre !== false;
-  const cartera = conCierre ? Math.round(p * (rates.comision_cartera ?? 0)) : 0;
+  const cartera = conCierre ? Math.round(total * (rates.comision_cartera ?? 0)) : 0;
   const costoMensual = costo.recurrenteSinCoord + coordinacion + coordGeneral + direccionCreativa + cartera;
-  const margen = p - costoMensual;
+  const margen = total - costoMensual;
   const fijosProrrateados = Math.max(opts.fijosProrrateados ?? 0, 0);
   const margenNeto = margen - fijosProrrateados;
 
-  const arranqueLineas = lineasDeArranque(p, costo, rates, conCierre);
+  const arranqueLineas = lineasDeArranque(total, costo, rates, conCierre);
   const arranque = arranqueLineas.reduce((a, l) => a + l.monto, 0);
 
   return {
+    precioMensual: total,
     costoMensual,
     coordinacion,
     coordGeneral,
@@ -242,14 +291,15 @@ export function resultadoDePrecio(
     cartera,
     fijosProrrateados,
     margen,
-    margenPct: p > 0 ? (margen / p) * 100 : 0,
+    margenPct: total > 0 ? (margen / total) * 100 : 0,
     margenNeto,
-    margenNetoPct: p > 0 ? (margenNeto / p) * 100 : 0,
+    margenNetoPct: total > 0 ? (margenNeto / total) * 100 : 0,
     arranqueLineas,
     arranque,
-    // El mes 1 no paga la cartera: ese mes el closer cobra el cierre.
-    margenPrimerMes: margen + cartera - arranque,
-    margenPrimerMesNeto: margenNeto + cartera - arranque,
+    // El mes 1 no paga la cartera (ese mes el closer cobra el cierre) y suma lo
+    // que el cliente paga una sola vez por los extras.
+    margenPrimerMes: margen + cartera - arranque + costo.ingresoUnaVezExtras,
+    margenPrimerMesNeto: margenNeto + cartera - arranque + costo.ingresoUnaVezExtras,
   };
 }
 
@@ -269,12 +319,17 @@ function lineasDeArranque(
 ): LineaArranque[] {
   const lineas: LineaArranque[] = [];
 
-  if (costo.unaVez > 0) {
+  if (costo.manual > 0) {
     lineas.push({
       concepto: "Manual de marca",
       detalle: "Documento de inicio, pago único",
-      monto: costo.unaVez,
+      monto: costo.manual,
     });
+  }
+  for (const l of costo.lineas) {
+    if (l.unaVez && l.concepto !== "Manual de marca") {
+      lineas.push({ concepto: l.concepto, detalle: "Pago único", monto: l.monto });
+    }
   }
 
   if (conComisionCierre) {
@@ -283,7 +338,7 @@ function lineasDeArranque(
     if (cierre > 0) {
       lineas.push({
         concepto: "Comisión del comercial",
-        detalle: `${Math.round(pct * 100)}% del primer abono`,
+        detalle: `${Math.round(pct * 100)}% del primer abono mensual`,
         monto: cierre,
       });
     }
@@ -344,6 +399,11 @@ function pctMensualSobrePrecio(
  *   precio = (costo + arranqueFijo) / (1 − coms − cierre)
  * donde `coms` son las comisiones mensuales sobre el precio (coordinaciones y
  * dirección creativa). La cartera del closer no entra: el mes 1 cobra el cierre.
+ *
+ * Con extras, lo que se despeja es el precio de la GESTIÓN: los extras
+ * mensuales (Em) pagan cierre pero no coordinación, y los de pago único (Eo)
+ * entran enteros el mes 1:
+ *   precio = (costo + arranqueFijo − Em·(1 − cierre) − Eo) / (1 − coms − cierre)
  */
 export function precioSinPerdidaPrimerMes(
   costo: CostoCotizacion,
@@ -358,7 +418,12 @@ export function precioSinPerdidaPrimerMes(
   const cierre = opts.conComisionCierre === false ? 0 : (rates.comision_cierre ?? 0);
   const divisor = 1 - coord - cierre;
   if (divisor <= 0.0001) return null;
-  const precio = (costo.recurrenteSinCoord + arranqueFijo(costo, rates)) / divisor;
+  const precio =
+    (costo.recurrenteSinCoord +
+      arranqueFijo(costo, rates) -
+      costo.ingresoMensualExtras * (1 - cierre) -
+      costo.ingresoUnaVezExtras) /
+    divisor;
   return Math.ceil(Math.max(precio, 0) / 5000) * 5000;
 }
 
@@ -372,6 +437,10 @@ export function precioSinPerdidaPrimerMes(
  * con `coms` = coordinaciones + dirección creativa + cartera del closer (si la
  * cerró un comercial).
  *
+ * Con extras mensuales (Em) se despeja el precio de la gestión, y el margen se
+ * mide sobre todo lo que paga el cliente por mes:
+ *   gestión·(1 − coms − objetivo) = costo + fijos − Em·(1 − cartera − objetivo)
+ *
  * Devuelve null si el objetivo es inalcanzable (coord + objetivo ≥ 1): no hay
  * precio que lo cumpla, y devolver un número enorme sería mentirle al que cotiza.
  */
@@ -380,14 +449,17 @@ export function precioParaMargen(
   objetivoPct: number,
   rates: AgencyRates,
   fijosProrrateados = 0,
-  opts: { conComisionCierre?: boolean } = {}
+  opts: { conComisionCierre?: boolean; extrasMensual?: number } = {}
 ): number | null {
   const cartera = opts.conComisionCierre === false ? 0 : (rates.comision_cartera ?? 0);
   const coord = pctMensualSobrePrecio(rates) + cartera;
   const objetivo = objetivoPct / 100;
   const divisor = 1 - coord - objetivo;
   if (divisor <= 0.0001) return null;
-  const precio = (costoRecurrente + Math.max(fijosProrrateados, 0)) / divisor;
+  const extras = Math.max(opts.extrasMensual ?? 0, 0);
+  const precio =
+    (costoRecurrente + Math.max(fijosProrrateados, 0) - extras * (1 - cartera - objetivo)) / divisor;
+  if (precio <= 0) return 0;
   // Redondeo comercial: a los $5.000 de arriba. Un precio de $372.413 no se cobra.
   return Math.ceil(precio / 5000) * 5000;
 }

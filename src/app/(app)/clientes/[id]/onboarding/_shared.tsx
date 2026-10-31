@@ -26,7 +26,6 @@ import { fmtDate } from "@/lib/dates";
 import type { ClientService } from "@/lib/types";
 import { OnboardingStepToggle } from "@/components/onboarding-step-toggle";
 import { OnboardingDriveField } from "@/components/onboarding-drive-field";
-import { ClientListEditor } from "@/components/client-list-editor";
 import { MeetGuideGenerator } from "@/components/meet-guide-generator";
 import { WelcomeMessagesDialog } from "@/components/welcome-messages-dialog";
 import { PaymentMessageDialog } from "@/components/payment-message-dialog";

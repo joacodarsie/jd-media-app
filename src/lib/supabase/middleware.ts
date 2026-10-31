@@ -9,6 +9,7 @@ import { NextResponse, type NextRequest } from "next/server";
  *  - /contrato/cliente, /diagnostico/cliente, /plan/cliente → PDFs publicos por id
  *  - /api/cron/* → endpoints de Vercel Cron, autenticados via Bearer CRON_SECRET
  *  - /api/finanzas/informe/datos → lo lee el script de Google Sheets, con INFORME_TOKEN
+ *  - /api/finanzas/planilla → lo lee la planilla personal del dueño, con su token (0227)
  */
 const PUBLIC_PATHS = [
   "/login",
@@ -42,6 +43,9 @@ const PUBLIC_PATHS = [
   // tiene sesión de navegador: se autentica con INFORME_TOKEN en la propia ruta.
   "/api/finanzas/informe/datos",
   "/api/finanzas/informe/script",
+  // Los números de la agencia para la planilla personal del dueño: token propio
+  // validado en la ruta contra claves_api.
+  "/api/finanzas/planilla",
   // Páginas legales públicas (requeridas por TikTok/Meta para el alta de la app).
   "/privacidad",
   "/terminos",

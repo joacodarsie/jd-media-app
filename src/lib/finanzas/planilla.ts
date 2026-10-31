@@ -35,6 +35,12 @@ export interface MesPlanilla {
   resultado: number;
   /** resultado / facturado. 0 si no se facturó nada. */
   margen: number;
+  /**
+   * true si el equipo sale de la nómina CALCULADA y no de pagos registrados: el
+   * equipo cobra el 7 del mes siguiente, así que hasta ese día el mes recién
+   * cerrado no tiene pagos y su ganancia se vería inflada.
+   */
+  equipoEstimado: boolean;
 }
 
 export interface ClientePlanilla {
@@ -77,21 +83,42 @@ export function facturadoPorPeriodo(facturas: FacturaPlanilla[]): Map<string, nu
   return out;
 }
 
-/** La serie del informe (por lo cobrado) con lo facturado al lado. */
-export function mesesPlanilla(serie: MesResumen[], facturado: Map<string, number>): MesPlanilla[] {
+/**
+ * La serie del informe (por lo cobrado) con lo facturado al lado.
+ *
+ * `nominaCalculada` trae la nómina de los meses que todavía pueden no estar
+ * pagados (el actual y el anterior). Si un mes no tiene pagos al equipo
+ * registrados, se usa esa: un mes con equipo en cero no es un mes barato, es
+ * un mes que todavía no se pagó.
+ */
+export function mesesPlanilla(
+  serie: MesResumen[],
+  facturado: Map<string, number>,
+  nominaCalculada: Map<string, number> = new Map(),
+): MesPlanilla[] {
   return serie.map((m) => {
     const fact = facturado.get(m.periodo) ?? 0;
-    const resultado = fact - m.equipo - m.gastos;
+    const calculada = nominaCalculada.get(m.periodo) ?? 0;
+    const equipoEstimado = m.equipo <= 0 && calculada > 0;
+    const equipo = equipoEstimado ? calculada : m.equipo;
+    const resultado = fact - equipo - m.gastos;
     return {
       periodo: m.periodo,
       facturado: redondo(fact),
       cobrado: redondo(m.entro),
-      equipo: redondo(m.equipo),
+      equipo: redondo(equipo),
       gastos: redondo(m.gastos),
       resultado: redondo(resultado),
       margen: fact > 0 ? Math.round((resultado / fact) * 1000) / 1000 : 0,
+      equipoEstimado,
     };
   });
+}
+
+/** El período anterior a "YYYY-MM". */
+export function periodoAnterior(periodo: string): string {
+  const [y, m] = periodo.split("-").map(Number);
+  return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
 }
 
 /** Junta los servicios de cada cliente en una fila y ordena del peor margen al mejor. */

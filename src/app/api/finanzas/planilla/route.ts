@@ -4,12 +4,14 @@ import { createAdmin } from "@/lib/supabase/admin";
 import { getExchangeRates } from "@/lib/exchange";
 import { toARS } from "@/lib/finanzas";
 import { armarDatos, periodoPorDefecto } from "@/lib/finanzas/informe-run";
+import { buildPeriodPayroll } from "@/lib/payroll-period";
 import {
   clientesPlanilla,
   deudasPlanilla,
   facturadoPorPeriodo,
   facturadoUltimos12,
   mesesPlanilla,
+  periodoAnterior,
   type Planilla,
 } from "@/lib/finanzas/planilla";
 
@@ -50,10 +52,13 @@ export async function GET(req: NextRequest) {
 
   try {
     const db = createAdmin();
-    const [datos, { data: invs }, rates] = await Promise.all([
+    const anterior = periodoAnterior(periodo);
+    const [datos, { data: invs }, rates, nominaAnterior] = await Promise.all([
       armarDatos(db, periodo),
       db.from("client_invoices").select("periodo, monto, moneda"),
       getExchangeRates(),
+      // El mes recién cerrado se le paga al equipo el 7: hasta entonces, la calculada.
+      buildPeriodPayroll(db, anterior),
     ]);
     const facturado = facturadoPorPeriodo(
       ((invs ?? []) as { periodo: string; monto: number; moneda: string | null }[]).map((i) => ({
@@ -62,13 +67,19 @@ export async function GET(req: NextRequest) {
       })),
     );
 
+    const nominaDelMes = Math.round(datos.desglose.reduce((a, p) => a + (p.total || 0), 0));
+    const nominaCalculada = new Map([
+      [anterior, Math.round(nominaAnterior.totalNomina || 0)],
+      [periodo, nominaDelMes],
+    ]);
+
     const planilla: Planilla = {
       generadoEl: datos.generadoEl,
       periodo,
       dolar: datos.dolar,
-      meses: mesesPlanilla(datos.serie, facturado),
+      meses: mesesPlanilla(datos.serie, facturado, nominaCalculada),
       clientes: clientesPlanilla(datos.clientes),
-      nominaDelMes: Math.round(datos.desglose.reduce((a, p) => a + (p.total || 0), 0)),
+      nominaDelMes,
       porCobrar: deudasPlanilla(datos.cobros),
       facturado12m: facturadoUltimos12(facturado, periodo),
     };

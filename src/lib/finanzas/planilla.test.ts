@@ -5,6 +5,7 @@ import {
   facturadoPorPeriodo,
   facturadoUltimos12,
   mesesPlanilla,
+  periodoAnterior,
 } from "./planilla";
 import type { FilaCliente } from "./informe-mensual";
 import type { FilaCobro } from "./informe-xlsx";
@@ -65,7 +66,25 @@ describe("mesesPlanilla", () => {
       gastos: 100000,
       resultado: 300000,
       margen: 0.333,
+      equipoEstimado: false,
     });
+  });
+
+  it("el mes que todavía no se le pagó al equipo usa la nómina calculada", () => {
+    const serie = [
+      { periodo: "2026-09", entro: 0, equipo: 2700000, gastos: 0, salio: 0, quedo: 0, pctQuedo: 0 },
+      { periodo: "2026-10", entro: 0, equipo: 0, gastos: 350000, salio: 0, quedo: 0, pctQuedo: 0 },
+    ];
+    const nomina = new Map([["2026-09", 9], ["2026-10", 4136079]]);
+    const [sep, oct] = mesesPlanilla(serie, new Map([["2026-10", 7106129]]), nomina);
+    // Septiembre ya está pagado: manda lo pagado, no lo calculado.
+    expect(sep).toMatchObject({ equipo: 2700000, equipoEstimado: false });
+    expect(oct).toMatchObject({ equipo: 4136079, equipoEstimado: true, resultado: 7106129 - 4136079 - 350000 });
+  });
+
+  it("período anterior", () => {
+    expect(periodoAnterior("2026-11")).toBe("2026-10");
+    expect(periodoAnterior("2027-01")).toBe("2026-12");
   });
 
   it("un mes sin facturación tiene margen 0, no NaN", () => {

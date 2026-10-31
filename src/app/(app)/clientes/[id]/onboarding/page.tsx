@@ -38,7 +38,7 @@ export default async function OnboardingPage({
 
   const data = await loadOnboarding(params.id);
   if (!data) notFound();
-  const { client, services, onb, total, pagoEsperado, credenciales, steps, hasContractData } = data;
+  const { client, services, onb, total, pagoEsperado, steps, hasContractData } = data;
 
   const paneles = panelesVisibles(rolesDeOnboarding(me), {
     gestionRedes: services.some((s) => s.tipo === "gestion_redes"),
@@ -257,7 +257,6 @@ export default async function OnboardingPage({
               client={client}
               onb={onb}
               pagoEsperado={pagoEsperado}
-              credenciales={credenciales}
             />
           ))}
         </CardContent>

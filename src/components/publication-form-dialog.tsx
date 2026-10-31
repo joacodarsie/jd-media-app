@@ -1,5 +1,6 @@
 "use client";
 
+import { fechaHoraParaInput } from "@/lib/dates";
 import { useState, useTransition, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -111,7 +112,7 @@ export function PublicationFormDialog({
   const [red, setRed] = useState<string>(publication?.red ?? "instagram");
   const [tipo, setTipo] = useState<string>(publication?.tipo ?? "post");
   const [fecha, setFecha] = useState(
-    publication?.fecha_publicacion?.slice(0, 16) ??
+    fechaHoraParaInput(publication?.fecha_publicacion) ??
       (defaultDate ? `${defaultDate}T10:00` : "")
   );
   const [hashtags, setHashtags] = useState(publication?.hashtags ?? "");

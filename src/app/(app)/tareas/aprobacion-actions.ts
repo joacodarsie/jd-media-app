@@ -79,8 +79,8 @@ async function tareaParaAprobar(id: string) {
   return data as TareaEnRevision | null;
 }
 
-function puedeAprobar(t: TareaEnRevision, actor: { id: string; rol: string | null }, directoraId: string | null) {
-  return actor.rol === "admin" || actor.id === (t.aprobador_id ?? directoraId) || actor.id === directoraId;
+function puedeAprobar(t: TareaEnRevision, actor: { id: string; rol: string | null }, directoraId: string | null, pmId: string | null) {
+  return actor.rol === "admin" || actor.id === (t.aprobador_id ?? directoraId) || actor.id === directoraId || actor.id === pmId;
 }
 
 async function avisar(userId: string | null, yo: string, taskId: string, mensaje: string) {
@@ -124,8 +124,8 @@ export async function aprobarTarea(id: string) {
   const [t, clave] = await Promise.all([tareaParaAprobar(id), personasClave()]);
   if (!t) return { error: "No encontré el ticket." };
   if (t.estado !== "en_revision") return { error: "Este ticket no está esperando aprobación." };
-  if (!puedeAprobar(t, actor, clave.directoraId)) {
-    return { error: "Solo la dirección creativa puede aprobar este ticket." };
+  if (!puedeAprobar(t, actor, clave.directoraId, clave.pmId)) {
+    return { error: "Solo la dirección creativa o la project manager pueden aprobar este ticket." };
   }
   const pieza = await piezaEnRevision(id);
   if (pieza) {
@@ -157,8 +157,8 @@ export async function pedirCambios(id: string, detalle: string) {
   const [t, clave] = await Promise.all([tareaParaAprobar(id), personasClave()]);
   if (!t) return { error: "No encontré el ticket." };
   if (t.estado !== "en_revision") return { error: "Este ticket no está esperando aprobación." };
-  if (!puedeAprobar(t, actor, clave.directoraId)) {
-    return { error: "Solo la dirección creativa puede pedir cambios en este ticket." };
+  if (!puedeAprobar(t, actor, clave.directoraId, clave.pmId)) {
+    return { error: "Solo la dirección creativa o la project manager pueden pedir cambios en este ticket." };
   }
 
   const pieza = await piezaEnRevision(id);

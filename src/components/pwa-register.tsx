@@ -23,7 +23,7 @@ export function PwaRegister() {
     // ("Failed to find Server Action"). Santi lo vivió el 28/10. Si pasa,
     // recargamos una vez para traer la versión nueva.
     const KEY = "jd:version-reload-at";
-    const VIEJA = /failed to find server action|older or newer deployment|chunkloaderror|loading chunk/i;
+    const VIEJA = /failed to find server action|older or newer deployment|unexpected response was received from the server|chunkloaderror|loading chunk/i;
     const recargar = (msg: string) => {
       if (!VIEJA.test(msg)) return;
       if (Date.now() - Number(sessionStorage.getItem(KEY) ?? 0) < 15000) return;

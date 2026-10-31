@@ -27,7 +27,7 @@ export default async function OnboardingRedesPage({
 
   const data = await loadOnboarding(params.id);
   if (!data) notFound();
-  const { client, services, onb, coordName, mediaBuyerName, pagoEsperado, credenciales, tienePauta, steps, driveEmail, driveNeedsUpdate } =
+  const { client, services, onb, coordName, mediaBuyerName, pagoEsperado, tienePauta, steps, driveEmail, driveNeedsUpdate } =
     data;
 
   const paneles = panelesVisibles(rolesDeOnboarding(me), {
@@ -122,7 +122,7 @@ export default async function OnboardingRedesPage({
               <CardTitle className="text-base">Pasos de la coordinación</CardTitle>
               <p className="text-xs text-muted-foreground">
                 Conducí el meet de onboarding y dejá la cuenta lista para producir: kickoff,
-                diagnóstico, accesos, Drive, perfiles y tareas iniciales.
+                diagnóstico, Drive, perfiles y tareas iniciales.
               </p>
             </div>
             <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
@@ -138,7 +138,6 @@ export default async function OnboardingRedesPage({
               client={client}
               onb={onb}
               pagoEsperado={pagoEsperado}
-              credenciales={credenciales}
               driveEmail={driveEmail}
               driveNeedsUpdate={driveNeedsUpdate}
             />

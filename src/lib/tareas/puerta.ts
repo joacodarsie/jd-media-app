@@ -264,7 +264,8 @@ export function papelEnTicket(
   directoraId: string | null
 ): Papel {
   const aprobadora = t.aprobador_id ?? (requiereAprobacion(t.area) ? directoraId : null);
-  if (aprobadora === yo && t.estado === "en_revision") return "directora";
+  // La PM también aprueba, para darle una mano a la dirección creativa (31/10/2026).
+  if ((aprobadora === yo || (pmId === yo && aprobadora)) && t.estado === "en_revision") return "directora";
   if (pmId === yo && vaPorLaPm(t.area) && t.asignado_a_id === yo) return "pm";
   if (t.asignado_a_id === yo) return "responsable";
   // La directora fuera de revisión no tiene nada que hacer todavía, y

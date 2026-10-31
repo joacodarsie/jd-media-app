@@ -2,6 +2,14 @@
 title: Novedades
 ---
 
+## 2026-10-31 — El calendario y las tareas, en sincro
+
+- 🕐 **La fecha de las piezas ya no se corre.** Cada vez que se guardaba una pieza desde su ficha se le sumaban 3 horas, y algunas terminaban saltando de día. Ya no pasa.
+- 🏷️ **Si le cambiás el nombre a una pieza, su tarea también cambia.** Así el nombre de la tarea y el del calendario coinciden siempre.
+- ✅ **Luz también puede aprobar** las piezas y tareas que esperan revisión, para darle una mano a Santi.
+- 🔑 **Los accesos del cliente quedan solo en el onboarding de Community**, para no cargarlos dos veces.
+- 🔄 Si ves el cartel **«Hay una versión nueva»**, tocalo: si la pestaña quedó vieja, algunos botones dejan de responder.
+
 ## 2026-10-30 — Menú más simple y Administración
 
 - 🧹 **El menú tiene menos secciones.** Sacamos las que casi no se usaban para que encuentres más rápido lo tuyo.

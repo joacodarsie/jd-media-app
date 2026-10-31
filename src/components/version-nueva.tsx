@@ -11,8 +11,9 @@ import { RefreshCw } from "lucide-react";
  * botones" (Santi, 28/10/2026). No se recarga sola para no perder lo que la
  * persona esté escribiendo: aparece una barra con «Actualizar».
  *
- * Se chequea al volver a la pestaña (como mucho cada 2 minutos), no con un
- * intervalo, para no sumar pedidos al servidor.
+ * Se chequea al volver a la pestaña y al tocar algo (como mucho cada 2 minutos),
+ * no con un intervalo, para no sumar pedidos al servidor. Tocar algo cuenta
+ * porque quien deja la pestaña en primer plano nunca «vuelve» a ella (31/10/2026).
  */
 export function VersionNueva({ actual }: { actual: string | null }) {
   const [vieja, setVieja] = useState(false);
@@ -31,9 +32,11 @@ export function VersionNueva({ actual }: { actual: string | null }) {
     };
     document.addEventListener("visibilitychange", chequear);
     window.addEventListener("focus", chequear);
+    window.addEventListener("pointerdown", chequear);
     return () => {
       document.removeEventListener("visibilitychange", chequear);
       window.removeEventListener("focus", chequear);
+      window.removeEventListener("pointerdown", chequear);
     };
   }, [actual]);
 

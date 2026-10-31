@@ -141,6 +141,8 @@ describe("qué te toca", () => {
   it("a la directora le toca aprobar cuando la pieza está en revisión", () => {
     const t = pieza({ estado: "en_revision", aprobador_id: BRISA });
     expect(papelEnTicket(t, BRISA, LUZ, BRISA)).toBe("directora");
+    // La PM también aprueba (31/10/2026).
+    expect(papelEnTicket(t, LUZ, LUZ, BRISA)).toBe("directora");
     expect(pasosDelTicket(t, "directora", nombres)!.titulo).toBe("Te toca aprobar");
   });
 

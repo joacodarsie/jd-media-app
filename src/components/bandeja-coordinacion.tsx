@@ -51,7 +51,7 @@ export async function BandejaCoordinacion({ me }: { me: { id: string; rol: strin
           .order("fecha_limite", { ascending: true })
           .limit(30)
       : Promise.resolve({ data: [], error: null }),
-    (soyDirectora || soyAdmin) && clave.directoraId
+    (soyDirectora || soyPm || soyAdmin) && clave.directoraId
       ? admin
           .from("tasks")
           .select(SELECT)
@@ -80,9 +80,9 @@ export async function BandejaCoordinacion({ me }: { me: { id: string; rol: strin
     <div className="grid gap-3 md:grid-cols-2">
       {aprobar.length > 0 && (
         <BandejaAprobar
-          titulo={soyDirectora ? "Para aprobar" : `Esperando aprobación de ${directora}`}
+          titulo={soyDirectora || soyPm ? "Para aprobar" : `Esperando aprobación de ${directora}`}
           items={items}
-          puedeDecidir={soyDirectora || soyAdmin}
+          puedeDecidir={soyDirectora || soyPm || soyAdmin}
         />
       )}
       {repartir.length > 0 && (

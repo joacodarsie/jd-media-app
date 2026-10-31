@@ -1,5 +1,6 @@
 "use client";
 
+import { ymdEnZona } from "@/lib/dates";
 import Link from "next/link";
 import { useMemo, useState, useEffect, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -346,7 +347,8 @@ export function PublicationsMonth({
     const m = new Map<string, PublicationWithRels[]>();
     for (const p of filtered) {
       if (!p.fecha_publicacion) continue;
-      const k = p.fecha_publicacion.slice(0, 10);
+      const k = ymdEnZona(p.fecha_publicacion);
+      if (!k) continue;
       if (!m.has(k)) m.set(k, []);
       m.get(k)!.push(p);
     }

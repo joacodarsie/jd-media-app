@@ -265,7 +265,6 @@ export async function loadOnboarding(clientId: string, db?: SupabaseClient): Pro
   const tareasDerived = (tasksCount ?? 0) > 0;
   const diagnosticoDerived = (diagApprovedCount ?? 0) > 0;
   const driveDerived = !!client.drive_url;
-  const accesosDerived = credenciales.length > 0;
 
   const steps: StepDef[] = [
     // ── ETAPA 1 · INICIAL (Dirección) ──
@@ -342,16 +341,6 @@ export async function loadOnboarding(clientId: string, db?: SupabaseClient): Pro
       icon: FileBarChart,
       description:
         "Subí la transcripción del meet de onboarding (PDF de Tactiq). La IA arma el informe estratégico que después usamos como brief.",
-    },
-    {
-      key: "accesos_cargados_at",
-      stage: "redes",
-      title: "Accesos del cliente cargados",
-      done: (onb.accesos_cargados_at || accesosDerived) as string | null,
-      autoDerived: !onb.accesos_cargados_at && accesosDerived,
-      icon: KeyRound,
-      description:
-        "Cargá los accesos que pase el cliente: Instagram, TikTok, Facebook y cualquier otro acceso relevante. Quedan guardados en la ficha del cliente.",
     },
     {
       key: "drive_creado_at",
@@ -514,7 +503,6 @@ export function OnboardingStepRow({
   client,
   onb,
   pagoEsperado,
-  credenciales,
   driveEmail = null,
   driveNeedsUpdate = false,
 }: {
@@ -522,7 +510,6 @@ export function OnboardingStepRow({
   client: ClientLite;
   onb: OnboardingState;
   pagoEsperado: number;
-  credenciales: Record<string, string>[];
   driveEmail?: string | null;
   driveNeedsUpdate?: boolean;
 }) {
@@ -632,25 +619,6 @@ export function OnboardingStepRow({
             >
               <FileBarChart className="h-3 w-3" /> Abrir diagnóstico
             </Link>
-          )}
-          {step.key === "accesos_cargados_at" && (
-            <div className="w-full rounded-md border bg-muted/20 p-2.5">
-              <ClientListEditor
-                clientId={client.id}
-                field="credenciales"
-                title="Accesos del cliente"
-                description="Instagram, TikTok, Facebook y cualquier otro acceso que pase el cliente. Es la misma lista que figura en la ficha del cliente."
-                addLabel="Agregar acceso"
-                initial={credenciales}
-                itemFields={[
-                  { name: "servicio", label: "Plataforma / servicio", placeholder: "Ej: Instagram, TikTok, Facebook" },
-                  { name: "url", label: "URL (opcional)", type: "url", placeholder: "https://…" },
-                  { name: "usuario", label: "Usuario / Email" },
-                  { name: "password", label: "Contraseña", type: "password" },
-                  { name: "notas", label: "Notas (opcional)" },
-                ]}
-              />
-            </div>
           )}
           {step.key === "drive_creado_at" && (
             <OnboardingDriveField

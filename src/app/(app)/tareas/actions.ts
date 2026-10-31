@@ -48,13 +48,14 @@ function estadoConAprobacion(
   estado: string,
   t: { area: string | null; fecha_limite: string | null; estado: string; aprobador_id: string | null },
   actor: Actor,
-  directoraId: string | null
+  directoraId: string | null,
+  pmId: string | null
 ): { estado: string; aviso?: string } {
   if (estado !== "completada" || t.estado === "completada") return { estado };
   if (!requiereAprobacion(t.area)) return { estado };
   if ((t.fecha_limite ?? "9999") < APROBACION_DESDE) return { estado };
   const aprobadora = t.aprobador_id ?? directoraId;
-  if (actor.rol === "admin" || actor.id === aprobadora || actor.id === directoraId) return { estado };
+  if (actor.rol === "admin" || actor.id === aprobadora || actor.id === directoraId || actor.id === pmId) return { estado };
   return {
     estado: "en_revision",
     aviso: "Quedó En revisión: los diseños los aprueba la dirección creativa antes de ir al cliente.",
@@ -392,7 +393,7 @@ export async function updateTaskStatus(id: string, estadoPedido: string) {
     createAdmin().from("tasks").select("area, fecha_limite, estado, aprobador_id").eq("id", id).maybeSingle(),
   ]);
   const { estado, aviso } = actual
-    ? estadoConAprobacion(estadoPedido, actual as Parameters<typeof estadoConAprobacion>[1], actor, clave.directoraId)
+    ? estadoConAprobacion(estadoPedido, actual as Parameters<typeof estadoConAprobacion>[1], actor, clave.directoraId, clave.pmId)
     : { estado: estadoPedido, aviso: undefined };
   const bloqueo = await motivoParaNoCerrarTareas(createAdmin(), [id], estado);
   if (bloqueo) return { error: bloqueo };
@@ -447,7 +448,7 @@ export async function updateTask(
   if (noReasignar) return { error: noReasignar };
 
   const { estado, aviso } = antesT
-    ? estadoConAprobacion(input.estado, { ...antesT, area: input.area }, actor, clave.directoraId)
+    ? estadoConAprobacion(input.estado, { ...antesT, area: input.area }, actor, clave.directoraId, clave.pmId)
     : { estado: input.estado, aviso: undefined };
 
   const bloqueo = await motivoParaNoCerrarTareas(createAdmin(), [id], estado);

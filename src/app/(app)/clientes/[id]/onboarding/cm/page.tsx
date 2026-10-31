@@ -25,7 +25,7 @@ export default async function OnboardingCmPage({
 
   const data = await loadOnboarding(params.id);
   if (!data) notFound();
-  const { client, services, onb, pagoEsperado, credenciales, steps } = data;
+  const { client, services, onb, pagoEsperado, steps } = data;
   const paneles = panelesVisibles(rolesDeOnboarding(me), {
     gestionRedes: services.some((s) => s.tipo === "gestion_redes"),
     disenoGrafico: services.some((s) => s.tipo === "diseno_grafico"),
@@ -114,7 +114,6 @@ export default async function OnboardingCmPage({
               client={client}
               onb={onb}
               pagoEsperado={pagoEsperado}
-              credenciales={credenciales}
             />
           ))}
         </CardContent>

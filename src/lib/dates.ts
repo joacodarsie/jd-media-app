@@ -57,6 +57,19 @@ export function ymdEnZona(iso: string | null | undefined): string | null {
 }
 
 /**
+ * Fecha y hora para un <input type="datetime-local">, en la zona de la agencia.
+ * Cortar el ISO con `.slice(0,16)` mostraba la hora UTC como si fuera local, y al
+ * guardar se le sumaban 3 horas: cada edición corría la pieza, hasta cambiarla
+ * de día (31/10/2026).
+ */
+export function fechaHoraParaInput(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return formatInTimeZone(d, TIMEZONE, "yyyy-MM-dd'T'HH:mm");
+}
+
+/**
  * ¿La tarea está vencida DE ESTE MES? (o del mes pasado, dentro de los
  * primeros días, para no perder de vista lo de la semana anterior).
  *

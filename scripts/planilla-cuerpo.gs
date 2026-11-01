@@ -557,6 +557,9 @@ function escribirDatosApp_(d) {
   ]);
   const personas = (d.sueldos && d.sueldos.personas) || [];
   const aPagar = personas.reduce(function (a, p) { return a + (p.pagado ? 0 : p.total); }, 0);
+  // El mes en curso va como texto: si no, Sheets lo vuelve una fecha y las
+  // fórmulas de «Plan y objetivos» que lo buscan dan #N/A.
+  sh.getRange("B4").setNumberFormat("@");
   sh.getRange(4, 1, 8, 2).setValues([
     ["Mes en curso", d.periodo],
     ["Dólar que usa la app", d.dolar],

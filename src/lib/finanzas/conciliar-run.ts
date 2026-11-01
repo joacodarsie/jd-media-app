@@ -27,6 +27,8 @@ export interface ResultadoMovimiento {
   clave: string;
   estado: EstadoMovimiento | "ignorado";
   mensaje: string;
+  /** false si ya había llegado antes: no se vuelve a avisar. */
+  nuevo: boolean;
 }
 
 interface EfectoCobro {
@@ -207,13 +209,13 @@ export async function aplicarMovimientos(db: SupabaseClient, movs: MovimientoPla
   for (const m of movs) {
     const tipo = tipoDe(m.categoria);
     if (!tipo || !(m.monto > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(m.fecha) || !m.clave) {
-      out.push({ clave: m.clave, estado: "ignorado", mensaje: "No es un cobro ni un sueldo." });
+      out.push({ clave: m.clave, estado: "ignorado", mensaje: "No es un cobro ni un sueldo.", nuevo: false });
       continue;
     }
     const { data: ya } = await db.from("movimientos_planilla").select("estado, mensaje").eq("clave", m.clave).maybeSingle();
     if (ya) {
       const y = ya as { estado: EstadoMovimiento; mensaje: string | null };
-      out.push({ clave: m.clave, estado: y.estado, mensaje: y.mensaje ?? "" });
+      out.push({ clave: m.clave, estado: y.estado, mensaje: y.mensaje ?? "", nuevo: false });
       continue;
     }
 
@@ -232,7 +234,7 @@ export async function aplicarMovimientos(db: SupabaseClient, movs: MovimientoPla
       user_id: "userId" in r ? r.userId ?? null : null,
       periodo: "periodo" in r ? r.periodo ?? null : null,
     });
-    out.push({ clave: m.clave, estado: r.estado, mensaje: r.mensaje });
+    out.push({ clave: m.clave, estado: r.estado, mensaje: r.mensaje, nuevo: true });
   }
   return out;
 }

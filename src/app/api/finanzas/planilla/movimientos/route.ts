@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   const resultados = await aplicarMovimientos(db, movs);
 
   // Un aviso por tanda, con lo que hay para revisar.
-  const nuevos = resultados.filter((r) => r.estado === "marcado" || r.estado === "sin_match");
+  const nuevos = resultados.filter((r) => r.nuevo && (r.estado === "marcado" || r.estado === "sin_match"));
   if (nuevos.length) {
     const marcados = nuevos.filter((r) => r.estado === "marcado");
     const sinMatch = nuevos.length - marcados.length;

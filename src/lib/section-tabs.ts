@@ -73,6 +73,8 @@ export function finanzasGrupos(esAdmin: boolean): SectionTab[][] {
       { href: "/cobros", label: "¿Quién me pagó?" },
       { href: "/finanzas/cobros", label: "Cuentas por cobrar" },
       { href: "/finanzas/pagos", label: "Pagos al equipo" },
+      // Lo que la planilla vio en el banco y la app marcó sola, para confirmar.
+      { href: "/finanzas/conciliacion", label: "Detectados" },
       { href: "/finanzas/gastos", label: "Gastos" },
       { href: "/finanzas/vencimientos", label: "Vencimientos" },
       { href: "/finanzas/cierre", label: "Cerrar el mes" },

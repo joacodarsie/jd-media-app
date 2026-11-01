@@ -1,6 +1,6 @@
-import { createHash, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createAdmin } from "@/lib/supabase/admin";
+import { planillaAutorizada } from "@/lib/finanzas/planilla-auth";
 import { getExchangeRates } from "@/lib/exchange";
 import { toARS } from "@/lib/finanzas";
 import { armarDatos, periodoPorDefecto } from "@/lib/finanzas/informe-run";
@@ -12,6 +12,7 @@ import {
   facturadoUltimos12,
   mesesPlanilla,
   periodoAnterior,
+  sueldosPlanilla,
   type Planilla,
 } from "@/lib/finanzas/planilla";
 
@@ -22,26 +23,11 @@ export const maxDuration = 60;
  * Los números de la agencia para la planilla personal del dueño
  * ("Finanzas de Joaquín"). La pide su Apps Script una vez por día.
  *
- * Va con token porque es toda la información financiera de la agencia. El
- * token no está en Vercel: se compara su sha256 con el de `claves_api` (0227).
- * Sin la migración aplicada, contesta 503 y la planilla sigue como estaba.
+ * Va con token (ver lib/finanzas/planilla-auth). Sin la migración 0227
+ * aplicada, contesta 503 y la planilla sigue como estaba.
  */
-async function autorizado(token: string): Promise<boolean | null> {
-  const { data, error } = await createAdmin()
-    .from("claves_api")
-    .select("sha256")
-    .eq("nombre", "planilla_finanzas")
-    .maybeSingle();
-  if (error || !data) return null;
-  const esperado = Buffer.from(String((data as { sha256: string }).sha256), "hex");
-  const recibido = createHash("sha256").update(token).digest();
-  return esperado.length === recibido.length && timingSafeEqual(esperado, recibido);
-}
-
 export async function GET(req: NextRequest) {
-  const token = req.headers.get("x-planilla-token") ?? req.nextUrl.searchParams.get("token") ?? "";
-  if (!token) return NextResponse.json({ error: "no autorizado" }, { status: 401 });
-  const ok = await autorizado(token);
+  const ok = await planillaAutorizada(req);
   if (ok === null) {
     return NextResponse.json({ error: "Falta configurar la clave de la planilla (migración 0227)" }, { status: 503 });
   }
@@ -82,6 +68,7 @@ export async function GET(req: NextRequest) {
       nominaDelMes,
       porCobrar: deudasPlanilla(datos.cobros),
       facturado12m: facturadoUltimos12(facturado, periodo),
+      sueldos: { periodo: anterior, personas: sueldosPlanilla(nominaAnterior.people) },
     };
     return NextResponse.json(planilla, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {

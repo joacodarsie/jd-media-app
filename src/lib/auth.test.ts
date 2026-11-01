@@ -138,9 +138,15 @@ describe("isOwner — reserva de la IA cara al director", () => {
 });
 
 describe("userHas — features por usuario", () => {
-  it("admin tiene todas las features", () => {
-    expect(userHas(user({ rol: "admin" }), "finanzas")).toBe(true);
+  it("admin tiene todas las features, menos la plata", () => {
     expect(userHas(user({ rol: "admin" }), "leads_ia")).toBe(true);
+    expect(userHas(user({ rol: "admin" }), "comercial")).toBe(true);
+  });
+
+  it("la plata es solo del dueño, aunque otro admin tenga el permiso cargado (1/11/2026)", () => {
+    expect(userHas(user({ rol: "admin", email: OWNER_EMAIL }), "finanzas")).toBe(true);
+    expect(userHas(user({ rol: "admin", email: "leo@jdmedia.com", permisos: { finanzas: true } }), "finanzas")).toBe(false);
+    expect(userHas(user({ rol: "coordinador", email: "luz@jdmedia.com", permisos: { finanzas: true } }), "finanzas")).toBe(false);
   });
 
   it("un no-admin solo tiene lo que le otorgaron", () => {

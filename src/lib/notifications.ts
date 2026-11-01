@@ -1,4 +1,5 @@
 import { formatInTimeZone, toZonedTime } from "date-fns-tz";
+import { isOwner } from "@/lib/auth";
 import { filtroDePersona } from "@/lib/tareas/colaboradores";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { TIMEZONE } from "./constants";
@@ -155,15 +156,14 @@ export async function ensureFinanceNotifications(admin: SupabaseClient) {
   );
   const inicioHoyCordoba = toZonedTime(new Date(hoy + "T00:00:00"), TIMEZONE);
 
-  // Destinatarios: admins + cualquiera con la feature `finanzas` otorgada.
+  // Destinatario: el dueño.
   const { data: usersRaw } = await admin
     .from("users")
-    .select("id, rol, permisos")
+    .select("id, email")
     .eq("activo", true);
-  type URow = { id: string; rol: string; permisos: Record<string, boolean> | null };
-  const recipients = ((usersRaw ?? []) as URow[])
-    .filter((u) => u.rol === "admin" || u.permisos?.finanzas === true)
-    .map((u) => u.id);
+  type URow = { id: string; email: string | null };
+  // La plata es solo del dueño (SOLO_DUENO en lib/auth): los avisos también.
+  const recipients = ((usersRaw ?? []) as URow[]).filter((u) => isOwner(u)).map((u) => u.id);
   if (recipients.length === 0) return;
 
   const [{ data: invoices }, { data: payments }] = await Promise.all([
@@ -334,12 +334,11 @@ export async function ensureCobroReminders(admin: SupabaseClient) {
 
   const { data: usersRaw } = await admin
     .from("users")
-    .select("id, rol, permisos")
+    .select("id, email")
     .eq("activo", true);
-  type URow = { id: string; rol: string; permisos: Record<string, boolean> | null };
-  const recipients = ((usersRaw ?? []) as URow[])
-    .filter((u) => u.rol === "admin" || u.permisos?.finanzas === true)
-    .map((u) => u.id);
+  type URow = { id: string; email: string | null };
+  // La plata es solo del dueño (SOLO_DUENO en lib/auth): los avisos también.
+  const recipients = ((usersRaw ?? []) as URow[]).filter((u) => isOwner(u)).map((u) => u.id);
   if (recipients.length === 0) return;
 
   const mensaje = `💰 Nuevo mes: enviá los recordatorios de cobro a tus ${n} cliente${

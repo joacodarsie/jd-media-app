@@ -152,6 +152,29 @@ describe("sueldosPlanilla", () => {
       { nombre: "Nadie", alias: null, titular: null, total: 0, pagado: false },
     ]);
     expect(s.map((x) => x.nombre)).toEqual(["Luz", "Matías"]);
-    expect(s[0]).toEqual({ nombre: "Luz", alias: null, titular: null, total: 832633, pagado: true, montoPagado: 832633 });
+    expect(s[0]).toEqual({ nombre: "Luz", alias: null, titular: null, total: 832633, pagado: true, montoPagado: 832633, lineas: [] });
+  });
+
+  it("trae de qué sale cada sueldo, cuenta por cuenta", () => {
+    const [s] = sueldosPlanilla([
+      {
+        nombre: "Carlos",
+        alias: null,
+        titular: null,
+        total: 330000,
+        pagado: false,
+        autoLines: [
+          { cliente: "CATCH", concepto: "Edición: 8 reels", monto: 120000 },
+          { cliente: "Warrior", concepto: "Edición: 4 reels", monto: 60000 },
+          { cliente: "Nadie", concepto: "Sin piezas", monto: 0 },
+        ],
+        manualItems: [{ cliente: null, concepto: "Jornada en Résonar", monto: 150000 }],
+      },
+    ]);
+    expect(s.lineas).toEqual([
+      { cuenta: "CATCH", concepto: "Edición: 8 reels", monto: 120000 },
+      { cuenta: "Warrior", concepto: "Edición: 4 reels", monto: 60000 },
+      { cuenta: "General", concepto: "Jornada en Résonar", monto: 150000 },
+    ]);
   });
 });

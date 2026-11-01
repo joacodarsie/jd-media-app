@@ -1,4 +1,4 @@
-import { requireRole } from "@/lib/auth";
+import { requireFeature } from "@/lib/auth";
 import { createAdmin } from "@/lib/supabase/admin";
 import { currentPeriod } from "@/lib/finanzas";
 import { buildPeriodPayroll } from "@/lib/payroll-period";
@@ -11,7 +11,8 @@ export default async function SueldosPage({
 }: {
   searchParams: { periodo?: string };
 }) {
-  await requireRole(["admin"]);
+  // Los sueldos son plata: solo el dueño (ver SOLO_DUENO en lib/auth).
+  await requireFeature("finanzas");
   const admin = createAdmin();
   const periodo = searchParams.periodo ?? currentPeriod();
 

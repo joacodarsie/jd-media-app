@@ -69,6 +69,8 @@ export interface SueldoPersona {
   pagado: boolean;
   /** Lo transferido, si ya se pagó (puede no coincidir con el total). */
   montoPagado: number;
+  /** De qué sale el sueldo: una línea por cuenta y concepto (edición, CM, comisión…). */
+  lineas: { cuenta: string; concepto: string; monto: number }[];
 }
 
 export interface Planilla {
@@ -89,7 +91,16 @@ export interface Planilla {
 
 /** La nómina de un mes, una fila por persona, de mayor a menor. Los que no cobran nada no aparecen. */
 export function sueldosPlanilla(
-  people: { nombre: string; alias: string | null; titular: string | null; total: number; pagado: boolean; montoPagado?: number }[],
+  people: {
+    nombre: string;
+    alias: string | null;
+    titular: string | null;
+    total: number;
+    pagado: boolean;
+    montoPagado?: number;
+    autoLines?: { cliente: string; concepto: string; monto: number }[];
+    manualItems?: { cliente: string | null; concepto: string; monto: number }[];
+  }[],
 ): SueldoPersona[] {
   return people
     .filter((p) => (p.total || 0) > 0 || (p.montoPagado || 0) > 0)
@@ -100,6 +111,10 @@ export function sueldosPlanilla(
       total: redondo(p.total || 0),
       pagado: !!p.pagado,
       montoPagado: redondo(p.montoPagado || 0),
+      lineas: [
+        ...(p.autoLines ?? []).map((l) => ({ cuenta: l.cliente || "General", concepto: l.concepto, monto: redondo(l.monto) })),
+        ...(p.manualItems ?? []).map((l) => ({ cuenta: l.cliente || "General", concepto: l.concepto, monto: redondo(l.monto) })),
+      ].filter((l) => l.monto !== 0),
     }))
     .sort((a, b) => b.total - a.total);
 }

@@ -262,6 +262,9 @@ function agregarMovimiento_(fecha, m) {
 //   - lo que no puede saber queda «¿A quién fue?» para revisarlo.
 
 const MP_API = "https://api.mercadopago.com/v1/account/release_report";
+// 1/11/2026: el movimiento que cargó este reporte se pisó al completar a mano
+// el extracto de Macro. Se vuelve a bajar una vez.
+const REIMPORTAR_MP = ["reserve-release-375831356-2026-11-01-035617.csv"];
 // Todo lo anterior a esta fecha ya está cargado desde los extractos: no se toca.
 const MP_DESDE = "2026-10-29";
 const CUENTAS_PROPIAS = ["Naranja X", "DolarApp Pesos", "Macro Cuenta", "Naranja X Dólares", "DolarApp"];
@@ -274,7 +277,13 @@ function importarMercadoPago() {
 
   const lista = JSON.parse(UrlFetchApp.fetch(MP_API + "/list", { headers: headers }).getContentText());
   const props = PropertiesService.getScriptProperties();
-  const hechos = JSON.parse(props.getProperty("MP_REPORTES_HECHOS") || "[]");
+  // Reportes que hay que volver a cargar una vez (por ejemplo, si se pisó una
+  // fila a mano). No duplica: lo que ya está se reconoce por el ID de operación.
+  const reimportados = JSON.parse(props.getProperty("MP_REIMPORTADOS") || "[]");
+  const aReimportar = REIMPORTAR_MP.filter(function (f) { return reimportados.indexOf(f) === -1; });
+  const hechos = JSON.parse(props.getProperty("MP_REPORTES_HECHOS") || "[]").filter(function (f) {
+    return aReimportar.indexOf(f) === -1;
+  });
   const nuevos = lista
     .filter(function (r) {
       return r.file_name && /\.csv$/i.test(r.file_name) && hechos.indexOf(r.file_name) === -1;
@@ -291,6 +300,7 @@ function importarMercadoPago() {
     hechos.push(r.file_name);
   });
   props.setProperty("MP_REPORTES_HECHOS", JSON.stringify(hechos.slice(-200)));
+  if (aReimportar.length) props.setProperty("MP_REIMPORTADOS", JSON.stringify(reimportados.concat(aReimportar).slice(-50)));
 }
 
 function cargarReporteMP_(csv) {
@@ -483,6 +493,50 @@ function actualizarDesdeApp() {
   const d = JSON.parse(res.getContentText());
   escribirDatosApp_(d);
   escribirMargenes_(d);
+  escribirSueldos_(d);
+}
+
+/**
+ * «Sueldos del 7»: para pagar sin vueltas. Arriba de cada persona, cuánto y a
+ * qué alias; abajo, de qué sale (cada cuenta y concepto), para saber por qué.
+ */
+function escribirSueldos_(d) {
+  if (!d.sueldos) return;
+  const ss = SpreadsheetApp.getActive();
+  let sh = ss.getSheetByName("Sueldos del 7");
+  if (!sh) sh = ss.insertSheet("Sueldos del 7");
+  sh.clear();
+  const personas = d.sueldos.personas || [];
+  const total = personas.reduce(function (a, p) { return a + p.total; }, 0);
+  const faltan = personas.reduce(function (a, p) { return a + (p.pagado ? 0 : p.total); }, 0);
+
+  const filas = [
+    ["Sueldos de " + d.sueldos.periodo + " (se pagan el 7)", "", "", ""],
+    ["Lo calcula la app con lo que se publicó. Cuando pagás, la planilla lo detecta y la app lo marca solo. Se actualiza todos los días: no escribas acá.", "", "", ""],
+    ["Total", total, "Falta pagar", faltan],
+    ["", "", "", ""],
+  ];
+  const negritas = [1, 3];
+  personas.forEach(function (p) {
+    negritas.push(filas.length + 1);
+    filas.push([
+      p.nombre,
+      p.total,
+      p.alias ? "Alias: " + p.alias + (p.titular ? " (" + p.titular + ")" : "") : "Sin alias cargado",
+      p.pagado ? "Pagado" : "Falta pagar",
+    ]);
+    (p.lineas || []).forEach(function (l) {
+      filas.push(["      " + l.cuenta, l.monto, l.concepto, ""]);
+    });
+    filas.push(["", "", "", ""]);
+  });
+  sh.getRange(1, 1, filas.length, 4).setValues(filas);
+  sh.getRange(1, 2, filas.length, 1).setNumberFormat('"$"#,##0');
+  sh.getRange(3, 4).setNumberFormat('"$"#,##0');
+  negritas.forEach(function (f) { sh.getRange(f, 1, 1, 4).setFontWeight("bold"); });
+  sh.getRange("A1").setFontSize(14);
+  sh.setColumnWidth(1, 260);
+  sh.setColumnWidth(3, 380);
 }
 
 function escribirDatosApp_(d) {
@@ -693,8 +747,9 @@ function diario10() {
   sincronizarConApp();
 }
 
-/** Cada hora: lo nuevo de cobros y sueldos, a la app. */
+/** Cada hora: Mercado Pago (si hay reportes nuevos) y lo nuevo de cobros y sueldos, a la app. */
 function cadaHora() {
+  importarMercadoPago();
   sincronizarConApp();
 }
 

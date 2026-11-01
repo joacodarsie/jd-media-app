@@ -2,6 +2,11 @@
 title: Novedades
 ---
 
+## 2026-11-01 — Contenidos más rápido
+
+- ⚡ **Contenidos y Tareas cargan más rápido.**
+- 🧰 **¿Salió de verdad?, Lo que salió, Inspo y Guiones** ahora están juntos en el botón **Herramientas**, arriba a la derecha del calendario.
+
 ## 2026-10-31 — El calendario y las tareas, en sincro
 
 - 🕐 **La fecha de las piezas ya no se corre.** Cada vez que se guardaba una pieza desde su ficha se le sumaban 3 horas, y algunas terminaban saltando de día. Ya no pasa.

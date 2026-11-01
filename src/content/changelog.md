@@ -4,6 +4,8 @@ title: Novedades
 
 ## 2026-11-01 — Contenidos más rápido
 
+- 🚦 **El semáforo de cuentas ahora mira lo importante:** cuánto hace de la última reunión con el cliente pesa más, y las tareas cuentan recién a los 7 días de vencidas. **Registrá cada reunión en la ficha del cliente** para que la cuenta no quede en rojo.
+- 🧹 **Limpiamos tareas vencidas** que ya no aplicaban. Las de portada ahora se cierran solas cuando la pieza se aprueba.
 - ⚡ **Contenidos y Tareas cargan más rápido.**
 - 🧰 **¿Salió de verdad?, Lo que salió, Inspo y Guiones** ahora están juntos en el botón **Herramientas**, arriba a la derecha del calendario.
 

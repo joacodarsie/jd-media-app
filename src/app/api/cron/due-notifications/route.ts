@@ -18,6 +18,7 @@ import { runInstagramDaily } from "@/lib/social/sync";
 import { runAlarmaVinculacion } from "@/lib/retencion/vinculacion-ig-run";
 import { runTareaEncuesta } from "@/lib/retencion/encuesta-tarea-run";
 import { runCuentasEnRojo } from "@/lib/retencion/cuentas-rojo-run";
+import { archivarRutinasVencidas } from "@/lib/tareas/rutinas-vencidas";
 import { runGuionesPrevios } from "@/lib/retencion/guion-previo-run";
 import { runTuLunes } from "@/lib/direccion/tu-lunes-run";
 import { runAlarma48h } from "@/lib/contenidos/alarma-48h-run";
@@ -488,6 +489,13 @@ export async function GET(req: NextRequest) {
   }
 
   // Las 3 cuentas más en riesgo del semáforo de salud, como tarea (19/10/2026).
+  let rutinasArchivadas: unknown = null;
+  try {
+    rutinasArchivadas = await archivarRutinasVencidas(admin, hoyYmd());
+  } catch (e) {
+    rutinasArchivadas = { error: e instanceof Error ? e.message : String(e) };
+  }
+
   let enRojo: unknown = null;
   try {
     enRojo = await runCuentasEnRojo(admin, hoyYmd());
@@ -712,6 +720,7 @@ export async function GET(req: NextRequest) {
     sinMedir,
     encuestaMes,
     enRojo,
+    rutinasArchivadas,
     guiones,
     lunes,
     alarma48h,

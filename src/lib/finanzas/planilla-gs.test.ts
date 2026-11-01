@@ -9,7 +9,9 @@ import { PLANILLA_GS } from "./planilla-gs";
  */
 describe("el script de la planilla Finanzas de Joaquín", () => {
   it("el módulo TS está sincronizado con el .gs", () => {
-    expect(PLANILLA_GS).toBe(fs.readFileSync("scripts/planilla-cuerpo.gs", "utf8"));
+    // Sin los saltos de línea de Windows: git los cambia al bajar el repo.
+    const sinCr = (t: string) => t.replace(/\r/g, "");
+    expect(sinCr(PLANILLA_GS)).toBe(sinCr(fs.readFileSync("scripts/planilla-cuerpo.gs", "utf8")));
   });
 
   it("es JavaScript válido y un IIFE que devuelve lo que llama el cargador", () => {

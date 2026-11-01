@@ -4,6 +4,7 @@
  * tareas vencidas, y devuelve un semáforo bien/regular/mal por cuenta. No inventa
  * datos: cada señal sale de algo cargado. Pensado para el seguimiento quincenal.
  */
+import { alertaReunion } from "./reunion-salud";
 import { createAdmin } from "@/lib/supabase/admin";
 import { PACK_QUOTAS } from "@/lib/content-plans/packs";
 import { currentPeriod, nextPeriod } from "@/lib/finanzas";
@@ -144,13 +145,14 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
   // sus tablas (0137) pueden no estar aplicadas todavía: si fallan, se ignoran.
   const satByC = new Map<string, { puntaje: number; periodo: string; mejorar: string | null }>();
   const reunionByC = new Set<string>();
+  const ultimaReunion = new Map<string, string>();
   const [satRes, meetRes, svcRes, agendadasRes] = await Promise.all([
     admin
       .from("client_satisfaction")
       .select("cliente_id, periodo, puntaje, que_mejorar")
       .in("cliente_id", ids)
       .order("periodo", { ascending: false }),
-    admin.from("client_meetings").select("cliente_id").in("cliente_id", ids).eq("periodo", period),
+    admin.from("client_meetings").select("cliente_id, periodo, fecha").in("cliente_id", ids).order("fecha", { ascending: false }),
     // Quién necesita Instagram medido (redes o pauta): sin datos reales no hay
     // reporte que muestre resultados (19/10/2026).
     admin
@@ -191,8 +193,10 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
         mejorar: s.que_mejorar,
       });
   }
-  for (const m of (meetRes.data ?? []) as { cliente_id: string }[])
-    reunionByC.add(m.cliente_id);
+  for (const m of (meetRes.data ?? []) as { cliente_id: string; periodo: string; fecha: string | null }[]) {
+    if (m.periodo === period) reunionByC.add(m.cliente_id);
+    if (m.fecha && !ultimaReunion.has(m.cliente_id)) ultimaReunion.set(m.cliente_id, m.fecha);
+  }
 
   // Cambios pedidos del mes (piezas que rebotaron a "rechazado" = cambios).
   const cambiosByC = new Map<string, number>();
@@ -241,11 +245,12 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
 
   // Tareas vencidas por cliente.
   const overdueTasksByC = new Map<string, number>();
-  // Solo las vencidas hace más de 3 días: una que venció ayer no es una alarma.
-  const hace3dias = new Date(now.getTime() - 3 * 86_400_000).toISOString().slice(0, 10);
+  // Solo las vencidas hace más de 7 días: con 3 casi toda la cartera daba amarillo
+  // por el cierre de mes, y el semáforo no decía nada sobre la cuenta.
+  const hace7dias = new Date(now.getTime() - 7 * 86_400_000).toISOString().slice(0, 10);
   for (const t of (tasksRaw ?? []) as { cliente_id: string; fecha_limite: string; bloqueo?: string | null }[]) {
     // Las trabadas (0206) esperan a otro: no son atraso de quien las tiene.
-    if (!t.cliente_id || t.fecha_limite >= hace3dias || t.bloqueo) continue;
+    if (!t.cliente_id || t.fecha_limite >= hace7dias || t.bloqueo) continue;
     overdueTasksByC.set(t.cliente_id, (overdueTasksByC.get(t.cliente_id) ?? 0) + 1);
   }
 
@@ -306,7 +311,9 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
         semaforo: "sin_datos",
         alertas: [],
       } as PuntualidadCuenta);
-    if (mideContenido) {
+    // Los primeros días del mes todavía no hay calendario cargado: no es atraso.
+    const mesRecienArranca = now.getDate() <= 5 && puntualidad.planificadas === 0;
+    if (mideContenido && !mesRecienArranca) {
       scoreContenido += scorePuntualidad(puntualidad);
       alertas.push(...puntualidad.alertas);
     }
@@ -339,10 +346,10 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
     const tareasVencidas = overdueTasksByC.get(c.id) ?? 0;
     if (tareasVencidas >= 5) {
       score += 2;
-      alertas.push(`${tareasVencidas} tareas vencidas hace más de 3 días`);
+      alertas.push(`${tareasVencidas} tareas vencidas hace más de 7 días`);
     } else if (tareasVencidas >= 2) {
       score += 1;
-      alertas.push(`${tareasVencidas} tareas vencidas hace más de 3 días`);
+      alertas.push(`${tareasVencidas} tareas vencidas hace más de 7 días`);
     }
 
     // 4) Cambios pedidos (fricción de calidad): mucho rebote = algo no sale
@@ -389,9 +396,14 @@ export async function computeAccountHealth(admin: Admin): Promise<AccountHealthR
       buenas.push("Reunión del mes hecha");
     } else if (reunionAgendada.has(c.id)) {
       buenas.push("Reunión del mes agendada");
-    } else if (elapsedFrac > 0.6 && !enArranque) {
-      score += 1;
-      alertas.push("Falta la reunión mensual de seguimiento");
+    } else {
+      const ultima = ultimaReunion.get(c.id);
+      const dias = ultima ? Math.floor((now.getTime() - Date.parse(`${ultima.slice(0, 10)}T12:00:00-03:00`)) / 86_400_000) : null;
+      const falta = alertaReunion(diasCuenta, dias);
+      if (falta) {
+        score += falta.puntos;
+        alertas.push(falta.texto);
+      }
     }
 
     return {

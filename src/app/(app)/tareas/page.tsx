@@ -1,3 +1,4 @@
+import { sinVacios } from "@/lib/sin-vacios";
 import Link from "next/link";
 import { TareasProntoTrabadas } from "@/components/tareas-pronto-trabadas";
 import { todasLasFilas } from "@/lib/supabase/todas-las-filas";
@@ -102,10 +103,10 @@ export default async function TareasPage({
     ? allClients.filter((c) => myClientIds.includes(c.id))
     : allClients;
 
-  const tasks = [
+  const tasks = sinVacios([
     ...(activeTasks ?? []),
     ...(archivedTasks ?? []),
-  ] as unknown as TaskWithRels[];
+  ] as unknown as TaskWithRels[]);
 
   // Las subtareas cuya madre NO entró en la lista (pasa siempre en "Mis
   // tareas": te tocan tres piezas de un ticket que lleva otro). Se traen solo

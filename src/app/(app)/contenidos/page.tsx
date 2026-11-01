@@ -1,3 +1,5 @@
+import { ContenidosHerramientas } from "@/components/contenidos-herramientas";
+import { sinVacios } from "@/lib/sin-vacios";
 import { hoyYmd } from "@/lib/dates";
 
 import Link from "next/link";
@@ -213,30 +215,7 @@ export default async function ContenidosPage({
                 🎯 Ver plan de contenidos
               </Link>
             )}
-            <Link
-              href="/contenidos/salio"
-              className="rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
-            >
-              ✅ ¿Salió de verdad?
-            </Link>
-            <Link
-              href="/contenidos/publicado"
-              className="rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
-            >
-              📸 Lo que salió
-            </Link>
-            <Link
-              href="/contenidos/inspo"
-              className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-sm font-medium hover:bg-primary/20"
-            >
-              💡 Inspo
-            </Link>
-            <Link
-              href="/contenidos/guiones"
-              className="rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
-            >
-              📄 Guiones del mes
-            </Link>
+            <ContenidosHerramientas />
           </div>
         </div>
         <p className="text-muted-foreground">
@@ -343,6 +322,7 @@ export default async function ContenidosPage({
           {teams.map((t) => (
             <Link
               key={t.id}
+              prefetch={false}
               href={`/contenidos?equipo=${t.id}`}
               className={`rounded-full border px-3 py-1 text-xs font-medium ${equipoFiltro === t.id ? "border-foreground bg-foreground text-background" : "bg-background hover:bg-accent"}`}
             >
@@ -352,7 +332,7 @@ export default async function ContenidosPage({
         </div>
       )}
       <PublicationsMonth
-        publications={visiblePubs as PublicationWithRels[]}
+        publications={sinVacios(visiblePubs as PublicationWithRels[])}
         clients={clients}
         users={users}
         unseenByPub={unseenByPub}

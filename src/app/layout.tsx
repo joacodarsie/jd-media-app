@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -18,12 +18,14 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "JD Media",
   },
-  themeColor: "#FFD400",
   icons: {
     icon: "/icon.svg",
     apple: "/icon.svg",
   },
 };
+
+// Va acá y no en metadata: Next lo pide así y si no ensucia los logs en cada visita.
+export const viewport: Viewport = { themeColor: "#FFD400" };
 
 export default function RootLayout({
   children,

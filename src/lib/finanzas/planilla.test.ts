@@ -6,6 +6,7 @@ import {
   facturadoUltimos12,
   mesesPlanilla,
   periodoAnterior,
+  sueldosPlanilla,
 } from "./planilla";
 import type { FilaCliente } from "./informe-mensual";
 import type { FilaCobro } from "./informe-xlsx";
@@ -140,5 +141,17 @@ describe("deudasPlanilla", () => {
       { cliente: "Power Collection", periodo: "2026-07", saldo: 175000 },
       { cliente: "Nazar Hogar", periodo: "2026-10", saldo: 475000 },
     ]);
+  });
+});
+
+describe("sueldosPlanilla", () => {
+  it("de mayor a menor, sin los que no cobran nada", () => {
+    const s = sueldosPlanilla([
+      { nombre: "Matías", alias: "mati.mp", titular: "Matías Moyano", total: 50000, pagado: false },
+      { nombre: "Luz", alias: null, titular: null, total: 832633.4, pagado: true, montoPagado: 832633 },
+      { nombre: "Nadie", alias: null, titular: null, total: 0, pagado: false },
+    ]);
+    expect(s.map((x) => x.nombre)).toEqual(["Luz", "Matías"]);
+    expect(s[0]).toEqual({ nombre: "Luz", alias: null, titular: null, total: 832633, pagado: true, montoPagado: 832633 });
   });
 });

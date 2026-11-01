@@ -60,6 +60,17 @@ export interface DeudaPlanilla {
   saldo: number;
 }
 
+export interface SueldoPersona {
+  nombre: string;
+  /** Alias o CBU para transferir, y a nombre de quién está. */
+  alias: string | null;
+  titular: string | null;
+  total: number;
+  pagado: boolean;
+  /** Lo transferido, si ya se pagó (puede no coincidir con el total). */
+  montoPagado: number;
+}
+
 export interface Planilla {
   generadoEl: string;
   periodo: string;
@@ -72,6 +83,25 @@ export interface Planilla {
   porCobrar: DeudaPlanilla[];
   /** Lo facturado en los últimos 12 meses: lo que mira el monotributo. */
   facturado12m: number;
+  /** Lo que hay que pagarle a cada uno el 7: la nómina del mes anterior al actual. */
+  sueldos: { periodo: string; personas: SueldoPersona[] };
+}
+
+/** La nómina de un mes, una fila por persona, de mayor a menor. Los que no cobran nada no aparecen. */
+export function sueldosPlanilla(
+  people: { nombre: string; alias: string | null; titular: string | null; total: number; pagado: boolean; montoPagado?: number }[],
+): SueldoPersona[] {
+  return people
+    .filter((p) => (p.total || 0) > 0 || (p.montoPagado || 0) > 0)
+    .map((p) => ({
+      nombre: p.nombre,
+      alias: p.alias ?? null,
+      titular: p.titular ?? null,
+      total: redondo(p.total || 0),
+      pagado: !!p.pagado,
+      montoPagado: redondo(p.montoPagado || 0),
+    }))
+    .sort((a, b) => b.total - a.total);
 }
 
 const redondo = (n: number) => Math.round(n);

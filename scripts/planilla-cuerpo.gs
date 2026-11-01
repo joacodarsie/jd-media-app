@@ -263,7 +263,8 @@ function agregarMovimiento_(fecha, m) {
 
 const MP_API = "https://api.mercadopago.com/v1/account/release_report";
 // 1/11/2026: el movimiento que cargó este reporte se pisó al completar a mano
-// el extracto de Macro. Se vuelve a bajar una vez.
+// el extracto de Macro (y su ID quedó en la fila de Macro, así que el primer
+// reintento lo dio por cargado). Se vuelve a bajar una vez más.
 const REIMPORTAR_MP = ["reserve-release-375831356-2026-11-01-035617.csv"];
 // Todo lo anterior a esta fecha ya está cargado desde los extractos: no se toca.
 const MP_DESDE = "2026-10-29";
@@ -279,7 +280,7 @@ function importarMercadoPago() {
   const props = PropertiesService.getScriptProperties();
   // Reportes que hay que volver a cargar una vez (por ejemplo, si se pisó una
   // fila a mano). No duplica: lo que ya está se reconoce por el ID de operación.
-  const reimportados = JSON.parse(props.getProperty("MP_REIMPORTADOS") || "[]");
+  const reimportados = JSON.parse(props.getProperty("MP_REIMPORTADOS_2") || "[]");
   const aReimportar = REIMPORTAR_MP.filter(function (f) { return reimportados.indexOf(f) === -1; });
   const hechos = JSON.parse(props.getProperty("MP_REPORTES_HECHOS") || "[]").filter(function (f) {
     return aReimportar.indexOf(f) === -1;
@@ -300,7 +301,7 @@ function importarMercadoPago() {
     hechos.push(r.file_name);
   });
   props.setProperty("MP_REPORTES_HECHOS", JSON.stringify(hechos.slice(-200)));
-  if (aReimportar.length) props.setProperty("MP_REIMPORTADOS", JSON.stringify(reimportados.concat(aReimportar).slice(-50)));
+  if (aReimportar.length) props.setProperty("MP_REIMPORTADOS_2", JSON.stringify(reimportados.concat(aReimportar).slice(-50)));
 }
 
 function cargarReporteMP_(csv) {

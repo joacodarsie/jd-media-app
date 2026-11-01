@@ -78,8 +78,17 @@ export async function requireRole(roles: string[]): Promise<AppUser> {
   return user;
 }
 
-/** Chequea si el usuario tiene una feature otorgada. Admin siempre la tiene. */
+/**
+ * Lo que es SOLO del dueño, aunque haya otros admin: la plata de la agencia
+ * (finanzas, cobros, sueldos, márgenes). Lo pidió él el 1/11/2026: "por
+ * seguridad, que solo yo tenga las nociones de la plata, por ahora". Para
+ * abrírselo a alguien más, se saca la feature de acá.
+ */
+export const SOLO_DUENO: readonly Feature[] = ["finanzas"];
+
+/** Chequea si el usuario tiene una feature otorgada. Admin siempre la tiene, salvo lo que es solo del dueño. */
 export function userHas(user: AppUser, feature: Feature): boolean {
+  if (SOLO_DUENO.includes(feature)) return isOwner(user);
   if (user.rol === "admin") return true;
   const p = (user as unknown as { permisos?: Record<string, boolean> }).permisos;
   return p?.[feature] === true;

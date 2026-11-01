@@ -4,6 +4,7 @@ import { planillaAutorizada } from "@/lib/finanzas/planilla-auth";
 import { aplicarMovimientos } from "@/lib/finanzas/conciliar-run";
 import type { MovimientoPlanilla } from "@/lib/finanzas/conciliar";
 import { sendPushToUsers } from "@/lib/push";
+import { isOwner } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -43,8 +44,9 @@ export async function POST(req: NextRequest) {
       marcados.length === 1 && !sinMatch
         ? marcados[0].mensaje
         : `Marqué ${marcados.length} ${marcados.length === 1 ? "movimiento" : "movimientos"}${sinMatch ? ` y ${sinMatch} no supe dónde van` : ""}`;
-    const { data: admins } = await db.from("users").select("id").eq("rol", "admin").eq("activo", true);
-    const ids = ((admins ?? []) as { id: string }[]).map((a) => a.id);
+    // Solo al dueño: la plata es suya (SOLO_DUENO en lib/auth).
+    const { data: users } = await db.from("users").select("id, email").eq("activo", true);
+    const ids = ((users ?? []) as { id: string; email: string | null }[]).filter((u) => isOwner(u)).map((u) => u.id);
     if (ids.length) {
       await db.from("notifications").insert(
         ids.map((id) => ({

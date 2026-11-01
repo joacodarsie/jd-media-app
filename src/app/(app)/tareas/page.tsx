@@ -28,7 +28,7 @@ const ARCHIVED_LIMIT = 100;
 export default async function TareasPage({
   searchParams,
 }: {
-  searchParams?: { ver?: string };
+  searchParams?: { ver?: string; historial?: string };
 }) {
   const me = await requireUser();
   const supabase = createClient();
@@ -46,6 +46,7 @@ export default async function TareasPage({
    * una decisión suya y no el estado por defecto.
    */
   const verCuentas = searchParams?.ver === "cuentas";
+  const conHistorial = searchParams?.historial === "1";
   const myClientIds = await getAccessibleClientIds(me);
   const esStaff = myClientIds === null;
   const visibilityOr = esStaff
@@ -74,13 +75,16 @@ export default async function TareasPage({
     let q = supabase
       .from("tasks")
       .select(TASK_SELECT)
-      .neq("estado", "archivada")
+      .not("estado", "in", conHistorial ? "(archivada)" : "(archivada,completada)")
       .order("created_at", { ascending: false })
       .order("id")
       .range(desde, hasta);
     if (visibilityOr) q = q.or(visibilityOr);
     return q;
   });
+  // Lo terminado se ve solo al filtrar por ese estado: se pide con ?historial=1.
+  // Sin eso, de lo terminado viajan únicamente las subtareas de tickets abiertos,
+  // que hacen falta para el avance «3 de 5» (1/11/2026).
   let archivedQuery = supabase
     .from("tasks")
     .select(TASK_SELECT)
@@ -90,11 +94,25 @@ export default async function TareasPage({
   if (visibilityOr) {
     archivedQuery = archivedQuery.or(visibilityOr);
   }
+  const subtareasTerminadas = conHistorial
+    ? Promise.resolve({ data: [] })
+    : todasLasFilas((desde, hasta) => {
+        let q = supabase
+          .from("tasks")
+          .select(TASK_SELECT)
+          .eq("estado", "completada")
+          .not("parent_id", "is", null)
+          .order("id")
+          .range(desde, hasta);
+        if (visibilityOr) q = q.or(visibilityOr);
+        return q;
+      });
 
-  const [{ data: activeTasks }, { data: archivedTasks }, users, allClients] =
+  const [{ data: activeTasks }, { data: archivedTasks }, { data: terminadas }, users, allClients] =
     await Promise.all([
       activeQuery,
-      archivedQuery,
+      conHistorial ? archivedQuery : Promise.resolve({ data: [] }),
+      subtareasTerminadas,
       getActiveUsers(),
       getActiveClients(),
     ]);
@@ -103,9 +121,13 @@ export default async function TareasPage({
     ? allClients.filter((c) => myClientIds.includes(c.id))
     : allClients;
 
+  const abiertas = new Set(((activeTasks ?? []) as unknown as { id: string }[]).map((t) => t.id));
   const tasks = sinVacios([
     ...(activeTasks ?? []),
     ...(archivedTasks ?? []),
+    ...((terminadas ?? []) as unknown as { parent_id: string | null }[]).filter(
+      (t) => t.parent_id && abiertas.has(t.parent_id)
+    ),
   ] as unknown as TaskWithRels[]);
 
   // Las subtareas cuya madre NO entró en la lista (pasa siempre en "Mis
@@ -201,6 +223,7 @@ export default async function TareasPage({
         currentUserId={me.id}
         esCoordinacion={isStaffUser(me)}
         madres={madres}
+        conHistorial={conHistorial}
       />
     </div>
   );

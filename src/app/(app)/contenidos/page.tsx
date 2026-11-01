@@ -1,3 +1,5 @@
+import { mesPedido, ventanaDeMes } from "@/lib/contenidos/ventana-mes";
+import { todasLasFilas } from "@/lib/supabase/todas-las-filas";
 import { ContenidosHerramientas } from "@/components/contenidos-herramientas";
 import { sinVacios } from "@/lib/sin-vacios";
 import { hoyYmd } from "@/lib/dates";
@@ -17,10 +19,13 @@ import { sinIdeasParaProduccion } from "@/lib/contenidos/visibilidad";
 
 export const dynamic = "force-dynamic";
 
+const SELECT_PIEZA =
+  "*, cliente:clients(id,nombre,ig_user_id), creador:users!publications_creado_por_id_fkey(id,nombre,avatar_url), audiovisual:users!publications_audiovisual_id_fkey(id,nombre,avatar_url)";
+
 export default async function ContenidosPage({
   searchParams,
 }: {
-  searchParams?: { cliente?: string; equipo?: string };
+  searchParams?: { cliente?: string; equipo?: string; mes?: string; pub?: string };
 }) {
   const me = await requireUser();
   const supabase = createClient();
@@ -31,23 +36,19 @@ export default async function ContenidosPage({
   // Staff (admin/coordinador) → null = ven todas.
   const myClientIds = await getAccessibleClientIds(me);
 
-  // Traemos TODO el pipeline activo (no publicado, sin límite de fecha) + los
-  // publicados de los últimos 180 días. Lo que crece sin techo es la historia
-  // de publicados; recortarla mantiene el calendario y el Kanban livianos sin
-  // perder el pipeline en curso ni los publicados recientes.
-  const publishedSince = new Date(Date.now() - 180 * 86400_000)
-    .toISOString()
-    .slice(0, 10);
+  // Traemos TODO lo pendiente (sin límite de fecha) y, de lo publicado, solo el
+  // mes que se mira y sus vecinos: al moverse más lejos, el calendario pide su
+  // ventana con ?mes= (ver ventana-mes.ts).
+  const mes = mesPedido(searchParams?.mes, hoyYmd());
+  const { desde: ventanaDesde, hasta: ventanaHasta } = ventanaDeMes(mes);
 
   // De a 1.000: la base no devuelve más por consulta y al 24/10/2026 eran
   // 1.050 piezas, así que las últimas quedaban afuera sin avisar.
   const traerPagina = (desde: number) => {
     let q = supabase
       .from("publications")
-      .select(
-        "*, cliente:clients(id,nombre,ig_user_id), creador:users!publications_creado_por_id_fkey(id,nombre,avatar_url), audiovisual:users!publications_audiovisual_id_fkey(id,nombre,avatar_url)"
-      )
-      .or(`estado.neq.publicado,fecha_publicacion.gte.${publishedSince}`)
+      .select(SELECT_PIEZA)
+      .or(`estado.neq.publicado,and(fecha_publicacion.gte.${ventanaDesde},fecha_publicacion.lt.${ventanaHasta})`)
       .order("fecha_publicacion", { ascending: true, nullsFirst: false })
       .order("id", { ascending: true })
       .range(desde, desde + 999);
@@ -65,11 +66,26 @@ export default async function ContenidosPage({
     return { data: todas, error: null };
   })();
 
+  // El «salió el X%» mide 180 días, no el mes que se mira: alcanza con 4 columnas.
+  const publicadasDesde = new Date(Date.now() - 180 * 86400_000).toISOString().slice(0, 10);
+  const publicadasQuery = todasLasFilas((desde, hasta) => {
+    let q = supabase
+      .from("publications")
+      .select("cliente_id, estado, fecha_publicacion, frenado_cliente")
+      .eq("estado", "publicado")
+      .gte("fecha_publicacion", publicadasDesde)
+      .order("id")
+      .range(desde, hasta);
+    if (myClientIds) q = q.in("cliente_id", myClientIds);
+    return q;
+  });
+
   const [
     { data: pubs },
     { data: unseenComments },
     users,
     allClients,
+    { data: publicadas180 },
   ] = await Promise.all([
     pubQuery,
     supabase
@@ -78,7 +94,17 @@ export default async function ContenidosPage({
       .is("visto_at", null),
     getActiveUsers(),
     getActiveClients(),
+    publicadasQuery,
   ]);
+
+  // Un link directo a una pieza vieja (?pub=) puede quedar fuera de la ventana.
+  const pedida = searchParams?.pub;
+  if (pedida && pubs && !pubs.some((p) => p.id === pedida)) {
+    let q = supabase.from("publications").select(SELECT_PIEZA).eq("id", pedida);
+    if (myClientIds) q = q.in("cliente_id", myClientIds);
+    const { data: extra } = await q.maybeSingle();
+    if (extra) pubs.push(extra);
+  }
 
   // Restringir también la lista de clientes (filtros/combobox) a las cuentas
   // visibles para el usuario.
@@ -148,7 +174,10 @@ export default async function ContenidosPage({
   const atrasadas = computePuntualidadCuenta(
     "todas",
     (
-      visiblePubs as {
+      [
+        ...visiblePubs.filter((p) => p.estado !== "publicado"),
+        ...(publicadas180 ?? []),
+      ] as {
         cliente_id: string;
         estado: string;
         fecha_publicacion: string | null;
@@ -333,6 +362,7 @@ export default async function ContenidosPage({
       )}
       <PublicationsMonth
         publications={sinVacios(visiblePubs as PublicationWithRels[])}
+        mesCentro={mes}
         clients={clients}
         users={users}
         unseenByPub={unseenByPub}

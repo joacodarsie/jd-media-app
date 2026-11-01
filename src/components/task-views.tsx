@@ -122,6 +122,7 @@ export function TaskViews({
   currentUserId,
   esCoordinacion = false,
   madres = {},
+  conHistorial = false,
 }: {
   tasks: TaskWithRels[];
   users: Pick<AppUser, "id" | "nombre">[];
@@ -131,6 +132,8 @@ export function TaskViews({
   esCoordinacion?: boolean;
   /** Tickets madre que no entraron en la lista, para nombrar las subtareas sueltas. */
   madres?: Record<string, RefMadre | undefined>;
+  /** Si ya se cargó lo terminado (completadas y archivadas). */
+  conHistorial?: boolean;
 }) {
   const router = useRouter();
   const [view, setView] = useState<ViewMode>("lista");
@@ -147,6 +150,13 @@ export function TaskViews({
   const monthApplies = (quick === "mias" || quick === "todas") && view !== "calendario";
   const [q, setQ] = useState("");
   const [estado, setEstado] = useState(ALL);
+  // Lo terminado no viene de entrada: se pide al filtrar por ese estado.
+  useEffect(() => {
+    if (conHistorial || (estado !== "completada" && estado !== "archivada")) return;
+    const u = new URLSearchParams(window.location.search);
+    u.set("historial", "1");
+    router.replace(`/tareas?${u}`, { scroll: false });
+  }, [estado, conHistorial, router]);
   const [prioridad, setPrioridad] = useState(ALL);
   const [asignado, setAsignado] = useState(ALL);
   const [cliente, setCliente] = useState(ALL);

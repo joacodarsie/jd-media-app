@@ -9,6 +9,8 @@ export interface NavItem {
   icon: string;
   /** Si se define, sólo estos roles ven el item. */
   roles?: UserRole[];
+  /** Quien tiene alguno de estos roles no lo ve acá (lo tiene en otro lugar del menú). */
+  salvoRoles?: UserRole[];
   /** Además de los roles, estas áreas (principal o secundaria) también lo ven. */
   areas?: string[];
   /** Muestra la etiqueta «Nuevo» hasta esta fecha (YYYY-MM-DD). */
@@ -75,12 +77,9 @@ export const NAV_GROUPS: NavGroup[] = [
         areas: ["Coordinación de Diseño"],
         nuevoHasta: "2026-11-15",
       },
-      {
-        href: "/paid-media",
-        label: "Paid Media",
-        icon: "TrendingUp",
-        roles: ["admin", "coordinador", "paid_media"],
-      },
+      // Arriba solo para quien trabaja ahí todos los días; el resto lo tiene en
+      // «Equipo & clientes» (9 visitas en 30 días, 1/11/2026).
+      { href: "/paid-media", label: "Paid Media", icon: "TrendingUp", roles: ["paid_media"] },
       { href: "/agenda", label: "Agenda", icon: "CalendarClock" },
       // Administración (30/10/2026): métricas, finanzas, coordinación y accesos
       // viven adentro, para limpiar la barra. Solo el dueño y Jadur.
@@ -111,6 +110,7 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "Rocket",
         roles: ["admin", "coordinador"],
       },
+      { href: "/paid-media", label: "Paid Media", icon: "TrendingUp", roles: ["admin", "coordinador"], salvoRoles: ["paid_media"] },
       // Equipo agrupa: Directorio, Organigrama, Personas, Capacidad y
       // Reclutamiento (pestañas).
       {
@@ -177,6 +177,7 @@ function userHasFeature(user: AppUser, feature: Feature): boolean {
 function itemVisible(user: AppUser, i: NavItem, isLiveOwner = false) {
   if (i.liveOwnerOnly && !isLiveOwner) return false;
   if (i.soloAdministracion) return accedeAdministracion(user);
+  if (i.salvoRoles?.includes(user.rol) || (user.rol_secundario && i.salvoRoles?.includes(user.rol_secundario))) return false;
   // Visible si el ROL (primario o secundario) está en la lista, O si tiene la
   // feature. Antes exigía la feature aunque el rol estuviera en la lista, lo que
   // ocultaba Comercial/Prospección a quien tiene rol "comercial" pero no el

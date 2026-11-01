@@ -1,5 +1,6 @@
 "use client";
 
+import { mesCargado } from "@/lib/contenidos/ventana-mes";
 import { ymdEnZona } from "@/lib/dates";
 import Link from "next/link";
 import { useMemo, useState, useEffect, useTransition } from "react";
@@ -101,6 +102,7 @@ function ymd(d: Date) {
 
 export function PublicationsMonth({
   publications,
+  mesCentro,
   clients,
   users,
   defaultClientId,
@@ -109,6 +111,8 @@ export function PublicationsMonth({
   clientesEditables,
 }: {
   publications: PublicationWithRels[];
+  /** El mes alrededor del cual se cargó lo publicado (ver ventana-mes.ts). */
+  mesCentro?: string;
   clients: ClientForPub[];
   users: Pick<AppUser, "id" | "nombre">[];
   defaultClientId?: string;
@@ -453,6 +457,14 @@ export function PublicationsMonth({
   // (lo usa el link "ver en el calendario" desde una tarea).
   const searchParams = useSearchParams();
   const deepPubId = searchParams.get("pub");
+  // Al moverse más allá de lo cargado, se pide esa ventana al servidor.
+  useEffect(() => {
+    if (!mesCentro || mesCargado(cursorYM, mesCentro)) return;
+    const u = new URLSearchParams(searchParams.toString());
+    u.set("mes", cursorYM);
+    router.replace(`/contenidos?${u}`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cursorYM, mesCentro]);
   const deepPub = useMemo(
     () => (deepPubId ? publications.find((p) => p.id === deepPubId) ?? null : null),
     [deepPubId, publications]
